@@ -1,4 +1,6 @@
 import 'package:e_commerce_app/Provider/UserProvider.dart';
+import 'package:e_commerce_app/Screens/ListProduct/ListProduct_responsive.dart';
+import 'package:e_commerce_app/Screens/ProductDetail/ProductDeitalResponsive.dart';
 import 'package:flutter/material.dart';
 import 'package:url_strategy/url_strategy.dart';
 import 'package:e_commerce_app/Screens/Chat/ResponsiveChat.dart';
@@ -60,6 +62,16 @@ class MyApp extends StatelessWidget {
           case '/signup':
             return PageRouteBuilder(
               pageBuilder: (context, _, __) => const ReponsiveSignUp(),
+              settings: settings,
+            );
+            case '/catalog_product':
+            return PageRouteBuilder(
+              pageBuilder: (context, _, __) => const ResponsiveListProduct(),
+              settings: settings,
+            );
+          case '/product_detail':
+            return PageRouteBuilder(
+              pageBuilder: (context, _, __) => const ResponsiveProductDetail(),
               settings: settings,
             );
           default:
