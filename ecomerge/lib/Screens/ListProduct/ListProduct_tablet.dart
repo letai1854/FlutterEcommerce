@@ -239,16 +239,16 @@ void dispose() {
                   },
                 ),
               ),
-Padding(
-  padding: const EdgeInsets.symmetric(horizontal: 40),
-  child: SizedBox(
-    child: ProductListView(
-    width: double.infinity, // Chiều rộng vừa với bố cục
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: SizedBox(
+                  child: ProductListView(
+                  width: double.infinity, // Chiều rộng vừa với bố cục
 
-      scrollController: _scrollController,
-    ),
-  ),
-),
+                    scrollController: _scrollController,
+                  ),
+                ),
+              ),
 
                 if (kIsWeb)
                   const Footer(),

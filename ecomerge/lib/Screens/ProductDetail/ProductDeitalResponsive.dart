@@ -11,9 +11,9 @@ class ResponsiveProductDetail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ResponsiveLayout(
-      mobileScaffold: const ProductdetialMobile(),
+      mobileScaffold: const ProductdetailMobile(),
       tableScaffold: const ProductdetailTablet(),
-      destopScaffold: const ProductdetialDesktop(),
+      destopScaffold: const ProductdetailDesktop(),
     );
   }
 }
