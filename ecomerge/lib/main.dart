@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:e_commerce_app/Provider/UserProvider.dart';
+import 'package:e_commerce_app/Screens/Cart/CartResponsive.dart';
 import 'package:e_commerce_app/Screens/ListProduct/ListProduct_responsive.dart';
 import 'package:e_commerce_app/Screens/ProductDetail/ProductDeitalResponsive.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +11,17 @@ import 'package:e_commerce_app/Screens/Home/home_responsive.dart';
 import 'package:e_commerce_app/Screens/Login/login_responsive.dart';
 import 'package:e_commerce_app/Screens/SignUp/SignUp_Reponsive.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+
+class MyHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
+  }
+}
 
 Future<void> initApp() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +33,7 @@ Future<void> initApp() async {
 }
 
 void main() async {
+  // HttpOverrides.global = MyHttpOverrides();
   await initApp();
   runApp(const MyApp());
 }
@@ -72,6 +87,11 @@ class MyApp extends StatelessWidget {
           case '/product_detail':
             return PageRouteBuilder(
               pageBuilder: (context, _, __) => const ResponsiveProductDetail(),
+              settings: settings,
+            );
+          case '/cart':
+            return PageRouteBuilder(
+              pageBuilder: (context, _, __) => const ResponsiveCart(),
               settings: settings,
             );
           default:

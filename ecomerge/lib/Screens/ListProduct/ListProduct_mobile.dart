@@ -172,34 +172,34 @@ class _ListproductMobileState extends State<ListproductMobile> {
 
             // Main Content Area
             // Main Content Area
-Expanded(
-  child: SingleChildScrollView(
-    controller: _scrollController,
-    child: Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 16, right: 16, top: 16), // Match sidebar padding
-          child: SortingBar(
-            width: double.infinity, // Use full width within padding
-            onSortChanged: (sortType) {
-              print('Sort by: $sortType');
-            },
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40),
-          child: SizedBox(
-            child: ProductListView(
-              width: double.infinity,
-              scrollController: _scrollController,
+          Expanded(
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16, right: 16, top: 16), // Match sidebar padding
+                    child: SortingBar(
+                      width: double.infinity, // Use full width within padding
+                      onSortChanged: (sortType) {
+                        print('Sort by: $sortType');
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: SizedBox(
+                      child: ProductListView(
+                        width: double.infinity,
+                        scrollController: _scrollController,
+                      ),
+                    ),
+                  ),
+                  if (kIsWeb) const Footer(),
+                ],
+              ),
             ),
           ),
-        ),
-        if (kIsWeb) const Footer(),
-      ],
-    ),
-  ),
-),
           ],
         ),
       ),
