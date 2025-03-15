@@ -350,7 +350,7 @@ Widget build(BuildContext context) {
         ),
       ),
     ),
-     bottomNavigationBar: isMobile ? BottomNavBar() : null,
+    //  bottomNavigationBar: isMobile ? BottomNavBar() : null,
   );
 }
 
