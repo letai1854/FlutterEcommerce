@@ -2,6 +2,7 @@ package demo.com.example.testserver.controller;
 
 import demo.com.example.testserver.model.User;
 import demo.com.example.testserver.repository.UserRepository;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,13 @@ public class UserController {
 
     @Autowired
     private UserRepository userRepository;
+
+    // Ping endpoint for testing API connectivity
+    @GetMapping("/ping")
+    public ResponseEntity<String> ping() {
+        System.out.println("ping -0----");
+        return new ResponseEntity<>("Server is up and running", HttpStatus.OK);
+    }
 
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
@@ -46,6 +54,7 @@ public class UserController {
             }
             return new ResponseEntity<>("Invalid credentials", HttpStatus.UNAUTHORIZED);
         } catch (Exception e) {
+            System.out.println("Login failed: " + e.getMessage());
             return new ResponseEntity<>("Login failed: " + e.getMessage(), 
                 HttpStatus.INTERNAL_SERVER_ERROR);
         }
