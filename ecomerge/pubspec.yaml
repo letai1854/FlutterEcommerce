@@ -43,6 +43,7 @@ dependencies:
   intl: ^0.20.2
 
 
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -68,6 +69,11 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/
+    - assets/mouseBanner.jpg
+    - assets/product1.jpg
+    - assets/product2.jpg
+    - assets/p4.jpg
+    - assets/product3.jpg
     - assets/banner.jpg
     - assets/logoS.jpg
     - assets/vietnam_locations.json
@@ -81,6 +87,7 @@ flutter:
     - assets/banner6.jpg
     - assets/banner7.jpg
     - assets/bannerMain.jpg
+  
   
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg

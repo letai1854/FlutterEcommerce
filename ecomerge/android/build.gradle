@@ -1,3 +1,4 @@
+
 buildscript {
     ext.kotlin_version = '1.9.0'  // Match the supported Kotlin version
     repositories {
@@ -6,10 +7,19 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.2.1'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath("com.android.tools.build:gradle:8.2.1") // Cập nhật phiên bản mới nhất
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0") // Plugin Kotlin
     }
 }
+
+
+
+    // dependencies {
+    //     classpath 'com.android.tools.build:gradle:8.2.1'
+    //     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    // }
+
+
 
 allprojects {
     repositories {
