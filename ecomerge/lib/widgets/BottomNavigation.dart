@@ -39,11 +39,11 @@ class _BottomNavBarState extends State<BottomNavBar> {
       case 0:
         return '/home';
       case 1:
-        return '/catalog_product';
+        return '/cart';
       case 2:
         return '/product_detail';
       case 3:
-        return '/login';
+        return '/forgot_password';
       default:
         return '/home'; // Mặc định là trang chủ
     }

@@ -203,7 +203,7 @@ class _ListproductMobileState extends State<ListproductMobile> {
           ],
         ),
       ),
-      bottomNavigationBar: isMobile ?  BottomNavBar() : null,
+      // bottomNavigationBar: isMobile ?  BottomNavBar() : null,
     );
   }
 }

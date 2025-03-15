@@ -1,4 +1,5 @@
 import 'package:e_commerce_app/constants.dart';
+import 'package:e_commerce_app/widgets/BottomNavigation.dart';
 import 'package:e_commerce_app/widgets/navbarHomeMobile.dart';
 import 'package:flutter/material.dart';
 class NavbarFixmobile extends StatefulWidget {
@@ -78,6 +79,7 @@ class _NavbarmobileDrawerState extends State<NavbarFixmobile> {
             )
           : null,
       body: widget.body, // Thêm body vào đây
+      bottomNavigationBar: isMobile ? BottomNavBar() : null,
     );
   }
 }
