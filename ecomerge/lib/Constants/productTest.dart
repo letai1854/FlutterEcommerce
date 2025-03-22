@@ -201,5 +201,13 @@ class Productest {
       'discount': 13,
       'rating': 4.0
     },
+    {
+      'image': 'assets/banner3.jpg',
+      'title': 'Laptop ASUS Vivobook 14 OLED A1405ZA KM264W',
+      'describe': 'Hỗ trợ trả góp MPOS (Thẻ tín dụng), HDSAISON.',
+      'price': 1200000.0,
+      'discount': 13,
+      'rating': 4.0
+    },
   ];
 }
