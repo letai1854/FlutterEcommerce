@@ -2,8 +2,11 @@ import 'dart:io';
 
 import 'package:e_commerce_app/Provider/UserProvider.dart';
 import 'package:e_commerce_app/Screens/Cart/CartResponsive.dart';
+import 'package:e_commerce_app/Screens/ForgotPassword/ForgotPasswordResponsive.dart';
 import 'package:e_commerce_app/Screens/ListProduct/ListProduct_responsive.dart';
+import 'package:e_commerce_app/Screens/Payment/PaymentResponsive.dart';
 import 'package:e_commerce_app/Screens/ProductDetail/ProductDeitalResponsive.dart';
+import 'package:e_commerce_app/Screens/SuccessPayment/SucccessPaymentResponsive.dart';
 import 'package:flutter/material.dart';
 import 'package:url_strategy/url_strategy.dart';
 import 'package:e_commerce_app/Screens/Chat/ResponsiveChat.dart';
@@ -33,7 +36,7 @@ Future<void> initApp() async {
 }
 
 void main() async {
-  // HttpOverrides.global = MyHttpOverrides();
+  HttpOverrides.global = MyHttpOverrides();
   await initApp();
   runApp(const MyApp());
 }
@@ -94,6 +97,22 @@ class MyApp extends StatelessWidget {
               pageBuilder: (context, _, __) => const ResponsiveCart(),
               settings: settings,
             );
+            case '/payment':
+            return PageRouteBuilder(
+              pageBuilder: (context, _, __) => const ResponsivePayment(),
+              settings: settings,
+            );
+            case '/payment_success':
+            return PageRouteBuilder(
+              pageBuilder: (context, _, __) => const ResponsiveSuccessPayment(),
+              settings: settings,
+            );
+            case '/forgot_password':
+            return PageRouteBuilder(
+              pageBuilder: (context, _, __) => const ResponsiveForgotPassword(),
+              settings: settings,
+            );
+            
           default:
             return PageRouteBuilder(
               pageBuilder: (context, _, __) => const ResponsiveHome(),
@@ -104,3 +123,5 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+//commit
+

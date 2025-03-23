@@ -1,6 +1,8 @@
 import 'package:e_commerce_app/constants.dart';
+import 'package:e_commerce_app/widgets/BottomNavigation.dart';
 import 'package:e_commerce_app/widgets/navbarHomeMobile.dart';
 import 'package:flutter/material.dart';
+
 class NavbarFixmobile extends StatefulWidget {
   final Widget? body; // Thêm body để hiển thị nội dung bên trong Scaffold
 
@@ -58,6 +60,19 @@ class _NavbarmobileDrawerState extends State<NavbarFixmobile> {
                       ),
                     ),
                   ),
+                  // Fix the if statement syntax to properly group the ListTiles
+                  if (isWeb) ...[
+                    ListTile(
+                      leading: const Icon(Icons.home),
+                      title: const Text('Trang chủ'),
+                      onTap: () {},
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.list_alt),
+                      title: const Text('Danh sách sản phẩm'),
+                      onTap: () {},
+                    ),
+                  ],
                   ListTile(
                     leading: const Icon(Icons.person_add_alt),
                     title: const Text('Đăng ký'),
@@ -78,6 +93,7 @@ class _NavbarmobileDrawerState extends State<NavbarFixmobile> {
             )
           : null,
       body: widget.body, // Thêm body vào đây
+      bottomNavigationBar: isMobile ? BottomNavBar() : null,
     );
   }
 }
