@@ -498,3 +498,6 @@ class _CategoriesSectionState extends State<CategoriesSection> {
     );
   }
 }
+
+
+//comment 1
