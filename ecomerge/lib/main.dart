@@ -7,6 +7,7 @@ import 'package:e_commerce_app/Screens/ListProduct/ListProduct_responsive.dart';
 import 'package:e_commerce_app/Screens/Payment/PaymentResponsive.dart';
 import 'package:e_commerce_app/Screens/ProductDetail/ProductDeitalResponsive.dart';
 import 'package:e_commerce_app/Screens/SuccessPayment/SucccessPaymentResponsive.dart';
+import 'package:e_commerce_app/Screens/UserInfo/ResponsiveUserInfo.dart';
 import 'package:flutter/material.dart';
 import 'package:url_strategy/url_strategy.dart';
 import 'package:e_commerce_app/Screens/Chat/ResponsiveChat.dart';
@@ -16,7 +17,6 @@ import 'package:e_commerce_app/Screens/SignUp/SignUp_Reponsive.dart';
 import 'package:e_commerce_app/Screens/Search/Search_Responsive.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
 
 class MyHttpOverrides extends HttpOverrides {
   @override
@@ -73,6 +73,11 @@ class MyApp extends StatelessWidget {
               pageBuilder: (context, _, __) => const ResponsiveHome(),
               settings: settings,
             );
+          case '/Info':
+            return PageRouteBuilder(
+              pageBuilder: (context, _, __) => const ResponsiveUserInfo(),
+              settings: settings,
+            );
           case '/chat':
             return PageRouteBuilder(
               pageBuilder: (context, _, __) => const Responsivechat(),
@@ -83,7 +88,7 @@ class MyApp extends StatelessWidget {
               pageBuilder: (context, _, __) => const ReponsiveSignUp(),
               settings: settings,
             );
-            case '/catalog_product':
+          case '/catalog_product':
             return PageRouteBuilder(
               pageBuilder: (context, _, __) => const ResponsiveListProduct(),
               settings: settings,
@@ -98,27 +103,26 @@ class MyApp extends StatelessWidget {
               pageBuilder: (context, _, __) => const ResponsiveCart(),
               settings: settings,
             );
-            case '/payment':
+          case '/payment':
             return PageRouteBuilder(
               pageBuilder: (context, _, __) => const ResponsivePayment(),
               settings: settings,
             );
-            case '/payment_success':
+          case '/payment_success':
             return PageRouteBuilder(
               pageBuilder: (context, _, __) => const ResponsiveSuccessPayment(),
               settings: settings,
             );
-            case '/forgot_password':
+          case '/forgot_password':
             return PageRouteBuilder(
               pageBuilder: (context, _, __) => const ResponsiveForgotPassword(),
               settings: settings,
             );
-            case '/search':
+          case '/search':
             return PageRouteBuilder(
               pageBuilder: (context, _, __) => const SearchResponsive(),
               settings: settings,
             );
-            
           default:
             return PageRouteBuilder(
               pageBuilder: (context, _, __) => const ResponsiveHome(),
@@ -130,4 +134,3 @@ class MyApp extends StatelessWidget {
   }
 }
 //commit
-
