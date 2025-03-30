@@ -102,7 +102,7 @@ class _BodyState extends State<Body> {
 
   // For order status tabs
   int _selectedOrderTab = 0;
-
+  int _selectedOrderStatus = 0; // Thêm biến trạng thái đơn hàng
   final GlobalKey _footerKey = GlobalKey(); // Thêm key cho footer
 
   @override
