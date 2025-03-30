@@ -1,6 +1,8 @@
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:e_commerce_app/Constants/productTest.dart';
 import 'package:e_commerce_app/constants.dart';
 import 'package:e_commerce_app/widgets/CategoryItem.dart';
+import 'package:e_commerce_app/widgets/Product/PaginatedProductGrid.dart';
 import 'package:e_commerce_app/widgets/ProductGridView.dart';
 import 'package:e_commerce_app/widgets/SortingBar.dart';
 import 'package:e_commerce_app/widgets/footer.dart';
@@ -33,26 +35,16 @@ class _ListproductDesktopState extends State<ListproductDesktop> {
 class catalogProduct extends StatefulWidget {
   const catalogProduct({super.key});
   
-
   @override
   State<catalogProduct> createState() => _catalogProductState();
 }
 
 class _catalogProductState extends State<catalogProduct> {
   int _current = 0;
+  List<Map<String, dynamic>> productData = Productest.productData;
   final ScrollController _scrollController = ScrollController();
-
-@override
-void dispose() {
-  _scrollController.dispose();
-  super.dispose();
-}
-  final List<String> imgList = [
-    'assets/bannerMain.jpg',
-    'assets/banner2.jpg',
-    'assets/banner6.jpg', // Thay thế bằng đường dẫn ảnh thực tế// Thay thế bằng đường dẫn ảnh thực tế
-  ];
-
+  final GlobalKey _categoriesSectionKey = GlobalKey();
+  final GlobalKey _paginatedGridKey = GlobalKey();
     final List<Map<String, dynamic>> catalog = [
     {
       'name': 'Laptop',
@@ -82,6 +74,17 @@ void dispose() {
     }
     ];
 
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+  
+  final List<String> imgList = [
+    'assets/bannerMain.jpg',
+    'assets/banner2.jpg',
+    'assets/banner6.jpg',
+  ];
 
   @override
  Widget build(BuildContext context) {
@@ -134,75 +137,92 @@ void dispose() {
           
           // Main Content Area
           Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-                  child: SizedBox(
-                    width: screenWidth * 0.8,
-                    height: carouselHeight,
-                    child: CarouselSlider(
-                      items: imgList.map((item) {
-                        return ClipRRect(
-                          borderRadius: BorderRadius.circular(3.0),
-                          child: Image.asset(
-                            item,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: carouselHeight,
-                            alignment: Alignment.center,
-                          ),
-                        );
-                      }).toList(),
-                      options: CarouselOptions(
-                        autoPlay: true,
-                        aspectRatio: 5,
-                        enlargeCenterPage: true,
-                        viewportFraction: 1.0,
-                        height: carouselHeight,
-                        onPageChanged: (index, reason) {
-                          setState(() {
-                            _current = index;
-                          });
-                        },
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              child: Column(
+                children: [
+                  // Carousel Slider
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+                    child: SizedBox(
+                      width: screenWidth * 0.8,
+                      height: carouselHeight,
+                      child: CarouselSlider(
+                        items: imgList.map((item) {
+                          return ClipRRect(
+                            borderRadius: BorderRadius.circular(3.0),
+                            child: Image.asset(
+                              item,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: carouselHeight,
+                              alignment: Alignment.center,
+                            ),
+                          );
+                        }).toList(),
+                        options: CarouselOptions(
+                          autoPlay: true,
+                          aspectRatio: 5,
+                          enlargeCenterPage: true,
+                          viewportFraction: 1.0,
+                          height: carouselHeight,
+                          onPageChanged: (index, reason) {
+                            setState(() {
+                              _current = index;
+                            });
+                          },
+                        ),
                       ),
                     ),
                   ),
-                ),
-                Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: SortingBar(
-                  width: screenWidth * 0.8,
-                  onSortChanged: (sortType) {
-                    // Handle sort change
-                    print('Sort by: $sortType');
-                  },
-                ),
+
+                  // Sorting Bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: SortingBar(
+                      width: screenWidth * 0.8,
+                      onSortChanged: (sortType) {
+                        // Handle sort change
+                        print('Sort by: $sortType');
+                      },
+                    ),
+                  ),
+
+                  // Product Grid with Pagination
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: Column(
+                      key: _paginatedGridKey,
+                      children: [
+                        SizedBox(
+                          width: screenWidth - 280,
+                          child: PaginatedProductGrid(
+                            productData: productData,
+                            itemsPerPage: screenWidth < 1300
+                                ? 8
+                                : (screenWidth < 1470 ? 10 : 12),
+                            gridWidth: screenWidth - 280,
+                            childAspectRatio: 0.7,
+                            crossAxisCount: screenWidth < 1300
+                                ? 4
+                                : (screenWidth < 1470 ? 5 : 6),
+                            mainSpace: 10,
+                            crossSpace: 8.0,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  if (kIsWeb)
+                    const Footer(),
+                ],
               ),
-Padding(
-  padding: const EdgeInsets.symmetric(horizontal: 40),
-  child: SizedBox(
-    child: ProductListView(
-    width: double.infinity, // Chiều rộng vừa với bố cục
-
-      scrollController: _scrollController,
-    ),
-  ),
-),
-
-                if (kIsWeb)
-                  const Footer(),
-              ],
             ),
           ),
-        ),
         ],
       ),
     );
   }
 }
 
-
-
- 
