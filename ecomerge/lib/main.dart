@@ -13,6 +13,7 @@ import 'package:e_commerce_app/Screens/Chat/ResponsiveChat.dart';
 import 'package:e_commerce_app/Screens/Home/home_responsive.dart';
 import 'package:e_commerce_app/Screens/Login/login_responsive.dart';
 import 'package:e_commerce_app/Screens/SignUp/SignUp_Reponsive.dart';
+import 'package:e_commerce_app/Screens/Search/Search_Responsive.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -110,6 +111,11 @@ class MyApp extends StatelessWidget {
             case '/forgot_password':
             return PageRouteBuilder(
               pageBuilder: (context, _, __) => const ResponsiveForgotPassword(),
+              settings: settings,
+            );
+            case '/search':
+            return PageRouteBuilder(
+              pageBuilder: (context, _, __) => const SearchResponsive(),
               settings: settings,
             );
             
