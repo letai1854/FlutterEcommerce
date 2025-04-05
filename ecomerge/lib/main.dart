@@ -73,7 +73,7 @@ class MyApp extends StatelessWidget {
               pageBuilder: (context, _, __) => const ResponsiveHome(),
               settings: settings,
             );
-          case '/Info':
+          case '/info':
             return PageRouteBuilder(
               pageBuilder: (context, _, __) => const ResponsiveUserInfo(),
               settings: settings,

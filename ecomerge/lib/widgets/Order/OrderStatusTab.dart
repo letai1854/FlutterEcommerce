@@ -12,6 +12,26 @@ class OrderStatusTab extends StatelessWidget {
     required this.onTap,
   }) : super(key: key);
 
+  // Static utility method to get status text from tab index
+  static String getStatusText(int tabIndex) {
+    switch (tabIndex) {
+      case 0:
+        return "Đang chờ xử lý";
+      case 1:
+        return "Đã xác nhận";
+      case 2:
+        return "Đang giao hàng";
+      case 3:
+        return "Đã giao hàng";
+      case 4:
+        return "Đã hủy";
+      case 5:
+        return "Trả hàng";
+      default:
+        return "Đang chờ xử lý";
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Expanded(

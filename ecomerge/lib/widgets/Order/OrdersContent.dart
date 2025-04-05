@@ -79,6 +79,15 @@ class _OrdersContentState extends State<OrdersContent> {
                   });
                 },
               ),
+              OrderStatusTab(
+                title: "Đã hủy",
+                isSelected: _selectedOrderTab == 4,
+                onTap: () {
+                  setState(() {
+                    _selectedOrderTab = 4;
+                  });
+                },
+              ),
             ],
           ),
         ),
@@ -110,13 +119,7 @@ class _OrdersContentState extends State<OrdersContent> {
                     "quantity": 2,
                   },
               ],
-              status: _selectedOrderTab == 0
-                  ? "Đang chờ xử lý"
-                  : (_selectedOrderTab == 1
-                      ? "Đã xác nhận"
-                      : (_selectedOrderTab == 2
-                          ? "Đang giao hàng"
-                          : "Đã giao hàng")),
+              status: OrderStatusTab.getStatusText(_selectedOrderTab),
               onViewHistory: () {},
             );
           },

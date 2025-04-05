@@ -8,7 +8,6 @@ import 'package:e_commerce_app/widgets/Password/ChangePasswordContent.dart';
 import 'package:e_commerce_app/widgets/Password/ForgotPasswordContentInfo.dart';
 import 'package:e_commerce_app/widgets/Points/PointsContent.dart';
 import 'package:e_commerce_app/widgets/footer.dart';
-import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
 import 'package:e_commerce_app/widgets/navbarHomeTablet.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -38,7 +37,7 @@ class UserInfoTablet extends StatelessWidget {
                       cursor: SystemMouseCursors.click,
                       child: Row(
                         // Bọc lại để tránh lỗi
-                        children: [
+                        children: const [
                           CircleAvatar(
                             radius: 30,
                             backgroundColor: Colors.white,
@@ -46,7 +45,7 @@ class UserInfoTablet extends StatelessWidget {
                               Icons.person,
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          SizedBox(width: 10),
                           Text(
                             'Le Van Tai',
                             style: TextStyle(
@@ -63,17 +62,17 @@ class UserInfoTablet extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.person_add_alt),
-              title: const Text('Đăng ký'),
+              title: const Text('Đăng ký'),
               onTap: () {},
             ),
             ListTile(
               leading: const Icon(Icons.person_3_rounded),
-              title: const Text('Đăng nhập'),
+              title: const Text('Đăng nhập'),
               onTap: () {},
             ),
             ListTile(
               leading: const Icon(Icons.chat),
-              title: const Text('Nhắn tin'),
+              title: const Text('Nhắn tin'),
               onTap: () {},
             ),
           ],
@@ -93,8 +92,6 @@ class Body extends StatefulWidget {
   State<Body> createState() => _BodyState();
 }
 
-// Main sections in the left navigation
-
 class _BodyState extends State<Body> {
   MainSection _selectedMainSection = MainSection.profile;
   ProfileSection _selectedProfileSection = ProfileSection.personalInfo;
@@ -102,79 +99,90 @@ class _BodyState extends State<Body> {
 
   // For order status tabs
   int _selectedOrderTab = 0;
-  int _selectedOrderStatus = 0; // Thêm biến trạng thái đơn hàng
-  final GlobalKey _footerKey = GlobalKey(); // Thêm key cho footer
+  int _selectedOrderStatus = 0;
+  final GlobalKey _footerKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
-    // Lấy kích thước màn hình
+    // Get responsive measurements
     final screenWidth = MediaQuery.of(context).size.width;
 
-    // Điều chỉnh tỷ lệ dựa trên kích thước màn hình
-    // Màn hình nhỏ: left column chiếm 35-40%, right column chiếm phần còn lại
-    // Màn hình lớn: left column chiếm 25%, right column chiếm 75%
-    final leftColumnRatio = screenWidth < 1400 ? 0.35 : 0.27;
-    final rightColumnRatio = 1.0 - leftColumnRatio;
+    // For tablet, we need more flexible padding
+    final horizontalPadding = screenWidth < 600 ? 10.0 : 20.0;
 
-    // Căn chỉnh padding dựa trên kích thước màn hình
-    final horizontalPadding = screenWidth < 1400 ? 140.0 : 140.0;
+    return LayoutBuilder(builder: (context, constraints) {
+      // For tablet, we might want to switch to a column layout if width is too small
+      final useColumnLayout = constraints.maxWidth < 720;
 
-    return SingleChildScrollView(
-      child: Column(
-        // Đổi Container thành Column để chứa cả body và footer
-        children: [
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 5, vertical: 30),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Left column - tỷ lệ thay đổi theo kích thước màn hình
-                SizedBox(
-                  width: MediaQuery.of(context).size.width * leftColumnRatio -
-                      horizontalPadding, // Trừ đi padding
-                  child: BuildLeftColumn(
-                    // Truyền các biến và callback cần thiết
-                    selectedMainSection: _selectedMainSection,
-                    selectedProfileSection: _selectedProfileSection,
-                    isProfileExpanded: _isProfileExpanded,
-                    onMainSectionChanged: (MainSection section) {
-                      setState(() {
-                        _selectedMainSection = section;
-                      });
-                    },
-                    onProfileSectionChanged: (ProfileSection section) {
-                      setState(() {
-                        _selectedProfileSection = section;
-                      });
-                    },
-                    onToggleProfileExpanded: () {
-                      setState(() {
-                        _isProfileExpanded = !_isProfileExpanded;
-                      });
-                    },
-                  ),
-                ),
-
-                const SizedBox(width: 40),
-
-                // Right column - tỷ lệ thay đổi theo kích thước màn hình
-                Expanded(
-                  child: SizedBox(
-                    width:
-                        MediaQuery.of(context).size.width * rightColumnRatio -
-                            horizontalPadding -
-                            40, // Trừ đi padding và khoảng cách giữa 2 cột
-                    child: _buildRightColumn(),
-                  ),
-                ),
-              ],
+      return SingleChildScrollView(
+        child: Column(
+          children: [
+            Container(
+              padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding, vertical: 30),
+              child: useColumnLayout
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Left column navigation - full width in column layout
+                        Container(
+                          width: double.infinity,
+                          child: _buildLeftColumn(),
+                        ),
+                        const SizedBox(height: 30),
+                        // Right column content
+                        Container(
+                          width: double.infinity,
+                          child: _buildRightColumn(),
+                        ),
+                      ],
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Left column - fixed width for stability
+                        Container(
+                          width: 250,
+                          child: _buildLeftColumn(),
+                        ),
+                        const SizedBox(width: 20),
+                        // Right column - expanding to take remaining space
+                        Expanded(
+                          child: _buildRightColumn(),
+                        ),
+                      ],
+                    ),
             ),
-          ),
 
-          // Thêm Footer vào đây
-          if (kIsWeb) Footer(key: _footerKey),
-        ],
-      ),
+            // Footer
+            if (kIsWeb) Footer(key: _footerKey),
+          ],
+        ),
+      );
+    });
+  }
+
+  // Extracted left column to avoid code duplication
+  Widget _buildLeftColumn() {
+    return BuildLeftColumn(
+      selectedMainSection: _selectedMainSection,
+      selectedProfileSection: _selectedProfileSection,
+      isProfileExpanded: _isProfileExpanded,
+      onMainSectionChanged: (MainSection section) {
+        setState(() {
+          _selectedMainSection = section;
+        });
+      },
+      onProfileSectionChanged: (ProfileSection section) {
+        setState(() {
+          _selectedProfileSection = section;
+        });
+      },
+      onToggleProfileExpanded: () {
+        setState(() {
+          _isProfileExpanded = !_isProfileExpanded;
+        });
+      },
     );
   }
 
