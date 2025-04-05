@@ -1,18 +1,16 @@
 import 'package:e_commerce_app/Screens/UserInfo/BuildLeftColumn.dart';
 import 'package:e_commerce_app/Screens/UserInfo/RightColumnContent.dart';
+import 'package:e_commerce_app/Screens/UserInfo/UserInfoTypes.dart';
 import 'package:e_commerce_app/widgets/Address/AddressManagement.dart';
-
 import 'package:e_commerce_app/widgets/Info/PersonalInfoForm.dart';
-
 import 'package:e_commerce_app/widgets/Order/OrdersContent.dart';
 import 'package:e_commerce_app/widgets/Password/ChangePasswordContent.dart';
 import 'package:e_commerce_app/widgets/Password/ForgotPasswordContentInfo.dart';
 import 'package:e_commerce_app/widgets/Points/PointsContent.dart';
 import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
-import 'package:e_commerce_app/widgets/footer.dart'; // Thêm import này
-import 'package:flutter/foundation.dart'; // Thêm import này
+import 'package:e_commerce_app/widgets/footer.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:e_commerce_app/Screens/UserInfo/UserInfoTypes.dart';
 
 class UserInfoDesktop extends StatefulWidget {
   const UserInfoDesktop({super.key});
@@ -43,12 +41,6 @@ class Body extends StatefulWidget {
   State<Body> createState() => _BodyState();
 }
 
-// Main sections in the left navigation
-// enum MainSection { profile, orders, points }
-
-// // Sub-sections under Profile
-// enum ProfileSection { personalInfo, forgotPassword, changePassword, addresses }
-
 class _BodyState extends State<Body> {
   MainSection _selectedMainSection = MainSection.profile;
   ProfileSection _selectedProfileSection = ProfileSection.personalInfo;
@@ -57,80 +49,80 @@ class _BodyState extends State<Body> {
   // For order status tabs
   int _selectedOrderTab = 0;
 
-  final GlobalKey _footerKey = GlobalKey(); // Thêm key cho footer
+  final GlobalKey _footerKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
-    // Lấy kích thước màn hình
+    // Get screen size for responsive layout
     final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
 
-    // Điều chỉnh tỷ lệ dựa trên kích thước màn hình
-    // Màn hình nhỏ: left column chiếm 35-40%, right column chiếm phần còn lại
-    // Màn hình lớn: left column chiếm 25%, right column chiếm 75%
+    // Adjust ratio based on screen width
+    // For smaller screens, increase left column proportion
     final leftColumnRatio = screenWidth < 1400 ? 0.35 : 0.27;
     final rightColumnRatio = 1.0 - leftColumnRatio;
 
-    // Căn chỉnh padding dựa trên kích thước màn hình
-    final horizontalPadding = screenWidth < 1400 ? 140.0 : 140.0;
+    // Adjust horizontal padding based on screen width
+    final horizontalPadding =
+        screenWidth < 1200 ? 20.0 : (screenWidth < 1400 ? 60.0 : 140.0);
 
-    return SingleChildScrollView(
-      child: Column(
-        // Đổi Container thành Column để chứa cả body và footer
-        children: [
-          Container(
-            padding: EdgeInsets.symmetric(
-                horizontal: horizontalPadding, vertical: 30),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Left column - tỷ lệ thay đổi theo kích thước màn hình
-                SizedBox(
-                  width: MediaQuery.of(context).size.width * leftColumnRatio -
-                      horizontalPadding, // Trừ đi padding
-                  child: BuildLeftColumn(
-                    // Truyền các biến và callback cần thiết
-                    selectedMainSection: _selectedMainSection,
-                    selectedProfileSection: _selectedProfileSection,
-                    isProfileExpanded: _isProfileExpanded,
-                    onMainSectionChanged: (MainSection section) {
-                      setState(() {
-                        _selectedMainSection = section;
-                      });
-                    },
-                    onProfileSectionChanged: (ProfileSection section) {
-                      setState(() {
-                        _selectedProfileSection = section;
-                      });
-                    },
-                    onToggleProfileExpanded: () {
-                      setState(() {
-                        _isProfileExpanded = !_isProfileExpanded;
-                      });
-                    },
+    return LayoutBuilder(builder: (context, constraints) {
+      return SingleChildScrollView(
+        child: Column(
+          children: [
+            Container(
+              padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding, vertical: 30),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Left column with responsive width
+                  Container(
+                    width: (constraints.maxWidth - horizontalPadding * 2) *
+                            leftColumnRatio -
+                        20,
+                    constraints: BoxConstraints(
+                      minWidth: 200, // Minimum width for left column
+                      maxWidth: 350, // Maximum width for left column
+                    ),
+                    child: BuildLeftColumn(
+                      selectedMainSection: _selectedMainSection,
+                      selectedProfileSection: _selectedProfileSection,
+                      isProfileExpanded: _isProfileExpanded,
+                      onMainSectionChanged: (MainSection section) {
+                        setState(() {
+                          _selectedMainSection = section;
+                        });
+                      },
+                      onProfileSectionChanged: (ProfileSection section) {
+                        setState(() {
+                          _selectedProfileSection = section;
+                        });
+                      },
+                      onToggleProfileExpanded: () {
+                        setState(() {
+                          _isProfileExpanded = !_isProfileExpanded;
+                        });
+                      },
+                    ),
                   ),
-                ),
 
-                const SizedBox(width: 40),
+                  const SizedBox(width: 40),
 
-                // Right column - tỷ lệ thay đổi theo kích thước màn hình
-                Expanded(
-                  child: SizedBox(
-                    width:
-                        MediaQuery.of(context).size.width * rightColumnRatio -
-                            horizontalPadding -
-                            40, // Trừ đi padding và khoảng cách giữa 2 cột
+                  // Right column - expanding to take remaining space
+                  Expanded(
                     child: _buildRightColumn(),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
-          // Thêm Footer vào đây
-          if (kIsWeb) Footer(key: _footerKey),
-        ],
-      ),
-    );
+            // Footer
+            if (kIsWeb) Footer(key: _footerKey),
+          ],
+        ),
+      );
+    });
   }
 
   // Right column content based on selection
@@ -183,17 +175,3 @@ class _BodyState extends State<Body> {
         );
   }
 }
-
-// Chuyển đổi trường mật khẩu thành StatefulWidget
-
-// Chuyển đổi gender select thành StatefulWidget
-
-// Sửa tên class cho đúng và implement StatefulWidget đúng cách
-
-// Address Management widget
-
-// Points Content widget
-
-// Address Management widget
-
-// Points Content widget
