@@ -1,1 +1,4 @@
-class D1 {}
+class D1 {
+  String a = 'a';
+  String b = 'b';
+}
