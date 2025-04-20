@@ -1,2 +1,2 @@
 # serverspringtest
-ok
+ok new push
