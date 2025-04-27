@@ -29,7 +29,9 @@ class _BottomNavBarState extends State<BottomNavBar> {
     Navigator.pushReplacementNamed(
       context,
       _getRoute(index),
-      arguments: {'selectedIndex': index}, // Truyền trạng thái index khi điều hướng
+      arguments: {
+        'selectedIndex': index
+      }, // Truyền trạng thái index khi điều hướng
     );
   }
 
@@ -43,7 +45,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
       case 2:
         return '/product_detail';
       case 3:
-        return '/forgot_password';
+        return '/info';
       default:
         return '/home'; // Mặc định là trang chủ
     }
@@ -52,7 +54,8 @@ class _BottomNavBarState extends State<BottomNavBar> {
   @override
   Widget build(BuildContext context) {
     // Đọc arguments trong build method (nếu cần)
-    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     if (args != null && args.containsKey('selectedIndex')) {
       // Cập nhật _selectedIndex nếu có giá trị mới từ route trước
       _selectedIndex = args['selectedIndex'];
@@ -73,9 +76,11 @@ class _BottomNavBarState extends State<BottomNavBar> {
   }
 
   // Hàm tạo BottomNavigationBarItem với màu sắc phù hợp
-  BottomNavigationBarItem _buildNavItem(IconData icon, String label, int index) {
+  BottomNavigationBarItem _buildNavItem(
+      IconData icon, String label, int index) {
     return BottomNavigationBarItem(
-      icon: Icon(icon, color: _selectedIndex == index ? Colors.red : Colors.grey),
+      icon:
+          Icon(icon, color: _selectedIndex == index ? Colors.red : Colors.grey),
       label: label,
     );
   }
