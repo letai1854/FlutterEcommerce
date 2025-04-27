@@ -112,7 +112,7 @@ class _BodyState extends State<Body> {
 
     return LayoutBuilder(builder: (context, constraints) {
       // For tablet, we might want to switch to a column layout if width is too small
-      final useColumnLayout = constraints.maxWidth < 720;
+      final useColumnLayout = constraints.maxWidth < 780;
 
       return SingleChildScrollView(
         child: Column(
