@@ -16,19 +16,19 @@ class OrderStatusTab extends StatelessWidget {
   static String getStatusText(int tabIndex) {
     switch (tabIndex) {
       case 0:
-        return "Đang chờ xử lý";
+        return "Chờ xử lý";
       case 1:
         return "Đã xác nhận";
       case 2:
-        return "Đang giao hàng";
+        return "Đang giao";
       case 3:
-        return "Đã giao hàng";
+        return "Đã giao";
       case 4:
         return "Đã hủy";
       case 5:
         return "Trả hàng";
       default:
-        return "Đang chờ xử lý";
+        return "Chờ xử lý";
     }
   }
 

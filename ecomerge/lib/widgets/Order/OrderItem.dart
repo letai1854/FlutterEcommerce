@@ -1,3 +1,4 @@
+import 'package:e_commerce_app/widgets/Order/OrderStatusHistoryPage.dart';
 import 'package:flutter/material.dart';
 
 class OrderItem extends StatefulWidget {
@@ -5,7 +6,9 @@ class OrderItem extends StatefulWidget {
   final String date;
   final List<Map<String, dynamic>> items;
   final String status;
+  final bool isClickable;
   final VoidCallback? onViewHistory;
+  final bool isSmallScreen; // Added parameter for screen size
 
   const OrderItem({
     Key? key,
@@ -13,7 +16,9 @@ class OrderItem extends StatefulWidget {
     required this.date,
     required this.items,
     required this.status,
+    this.isClickable = false,
     this.onViewHistory,
+    this.isSmallScreen = false, // Default to desktop layout
   }) : super(key: key);
 
   @override
@@ -22,9 +27,14 @@ class OrderItem extends StatefulWidget {
 
 class _OrderItemState extends State<OrderItem> {
   bool _expanded = false;
+  bool _isHovering = false;
 
-  String _formatCurrency(double amount) {
-    return amount.toStringAsFixed(0).replaceAllMapped(
+  // Modified to handle both int and double types
+  String _formatCurrency(dynamic amount) {
+    // Convert to double regardless of whether it's an int or double
+    final double value = amount is int ? amount.toDouble() : amount;
+
+    return value.toStringAsFixed(0).replaceAllMapped(
           RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
           (Match m) => '${m[1]},',
         );
@@ -32,125 +42,259 @@ class _OrderItemState extends State<OrderItem> {
 
   @override
   Widget build(BuildContext context) {
-    double total = widget.items
-        .fold(0, (sum, item) => sum + (item["price"] * item["quantity"]));
+    // Calculate total - ensure we convert values to double
+    double total = widget.items.fold(0.0, (sum, item) {
+      final dynamic price = item["price"];
+      final int quantity = item["quantity"] as int;
+      // Convert price to double if it's an int
+      final double priceAsDouble = price is int ? price.toDouble() : price;
+      return sum + (priceAsDouble * quantity);
+    });
 
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Mã đơn hàng: ${widget.orderId}",
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 4),
-                    Text("Ngày mua: ${widget.date}"),
-                  ],
-                ),
-                Row(
-                  children: [
-                    TextButton.icon(
-                      onPressed: widget.onViewHistory,
-                      icon: const Icon(Icons.history, size: 18),
-                      label: const Text("Lịch sử trạng thái"),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.blue,
-                        padding: EdgeInsets.zero,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: widget.status == "Đã giao hàng"
-                            ? Colors.green.shade50
-                            : (widget.status == "Đang giao hàng"
-                                ? Colors.orange.shade50
-                                : Colors.blue.shade50),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        widget.status,
-                        style: TextStyle(
-                          color: widget.status == "Đã giao hàng"
-                              ? Colors.green
-                              : (widget.status == "Đang giao hàng"
-                                  ? Colors.orange
-                                  : Colors.blue),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // First item (always visible)
-          _buildOrderItemRow(widget.items[0]),
-
-          // Additional items (collapsible)
-          if (widget.items.length > 1) ...[
-            // "See more" button if there are multiple items
-            ExpansionTile(
-              title: const Text(
-                "Xem thêm sản phẩm",
-                style: TextStyle(fontSize: 14),
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      cursor: widget.isClickable ? SystemMouseCursors.click : MouseCursor.defer,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          color: _isHovering ? Colors.grey.shade50 : Colors.white,
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: _isHovering
+              ? [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.3),
+                    spreadRadius: 1,
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : null,
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
               ),
-              onExpansionChanged: (value) {
-                setState(() {
-                  _expanded = value;
-                });
-              },
-              children: [
-                for (int i = 1; i < widget.items.length; i++)
-                  _buildOrderItemRow(widget.items[i]),
-              ],
+              child: widget.isSmallScreen
+                  ? _buildMobileHeader() // Mobile layout
+                  : _buildDesktopHeader(), // Desktop layout
+            ),
+
+            // First item (always visible)
+            _buildOrderItemRow(widget.items[0]),
+
+            // Additional items (collapsible)
+            if (widget.items.length > 1) ...[
+              // "See more" button if there are multiple items
+              ExpansionTile(
+                title: const Text(
+                  "Xem thêm sản phẩm",
+                  style: TextStyle(fontSize: 14),
+                ),
+                onExpansionChanged: (value) {
+                  setState(() {
+                    _expanded = value;
+                  });
+                },
+                children: [
+                  for (int i = 1; i < widget.items.length; i++)
+                    _buildOrderItemRow(widget.items[i]),
+                ],
+              ),
+            ],
+
+            // Order total
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: Colors.grey.shade300)),
+                color: Colors.grey.shade50,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  const Text(
+                    "Thành tiền: ",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    "${_formatCurrency(total)} đ",
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
+        ),
+      ),
+    );
+  }
 
-          // Order total
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: Colors.grey.shade300)),
-              color: Colors.grey.shade50,
+  // Desktop header layout - side by side
+  Widget _buildDesktopHeader() {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Mã đơn hàng: ${widget.orderId}",
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                const Text(
-                  "Thành tiền: ",
-                  style: TextStyle(fontWeight: FontWeight.bold),
+            const SizedBox(height: 4),
+            Text("Ngày mua: ${widget.date}"),
+          ],
+        ),
+        if (screenWidth > 450)
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => OrderStatusHistoryPage(
+                        orderId: widget.orderId,
+                        currentStatus: widget.status,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.history, size: 18),
+                label: const Text("Lịch sử trạng thái"),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.blue,
+                  padding: EdgeInsets.zero,
                 ),
-                Text(
-                  "${_formatCurrency(total)} đ",
-                  style: const TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+              ),
+              const SizedBox(width: 16),
+              _buildStatusIndicator(),
+            ],
+          )
+        else
+          // For narrower screens, use Column (stacked)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => OrderStatusHistoryPage(
+                        orderId: widget.orderId,
+                        currentStatus: widget.status,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.history, size: 18),
+                label: const Text("Lịch sử trạng thái"),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.blue,
+                  padding: EdgeInsets.zero,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _buildStatusIndicator(),
+            ],
+          ),
+      ],
+    );
+  }
+
+  // Mobile header layout - status below history button
+  Widget _buildMobileHeader() {
+    // Get screen width for better mobile detection
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isPhoneSize = screenWidth < 450; // More precise phone detection
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Order details
+        Text(
+          "Mã đơn hàng: ${widget.orderId}",
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        Text("Ngày mua: ${widget.date}"),
+        const SizedBox(height: 12),
+
+        // For phone-sized screens, force status indicator to appear below history button
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // History button row
+            Row(
+              children: [
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => OrderStatusHistoryPage(
+                          orderId: widget.orderId,
+                          currentStatus: widget.status,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.history, size: 18),
+                  label: const Text("Lịch sử trạng thái"),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.blue,
+                    padding: EdgeInsets.zero,
                   ),
                 ),
               ],
             ),
-          ),
-        ],
+
+            const SizedBox(height: 8),
+
+            // Status indicator always on a separate row
+
+            Align(
+              alignment: Alignment.centerRight,
+              child: _buildStatusIndicator(),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // Extracted status indicator for reuse
+  Widget _buildStatusIndicator() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: widget.status == "Đã giao"
+            ? Colors.green.shade50
+            : (widget.status == "Đang giao"
+                ? Colors.orange.shade50
+                : Colors.blue.shade50),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        widget.status,
+        style: TextStyle(
+          color: widget.status == "Đã giao"
+              ? Colors.green
+              : (widget.status == "Đang giao" ? Colors.orange : Colors.blue),
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
@@ -192,7 +336,7 @@ class _OrderItemState extends State<OrderItem> {
             ),
           ),
 
-          // Price
+          // Price display - using the updated _formatCurrency method
           Text(
             "${_formatCurrency(item["price"])} đ",
             style: const TextStyle(

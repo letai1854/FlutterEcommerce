@@ -1,139 +1,229 @@
 import 'package:flutter/material.dart';
 
-class PointsContent extends StatefulWidget {
+class PointsContent extends StatelessWidget {
   const PointsContent({Key? key}) : super(key: key);
 
   @override
-  State<PointsContent> createState() => _PointsContentState();
-}
-
-class _PointsContentState extends State<PointsContent> {
-  @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Điểm tích lũy của tôi",
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 40),
+    // Get screen width for responsive layout
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 600;
 
-        // Points summary card
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade400, Colors.blue.shade700],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return SingleChildScrollView(
+      // Wrap in SingleChildScrollView to prevent overflow
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Points summary card
+            _buildPointsSummaryCard(),
+
+            const SizedBox(height: 24),
+
+            // Points history section with transactions
+            const Text(
+              "Lịch sử điểm",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.blue.shade200.withOpacity(0.5),
-                spreadRadius: 2,
-                blurRadius: 10,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Tổng điểm hiện có",
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  const Icon(Icons.stars, color: Colors.amber, size: 32),
-                  const SizedBox(width: 12),
-                  Text(
-                    "1,250",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      shadows: [
-                        Shadow(
-                          blurRadius: 10,
-                          color: Colors.black.withOpacity(0.3),
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
+
+            const SizedBox(height: 16),
+
+            // Use ListView.builder instead of Column for a list of transactions
+            // This will make the list more efficient and scrollable within the SingleChildScrollView
+            ListView.builder(
+              physics:
+                  const NeverScrollableScrollPhysics(), // Disable scrolling as parent is scrollable
+              shrinkWrap:
+                  true, // Important for ListView inside SingleChildScrollView
+              itemCount: _getPointsTransactions().length,
+              itemBuilder: (context, index) {
+                final transaction = _getPointsTransactions()[index];
+                return _buildTransactionItem(transaction, isSmallScreen);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPointsSummaryCard() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.star, color: Colors.amber, size: 28),
+                SizedBox(width: 8),
+                Text(
+                  "Điểm thưởng của bạn",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
                   ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    "điểm",
-                    style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            const Row(
+              children: [
+                Text(
+                  "1,250",
+                  style: TextStyle(
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                ),
+                SizedBox(width: 8),
+                Text(
+                  "điểm",
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    // Use Expanded to prevent overflow on small screens
+                    child: Text(
+                      "Mỗi 100 điểm có thể đổi thành 10,000đ khi thanh toán",
+                      style: TextStyle(color: Colors.blue),
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text(
-                  "Hạng thành viên: Bạc",
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-
-        const SizedBox(height: 40),
-
-        // Points history
-        const Text(
-          "Lịch sử điểm",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: 5, // Example with 5 history items
-          separatorBuilder: (context, index) => Divider(),
-          itemBuilder: (context, index) {
-            bool isEarned = index % 2 == 0;
-            return ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isEarned ? Colors.green.shade100 : Colors.red.shade100,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  isEarned ? Icons.add : Icons.remove,
-                  color: isEarned ? Colors.green : Colors.red,
-                ),
-              ),
-              title: Text(
-                isEarned
-                    ? "Tích điểm từ đơn hàng #DH12345"
-                    : "Đổi điểm lấy voucher giảm giá",
-              ),
-              subtitle: Text("01/05/2023"),
-              trailing: Text(
-                isEarned ? "+50 điểm" : "-100 điểm",
-                style: TextStyle(
-                  color: isEarned ? Colors.green : Colors.red,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      ],
+      ),
     );
+  }
+
+  Widget _buildTransactionItem(
+      Map<String, dynamic> transaction, bool isSmallScreen) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Transaction type icon
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: transaction["type"] == "earn"
+                    ? Colors.green.shade50
+                    : Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                transaction["type"] == "earn"
+                    ? Icons.add_circle
+                    : Icons.remove_circle,
+                color:
+                    transaction["type"] == "earn" ? Colors.green : Colors.red,
+              ),
+            ),
+
+            const SizedBox(width: 16),
+
+            // Transaction details - use Expanded to prevent overflow
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    transaction["description"],
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    transaction["date"],
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Points amount
+            Text(
+              "${transaction["type"] == "earn" ? "+" : "-"}${transaction["points"]}",
+              style: TextStyle(
+                color:
+                    transaction["type"] == "earn" ? Colors.green : Colors.red,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Map<String, dynamic>> _getPointsTransactions() {
+    return [
+      {
+        "type": "earn",
+        "points": 250,
+        "description": "Đơn hàng DH123456",
+        "date": "15/05/2023",
+      },
+      {
+        "type": "earn",
+        "points": 150,
+        "description": "Đánh giá sản phẩm",
+        "date": "12/05/2023",
+      },
+      {
+        "type": "spend",
+        "points": 100,
+        "description": "Đổi điểm thành voucher giảm giá",
+        "date": "10/05/2023",
+      },
+      {
+        "type": "earn",
+        "points": 500,
+        "description": "Đơn hàng DH123450",
+        "date": "05/05/2023",
+      },
+      {
+        "type": "spend",
+        "points": 200,
+        "description": "Đổi điểm thành voucher giảm giá",
+        "date": "01/05/2023",
+      },
+    ];
   }
 }
