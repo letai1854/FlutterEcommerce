@@ -10,7 +10,7 @@ class ResponsiveCart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-        return ResponsiveLayout(
+    return ResponsiveLayout(
       mobileScaffold: const Cartmobile(),
       tableScaffold: const Carttablet(),
       destopScaffold: const Cartdesktop(),

@@ -4,7 +4,6 @@ import 'package:e_commerce_app/Screens/SuccessPayment/SuccessPaymentMobile.dart'
 import 'package:e_commerce_app/Screens/SuccessPayment/SuccessPaymentTablet.dart';
 import 'package:flutter/material.dart';
 
-
 class ResponsiveSuccessPayment extends StatelessWidget {
   const ResponsiveSuccessPayment({super.key});
 

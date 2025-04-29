@@ -9,7 +9,7 @@ class ResponsiveForgotPassword extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-        return ResponsiveLayout(
+    return ResponsiveLayout(
       mobileScaffold: const Forgotpasswordmobile(),
       tableScaffold: const Forgotpasswordtablet(),
       destopScaffold: const Forgotpassworddesktop(),

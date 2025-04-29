@@ -10,7 +10,7 @@ class Responsivechat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-        return ResponsiveLayout(
+    return ResponsiveLayout(
       mobileScaffold: const ChatMobile(),
       tableScaffold: const ChatTablet(),
       destopScaffold: const ChatDesktop(),

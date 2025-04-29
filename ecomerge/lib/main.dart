@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:e_commerce_app/Provider/UserProvider.dart';
+import 'package:e_commerce_app/Screens/Admin/AdminReponsicve.dart';
 import 'package:e_commerce_app/Screens/Cart/CartResponsive.dart';
 import 'package:e_commerce_app/Screens/ForgotPassword/ForgotPasswordResponsive.dart';
 import 'package:e_commerce_app/Screens/ListProduct/ListProduct_responsive.dart';
@@ -121,6 +122,11 @@ class MyApp extends StatelessWidget {
           case '/search':
             return PageRouteBuilder(
               pageBuilder: (context, _, __) => const SearchResponsive(),
+              settings: settings,
+            );
+          case '/admin':
+            return PageRouteBuilder(
+              pageBuilder: (context, _, __) => const AdminResponsive(),
               settings: settings,
             );
           default:

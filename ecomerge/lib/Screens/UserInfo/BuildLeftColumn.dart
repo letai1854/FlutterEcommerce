@@ -119,9 +119,13 @@ class _BuildLeftColumnState extends State<BuildLeftColumn> {
         ListTile(
           leading: const Icon(Icons.admin_panel_settings),
           title: const Text('Admin'),
-          selected: widget.selectedMainSection == MainSection.points,
+          selected: widget.selectedMainSection ==
+              MainSection.admin, // Use correct section
           selectedTileColor: Colors.blue.withOpacity(0.1),
-          onTap: () {},
+          onTap: () {
+            // Navigate to admin page
+            Navigator.pushNamed(context, '/admin');
+          },
         ),
       ],
     );
