@@ -41,7 +41,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
       case 0:
         return '/home';
       case 1:
-        return '/cart';
+        return '/catalog_product';
       case 2:
         return '/product_detail';
       case 3:
