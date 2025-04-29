@@ -140,6 +140,8 @@ class _OrderItemState extends State<OrderItem> {
 
   // Desktop header layout - side by side
   Widget _buildDesktopHeader() {
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -154,37 +156,70 @@ class _OrderItemState extends State<OrderItem> {
             Text("Ngày mua: ${widget.date}"),
           ],
         ),
-        Row(
-          children: [
-            TextButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => OrderStatusHistoryPage(
-                      orderId: widget.orderId,
-                      currentStatus: widget.status,
+        if (screenWidth > 450)
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => OrderStatusHistoryPage(
+                        orderId: widget.orderId,
+                        currentStatus: widget.status,
+                      ),
                     ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.history, size: 18),
-              label: const Text("Lịch sử trạng thái"),
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.blue,
-                padding: EdgeInsets.zero,
+                  );
+                },
+                icon: const Icon(Icons.history, size: 18),
+                label: const Text("Lịch sử trạng thái"),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.blue,
+                  padding: EdgeInsets.zero,
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
-            _buildStatusIndicator(),
-          ],
-        ),
+              const SizedBox(width: 16),
+              _buildStatusIndicator(),
+            ],
+          )
+        else
+          // For narrower screens, use Column (stacked)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => OrderStatusHistoryPage(
+                        orderId: widget.orderId,
+                        currentStatus: widget.status,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.history, size: 18),
+                label: const Text("Lịch sử trạng thái"),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.blue,
+                  padding: EdgeInsets.zero,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _buildStatusIndicator(),
+            ],
+          ),
       ],
     );
   }
 
   // Mobile header layout - status below history button
   Widget _buildMobileHeader() {
+    // Get screen width for better mobile detection
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isPhoneSize = screenWidth < 450; // More precise phone detection
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -197,35 +232,44 @@ class _OrderItemState extends State<OrderItem> {
         Text("Ngày mua: ${widget.date}"),
         const SizedBox(height: 12),
 
-        // Status history and status indicator
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        // For phone-sized screens, force status indicator to appear below history button
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => OrderStatusHistoryPage(
-                      orderId: widget.orderId,
-                      currentStatus: widget.status,
-                    ),
+            // History button row
+            Row(
+              children: [
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => OrderStatusHistoryPage(
+                          orderId: widget.orderId,
+                          currentStatus: widget.status,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.history, size: 18),
+                  label: const Text("Lịch sử trạng thái"),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.blue,
+                    padding: EdgeInsets.zero,
                   ),
-                );
-              },
-              icon: const Icon(Icons.history, size: 18),
-              label: const Text("Lịch sử trạng thái"),
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.blue,
-                padding: EdgeInsets.zero,
-              ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+
+            // Status indicator always on a separate row
+
+            Align(
+              alignment: Alignment.centerRight,
+              child: _buildStatusIndicator(),
             ),
           ],
-        ),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerRight,
-          child: _buildStatusIndicator(),
         ),
       ],
     );
