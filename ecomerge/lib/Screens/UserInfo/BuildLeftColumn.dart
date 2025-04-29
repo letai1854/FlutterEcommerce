@@ -79,11 +79,11 @@ class _BuildLeftColumnState extends State<BuildLeftColumn> {
                 ProfileSection.personalInfo,
                 Icons.edit,
               ),
-              _buildProfileSubItem(
-                'Quên mật khẩu',
-                ProfileSection.forgotPassword,
-                Icons.lock_reset,
-              ),
+              // _buildProfileSubItem(
+              //   'Quên mật khẩu',
+              //   ProfileSection.forgotPassword,
+              //   Icons.lock_reset,
+              // ),
               _buildProfileSubItem(
                 'Đổi mật khẩu',
                 ProfileSection.changePassword,
@@ -115,6 +115,13 @@ class _BuildLeftColumnState extends State<BuildLeftColumn> {
           onTap: () {
             widget.onMainSectionChanged(MainSection.points);
           },
+        ),
+        ListTile(
+          leading: const Icon(Icons.admin_panel_settings),
+          title: const Text('Admin'),
+          selected: widget.selectedMainSection == MainSection.points,
+          selectedTileColor: Colors.blue.withOpacity(0.1),
+          onTap: () {},
         ),
       ],
     );

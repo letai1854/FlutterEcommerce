@@ -383,6 +383,12 @@ class _UserInfoMobileState extends State<UserInfoMobile> {
                   Icons.location_on,
                   () => _navigateToWidget(const AddressManagement()),
                 ),
+                Divider(height: 1, thickness: 1, color: Colors.grey.shade100),
+                _buildFeatureButton(
+                  "Admin",
+                  Icons.admin_panel_settings,
+                  () => _navigateToWidget(const AddressManagement()),
+                ),
               ],
             ),
           ),
@@ -792,7 +798,7 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
   Widget _buildMobileTab(String title, int index) {
     final isSelected = _selectedOrderTab == index;
     final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 600;
+    final isSmallScreen = screenWidth < 500;
 
     return GestureDetector(
       onTap: () {
