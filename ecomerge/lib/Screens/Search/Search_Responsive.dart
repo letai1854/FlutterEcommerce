@@ -4,7 +4,6 @@ import 'package:e_commerce_app/Screens/Search/Search_Mobile.dart';
 import 'package:e_commerce_app/Screens/Search/Search_Tablet.dart';
 import 'package:flutter/material.dart';
 
-
 class SearchResponsive extends StatelessWidget {
   const SearchResponsive({super.key});
 

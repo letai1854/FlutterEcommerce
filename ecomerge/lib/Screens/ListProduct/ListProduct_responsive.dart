@@ -4,7 +4,6 @@ import 'package:e_commerce_app/Screens/ListProduct/ListProduct_mobile.dart';
 import 'package:e_commerce_app/Screens/ListProduct/ListProduct_tablet.dart';
 import 'package:flutter/material.dart';
 
-
 class ResponsiveListProduct extends StatelessWidget {
   const ResponsiveListProduct({super.key});
 

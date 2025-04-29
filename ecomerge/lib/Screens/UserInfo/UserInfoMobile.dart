@@ -387,7 +387,7 @@ class _UserInfoMobileState extends State<UserInfoMobile> {
                 _buildFeatureButton(
                   "Admin",
                   Icons.admin_panel_settings,
-                  () => _navigateToWidget(const AddressManagement()),
+                  () => Navigator.pushNamed(context, '/admin'),
                 ),
               ],
             ),
