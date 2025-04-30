@@ -1,5 +1,6 @@
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:e_commerce_app/widgets/CategoryItem.dart';
+import 'package:e_commerce_app/widgets/NavbarMobile/NavarFixTablet.dart';
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarMobile.dart';
 import 'package:e_commerce_app/widgets/Product/CatalogProduct.dart';
 import 'package:e_commerce_app/widgets/ProductGridView.dart';
@@ -17,14 +18,10 @@ class ListproductTablet extends StatefulWidget {
 }
 
 class _ListproductTabletState extends State<ListproductTablet> {
- Widget build(BuildContext context) {
-        return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(130),
-        child: NavbarhomeTablet(context),
-      ),
-      body: CatalogProduct(),
+  Widget build(BuildContext context) {
+        return NavbarFixTablet(
+      body: CatalogProduct(), // Truyền body vào NavbarFixmobile
     );
-  }
+}
 }
 

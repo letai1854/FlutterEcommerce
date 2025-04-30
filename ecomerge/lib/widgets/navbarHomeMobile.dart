@@ -51,7 +51,7 @@ class _NavbarHomeMobileState extends State<NavbarHomeMobile> {
                       _isHoveredTK = false;
                     }),
                     child: GestureDetector(
-                      onTap: () {},
+                      onTap: () {Navigator.pushNamed(context,'/search');},
                       child: Container(
                         width: 45,
                         height: 53,
@@ -85,7 +85,7 @@ class _NavbarHomeMobileState extends State<NavbarHomeMobile> {
               _isHoveredGH = false;
             }),
             child: GestureDetector(
-              onTap: () {},
+              onTap: () {Navigator.pushNamed(context,'/cart');},
               child: Container(
                 width: 40,
                 height: 40,

@@ -1,3 +1,4 @@
+import 'package:e_commerce_app/widgets/NavbarMobile/NavarFixTablet.dart';
 import 'package:e_commerce_app/widgets/Payment/PaymentSuccess.dart';
 import 'package:e_commerce_app/widgets/navbarHomeTablet.dart';
 import 'package:flutter/material.dart';
@@ -11,11 +12,14 @@ class Successpaymenttablet extends StatefulWidget {
 class _SuccesspaymenttabletState extends State<Successpaymenttablet> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(130),
-        child: NavbarhomeTablet(context),
-      ),
+    // return Scaffold(
+    //   appBar: PreferredSize(
+    //     preferredSize: Size.fromHeight(130),
+    //     child: NavbarhomeTablet(context),
+    //   ),
+    //   body: bodySuccessPayment(),
+    // );
+    return NavbarFixTablet(
       body: bodySuccessPayment(),
     );
   }
