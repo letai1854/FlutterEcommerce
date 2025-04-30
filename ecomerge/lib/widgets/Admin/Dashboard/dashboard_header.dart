@@ -59,17 +59,10 @@ class DashboardHeader extends StatelessWidget {
                 tooltip: 'Trang chủ',
                 onPressed: () {
                   // Navigate to home page
-                  Navigator.pop(context);
+                  Navigator.pop(context,"/");
                 },
               ),
-              // Chat box button
-              IconButton(
-                icon: const Icon(Icons.chat),
-                tooltip: 'Chat',
-                onPressed: () {
-                  // Open chat functionality
-                },
-              ),
+         
               // User profile section
               if (!isMobile) // Hide on very small screens
                 const SizedBox(width: 8),

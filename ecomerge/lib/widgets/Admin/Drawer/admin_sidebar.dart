@@ -51,11 +51,7 @@ class AdminSidebar extends StatelessWidget {
           const Spacer(),
 
           // Logout option at the bottom
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            child: _buildNavItem(context, 'Đăng xuất', Icons.logout,
-                isLogout: true),
-          ),
+          
         ],
       ),
     );
