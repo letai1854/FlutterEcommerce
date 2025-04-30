@@ -1,39 +1,16 @@
-import 'package:e_commerce_app/widgets/Cart/BodyCart.dart';
 import 'package:e_commerce_app/widgets/Cart/CartItemList.dart';
 import 'package:e_commerce_app/widgets/Cart/PaymentInfo.dart';
 import 'package:e_commerce_app/widgets/footer.dart';
-import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-
-class Cartdesktop extends StatefulWidget {
-  const Cartdesktop({super.key});
-
-  @override
-  State<Cartdesktop> createState() => _CartdesktopState();
-}
-
-class _CartdesktopState extends State<Cartdesktop> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(130),
-        child: Navbarhomedesktop(),
-      ),
-      body: BodyCart(),
-    );
-  }
-}
-
-class BodyCartDesktop extends StatefulWidget {
-  const BodyCartDesktop({Key? key}) : super(key: key);
+class BodyCart extends StatefulWidget {
+  const BodyCart({Key? key}) : super(key: key);
 
   @override
-  State<BodyCartDesktop> createState() => _BodyCartDesktopState();
+  State<BodyCart> createState() => _BodyCartState();
 }
 
-class _BodyCartDesktopState extends State<BodyCartDesktop> {
+class _BodyCartState extends State<BodyCart> {
   List<Map<String, dynamic>> cartItems = [
     // Thêm hoặc xóa sản phẩm ở đây để thử nghiệm các trường hợp
     {
@@ -295,5 +272,3 @@ class _BodyCartDesktopState extends State<BodyCartDesktop> {
     );
   }
 }
-
-

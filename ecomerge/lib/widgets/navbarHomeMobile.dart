@@ -112,7 +112,7 @@ class _NavbarHomeMobileState extends State<NavbarHomeMobile> {
               _isHoveredChat = false;
             }),
             child: GestureDetector(
-              onTap: () {},
+              onTap: () {Navigator.pushNamed(context,'/chat');},
               child: Container(
                 width: 40,
                 height: 40,
@@ -122,9 +122,8 @@ class _NavbarHomeMobileState extends State<NavbarHomeMobile> {
                       : Colors.red,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: !isWeb
-                    ? Icon(Icons.chat, color: Colors.white)
-                    : IconButton(
+                child:
+                     IconButton(
                         icon: Icon(Icons.menu, color: Colors.white),
                         onPressed: () {
                           Scaffold.of(context).openDrawer();

@@ -1,3 +1,4 @@
+import 'package:e_commerce_app/widgets/Cart/BodyCart.dart';
 import 'package:e_commerce_app/widgets/Cart/CartItemList.dart';
 import 'package:e_commerce_app/widgets/Cart/PaymentInfo.dart';
 import 'package:e_commerce_app/widgets/footer.dart';
@@ -19,7 +20,7 @@ class _CarttabletState extends State<Carttablet> {
         preferredSize: Size.fromHeight(130),
         child: NavbarhomeTablet(context),
       ),
-      body: BodyCartTablet(),
+      body: BodyCart(),
     );
   }
 }

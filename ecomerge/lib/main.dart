@@ -89,6 +89,7 @@ class MyApp extends StatelessWidget {
               pageBuilder: (context, _, __) => const ReponsiveSignUp(),
               settings: settings,
             );
+        
           case '/catalog_product':
             return PageRouteBuilder(
               pageBuilder: (context, _, __) => const ResponsiveListProduct(),

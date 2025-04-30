@@ -208,7 +208,7 @@ class _CatalogProductState extends State<CatalogProduct> {
                             productData: getSortedProducts(),
                             itemsPerPage: columns * 2,
                             gridWidth: constraints.maxWidth,
-                            childAspectRatio: 0.7,
+                            childAspectRatio: 0.6,
                             crossAxisCount: columns,
                             mainSpace: spacing,
                             crossSpace: spacing,
