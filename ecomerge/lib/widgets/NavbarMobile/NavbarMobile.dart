@@ -42,7 +42,7 @@ class _NavbarmobileDrawerState extends State<NavbarFixmobile> {
                     decoration: const BoxDecoration(color: Colors.red),
                     child: GestureDetector(
                       onTap: () {
-                        print("Nhấn vào thông tin người dùng");
+                        Navigator.pushNamed(context, '/info');
                       },
                       child: Row(
                         children: [
@@ -65,28 +65,38 @@ class _NavbarmobileDrawerState extends State<NavbarFixmobile> {
                     ListTile(
                       leading: const Icon(Icons.home),
                       title: const Text('Trang chủ'),
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.pushNamed(context, '/home');
+                      },
                     ),
                     ListTile(
                       leading: const Icon(Icons.list_alt),
                       title: const Text('Danh sách sản phẩm'),
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.pushNamed(context, '/catalog_product');
+                      },
                     ),
                   ],
                   ListTile(
                     leading: const Icon(Icons.person_add_alt),
                     title: const Text('Đăng ký'),
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.pushNamed(context, '/signup');
+                    },
                   ),
                   ListTile(
                     leading: const Icon(Icons.person_3_rounded),
                     title: const Text('Đăng nhập'),
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.pushNamed(context, '/login');
+                    },
                   ),
                   ListTile(
                     leading: const Icon(Icons.chat),
                     title: const Text('Nhắn tin'),
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.pushNamed(context, '/chat');
+                    },
                   ),
                 ],
               ),

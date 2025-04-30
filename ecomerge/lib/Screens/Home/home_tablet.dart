@@ -41,7 +41,7 @@ class _HomeTabletState extends State<HomeTablet> {
               decoration: const BoxDecoration(color: Colors.red),
               child: GestureDetector(
                 onTap: () {
-                  print("Nhấn vào thông tin người dùng");
+                  Navigator.pushNamed(context, '/info');
                 },
                 child: Row(
                   children: [
@@ -75,17 +75,23 @@ class _HomeTabletState extends State<HomeTablet> {
             ListTile(
               leading: const Icon(Icons.person_add_alt),
               title: const Text('Đăng ký'),
-              onTap: () {},
+              onTap: () {
+                Navigator.pushNamed(context, '/signup');
+              },
             ),
             ListTile(
               leading: const Icon(Icons.person_3_rounded),
               title: const Text('Đăng nhập'),
-              onTap: () {},
+              onTap: () {
+                Navigator.pushNamed(context, '/login');
+              },
             ),
             ListTile(
               leading: const Icon(Icons.chat),
               title: const Text('Nhắn tin'),
-              onTap: () {},
+              onTap: () {
+                Navigator.pushNamed(context, '/chat');
+              },
             ),
           ],
         ),
