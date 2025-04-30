@@ -38,10 +38,15 @@ class Navbar extends StatelessWidget {
               ],
             ),
           ),
-          Icon(
-            Icons.home,
-            size: 30,
-            color: const Color.fromARGB(255, 255, 85, 0),
+          IconButton(
+            onPressed: () {
+              Navigator.pushNamed(context, '/');
+            },
+            icon: Icon(
+              Icons.home,
+              size: 30,
+              color: const Color.fromARGB(255, 255, 85, 0),
+            ),
           ),
         ],
       ),

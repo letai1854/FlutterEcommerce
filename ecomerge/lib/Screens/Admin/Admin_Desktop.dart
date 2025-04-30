@@ -3,6 +3,11 @@ import 'package:e_commerce_app/widgets/Admin/Dashboard/dashboard_content.dart';
 import 'package:e_commerce_app/widgets/Admin/Drawer/admin_sidebar.dart';
 import 'package:e_commerce_app/widgets/Admin/Dashboard/dashboard_header.dart';
 import 'package:e_commerce_app/widgets/Admin/Dashboard/dashboard_stats_row.dart';
+import 'package:e_commerce_app/Screens/Admin/discount/discount_screen.dart';
+import 'package:e_commerce_app/Screens/Admin/catalog_product/catalog_product_screen.dart';
+import 'package:e_commerce_app/Screens/Admin/order/order_screen.dart';
+import 'package:e_commerce_app/Screens/Admin/product/product_screen.dart';
+import 'package:e_commerce_app/Screens/Admin/user/user_screen.dart';
 
 class AdminDesktop extends StatefulWidget {
   const AdminDesktop({super.key});
@@ -40,7 +45,21 @@ class _AdminDesktopState extends State<AdminDesktop> {
       case 'Dashboard':
         mainContent = const DashboardContent();
         break;
-      // Other cases will be added as they're implemented
+      case 'Quản lý mã giảm giá':
+        mainContent = const DiscountScreen();
+        break;
+      case 'Quản lý danh mục':
+        mainContent = const CatalogProductScreen();
+        break;
+      case 'Quản lý đơn hàng':
+        mainContent = const OrderScreen();
+        break;
+      case 'Quản lý sản phẩm':
+        mainContent = const ProductScreen();
+        break;
+      case 'Quản lý người dùng':
+        mainContent = const UserScreen();
+        break;
       default:
         mainContent = const Center(child: Text('Content not implemented yet'));
     }
