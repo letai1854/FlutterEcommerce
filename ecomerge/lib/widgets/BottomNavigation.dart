@@ -57,13 +57,23 @@ class _BottomNavBarState extends State<BottomNavBar> {
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     if (args != null && args.containsKey('selectedIndex')) {
-      // Cập nhật _selectedIndex nếu có giá trị mới từ route trước
-      _selectedIndex = args['selectedIndex'];
+      final newIndex = args['selectedIndex'] as int;
+      if (newIndex != _selectedIndex) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _selectedIndex = newIndex;
+            });
+          }
+        });
+      }
     }
 
     return BottomNavigationBar(
-      currentIndex: _selectedIndex,
-      selectedItemColor: Colors.red, // ✅ Màu chữ & icon khi được chọn
+      currentIndex: _selectedIndex < 0 ? 0 : _selectedIndex,
+      selectedItemColor: _selectedIndex < 0
+          ? Colors.grey
+          : Colors.red, // Màu chữ & icon khi được chọn
       onTap: _onItemTapped,
       type: BottomNavigationBarType.fixed,
       items: [
@@ -79,8 +89,12 @@ class _BottomNavBarState extends State<BottomNavBar> {
   BottomNavigationBarItem _buildNavItem(
       IconData icon, String label, int index) {
     return BottomNavigationBarItem(
-      icon:
-          Icon(icon, color: _selectedIndex == index ? Colors.red : Colors.grey),
+      icon: Icon(
+        icon,
+        color: _selectedIndex < 0
+            ? Colors.grey
+            : (_selectedIndex == index ? Colors.red : Colors.grey),
+      ),
       label: label,
     );
   }
