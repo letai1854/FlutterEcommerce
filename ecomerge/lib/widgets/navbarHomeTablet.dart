@@ -25,7 +25,9 @@ class _NavbarhomeTabletState extends State<NavbarhomeTablet> {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: GestureDetector(
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.pushNamed(context, '/home');
+                      },
                       child: const Text(
                         'Trang chủ',
                         style: TextStyle(color: Colors.white, fontSize: 18),
@@ -36,7 +38,9 @@ class _NavbarhomeTabletState extends State<NavbarhomeTablet> {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: GestureDetector(
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.pushNamed(context, '/catalog_product');
+                      },
                       child: const Text(
                         'Danh sách sản phẩm',
                         style: TextStyle(color: Colors.white, fontSize: 18),
@@ -94,7 +98,9 @@ class _NavbarhomeTabletState extends State<NavbarhomeTablet> {
                           _isHoveredTK = false;
                         }),
                         child: GestureDetector(
-                          onTap: () {},
+                          onTap: () {
+                            Navigator.pushNamed(context, '/search');
+                          },
                           child: Container(
                             width: 45,
                             height: 45,
@@ -125,7 +131,9 @@ class _NavbarhomeTabletState extends State<NavbarhomeTablet> {
                   _isHoveredGH = false;
                 }),
                 child: GestureDetector(
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.pushNamed(context, '/cart');
+                  },
                   child: Container(
                     width: 40,
                     height: 40,

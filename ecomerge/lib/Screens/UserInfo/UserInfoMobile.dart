@@ -1,4 +1,5 @@
 import 'package:e_commerce_app/Screens/UserInfo/UserInfoTypes.dart';
+import 'package:e_commerce_app/constants.dart';
 import 'package:e_commerce_app/widgets/Address/AddressManagement.dart';
 import 'package:e_commerce_app/widgets/Info/PersonalInfoForm.dart';
 import 'package:e_commerce_app/widgets/Order/OrderDetailPage.dart';
@@ -59,12 +60,13 @@ class _UserInfoMobileState extends State<UserInfoMobile> {
       child: Row(
         children: [
           // Back button
-          IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.of(context).pop(),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
+          if (isWeb)
+            IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.of(context).pop(),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
           const SizedBox(width: 12),
 
           // User avatar - Using Icon instead of image to prevent asset loading issues
@@ -163,7 +165,9 @@ class _UserInfoMobileState extends State<UserInfoMobile> {
                     ),
                   ],
                 ),
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.pushNamed(context, '/catalog_product');
+                },
                 tooltip: 'Giỏ hàng',
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
@@ -173,7 +177,9 @@ class _UserInfoMobileState extends State<UserInfoMobile> {
               // Chat
               IconButton(
                 icon: const Icon(Icons.chat),
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.pushNamed(context, '/chat');
+                },
                 tooltip: 'Chat',
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),

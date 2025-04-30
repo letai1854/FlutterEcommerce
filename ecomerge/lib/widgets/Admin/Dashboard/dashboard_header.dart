@@ -59,10 +59,10 @@ class DashboardHeader extends StatelessWidget {
                 tooltip: 'Trang chủ',
                 onPressed: () {
                   // Navigate to home page
-                  Navigator.pop(context,"/");
+                  Navigator.pop(context, "/home");
                 },
               ),
-         
+
               // User profile section
               if (!isMobile) // Hide on very small screens
                 const SizedBox(width: 8),
