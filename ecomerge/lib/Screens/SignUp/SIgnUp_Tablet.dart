@@ -10,6 +10,7 @@ class SignupTablet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color.fromARGB(255, 234, 29, 7),
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(80),
         child: AppBar(
@@ -25,18 +26,29 @@ class SignupTablet extends StatelessWidget {
           ],
         ),
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          color: const Color.fromARGB(255, 234, 29, 7),
-        ),
+      body: SizedBox(
+        height: MediaQuery.of(context).size.height,
         child: SingleChildScrollView(
-          child: Column(
-            children: [
-              SizedBox(height: 20),
-              const SignForm(),
-              SizedBox(height: 20),
-              if (kIsWeb) const Footer(),
-            ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isTablet = constraints.maxWidth > 600;
+
+              return Column(
+                children: [
+                  SizedBox(height: 20),
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: isTablet ? 400 : double.infinity,
+                      ),
+                      child: const SignForm(),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  if (kIsWeb) const Footer(),
+                ],
+              );
+            },
           ),
         ),
       ),
