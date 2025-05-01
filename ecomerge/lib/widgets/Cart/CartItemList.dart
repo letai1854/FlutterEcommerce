@@ -25,7 +25,10 @@ class _CartItemListState extends State<CartItemList> {
   Widget build(BuildContext context) {
     // Get screen width to determine layout
     final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 800; // Adjust this threshold as needed
+    
+    // Tăng ngưỡng để bao gồm cả tablet (từ 800 lên 1000)
+    // Khi màn hình dưới 1000px, sẽ sử dụng layout mobile
+    final isSmallOrMediumScreen = screenWidth < 1200;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -60,7 +63,7 @@ class _CartItemListState extends State<CartItemList> {
           ),
 
         // Column headers - only show on desktop view
-        if (widget.cartItems.isNotEmpty && !isSmallScreen)
+        if (widget.cartItems.isNotEmpty && !isSmallOrMediumScreen)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
             child: Row(
@@ -111,7 +114,7 @@ class _CartItemListState extends State<CartItemList> {
           ),
 
         // Cart items - responsive layout
-        if (isSmallScreen)
+        if (isSmallOrMediumScreen)
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -123,7 +126,7 @@ class _CartItemListState extends State<CartItemList> {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: SizedBox(
-              width: screenWidth < 1000 ? 1000 : screenWidth - 40, // Minimum width or viewport width minus padding
+              width: screenWidth < 1200 ? 1200 : screenWidth - 40, // Tăng chiều rộng tối thiểu
               child: ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),

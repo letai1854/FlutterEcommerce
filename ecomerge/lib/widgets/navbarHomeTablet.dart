@@ -29,7 +29,7 @@ class _NavbarhomeTabletState extends State<NavbarhomeTablet> {
                         Navigator.pushNamed(context, '/home');
                       },
                       child: const Text(
-                        'Trang chủ',
+                        'Trang chủ',
                         style: TextStyle(color: Colors.white, fontSize: 18),
                       ),
                     ),
@@ -42,7 +42,7 @@ class _NavbarhomeTabletState extends State<NavbarhomeTablet> {
                         Navigator.pushNamed(context, '/catalog_product');
                       },
                       child: const Text(
-                        'Danh sách sản phẩm',
+                        'Danh sách sản phẩm',
                         style: TextStyle(color: Colors.white, fontSize: 18),
                       ),
                     ),
@@ -82,7 +82,7 @@ class _NavbarhomeTabletState extends State<NavbarhomeTablet> {
                           child: TextField(
                             decoration: InputDecoration(
                               hintText:
-                                  'Shopii đảm bảo chất lượng, giao hàng tận nơi - Đăng ký ngay!',
+                                  'Shopii đảm bảo chất lượng, giao hàng tận nơi - Đăng ký ngay!',
                               border: InputBorder.none,
                               hintStyle: TextStyle(fontSize: 14),
                             ),

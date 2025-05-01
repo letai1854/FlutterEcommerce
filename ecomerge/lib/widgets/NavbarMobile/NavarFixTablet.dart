@@ -1,24 +1,23 @@
 import 'package:e_commerce_app/constants.dart';
-import 'package:e_commerce_app/widgets/BottomNavigation.dart';
-import 'package:e_commerce_app/widgets/navbarHomeMobile.dart';
+import 'package:e_commerce_app/widgets/navbarHomeTablet.dart';
 import 'package:flutter/material.dart';
 
-class NavbarFixmobile extends StatefulWidget {
-  final Widget? body; // Thêm body để hiển thị nội dung bên trong Scaffold
+class NavbarFixTablet extends StatefulWidget {
+  final Widget? body; // Add body parameter to display content
 
-  const NavbarFixmobile({super.key, this.body});
+  const NavbarFixTablet({super.key, this.body});
 
   @override
-  State<NavbarFixmobile> createState() => _NavbarmobileDrawerState();
+  State<NavbarFixTablet> createState() => _NavbarFixTabletState();
 }
 
-class _NavbarmobileDrawerState extends State<NavbarFixmobile> {
+class _NavbarFixTabletState extends State<NavbarFixTablet> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        toolbarHeight: 90,
+        toolbarHeight: 130,
         backgroundColor: Colors.white,
         elevation: 0,
         flexibleSpace: Stack(
@@ -28,7 +27,7 @@ class _NavbarmobileDrawerState extends State<NavbarFixmobile> {
               left: 0,
               right: 0,
               bottom: 0,
-              child: NavbarHomeMobile(context),
+              child: NavbarhomeTablet(context),
             ),
           ],
         ),
@@ -37,11 +36,10 @@ class _NavbarmobileDrawerState extends State<NavbarFixmobile> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            // Drawer Header
             DrawerHeader(
               decoration: const BoxDecoration(color: Colors.red),
               child: GestureDetector(
-                  onTap: () {
+                onTap: () {
                   Navigator.pushNamed(context, '/info');
                 },
                 child: Row(
@@ -58,29 +56,10 @@ class _NavbarmobileDrawerState extends State<NavbarFixmobile> {
                     ),
                   ],
                 ),
-
-
               ),
             ),
             
-            // Conditional ListTiles for Web
-            if (!isMobile) ...[
-              ListTile(
-                leading: const Icon(Icons.home),
-                title: const Text('Trang chủ'),
-                onTap: () {
-                  Navigator.pushNamed(context, '/');
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.list_alt),
-                title: const Text('Danh sách sản phẩm'),
-                onTap: () {
-                  Navigator.pushNamed(context, '/catalog_product');
-                },
-              ),
-            ],
-            
+   
             // Common ListTiles
             ListTile(
               leading: const Icon(Icons.person_add_alt),
@@ -106,8 +85,7 @@ class _NavbarmobileDrawerState extends State<NavbarFixmobile> {
           ],
         ),
       ),
-      body: widget.body, // Thêm body vào đây
-      bottomNavigationBar: isMobile ? BottomNavBar() : null,
+      body: widget.body, // Use the body parameter passed to the widget
     );
   }
 }

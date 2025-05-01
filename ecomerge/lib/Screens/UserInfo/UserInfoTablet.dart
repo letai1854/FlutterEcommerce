@@ -1,7 +1,9 @@
 import 'package:e_commerce_app/Screens/UserInfo/BuildLeftColumn.dart';
 import 'package:e_commerce_app/Screens/UserInfo/RightColumnContent.dart';
 import 'package:e_commerce_app/Screens/UserInfo/UserInfoTypes.dart';
+import 'package:e_commerce_app/constants.dart';
 import 'package:e_commerce_app/widgets/Address/AddressManagement.dart';
+import 'package:e_commerce_app/widgets/BottomNavigation.dart';
 import 'package:e_commerce_app/widgets/Info/PersonalInfoForm.dart';
 import 'package:e_commerce_app/widgets/Order/OrdersContent.dart';
 import 'package:e_commerce_app/widgets/Password/ChangePasswordContent.dart';
@@ -81,6 +83,7 @@ class UserInfoTablet extends StatelessWidget {
       body: const SafeArea(
         child: Body(),
       ),
+      bottomNavigationBar: isMobile ? BottomNavBar() : null,
     );
   }
 }
