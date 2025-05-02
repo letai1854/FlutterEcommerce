@@ -60,13 +60,13 @@ class _UserInfoMobileState extends State<UserInfoMobile> {
       child: Row(
         children: [
           // Back button
-          if (isWeb)
-            IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => Navigator.of(context).pop(),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-            ),
+
+          IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pushNamed(context, '/home'),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
           const SizedBox(width: 12),
 
           // User avatar - Using Icon instead of image to prevent asset loading issues
@@ -166,7 +166,7 @@ class _UserInfoMobileState extends State<UserInfoMobile> {
                   ],
                 ),
                 onPressed: () {
-                  Navigator.pushNamed(context, '/catalog_product');
+                  Navigator.pushNamed(context, '/cart');
                 },
                 tooltip: 'Giỏ hàng',
                 padding: EdgeInsets.zero,

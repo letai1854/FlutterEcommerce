@@ -64,7 +64,7 @@ class SignupMobile extends StatelessWidget {
                 // Login form section
                 Padding(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0, vertical: 30.0),
+                      horizontal: 24.0, vertical: 30.0),
                   child: Container(
                     color: Colors.white
                         .withOpacity(0.9), // Changed from decoration to color
