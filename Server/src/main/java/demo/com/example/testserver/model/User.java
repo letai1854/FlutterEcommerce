@@ -1,61 +1,103 @@
 package demo.com.example.testserver.model;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 
 @Entity
-@Table(name = "users")  
+@Table(name = "nguoi_dung") // Map to the correct table name
 public class User {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-    
-    @Column(unique = true)
+
+    @Column(unique = true, nullable = false)
     private String email;
-    
-    @Column(name = "full_name", columnDefinition = "NVARCHAR(255)")
+
+    @Column(name = "ho_ten", nullable = false) // Map to correct column name
     private String fullName;
-    
-    @Column(name = "password")
+
+    @Column(name = "mat_khau", nullable = false) // Map to correct column name
     private String password;
-    
-    @Column(name = "address", columnDefinition = "NVARCHAR(255)")
-    private String address;
-    
-    @Column(name = "role")
+
+    @Column(name = "avatar_url") // Map to correct column name
+    private String avatar; // Renamed from avatar_url for consistency
+
+    @Column(name = "vai_tro", nullable = false) // Map to correct column name
     @Enumerated(EnumType.STRING)
-    private UserRole role = UserRole.customer;
-    
-    @Column(name = "created_date")
+    private UserRole role = UserRole.khach_hang; // Default value from DB
+
+    @Column(name = "trang_thai", nullable = false) // Map to correct column name
+    @Enumerated(EnumType.STRING)
+    private UserStatus status = UserStatus.kich_hoat; // Default value from DB
+
+    @Column(name = "diem_khach_hang_than_thiet", nullable = false, precision = 10, scale = 2) // Map to correct column name and type
+    private BigDecimal customerPoints = BigDecimal.ZERO; // Use BigDecimal for decimal
+
+    @Column(name = "ngay_tao", updatable = false) // Map to correct column name
     @Temporal(TemporalType.TIMESTAMP)
     private Date createdDate;
-    
-    @Column(name = "status")
-    private Boolean status = true;
-    
-    @Column(name = "customer_points")
-    private Integer customerPoints = 0;
-    
-    private String avatar;
-    
-    @Column(name = "chat_id")
-    private int chatId;
 
-    // Enum for role
+    @Column(name = "ngay_cap_nhat") // Map to correct column name
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date updatedDate; // Add updated date field
+
+    // --- Relationships ---
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Address> addresses;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CartItem> cartItems;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    private List<Order> orders;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    private List<ProductReview> reviews;
+
+    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL)
+    private List<Conversation> customerConversations;
+
+    @OneToMany(mappedBy = "admin", cascade = CascadeType.ALL)
+    private List<Conversation> adminConversations;
+
+    @OneToMany(mappedBy = "sender", cascade = CascadeType.ALL)
+    private List<Message> sentMessages;
+
+    // --- Enums ---
+
     public enum UserRole {
-        customer, admin
+        khach_hang, quan_tri
     }
 
-    // Constructors
+    public enum UserStatus {
+        kich_hoat, khoa
+    }
+
+    // --- Lifecycle Callbacks ---
+    @PrePersist
+    protected void onCreate() {
+        createdDate = new Date();
+        updatedDate = new Date(); // Set updatedDate on creation as well
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedDate = new Date();
+    }
+
+    // --- Constructors ---
     public User() {}
 
-    // Getters and Setters
-    public int getId() {
+    // --- Getters and Setters ---
+    public Integer getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 
@@ -83,12 +125,12 @@ public class User {
         this.password = password;
     }
 
-    public String getAddress() {
-        return address;
+    public String getAvatar() {
+        return avatar;
     }
 
-    public void setAddress(String address) {
-        this.address = address;
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
     }
 
     public UserRole getRole() {
@@ -99,6 +141,22 @@ public class User {
         this.role = role;
     }
 
+    public UserStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(UserStatus status) {
+        this.status = status;
+    }
+
+    public BigDecimal getCustomerPoints() {
+        return customerPoints;
+    }
+
+    public void setCustomerPoints(BigDecimal customerPoints) {
+        this.customerPoints = customerPoints;
+    }
+
     public Date getCreatedDate() {
         return createdDate;
     }
@@ -107,35 +165,67 @@ public class User {
         this.createdDate = createdDate;
     }
 
-    public Boolean getStatus() {
-        return status;
+    public Date getUpdatedDate() {
+        return updatedDate;
     }
 
-    public void setStatus(Boolean status) {
-        this.status = status;
+    public void setUpdatedDate(Date updatedDate) {
+        this.updatedDate = updatedDate;
     }
 
-    public Integer getCustomerPoints() {
-        return customerPoints;
+    public List<Address> getAddresses() {
+        return addresses;
     }
 
-    public void setCustomerPoints(Integer customerPoints) {
-        this.customerPoints = customerPoints;
+    public void setAddresses(List<Address> addresses) {
+        this.addresses = addresses;
     }
 
-    public String getAvatar() {
-        return avatar;
+    public List<CartItem> getCartItems() {
+        return cartItems;
     }
 
-    public void setAvatar(String avatar) {
-        this.avatar = avatar;
+    public void setCartItems(List<CartItem> cartItems) {
+        this.cartItems = cartItems;
     }
 
-    public int getChatId() {
-        return chatId;
+    public List<Order> getOrders() {
+        return orders;
     }
 
-    public void setChatId(int idchat) {
-        this.chatId = idchat;
+    public void setOrders(List<Order> orders) {
+        this.orders = orders;
+    }
+
+    public List<ProductReview> getReviews() {
+        return reviews;
+    }
+
+    public void setReviews(List<ProductReview> reviews) {
+        this.reviews = reviews;
+    }
+
+    public List<Conversation> getCustomerConversations() {
+        return customerConversations;
+    }
+
+    public void setCustomerConversations(List<Conversation> customerConversations) {
+        this.customerConversations = customerConversations;
+    }
+
+    public List<Conversation> getAdminConversations() {
+        return adminConversations;
+    }
+
+    public void setAdminConversations(List<Conversation> adminConversations) {
+        this.adminConversations = adminConversations;
+    }
+
+    public List<Message> getSentMessages() {
+        return sentMessages;
+    }
+
+    public void setSentMessages(List<Message> sentMessages) {
+        this.sentMessages = sentMessages;
     }
 }

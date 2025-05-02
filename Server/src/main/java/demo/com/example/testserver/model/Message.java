@@ -4,31 +4,41 @@ import jakarta.persistence.*;
 import java.util.Date;
 
 @Entity
-@Table(name = "messages")
+@Table(name = "tin_nhan") // Map to correct table name
 public class Message {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-    
-    @ManyToOne
-    @JoinColumn(name = "conversation_id")
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cuoc_hoi_thoai_id", nullable = false) // Map to correct column name
     private Conversation conversation;
-    
-    @Column(name = "sender_id")
-    private Integer senderId;
-    
-    @Column(name = "content", columnDefinition = "NVARCHAR(4000)")
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "nguoi_gui_id", nullable = false) // Map to correct column name
+    private User sender; // Changed from senderId to User object
+
+    @Column(name = "noi_dung", columnDefinition = "TEXT") // Map to correct column name and type
     private String content;
-    
-    @Column(name = "send_time")
+
+    @Column(name = "url_hinh_anh") // Map to correct column name
+    private String imageUrl; // Add image URL field
+
+    @Column(name = "thoi_gian_gui") // Map to correct column name
     @Temporal(TemporalType.TIMESTAMP)
     private Date sendTime;
 
-    // Constructors
+    // --- Lifecycle Callbacks ---
+    @PrePersist
+    protected void onCreate() {
+        sendTime = new Date();
+    }
+
+    // --- Constructors ---
     public Message() {}
 
-    // Getters and Setters
+    // --- Getters and Setters ---
     public Integer getId() {
         return id;
     }
@@ -45,12 +55,12 @@ public class Message {
         this.conversation = conversation;
     }
 
-    public Integer getSenderId() {
-        return senderId;
+    public User getSender() {
+        return sender;
     }
 
-    public void setSenderId(Integer senderId) {
-        this.senderId = senderId;
+    public void setSender(User sender) {
+        this.sender = sender;
     }
 
     public String getContent() {
@@ -59,6 +69,14 @@ public class Message {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 
     public Date getSendTime() {
