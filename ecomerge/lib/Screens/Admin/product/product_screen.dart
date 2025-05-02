@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart'; // Import for debugging if needed
 import 'dart:math'; // Add this import for using max function
+import 'Add_Update_Product.dart'; // Import AddUpdateProductScreen
+
 class ProductScreen extends StatefulWidget {
   const ProductScreen({Key? key}) : super(key: key);
 
@@ -71,38 +73,41 @@ class _ProductScreenState extends State<ProductScreen> {
   final List<Map<String, dynamic>> _productData = List.generate(
     25, // More data to potentially exceed screen width/height
     (index) => {
-      // Sử dụng tên sản phẩm dài hơn để đảm bảo cuộn ngang hoạt động
       'name': 'Sản phẩm rất dài để kiểm tra cuộn ngang của bảng dữ liệu số ${index + 1}',
-      'price': '${(index + 1) * 1000000} VNĐ',
-      'quantity': '${index + 10}',
+      'image': 'assets/product${(index % 3) + 1}.jpg', // Dummy image
+      'brand': 'Thương hiệu ${index % 5 + 1}',
       'category': 'Danh mục ${index % 3 + 1}',
+      'description': 'Mô tả chi tiết cho sản phẩm số ${index + 1}. Đây là một đoạn mô tả dài hơn để kiểm tra hiển thị.',
+      'price': (index + 1) * 1000000,
+      'quantity': index + 10,
+      'rating': (index % 5) + 1.0,
+      'createdDate': DateTime.now().subtract(Duration(days: index)),
+      'discount': index % 2 == 0 ? (index % 5) * 5 : 0, // Dummy discount
     },
   );
 
-  // The DataTableSource needs to be recreated if the _data list changes due to filtering
-  // For now, we just use the full sample data.
-  late ProductDataSource _productDataSource;
+  // State variable to control visibility of product list and add/update screen
+  bool _showProductList = true;
 
-  // Thêm các biến cần thiết cho phân trang trên màn hình nhỏ
+  // Thêm các biến cần thiết cho phân trang
   int _currentPage = 0;
   final int _rowsPerPage = 10;
-  
+
   // Lấy danh sách sản phẩm cho trang hiện tại
   List<Map<String, dynamic>> get _paginatedData {
     final startIndex = _currentPage * _rowsPerPage;
     final endIndex = min(startIndex + _rowsPerPage, _productData.length);
-    
+
     if (startIndex >= _productData.length) return [];
     return _productData.sublist(startIndex, endIndex);
   }
-  
+
   // Tính số trang dựa trên dữ liệu và số hàng mỗi trang
   int get _pageCount => (_productData.length / _rowsPerPage).ceil();
 
   @override
   void initState() {
     super.initState();
-    _productDataSource = ProductDataSource(_productData);
   }
 
   @override
@@ -147,16 +152,23 @@ class _ProductScreenState extends State<ProductScreen> {
     final bool isSmallScreen = MediaQuery.of(context).size.width < 768;
 
     return Scaffold(
-      body: isSmallScreen
-        ? _buildSmallScreenLayout(availableWidth)
-        : _buildLargeScreenLayout(availableWidth),
+      body: _showProductList
+          ? SingleChildScrollView( // Wrap with SingleChildScrollView for overall page scrolling
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: isSmallScreen
+                    ? _buildSmallScreenLayout(availableWidth)
+                    : _buildLargeScreenLayout(availableWidth),
+              ),
+            )
+          : const AddUpdateProductScreen(), // Assuming AddUpdateProductScreen is a widget
     );
   }
 
   // Layout cho màn hình nhỏ (mobile, tablet nhỏ)
   Widget _buildSmallScreenLayout(double availableWidth) {
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
+    return Column( // Changed from ListView to Column as it's wrapped by SingleChildScrollView
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Tiêu đề trang
         Text(
@@ -218,7 +230,9 @@ class _ProductScreenState extends State<ProductScreen> {
               // Add Product Button
               ElevatedButton(
                 onPressed: () {
-                  print('Thêm sản phẩm Pressed');
+                  setState(() {
+                    _showProductList = false; // Hide product list, show add/update screen
+                  });
                 },
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 16),
@@ -253,56 +267,55 @@ class _ProductScreenState extends State<ProductScreen> {
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start, // Align items to the top
                       children: [
-                        // Phần thông tin sản phẩm
+                        // Product Image
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            image: DecorationImage(
+                              image: AssetImage(product['image']),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+
+                        // Product Info
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                product['name'].toString(),
+                                product['name'],
                                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                maxLines: 1,
+                                maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 4),
-                              
-                              Row(
-                                children: [
-                                  Expanded(
-                                    flex: 2,
-                                    child: Text(
-                                      'Giá: ${product['price']}',
-                                      style: const TextStyle(fontSize: 12),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    flex: 1,
-                                    child: Text(
-                                      'SL: ${product['quantity']}',
-                                      style: const TextStyle(fontSize: 12),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              
-                              Text(
-                                'Danh mục: ${product['category']}',
-                                style: const TextStyle(fontSize: 12, color: Colors.grey),
-                              ),
+                              _buildInfoRow('Thương hiệu:', product['brand']),
+                              _buildInfoRow('Danh mục:', product['category']),
+                              _buildInfoRow('Mô tả:', product['description']),
+                              _buildInfoRow('Giá:', '${product['price']} VNĐ'),
+                              _buildInfoRow('Tồn kho:', product['quantity'].toString()),
+                              _buildInfoRow('Số sao:', product['rating'].toString()),
+                              _buildInfoRow('Ngày tạo:', '${product['createdDate'].toLocal().toString().split(' ')[0]}'),
+                              _buildInfoRow('Giảm giá:', '${product['discount']}%'),
                             ],
                           ),
                         ),
-                        
-                        // Các nút chức năng
-                        Row(
+
+                        // Action Buttons
+                        Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
                               onPressed: () {
                                 print('Chỉnh sửa ${product['name']}');
+                                // TODO: Navigate to AddUpdateProductScreen for editing
                               },
                               icon: const Icon(Icons.edit, size: 18),
                               tooltip: 'Chỉnh sửa',
@@ -312,6 +325,7 @@ class _ProductScreenState extends State<ProductScreen> {
                             IconButton(
                               onPressed: () {
                                 print('Xóa ${product['name']}');
+                                // TODO: Implement delete functionality
                               },
                               icon: const Icon(Icons.delete, size: 18),
                               tooltip: 'Xóa',
@@ -347,7 +361,7 @@ class _ProductScreenState extends State<ProductScreen> {
                 style: TextStyle(color: Colors.grey[600]),
               ),
               const SizedBox(height: 8),
-              
+
               // Nút điều hướng phân trang
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -392,201 +406,244 @@ class _ProductScreenState extends State<ProductScreen> {
 
   // Layout cho màn hình lớn (desktop, tablet lớn)
   Widget _buildLargeScreenLayout(double availableWidth) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Quản lý sản phẩm',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
+    return Column( // Changed from Padding to Column as it's wrapped by SingleChildScrollView
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Quản lý sản phẩm',
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 20),
 
-          // --- Controls Area ---
-          SizedBox(
-            width: availableWidth,
-            child: Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                // Search TextField
-                SizedBox(
-                  width: 250, // Thay đổi từ 200 thành 250 để khớp với màn hình nhỏ
-                  child: TextField(
-                    decoration: const InputDecoration(
-                      hintText: 'Tìm kiếm...',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                      isDense: true,
-                    ),
+        // --- Controls Area ---
+        SizedBox(
+          width: availableWidth,
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              // Search TextField
+              SizedBox(
+                width: 250,
+                child: TextField(
+                  decoration: const InputDecoration(
+                    hintText: 'Tìm kiếm...',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                    isDense: true,
                   ),
                 ),
+              ),
 
-                // Filter Dropdown
-                SizedBox(
-                  width: 250, // Thay đổi từ 180 thành 250 để khớp với màn hình nhỏ
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedFilter,
-                    items: _filterOptions.map((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value),
-                      );
-                    }).toList(),
-                    onChanged: (newValue) {
-                      setState(() {
-                        _selectedFilter = newValue!;
-                        if (newValue == 'Khoảng thời gian cụ thể') {
-                          _showDateRangePicker();
-                        } else {
-                          print('Selected filter: $newValue');
-                        }
-                      });
-                    },
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-
-                // Add Product Button
-                ElevatedButton(
-                  onPressed: () {
-                    print('Thêm sản phẩm Pressed');
+              // Filter Dropdown
+              SizedBox(
+                width: 250,
+                child: DropdownButtonFormField<String>(
+                  value: _selectedFilter,
+                  items: _filterOptions.map((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                  onChanged: (newValue) {
+                    setState(() {
+                      _selectedFilter = newValue!;
+                      if (newValue == 'Khoảng thời gian cụ thể') {
+                        _showDateRangePicker();
+                      } else {
+                        print('Selected filter: $newValue');
+                      }
+                    });
                   },
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 16),
-                    textStyle: const TextStyle(fontSize: 14),
-                    minimumSize: const Size(0, 48),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                    isDense: true,
                   ),
-                  child: const Text('Thêm sản phẩm'),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
+              ),
 
-          // Header for the table section
-          Text(
-            'Danh sách sản phẩm',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              // Add Product Button
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _showProductList = false; // Hide product list, show add/update screen
+                  });
+                },
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 16),
+                  textStyle: const TextStyle(fontSize: 14),
+                  minimumSize: const Size(0, 48),
+                ),
+                child: const Text('Thêm sản phẩm'),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
+        ),
+        const SizedBox(height: 20),
 
-          // Table Area
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  scrollDirection: Axis.vertical,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: SizedBox(
-                      width: max(constraints.maxWidth, 800),
-                      child: PaginatedDataTable(
-                        key: ValueKey(_productData.length),
-                        columnSpacing: 20,
-                        horizontalMargin: 10,
-                        columns: const [
-                          DataColumn(label: Text('Tên sản phẩm')),
-                          DataColumn(label: Text('Giá')),
-                          DataColumn(label: Text('Số lượng')),
-                          DataColumn(label: Text('Danh mục')),
-                          DataColumn(label: Text('Chức năng')),
-                        ],
-                        source: _productDataSource,
-                        rowsPerPage: 10,
-                      ),
+        // Header for the table section
+        Text(
+          'Danh sách sản phẩm',
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+
+        // Product List (using ListView.builder for responsiveness)
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(), // Disable ListView scrolling
+          itemCount: _paginatedData.length, // Use paginated data
+          itemBuilder: (context, index) {
+            final product = _paginatedData[index]; // Use paginated data
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Product Image
+                        Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            image: DecorationImage(
+                              image: AssetImage(product['image']),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        // Product Info
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                product['name'],
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 8),
+                              _buildInfoRow('Thương hiệu:', product['brand']),
+                              _buildInfoRow('Danh mục:', product['category']),
+                              _buildInfoRow('Giá:', '${product['price']} VNĐ'),
+                              _buildInfoRow('Tồn kho:', product['quantity'].toString()),
+                              _buildInfoRow('Số sao:', product['rating'].toString()),
+                              _buildInfoRow('Ngày tạo:', '${product['createdDate'].toLocal().toString().split(' ')[0]}'),
+                              _buildInfoRow('Giảm giá:', '${product['discount']}%'),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Description (full width)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Mô tả:', style: TextStyle(fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 4),
+                        Text(product['description']),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Action Buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () {
+                            print('Chỉnh sửa ${product['name']}');
+                            // TODO: Navigate to AddUpdateProductScreen for editing
+                          },
+                          icon: const Icon(Icons.edit),
+                          label: const Text('Chỉnh sửa'),
+                        ),
+                        const SizedBox(width: 8),
+                        TextButton.icon(
+                          onPressed: () {
+                            print('Xóa ${product['name']}');
+                            // TODO: Implement delete functionality
+                          },
+                          icon: const Icon(Icons.delete),
+                          label: const Text('Xóa'),
+                          style: TextButton.styleFrom(foregroundColor: Colors.red),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 16), // Add spacing before pagination controls
+
+        // Pagination controls for large screen
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          margin: const EdgeInsets.only(top: 8),
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            children: [
+              // Widget hiển thị thông tin phân trang
+              Text(
+                'Hiển thị ${_paginatedData.isEmpty ? 0 : (_currentPage * _rowsPerPage) + 1} - ${(_currentPage * _rowsPerPage) + _paginatedData.length} trên ${_productData.length}',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 8),
+
+              // Nút điều hướng phân trang
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.keyboard_arrow_left),
+                    onPressed: _currentPage > 0
+                        ? () {
+                            setState(() {
+                              _currentPage--;
+                            });
+                          }
+                        : null,
+                    tooltip: 'Trang trước',
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Text(
+                      '${_currentPage + 1} / $_pageCount',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
-                );
-              },
-            ),
+                  IconButton(
+                    icon: const Icon(Icons.keyboard_arrow_right),
+                    onPressed: _currentPage < _pageCount - 1
+                        ? () {
+                            setState(() {
+                              _currentPage++;
+                            });
+                          }
+                        : null,
+                    tooltip: 'Trang tiếp',
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
-}
-
-class ProductDataSource extends DataTableSource {
-  List<Map<String, dynamic>> _data; // Made list mutable for potential updates
-
-  ProductDataSource(this._data);
-
-  // Example method to update data and notify listeners
-  void updateData(List<Map<String, dynamic>> newData) {
-     _data = newData;
-     notifyListeners(); // Important! Call this after data changes
-  }
-
-  // Example method to delete an item and notify listeners
-  void deleteItem(int index) {
-     if (index < _data.length) {
-        _data.removeAt(index);
-        notifyListeners(); // Important! Call this after data changes
-     }
-  }
-
-
-  @override
-  DataRow? getRow(int index) {
-    if (index >= _data.length) return null;
-    final product = _data[index];
-    return DataRow(cells: [
-      DataCell(Text(product['name'].toString())), // Ensure text is String
-      DataCell(Text(product['price'].toString())),
-      DataCell(Text(product['quantity'].toString())),
-      DataCell(Text(product['category'].toString())),
-      DataCell(
-        Row(
-          mainAxisSize: MainAxisSize.min, // Ensure the row doesn't take full width
-          children: [
-            IconButton(
-              onPressed: () {
-                // TODO: Implement Edit logic (e.g., show edit dialog)
-                print('Chỉnh sửa ${product['name']}');
-                // Example: showEditDialog(_data[index]);
-              },
-              icon: const Icon(Icons.edit),
-              tooltip: 'Chỉnh sửa', // Add tooltips for better UX
-              padding: EdgeInsets.zero, // Remove default padding
-              constraints: const BoxConstraints(minWidth: 40, minHeight: 40), // Ensure tappable area
-            ),
-            IconButton(
-              onPressed: () {
-                // TODO: Implement Delete logic (e.g., show confirmation dialog)
-                 print('Xóa ${product['name']}');
-                 // Example: confirmAndDelete(index);
-                 // In a real app, you'd likely call a method like deleteItem(index);
-              },
-              icon: const Icon(Icons.delete),
-              tooltip: 'Xóa', // Add tooltips
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-            ),
-          ],
-        ),
-      ),
-    ]);
-  }
-
-  @override
-  bool get isRowCountApproximate => false;
-
-  @override
-  int get rowCount => _data.length;
-
-  @override
-  int get selectedRowCount => 0;
-
-  // Methods to update the data source (examples)
-  // void addProduct(Map<String, dynamic> newProduct) {
-  //   _data.add(newProduct);
-  //   notifyListeners(); // Call this after data changes
-  // }
 }
