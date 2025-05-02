@@ -87,8 +87,9 @@ class PaymentInfo extends StatelessWidget {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
-                    // Xử lý khi nhấn nút "Mua Hàng"
-                  },
+                    Navigator.pushNamed(context, '/payment');
+                      },
+
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepOrange,
                     foregroundColor: Colors.white,

@@ -116,6 +116,30 @@ class _ProductScreenState extends State<ProductScreen> {
     super.dispose();
   }
 
+  // Function to handle product deletion
+  void _deleteProduct(int index) {
+    setState(() {
+      // TODO: Connect with controller for actual deletion from data source
+      // Example: await _productController.deleteProduct(_productData[index]['id']);
+
+      // Remove the product from the local data list
+      _productData.removeAt(index);
+
+      // Adjust current page if the last item on the current page was deleted
+      // and there are still items on the previous page
+      if (_currentPage > 0 && _paginatedData.isEmpty && _productData.isNotEmpty) {
+        _currentPage--;
+      }
+       // If the last item overall was deleted and we were on the last page
+      if (_currentPage > 0 && _paginatedData.isEmpty && _productData.isEmpty) {
+         _currentPage = 0;
+      }
+    });
+    // TODO: Show a confirmation message (e.g., using ScaffoldMessenger)
+    print('Deleted product at index $index');
+  }
+
+
   // Add the _buildInfoRow method here inside _ProductScreenState
   Widget _buildInfoRow(String label, String value) {
     return Padding(
@@ -149,16 +173,13 @@ class _ProductScreenState extends State<ProductScreen> {
     // Calculate the available width for the controls area
     // This is the total screen width minus the horizontal padding (16.0 on both sides)
     final double availableWidth = MediaQuery.of(context).size.width - 2 * 16.0;
-    // final bool isSmallScreen = MediaQuery.of(context).size.width < 768;
 
     return Scaffold(
       body: _showProductList
           ? SingleChildScrollView( // Wrap with SingleChildScrollView for overall page scrolling
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: 
-                    _buildSmallScreenLayout(availableWidth)
-                    // : _buildLargeScreenLayout(availableWidth),
+                child: _buildSmallScreenLayout(availableWidth), // Always use small screen layout
               ),
             )
           : const AddUpdateProductScreen(), // Assuming AddUpdateProductScreen is a widget
@@ -324,8 +345,9 @@ class _ProductScreenState extends State<ProductScreen> {
                             ),
                             IconButton(
                               onPressed: () {
-                                print('Xóa ${product['name']}');
-                                // TODO: Implement delete functionality
+                                // Calculate the actual index in the full data list
+                                final actualIndex = (_currentPage * _rowsPerPage) + index;
+                                _deleteProduct(actualIndex);
                               },
                               icon: const Icon(Icons.delete, size: 18),
                               tooltip: 'Xóa',
@@ -404,4 +426,5 @@ class _ProductScreenState extends State<ProductScreen> {
     );
   }
 
+ 
 }
