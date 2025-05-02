@@ -39,7 +39,8 @@ class SignupTablet extends StatelessWidget {
                   Center(
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
-                        maxWidth: isTablet ? 400 : double.infinity,
+                        maxWidth: isTablet ? 500 : double.infinity,
+                        minWidth: isTablet ? 500 : double.infinity,
                       ),
                       child: const SignForm(),
                     ),

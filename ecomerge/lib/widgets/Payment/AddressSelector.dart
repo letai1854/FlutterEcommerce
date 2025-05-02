@@ -1,33 +1,45 @@
 import 'package:flutter/material.dart';
+import '../location_selection.dart';
 
 // Model class for address data
 class AddressData {
   final String name;
   final String phone;
   final String address;
+  final String province;
+  final String district;
+  final String ward;
   final bool isDefault;
 
   AddressData({
-    required this.name, 
-    required this.phone, 
-    required this.address, 
+    required this.name,
+    required this.phone,
+    required this.address,
+    this.province = '',
+    this.district = '',
+    this.ward = '',
     this.isDefault = false,
   });
+
+  String get fullAddress {
+    final List<String> parts = [];
+    if (address.isNotEmpty) parts.add(address);
+    if (ward.isNotEmpty) parts.add(ward);
+    if (district.isNotEmpty) parts.add(district);
+    if (province.isNotEmpty) parts.add(province);
+    return parts.join(', ');
+  }
 }
 
 // Enum to track the current view state
-enum AddressViewState {
-  LIST,
-  ADD,
-  EDIT
-}
+enum AddressViewState { LIST, ADD, EDIT }
 
 class AddressSelector extends StatefulWidget {
   // Callback function when an address is selected
   final Function(AddressData) onAddressSelected;
-  
+
   const AddressSelector({
-    Key? key, 
+    Key? key,
     required this.onAddressSelected,
   }) : super(key: key);
 
@@ -39,37 +51,51 @@ class _AddressSelectorState extends State<AddressSelector> {
   // Sample address data
   final List<AddressData> _addresses = [
     AddressData(
-      name: 'Tuấn Tú', 
-      phone: '(+84) 583541716', 
-      address: 'Gần Nhà Thờ An Phú An Giang, Thị Trấn An Phú, Huyện An Phú, An Giang',
+      name: 'Tuấn Tú',
+      phone: '(+84) 583541716',
+      address: 'Gần Nhà Thờ An Phú',
+      province: 'An Giang',
+      district: 'Huyện An Phú',
+      ward: 'Thị Trấn An Phú',
       isDefault: true,
     ),
     AddressData(
-      name: 'Nguyễn Văn A', 
-      phone: '(+84) 987654321', 
-      address: '123 Đường Lê Lợi, Quận 1, TP Hồ Chí Minh',
-    ),
-    AddressData(
-      name: 'Trần Thị B', 
-      phone: '(+84) 123456789', 
-      address: '456 Đường Nguyễn Huệ, Quận 3, TP Hồ Chí Minh',
+      name: 'Nguyễn Văn A',
+      phone: '(+84) 987654321',
+      address: '123 Đường Lê Lợi',
+      province: 'TP Hồ Chí Minh',
+      district: 'Quận 1',
+      isDefault: false,
     ),
   ];
 
   // Track the selected address index
   int _selectedIndex = 0;
-  
+
   // Current view state
   AddressViewState _currentState = AddressViewState.LIST;
-  
+
   // Index of address being edited (for EDIT state)
   int _editingIndex = -1;
-  
+
   // Controllers for text fields
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
-  
+
+  // Location data
+  String _selectedProvince = '';
+  String _selectedDistrict = '';
+  String _selectedWard = '';
+
+  void _handleLocationSelected(String province, String district, String ward) {
+    setState(() {
+      _selectedProvince = province;
+      _selectedDistrict = district;
+      _selectedWard = ward;
+    });
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -89,47 +115,58 @@ class _AddressSelectorState extends State<AddressSelector> {
       }
     }
   }
-  
+
   // Reset form controllers
   void _resetFormControllers() {
     _nameController.clear();
     _phoneController.clear();
     _addressController.clear();
+    setState(() {
+      _selectedProvince = '';
+      _selectedDistrict = '';
+      _selectedWard = '';
+    });
   }
-  
+
   // Set form controllers for editing
   void _setFormControllersForEdit(int index) {
     final address = _addresses[index];
     _nameController.text = address.name;
     _phoneController.text = address.phone;
     _addressController.text = address.address;
+    setState(() {
+      _selectedProvince = address.province;
+      _selectedDistrict = address.district;
+      _selectedWard = address.ward;
+    });
   }
-  
+
   // Add new address
   void _addNewAddress() {
-    if (_nameController.text.isNotEmpty && 
-        _phoneController.text.isNotEmpty && 
+    if (_nameController.text.isNotEmpty &&
+        _phoneController.text.isNotEmpty &&
         _addressController.text.isNotEmpty) {
       setState(() {
-        _addresses.add(
-          AddressData(
-            name: _nameController.text,
-            phone: _phoneController.text,
-            address: _addressController.text,
-            isDefault: false,
-          )
-        );
+        _addresses.add(AddressData(
+          name: _nameController.text,
+          phone: _phoneController.text,
+          address: _addressController.text,
+          province: _selectedProvince,
+          district: _selectedDistrict,
+          ward: _selectedWard,
+          isDefault: false,
+        ));
         _currentState = AddressViewState.LIST;
         _resetFormControllers();
       });
     }
   }
-  
+
   // Update existing address
   void _updateAddress() {
-    if (_editingIndex >= 0 && 
-        _nameController.text.isNotEmpty && 
-        _phoneController.text.isNotEmpty && 
+    if (_editingIndex >= 0 &&
+        _nameController.text.isNotEmpty &&
+        _phoneController.text.isNotEmpty &&
         _addressController.text.isNotEmpty) {
       setState(() {
         final isDefault = _addresses[_editingIndex].isDefault;
@@ -137,6 +174,9 @@ class _AddressSelectorState extends State<AddressSelector> {
           name: _nameController.text,
           phone: _phoneController.text,
           address: _addressController.text,
+          province: _selectedProvince,
+          district: _selectedDistrict,
+          ward: _selectedWard,
           isDefault: isDefault,
         );
         _currentState = AddressViewState.LIST;
@@ -164,8 +204,8 @@ class _AddressSelectorState extends State<AddressSelector> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  _currentState == AddressViewState.ADD 
-                      ? 'Thêm mới địa chỉ' 
+                  _currentState == AddressViewState.ADD
+                      ? 'Thêm mới địa chỉ'
                       : _currentState == AddressViewState.EDIT
                           ? 'Cập nhật địa chỉ'
                           : 'Địa chỉ của tôi',
@@ -184,23 +224,23 @@ class _AddressSelectorState extends State<AddressSelector> {
               ],
             ),
           ),
-          
+
           Divider(),
-          
+
           // Content based on state
           Expanded(
             child: _buildContent(),
           ),
-          
+
           Divider(),
-          
+
           // Bottom buttons area
           _buildBottomArea(),
         ],
       ),
     );
   }
-  
+
   // Build content based on current state
   Widget _buildContent() {
     switch (_currentState) {
@@ -212,7 +252,7 @@ class _AddressSelectorState extends State<AddressSelector> {
         return _buildAddressForm('Cập nhật');
     }
   }
-  
+
   // Build address list view
   Widget _buildAddressList() {
     return ListView.builder(
@@ -223,46 +263,58 @@ class _AddressSelectorState extends State<AddressSelector> {
       },
     );
   }
-  
+
   // Build address form (for both add and edit)
   Widget _buildAddressForm(String action) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Name field
-          _buildFormField(
-            label: 'Họ và tên',
-            hint: 'Nhập họ và tên',
-            controller: _nameController,
-            prefixIcon: Icons.person,
-          ),
-          const SizedBox(height: 16),
-          
-          // Phone field
-          _buildFormField(
-            label: 'Số điện thoại',
-            hint: 'Nhập số điện thoại',
-            controller: _phoneController,
-            prefixIcon: Icons.phone,
-            keyboardType: TextInputType.phone,
-          ),
-          const SizedBox(height: 16),
-          
-          // Address field
-          _buildFormField(
-            label: 'Địa chỉ',
-            hint: 'Nhập địa chỉ cụ thể',
-            controller: _addressController,
-            prefixIcon: Icons.location_on,
-            maxLines: 3,
-          ),
-        ],
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Name field
+            _buildFormField(
+              label: 'Họ và tên',
+              hint: 'Nhập họ và tên',
+              controller: _nameController,
+              prefixIcon: Icons.person,
+            ),
+            const SizedBox(height: 16),
+
+            // Phone field
+            _buildFormField(
+              label: 'Số điện thoại',
+              hint: 'Nhập số điện thoại',
+              controller: _phoneController,
+              prefixIcon: Icons.phone,
+              keyboardType: TextInputType.phone,
+            ),
+            const SizedBox(height: 16),
+
+            Text(
+              'Chọn khu vực',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 8),
+            LocationSelection(
+              onLocationSelected: _handleLocationSelected,
+            ),
+            const SizedBox(height: 16),
+
+            // Address field
+            _buildFormField(
+              label: 'Địa chỉ chi tiết',
+              hint: 'Nhập địa chỉ chi tiết khác',
+              controller: _addressController,
+              prefixIcon: Icons.location_on,
+              maxLines: 3,
+            ),
+          ],
+        ),
       ),
     );
   }
-  
+
   // Build a form field
   Widget _buildFormField({
     required String label,
@@ -276,11 +328,8 @@ class _AddressSelectorState extends State<AddressSelector> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          label, 
-          style: TextStyle(
-            fontSize: 16, 
-            fontWeight: FontWeight.w500
-          ),
+          label,
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 8),
         TextFormField(
@@ -303,7 +352,7 @@ class _AddressSelectorState extends State<AddressSelector> {
       ],
     );
   }
-  
+
   // Build bottom area based on current state
   Widget _buildBottomArea() {
     switch (_currentState) {
@@ -318,7 +367,8 @@ class _AddressSelectorState extends State<AddressSelector> {
                 });
               },
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
+                padding: const EdgeInsets.symmetric(
+                    vertical: 16.0, horizontal: 16.0),
                 child: Row(
                   children: [
                     Container(
@@ -352,32 +402,30 @@ class _AddressSelectorState extends State<AddressSelector> {
         );
       case AddressViewState.ADD:
         return _buildActionButtons(
-          onCancel: () {
-            setState(() {
-              _currentState = AddressViewState.LIST;
-              _resetFormControllers();
-            });
-          }, 
-          onConfirm: _addNewAddress, 
-          confirmText: 'Hoàn thành'
-        );
+            onCancel: () {
+              setState(() {
+                _currentState = AddressViewState.LIST;
+                _resetFormControllers();
+              });
+            },
+            onConfirm: _addNewAddress,
+            confirmText: 'Hoàn thành');
       case AddressViewState.EDIT:
         return _buildActionButtons(
-          onCancel: () {
-            setState(() {
-              _currentState = AddressViewState.LIST;
-              _resetFormControllers();
-            });
-          }, 
-          onConfirm: _updateAddress, 
-          confirmText: 'Cập nhật'
-        );
+            onCancel: () {
+              setState(() {
+                _currentState = AddressViewState.LIST;
+                _resetFormControllers();
+              });
+            },
+            onConfirm: _updateAddress,
+            confirmText: 'Cập nhật');
     }
   }
-  
+
   // Build action buttons for form views
   Widget _buildActionButtons({
-    required VoidCallback onCancel, 
+    required VoidCallback onCancel,
     required VoidCallback onConfirm,
     required String confirmText,
   }) {
@@ -434,12 +482,13 @@ class _AddressSelectorState extends State<AddressSelector> {
   Widget _buildAddressItem(int index) {
     final address = _addresses[index];
     final isSelected = _selectedIndex == index;
-    
+
     return InkWell(
       onTap: () {
         setState(() {
           _selectedIndex = index;
-          print('Selected address changed to index: $_selectedIndex - ${address.name}'); // Debug print
+          print(
+              'Selected address changed to index: $_selectedIndex - ${address.name}');
         });
       },
       child: Padding(
@@ -459,7 +508,7 @@ class _AddressSelectorState extends State<AddressSelector> {
               },
             ),
             const SizedBox(width: 8),
-            
+
             // Address information
             Expanded(
               child: Column(
@@ -483,7 +532,8 @@ class _AddressSelectorState extends State<AddressSelector> {
                       if (address.isDefault)
                         Container(
                           margin: EdgeInsets.only(left: 8),
-                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             border: Border.all(color: Colors.red),
                             borderRadius: BorderRadius.circular(4),
@@ -496,10 +546,10 @@ class _AddressSelectorState extends State<AddressSelector> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  
+
                   // Address text
                   Text(
-                    address.address,
+                    address.fullAddress,
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.black87,
@@ -508,7 +558,7 @@ class _AddressSelectorState extends State<AddressSelector> {
                 ],
               ),
             ),
-            
+
             // Update button
             TextButton(
               onPressed: () {
@@ -532,7 +582,7 @@ class _AddressSelectorState extends State<AddressSelector> {
   // Modify the Confirm button to ensure it passes the selected address
   Widget _buildConfirmButton() {
     final selectedAddress = _addresses[_selectedIndex];
-    
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: ElevatedButton(
@@ -546,13 +596,7 @@ class _AddressSelectorState extends State<AddressSelector> {
           shadowColor: Colors.red.withOpacity(0.4),
         ),
         onPressed: () {
-          // Print for debugging - log the selected address details
-          print('Confirming address selection: ${selectedAddress.name}, index: $_selectedIndex');
-          
-          // Call the callback so the parent gets notified of the selection
           widget.onAddressSelected(selectedAddress);
-          
-          // First close the dialog, then call the callback to avoid UI update issues
           Navigator.of(context).pop();
         },
         child: Row(
@@ -580,11 +624,8 @@ class _AddressSelectorState extends State<AddressSelector> {
   }
 }
 
-// Update dialog builder function to directly return the selected address
-Future<void> showAddressSelectorDialog(BuildContext context, Function(AddressData) onAddressSelected) async {
-  print("Showing address selector dialog");
-  
-  // Simplify this function to avoid confusion
+Future<void> showAddressSelectorDialog(
+    BuildContext context, Function(AddressData) onAddressSelected) async {
   return showDialog(
     context: context,
     builder: (BuildContext dialogContext) {
@@ -593,11 +634,7 @@ Future<void> showAddressSelectorDialog(BuildContext context, Function(AddressDat
           borderRadius: BorderRadius.circular(16),
         ),
         child: AddressSelector(
-          onAddressSelected: (address) {
-            // When an address is selected in the AddressSelector, immediately update the parent
-            print("Address selected in dialog: ${address.name}");
-            onAddressSelected(address);
-          },
+          onAddressSelected: onAddressSelected,
         ),
       );
     },
