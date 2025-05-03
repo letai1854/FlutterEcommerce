@@ -1,0 +1,95 @@
+package demo.com.example.testserver.model;
+
+import jakarta.persistence.*;
+import java.util.Date;
+import java.util.List;
+
+@Entity
+@Table(name = "danh_muc")
+public class Category {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @Column(name = "ten_danh_muc", nullable = false, unique = true)
+    private String name;
+
+    @Column(name = "hinh_anh")
+    private String imageUrl;
+
+    @Column(name = "ngay_tao", updatable = false)
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date createdDate;
+
+    @Column(name = "ngay_cap_nhat")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date updatedDate;
+
+    @OneToMany(mappedBy = "category")
+    private List<Product> products;
+
+    // Lifecycle Callbacks
+    @PrePersist
+    protected void onCreate() {
+        createdDate = new Date();
+        updatedDate = new Date();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedDate = new Date();
+    }
+
+    // Constructors
+    public Category() {}
+
+    // Getters and Setters
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
+    public Date getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(Date createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public Date getUpdatedDate() {
+        return updatedDate;
+    }
+
+    public void setUpdatedDate(Date updatedDate) {
+        this.updatedDate = updatedDate;
+    }
+
+    public List<Product> getProducts() {
+        return products;
+    }
+
+    public void setProducts(List<Product> products) {
+        this.products = products;
+    }
+}

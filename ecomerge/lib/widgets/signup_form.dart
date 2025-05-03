@@ -1,8 +1,10 @@
 import 'package:e_commerce_app/Controllers/User_controller.dart';
 import 'package:e_commerce_app/Models/User_model.dart';
+import 'package:e_commerce_app/providers/signup_form_provider.dart';
 import 'package:e_commerce_app/widgets/SuccessMessage.dart';
 import 'package:flutter/material.dart';
-import 'location_selection_widget.dart';
+import 'package:provider/provider.dart';
+import 'location_selection.dart';
 
 class SignForm extends StatefulWidget {
   const SignForm({Key? key}) : super(key: key);
@@ -17,116 +19,113 @@ class _SignFormState extends State<SignForm> {
   final FocusNode _nameFocusNode = FocusNode();
   final FocusNode _addressFocusNode = FocusNode();
   final FocusNode _rePasswordFocusNode = FocusNode();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _addressController = TextEditingController();
-  final TextEditingController _rePasswordController = TextEditingController();
-  bool _isPasswordVisible = false;
-  bool _isRePasswordVisible = false;
 
   final UserController _userController = UserController();
-  bool _isLoading = false;
-  String? _errorMessage;
+
   @override
   void initState() {
     super.initState();
   }
-  
-   Future<void> _handleSignup() async {
-    print(_emailController.text);
-    print(_nameController.text);
-    print(_passwordController.text);
-    print(_addressController.text);
-    print(_rePasswordController.text);
+
+  void _handleLocationSelected(String province, String district, String ward) {
+    final formProvider =
+        Provider.of<SignupFormProvider>(context, listen: false);
+    formProvider.setLocation(province, district, ward);
+  }
+
+  String getFullAddress() {
+    final formProvider =
+        Provider.of<SignupFormProvider>(context, listen: false);
+    final specificAddress = formProvider.addressController.text;
+    final locationParts = [
+      formProvider.selectedWard,
+      formProvider.selectedDistrict,
+      formProvider.selectedProvince
+    ].where((part) => part.isNotEmpty).join(', ');
+
+    return [specificAddress, locationParts]
+        .where((part) => part.isNotEmpty)
+        .join(', ');
+  }
+
+  Future<void> _handleSignup() async {
+    final formProvider =
+        Provider.of<SignupFormProvider>(context, listen: false);
+
     // Validate fields
-    if (_emailController.text.isEmpty ||
-        _nameController.text.isEmpty ||
-        _passwordController.text.isEmpty ||
-        _rePasswordController.text.isEmpty ||
-         _addressController.text.isEmpty) {
-      setState(() {
-        _errorMessage = 'Vui lòng điền đầy đủ thông tin';
-      });
+    if (formProvider.emailController.text.isEmpty ||
+        formProvider.nameController.text.isEmpty ||
+        formProvider.passwordController.text.isEmpty ||
+        formProvider.rePasswordController.text.isEmpty ||
+        formProvider.addressController.text.isEmpty) {
+      formProvider.setErrorMessage('Vui lòng điền đầy đủ thông tin');
       return;
     }
 
     // Validate passwords match
-    if (_passwordController.text != _rePasswordController.text) {
-      setState(() {
-        _errorMessage = 'mật khẩu không trùng khớp';
-      });
+    if (formProvider.passwordController.text !=
+        formProvider.rePasswordController.text) {
+      formProvider.setErrorMessage('mật khẩu không trùng khớp');
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    formProvider.setLoading(true);
+    formProvider.setErrorMessage(null);
 
     try {
       // Prepare user data
       final userData = {
-        'email': _emailController.text,
-        'full_name': _nameController.text,    // Changed from fullName to full_name
-        'password': _passwordController.text,
-        'address': _addressController.text,
+        'email': formProvider.emailController.text,
+        'full_name': formProvider.nameController.text,
+        'password': formProvider.passwordController.text,
+        'address': formProvider.addressController.text,
         'role': 'customer',
         'status': true,
         'customer_points': 0,
         'avatar': null,
         'created_date': DateTime.now().toIso8601String(),
-        'chat_id': null  // Will be set by controller
+        'chat_id': null
       };
-     print('Sending user data: $userData');
 
       // Call register method
       await _userController.register(userData);
 
-      // Show success message and navigate
-// In your _handleSignup method, replace the existing SnackBar with:
+      if (mounted) {
+        // Clear all input fields
+        formProvider.emailController.clear();
+        formProvider.passwordController.clear();
+        formProvider.nameController.clear();
+        formProvider.addressController.clear();
+        formProvider.rePasswordController.clear();
 
-if (mounted) {
-  // Clear all input fields
-  _emailController.clear();
-  _passwordController.clear();
-  _nameController.clear();
-  _addressController.clear();
-  _rePasswordController.clear();
-  
-    SuccessMessage.show(
-      context,
-      title: 'Đăng ký thành công!',
-      duration: const Duration(seconds: 2),
-      onDismissed: () {
-        Navigator.pushNamedAndRemoveUntil(
-          context, 
-          '/login',
-          (route) => false,
+        SuccessMessage.show(
+          context,
+          title: 'Đăng ký thành công!',
+          duration: const Duration(seconds: 2),
+          onDismissed: () {
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/login',
+              (route) => false,
+            );
+          },
         );
-      },
-    );
-  }
+      }
     } catch (e) {
-      setState(() {
       // Extract clean error message
       String errorMsg = e.toString().replaceAll('Exception: ', '');
-      _errorMessage = errorMsg;
-      
+      formProvider.setErrorMessage(errorMsg);
+
       // Show specific message for email duplicate
       if (errorMsg.contains('Email đã tồn tại')) {
         _emailFocusNode.requestFocus(); // Focus email field
       }
-    });
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        formProvider.setLoading(false);
       }
     }
   }
-
 
   @override
   void dispose() {
@@ -135,16 +134,13 @@ if (mounted) {
     _nameFocusNode.dispose();
     _addressFocusNode.dispose();
     _rePasswordFocusNode.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _nameController.dispose();
-    _addressController.dispose();
-    _rePasswordController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final formProvider = Provider.of<SignupFormProvider>(context);
+
     return Container(
       width: 400,
       padding: EdgeInsets.all(20),
@@ -155,25 +151,21 @@ if (mounted) {
       child: Column(
         children: [
           Text(
-            'Đăng ký',
+            'Đăng ký',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
-          
           SizedBox(height: 20),
           TextFormField(
             focusNode: _emailFocusNode,
-            controller: _emailController,
+            controller: formProvider.emailController,
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
             onChanged: (value) {
-    // Clear error message when user starts typing
-              if (_errorMessage != null) {
-                setState(() {
-                  _errorMessage = null;
-                });
+              if (formProvider.errorMessage != null) {
+                formProvider.setErrorMessage(null);
               }
             },
             onFieldSubmitted: (_) {
@@ -190,23 +182,20 @@ if (mounted) {
           ),
           SizedBox(height: 10),
           TextFormField(
-            controller: _nameController,
+            controller: formProvider.nameController,
             focusNode: _nameFocusNode,
             keyboardType: TextInputType.text,
             textInputAction: TextInputAction.next,
             onChanged: (value) {
-    // Clear error message when user starts typing
-                if (_errorMessage != null) {
-                  setState(() {
-                    _errorMessage = null;
-                  });
-                }
-              },
+              if (formProvider.errorMessage != null) {
+                formProvider.setErrorMessage(null);
+              }
+            },
             onFieldSubmitted: (_) {
               FocusScope.of(context).requestFocus(_addressFocusNode);
             },
             decoration: InputDecoration(
-              hintText: 'Nhập tên người dùng',
+              hintText: 'Nhập tên người dùng',
               prefixIcon: Icon(
                 Icons.person,
                 color: Colors.grey[600],
@@ -215,24 +204,28 @@ if (mounted) {
             ),
           ),
           SizedBox(height: 10),
+          LocationSelection(
+            onLocationSelected: _handleLocationSelected,
+            initialProvince: formProvider.selectedProvince,
+            initialDistrict: formProvider.selectedDistrict,
+            initialWard: formProvider.selectedWard,
+          ),
+          SizedBox(height: 10),
           TextFormField(
-             controller: _addressController,
+            controller: formProvider.addressController,
             focusNode: _addressFocusNode,
             keyboardType: TextInputType.text,
             textInputAction: TextInputAction.next,
             onChanged: (value) {
-    // Clear error message when user starts typing
-    if (_errorMessage != null) {
-      setState(() {
-        _errorMessage = null;
-      });
-    }
-  },
+              if (formProvider.errorMessage != null) {
+                formProvider.setErrorMessage(null);
+              }
+            },
             onFieldSubmitted: (_) {
               FocusScope.of(context).requestFocus(_passwordFocusNode);
             },
             decoration: InputDecoration(
-              hintText: 'Nhập địa chỉ giao hàng',
+              hintText: 'Nhập địa chỉ chi tiết khác',
               prefixIcon: Icon(
                 Icons.location_city,
                 color: Colors.grey[600],
@@ -242,19 +235,16 @@ if (mounted) {
           ),
           SizedBox(height: 10),
           TextFormField(
-            controller: _passwordController,
+            controller: formProvider.passwordController,
             focusNode: _passwordFocusNode,
             keyboardType: TextInputType.text,
             textInputAction: TextInputAction.next,
-            obscureText: !_isPasswordVisible,
+            obscureText: !formProvider.isPasswordVisible,
             onChanged: (value) {
-    // Clear error message when user starts typing
-    if (_errorMessage != null) {
-      setState(() {
-        _errorMessage = null;
-      });
-    }
-  },
+              if (formProvider.errorMessage != null) {
+                formProvider.setErrorMessage(null);
+              }
+            },
             decoration: InputDecoration(
               hintText: 'Mật khẩu',
               prefixIcon: Icon(
@@ -262,79 +252,68 @@ if (mounted) {
                 color: Colors.grey[600],
               ),
               suffixIcon: IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _isPasswordVisible = !_isPasswordVisible;
-                    });
-                  },
-                  icon: Icon(
-                    _isPasswordVisible
-                        ? Icons.visibility_off
-                        : Icons.visibility,
-                    color: Colors.grey[600],
-                  )),
+                onPressed: () => formProvider.togglePasswordVisibility(),
+                icon: Icon(
+                  formProvider.isPasswordVisible
+                      ? Icons.visibility_off
+                      : Icons.visibility,
+                  color: Colors.grey[600],
+                ),
+              ),
               border: OutlineInputBorder(),
             ),
           ),
           SizedBox(height: 10),
           TextFormField(
-             controller: _rePasswordController,
+            controller: formProvider.rePasswordController,
             focusNode: _rePasswordFocusNode,
             keyboardType: TextInputType.text,
             textInputAction: TextInputAction.next,
-            obscureText: !_isRePasswordVisible,
+            obscureText: !formProvider.isRePasswordVisible,
             onChanged: (value) {
-    // Clear error message when user starts typing
-    if (_errorMessage != null) {
-      setState(() {
-        _errorMessage = null;
-      });
-    }
-  },
+              if (formProvider.errorMessage != null) {
+                formProvider.setErrorMessage(null);
+              }
+            },
             decoration: InputDecoration(
-              hintText: 'Nhập lại Mật khẩu',
+              hintText: 'Nhập lại Mật khẩu',
               prefixIcon: Icon(
                 Icons.lock_outline,
                 color: Colors.grey[600],
               ),
               suffixIcon: IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _isRePasswordVisible = !_isRePasswordVisible;
-                    });
-                  },
-                  icon: Icon(
-                    _isRePasswordVisible
-                        ? Icons.visibility_off
-                        : Icons.visibility,
-                    color: Colors.grey[600],
-                  )),
+                onPressed: () => formProvider.toggleRePasswordVisibility(),
+                icon: Icon(
+                  formProvider.isRePasswordVisible
+                      ? Icons.visibility_off
+                      : Icons.visibility,
+                  color: Colors.grey[600],
+                ),
+              ),
               border: OutlineInputBorder(),
             ),
           ),
           SizedBox(height: 10),
-          if (_errorMessage != null)
+          if (formProvider.errorMessage != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Text(
-                _errorMessage!,
+                formProvider.errorMessage!,
                 style: const TextStyle(color: Colors.red),
               ),
             ),
           SizedBox(
-            width: double.infinity, // Làm cho button rộng hết cỡ
+            width: double.infinity,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                padding:
-                    EdgeInsets.symmetric(vertical: 18), // Tăng chiều cao button
-                backgroundColor:
-                    const Color.fromARGB(255, 234, 29, 7), // Màu nền button
+                padding: EdgeInsets.symmetric(vertical: 18),
+                backgroundColor: const Color.fromARGB(255, 234, 29, 7),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              onPressed: _isLoading ? null : _handleSignup,
-              child: _isLoading
+              onPressed: formProvider.isLoading ? null : _handleSignup,
+              child: formProvider.isLoading
                   ? const SizedBox(
                       height: 20,
                       width: 20,
