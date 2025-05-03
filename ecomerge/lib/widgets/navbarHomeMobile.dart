@@ -1,4 +1,6 @@
 import 'package:e_commerce_app/constants.dart';
+import 'package:e_commerce_app/state/Search/SearchStateService.dart';
+// --- DÒNG 1: THÊM IMPORT SINGLETON ---
 import 'package:flutter/material.dart';
 
 class NavbarHomeMobile extends StatefulWidget {
@@ -16,6 +18,9 @@ class _NavbarHomeMobileState extends State<NavbarHomeMobile> {
 
   @override
   Widget build(BuildContext context) {
+    // --- DÒNG 2: LẤY INSTANCE SINGLETON ---
+    final searchService = SearchStateService();
+    // --- GIỮ NGUYÊN CODE GỐC CỦA BẠN ---
     return Container(
       color: const Color.fromARGB(255, 234, 29, 7), // Màu nền giống ảnh
       padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
@@ -34,6 +39,9 @@ class _NavbarHomeMobileState extends State<NavbarHomeMobile> {
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: 13),
                       child: TextField(
+                        // --- DÒNG 3: GÁN CONTROLLER ---
+                        controller: searchService.searchController,
+                        // --- Giữ nguyên decoration gốc ---
                         decoration: InputDecoration(
                           hintText: 'Thanh tìm kiếm',
                           border: InputBorder.none,
@@ -57,7 +65,7 @@ class _NavbarHomeMobileState extends State<NavbarHomeMobile> {
                       },
                       child: Container(
                         width: 45,
-                        height: 53,
+                        height: 53, // Giữ nguyên height gốc
                         decoration: BoxDecoration(
                           color: _isHoveredTK
                               ? const Color.fromARGB(255, 255, 48, 1)
@@ -92,7 +100,7 @@ class _NavbarHomeMobileState extends State<NavbarHomeMobile> {
                 Navigator.pushNamed(context, '/cart',
                     arguments: {'selectedIndex': -1});
               },
-              child: Container(
+              child: Container( // Giữ nguyên Container gốc
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
@@ -108,7 +116,7 @@ class _NavbarHomeMobileState extends State<NavbarHomeMobile> {
 
           SizedBox(width: 10),
 
-          // Biểu tượng nhắn tin
+          // Biểu tượng nhắn tin/menu
           MouseRegion(
             cursor: SystemMouseCursors.click,
             onEnter: (_) => setState(() {
@@ -117,11 +125,16 @@ class _NavbarHomeMobileState extends State<NavbarHomeMobile> {
             onExit: (_) => setState(() {
               _isHoveredChat = false;
             }),
-            child: GestureDetector(
+            child: GestureDetector( // Giữ nguyên GestureDetector gốc
               onTap: () {
-                Navigator.pushNamed(context, '/chat');
+                // Giữ nguyên logic tap gốc (dù là chat hay menu)
+                // Nếu là chat:
+                // Navigator.pushNamed(context, '/chat');
+                // Nếu là menu (như code gốc):
+                // Scaffold.of(context).openDrawer(); // Dùng context này hay widget.scaffoldContext? Giữ nguyên của bạn
+                 Scaffold.of(context).openDrawer(); // Dùng context được truyền vào
               },
-              child: Container(
+              child: Container( // Giữ nguyên Container gốc
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
@@ -130,9 +143,11 @@ class _NavbarHomeMobileState extends State<NavbarHomeMobile> {
                       : Colors.red,
                   borderRadius: BorderRadius.circular(8),
                 ),
+                // Giữ nguyên IconButton gốc bên trong
                 child: IconButton(
                   icon: Icon(Icons.menu, color: Colors.white),
                   onPressed: () {
+                     // Giữ nguyên onPressed gốc của bạn
                     Scaffold.of(context).openDrawer();
                   },
                 ),

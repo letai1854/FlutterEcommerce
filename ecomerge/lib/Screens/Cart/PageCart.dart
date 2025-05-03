@@ -1,5 +1,5 @@
-import 'package:e_commerce_app/widgets/NavbarMobile/NavarFixTablet.dart';
-import 'package:e_commerce_app/widgets/NavbarMobile/NavbarMobile.dart';
+import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForTablet.dart';
+import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
 import 'package:e_commerce_app/widgets/Cart/BodyCart.dart';
 import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
 import 'package:flutter/material.dart';
@@ -86,14 +86,17 @@ class _PageCartState extends State<PageCart> {
   // Controllers and keys
   final ScrollController _scrollController = ScrollController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  
   final GlobalKey _paymentInfoKey = GlobalKey();
   late ValueNotifier<bool> _isPaymentInfoBottomVisible;
 
   @override
   void initState() {
     super.initState();
-    _isPaymentInfoBottomVisible = ValueNotifier<bool>(cartItems.length >= 4);
+    _isPaymentInfoBottomVisible = ValueNotifier<bool>(false);
     _scrollController.addListener(_onScroll);
+    // --- Kiểm tra visibility lần đầu sau khi layout ---
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateStickyPaymentVisibility());
   }
 
   @override
@@ -103,58 +106,87 @@ class _PageCartState extends State<PageCart> {
     _isPaymentInfoBottomVisible.dispose();
     super.dispose();
   }
+void _updateStickyPaymentVisibility() {
+    if (!mounted) return; // Đảm bảo widget còn tồn tại
 
-  // Scroll handler
-  void _onScroll() {
+    // Điều kiện 1: Số lượng sản phẩm phải đủ lớn
+    bool hasEnoughItems = cartItems.length >= 4;
+
+    // Điều kiện 2: Thanh PaymentInfo cuộn phải đi ra khỏi màn hình
+    bool isScrollablePaymentInfoOffScreen = false;
     if (_paymentInfoKey.currentContext != null) {
-      final RenderBox paymentInfoRenderBox =
-          _paymentInfoKey.currentContext!.findRenderObject() as RenderBox;
-      final position = paymentInfoRenderBox.localToGlobal(Offset.zero);
-      double paymentInfoOffset = position.dy;
-      double screenHeight = MediaQuery.of(context).size.height;
-
-      final isVisible = paymentInfoOffset > screenHeight;
-      if (_isPaymentInfoBottomVisible.value != isVisible) {
-        _isPaymentInfoBottomVisible.value = isVisible;
+      final RenderBox? paymentInfoRenderBox =
+          _paymentInfoKey.currentContext!.findRenderObject() as RenderBox?;
+      if (paymentInfoRenderBox != null) {
+         final position = paymentInfoRenderBox.localToGlobal(Offset.zero);
+         final bottomEdgePosition = position.dy + paymentInfoRenderBox.size.height;
+         final screenHeight = MediaQuery.of(context).size.height;
+         // Coi là off-screen nếu cạnh dưới của nó vượt quá chiều cao màn hình
+         isScrollablePaymentInfoOffScreen = bottomEdgePosition > screenHeight;
       }
+    }
+
+    // Kết hợp 2 điều kiện
+    final bool shouldBeVisible = hasEnoughItems && isScrollablePaymentInfoOffScreen;
+
+    // Chỉ cập nhật notifier nếu giá trị thay đổi
+    if (_isPaymentInfoBottomVisible.value != shouldBeVisible) {
+      _isPaymentInfoBottomVisible.value = shouldBeVisible;
     }
   }
 
+  // Scroll handler
+  void _onScroll() {
+    // if (_paymentInfoKey.currentContext != null) {
+    //   final RenderBox paymentInfoRenderBox =
+    //       _paymentInfoKey.currentContext!.findRenderObject() as RenderBox;
+    //   final position = paymentInfoRenderBox.localToGlobal(Offset.zero);
+    //   double paymentInfoOffset = position.dy;
+    //   double screenHeight = MediaQuery.of(context).size.height;
+
+    //   final isVisible = paymentInfoOffset > screenHeight;
+    //   if (_isPaymentInfoBottomVisible.value != isVisible) {
+    //     _isPaymentInfoBottomVisible.value = isVisible;
+    //   }
+    // }
+    _updateStickyPaymentVisibility();
+  }
+
   // Cart item handlers
-  void toggleSelectItem(int itemId) {
+void toggleSelectItem(int itemId) {
     setState(() {
-      for (var item in cartItems) {
-        if (item['id'] == itemId) {
-          item['isSelected'] = !item['isSelected'];
-        }
+      final itemIndex = cartItems.indexWhere((item) => item['id'] == itemId);
+      if (itemIndex != -1) {
+        cartItems[itemIndex]['isSelected'] = !cartItems[itemIndex]['isSelected'];
       }
     });
+    _updateStickyPaymentVisibility(); // Cập nhật sau khi thay đổi trạng thái chọn
   }
 
   void increaseQuantity(int itemId) {
     setState(() {
-      for (var item in cartItems) {
-        if (item['id'] == itemId) {
-          item['quantity']++;
-        }
+      final itemIndex = cartItems.indexWhere((item) => item['id'] == itemId);
+      if (itemIndex != -1) {
+        cartItems[itemIndex]['quantity']++;
       }
     });
+     _updateStickyPaymentVisibility(); // Cập nhật sau khi thay đổi số lượng (ít ảnh hưởng hơn)
   }
 
-  void decreaseQuantity(int itemId) {
+ void decreaseQuantity(int itemId) {
     setState(() {
-      for (var item in cartItems) {
-        if (item['id'] == itemId && item['quantity'] > 1) {
-          item['quantity']--;
-        }
+      final itemIndex = cartItems.indexWhere((item) => item['id'] == itemId);
+      if (itemIndex != -1 && cartItems[itemIndex]['quantity'] > 1) {
+        cartItems[itemIndex]['quantity']--;
       }
     });
+    _updateStickyPaymentVisibility(); // Cập nhật sau khi thay đổi số lượng
   }
-
-  void removeItem(int itemId) {
+void removeItem(int itemId) {
     setState(() {
       cartItems.removeWhere((item) => item['id'] == itemId);
     });
+    _updateStickyPaymentVisibility(); // --- Cập nhật sau khi xóa item ---
   }
 
   void toggleSelectAll(bool value) {
@@ -163,6 +195,7 @@ class _PageCartState extends State<PageCart> {
         item['isSelected'] = value;
       }
     });
+    _updateStickyPaymentVisibility(); // Cập nhật sau khi thay đổi trạng thái chọn
   }
 
   void unselectAllItems() {
@@ -171,14 +204,13 @@ class _PageCartState extends State<PageCart> {
         item['isSelected'] = false;
       }
     });
+     _updateStickyPaymentVisibility(); // Cập nhật sau khi thay đổi trạng thái chọn
   }
-
-  // Calculation methods
-  double calculateSubtotal() {
+   double calculateSubtotal() {
     double subtotal = 0;
     for (var item in cartItems) {
-      if (item['isSelected']) {
-        subtotal += item['price'] * item['quantity'];
+      if (item['isSelected'] == true) { // Kiểm tra rõ ràng true
+        subtotal += (item['price'] ?? 0) * (item['quantity'] ?? 1);
       }
     }
     return subtotal;
@@ -189,7 +221,9 @@ class _PageCartState extends State<PageCart> {
   }
 
   double calculateTotal() {
-    return calculateSubtotal() + calculateTax() + shippingFee;
+    final subtotal = calculateSubtotal();
+    if (subtotal == 0) return 0; // Nếu không chọn gì thì tổng là 0
+    return subtotal + calculateTax() + shippingFee;
   }
 
   @override
@@ -219,12 +253,12 @@ class _PageCartState extends State<PageCart> {
 
         if (screenWidth < 768) {
           // Mobile layout
-          return NavbarFixmobile(
+          return NavbarFormobile(
             body: body,
           );
         } else if (screenWidth < 1100) {
           // Tablet layout
-          return NavbarFixTablet(
+          return NavbarForTablet(
             body: body,
           );
         } else {

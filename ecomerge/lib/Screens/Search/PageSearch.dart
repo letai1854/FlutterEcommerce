@@ -2,8 +2,8 @@ import 'dart:math';
 
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:e_commerce_app/Constants/productTest.dart';
-import 'package:e_commerce_app/widgets/NavbarMobile/NavarFixTablet.dart';
-import 'package:e_commerce_app/widgets/NavbarMobile/NavbarMobile.dart';
+import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForTablet.dart';
+import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
 import 'package:e_commerce_app/widgets/Product/PaginatedProductGrid.dart';
 import 'package:e_commerce_app/widgets/Search/FilterPanel.dart';
 import 'package:e_commerce_app/widgets/Search/SearchProduct.dart';
@@ -184,12 +184,12 @@ class _PageSearchState extends State<PageSearch> {
 
         if (screenWidth < 768) {
           // Mobile layout
-          return NavbarFixmobile(
+          return NavbarFormobile(
             body: body,
           );
         } else if (screenWidth < 1100) {
           // Tablet layout
-          return NavbarFixTablet(
+          return NavbarForTablet(
             body: body,
           );
         } else {

@@ -1,5 +1,5 @@
-import 'package:e_commerce_app/widgets/NavbarMobile/NavarFixTablet.dart';
-import 'package:e_commerce_app/widgets/NavbarMobile/NavbarMobile.dart';
+import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForTablet.dart';
+import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
 import 'package:e_commerce_app/widgets/Payment/bodyPayment.dart'; // Đổi tên file nếu cần
 import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
 import 'package:e_commerce_app/widgets/Payment/AddressSelector.dart';
@@ -366,7 +366,7 @@ class _PagePaymentState extends State<PagePayment> {
             onPressed: () {
               Navigator.of(context).pop(); // Đóng dialog
               // TODO: Chuyển hướng đến trang xác nhận đơn hàng hoặc trang chủ
-              // Navigator.of(context).pushReplacementNamed('/order_confirmation');
+              Navigator.pushReplacementNamed(context, '/payment_success');
                print("PagePayment: Order placed successfully. Navigating away...");
             },
             child: const Text('OK'),
@@ -374,6 +374,8 @@ class _PagePaymentState extends State<PagePayment> {
         ],
       ),
     );
+    Navigator.pushReplacementNamed(context, '/payment_success');
+
   }
 
   //============================================================================
@@ -493,13 +495,13 @@ class _PagePaymentState extends State<PagePayment> {
 
         if (screenWidth < 768) {
           // Mobile layout
-          return NavbarFixmobile( // Giả sử NavbarFixmobile là Scaffold chứa AppBar và body
+          return NavbarFormobile( // Giả sử NavbarFixmobile là Scaffold chứa AppBar và body
             body: body,
             // title: 'Thanh toán', // Có thể thêm title cho AppBar
           );
         } else if (screenWidth < 1100) {
           // Tablet layout
-          return NavbarFixTablet( // Giả sử NavbarFixTablet tương tự
+          return NavbarForTablet( // Giả sử NavbarFixTablet tương tự
             body: body,
              // title: 'Thanh toán',
           );

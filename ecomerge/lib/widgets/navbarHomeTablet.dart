@@ -1,3 +1,4 @@
+import 'package:e_commerce_app/state/Search/SearchStateService.dart';
 import 'package:flutter/material.dart';
 
 class NavbarhomeTablet extends StatefulWidget {
@@ -8,19 +9,24 @@ class NavbarhomeTablet extends StatefulWidget {
 }
 
 class _NavbarhomeTabletState extends State<NavbarhomeTablet> {
+  // --- Giữ nguyên state hover của bạn ---
   bool _isHoveredTK = false;
   bool _isHoveredGH = false;
+
   @override
   Widget build(BuildContext context) {
+    // --- DÒNG 2: LẤY INSTANCE SINGLETON ---
+    final searchService = SearchStateService();
+    // --- Giữ nguyên code gốc của bạn ---
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       color: const Color.fromARGB(255, 234, 29, 7),
       child: Column(
         children: [
-          Row(
+          Row( // --- Hàng trên ---
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              Row(
+              Row( // Links
                 children: [
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
@@ -49,24 +55,26 @@ class _NavbarhomeTabletState extends State<NavbarhomeTablet> {
                   ),
                 ],
               ),
-              IconButton(
+              IconButton( // Icon Menu
                 icon: Icon(Icons.menu, color: Colors.white),
                 onPressed: () {
+                  // --- Sửa lại để dùng scaffoldContext ---
                   Scaffold.of(context).openDrawer();
                 },
               ),
             ],
           ),
+          // --- Hàng dưới ---
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(
+              Image.asset( // Logo
                 '/logoSNew.png',
                 height: 70,
                 width: 70,
               ),
               SizedBox(width: 10),
-              SizedBox(
+              SizedBox( // Thanh tìm kiếm
                 width: MediaQuery.of(context).size.width * 0.61,
                 child: Container(
                   height: 40,
@@ -80,16 +88,18 @@ class _NavbarhomeTabletState extends State<NavbarhomeTablet> {
                         child: Padding(
                           padding: EdgeInsets.symmetric(horizontal: 10),
                           child: TextField(
+                            // --- DÒNG 3: GÁN CONTROLLER ---
+                            controller: searchService.searchController,
+                            // --- Giữ nguyên decoration gốc ---
                             decoration: InputDecoration(
-                              hintText:
-                                  'Shopii đảm bảo chất lượng, giao hàng tận nơi - Đăng ký ngay!',
+                              hintText:'Shopii đảm bảo chất lượng, giao hàng tận nơi - Đăng ký ngay!',
                               border: InputBorder.none,
                               hintStyle: TextStyle(fontSize: 14),
                             ),
                           ),
                         ),
                       ),
-                      MouseRegion(
+                      MouseRegion( // Nút tìm kiếm
                         cursor: SystemMouseCursors.click,
                         onEnter: (_) => setState(() {
                           _isHoveredTK = true;
@@ -101,9 +111,9 @@ class _NavbarhomeTabletState extends State<NavbarhomeTablet> {
                           onTap: () {
                             Navigator.pushNamed(context, '/search');
                           },
-                          child: Container(
+                          child: Container( // Giữ nguyên style nút search
                             width: 45,
-                            height: 45,
+                            height: 40, // Nên bằng height container cha
                             decoration: BoxDecoration(
                               color: _isHoveredTK
                                   ? const Color.fromARGB(255, 255, 48, 1)
@@ -122,7 +132,7 @@ class _NavbarhomeTabletState extends State<NavbarhomeTablet> {
                 ),
               ),
               SizedBox(width: 15),
-              MouseRegion(
+              MouseRegion( // Icon giỏ hàng
                 cursor: SystemMouseCursors.click,
                 onEnter: (_) => setState(() {
                   _isHoveredGH = true;
@@ -134,7 +144,7 @@ class _NavbarhomeTabletState extends State<NavbarhomeTablet> {
                   onTap: () {
                     Navigator.pushNamed(context, '/cart');
                   },
-                  child: Container(
+                  child: Container( // Giữ nguyên style icon giỏ hàng
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(

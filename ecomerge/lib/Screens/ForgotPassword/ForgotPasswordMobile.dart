@@ -1,5 +1,5 @@
 import 'package:e_commerce_app/widgets/ForgotPassword/bodyForgotPassword.dart';
-import 'package:e_commerce_app/widgets/NavbarMobile/NavbarMobile.dart';
+import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
 import 'package:flutter/material.dart';
 class Forgotpasswordmobile extends StatefulWidget {
   const Forgotpasswordmobile({super.key});
@@ -11,7 +11,7 @@ class Forgotpasswordmobile extends StatefulWidget {
 class _ForgotpasswordmobileState extends State<Forgotpasswordmobile> {
   @override
   Widget build(BuildContext context) {
-      return NavbarFixmobile(
+      return NavbarFormobile(
       body: bodyForgotPassword(), // Truyền body vào NavbarFixmobile
     );
   }

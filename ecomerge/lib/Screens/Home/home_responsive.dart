@@ -9,7 +9,7 @@ import 'package:e_commerce_app/widgets/footer.dart';
 import 'package:e_commerce_app/widgets/headingbar/HeadingFeturePromotion.dart';
 import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
 import 'package:e_commerce_app/widgets/navbarHomeTablet.dart';
-import 'package:e_commerce_app/widgets/NavbarMobile/NavbarMobile.dart';
+import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:e_commerce_app/widgets/Home/bodyHomeMobile.dart';
@@ -125,7 +125,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
         if (screenWidth < 768) {
           if (!kIsWeb) {
             return Scaffold(
-              body: NavbarFixmobile(
+              body: NavbarFormobile(
                 body: bodyHomeMobile(),
               ),
             );

@@ -2,16 +2,16 @@ import 'package:e_commerce_app/constants.dart';
 import 'package:e_commerce_app/widgets/navbarHomeTablet.dart';
 import 'package:flutter/material.dart';
 
-class NavbarFixTablet extends StatefulWidget {
+class NavbarForTablet extends StatefulWidget {
   final Widget? body; // Add body parameter to display content
 
-  const NavbarFixTablet({super.key, this.body});
+  const NavbarForTablet({super.key, this.body});
 
   @override
-  State<NavbarFixTablet> createState() => _NavbarFixTabletState();
+  State<NavbarForTablet> createState() => _NavbarForTabletState();
 }
 
-class _NavbarFixTabletState extends State<NavbarFixTablet> {
+class _NavbarForTabletState extends State<NavbarForTablet> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
