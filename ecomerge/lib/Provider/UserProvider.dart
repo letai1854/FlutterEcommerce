@@ -53,7 +53,7 @@ class UserProvider {
   // Clear user session based on platform
   Future<void> clearUser() async {
     _currentUser = null;
-    
+
     if (kIsWeb) {
       html.window.localStorage.remove(USER_KEY);
     } else {
