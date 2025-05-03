@@ -1,4 +1,5 @@
 import 'package:e_commerce_app/Constants/productTest.dart';
+import 'package:e_commerce_app/constants.dart';
 import 'package:e_commerce_app/widgets/Product/CategoriesSection.dart';
 import 'package:e_commerce_app/widgets/Product/PaginatedProductGrid.dart';
 import 'package:e_commerce_app/widgets/Product/ProductItem.dart'
@@ -122,8 +123,8 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
         Widget? drawer;
         bool isMobileView = false;
 
-        if (screenWidth < 768) {
-          if (!kIsWeb) {
+        if (screenWidth < 600) {
+          if (isMobile) {
             return Scaffold(
               body: NavbarFixmobile(
                 body: bodyHomeMobile(),
@@ -205,7 +206,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
           body: _buildHomeContent(
             screenWidth,
             isMobile: isMobileView,
-            isTablet: screenWidth < 1100 && screenWidth >= 768,
+            isTablet: screenWidth < 1100 && screenWidth >= 600,
             isDesktop: screenWidth >= 1100,
           ),
         );
