@@ -5,7 +5,7 @@ import 'package:e_commerce_app/Screens/Admin/AdminReponsicve.dart';
 import 'package:e_commerce_app/Screens/Cart/PageCart.dart';
 import 'package:e_commerce_app/Screens/ForgotPassword/ForgotPasswordResponsive.dart';
 import 'package:e_commerce_app/Screens/ListProduct/PageListProduct.dart';
-import 'package:e_commerce_app/Screens/Payment/PaymentResponsive.dart';
+import 'package:e_commerce_app/Screens/Payment/PagePayment.dart';
 import 'package:e_commerce_app/Screens/ProductDetail/ProductDeitalResponsive.dart';
 import 'package:e_commerce_app/Screens/Search/PageSearch.dart';
 import 'package:e_commerce_app/Screens/SuccessPayment/SucccessPaymentResponsive.dart';
@@ -105,7 +105,7 @@ class MyApp extends StatelessWidget {
             );
           case '/payment':
             return PageRouteBuilder(
-              pageBuilder: (context, _, __) => const ResponsivePayment(),
+              pageBuilder: (context, _, __) => const PagePayment(),
               settings: settings,
             );
           case '/payment_success':
