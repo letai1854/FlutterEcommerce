@@ -159,6 +159,7 @@ class ProductList extends StatefulWidget {
   final double mainSpace;
   final double crossSpace;
   final Axis scroll;
+  final Key? productListKey;
 
   const ProductList({
     Key? key,
@@ -171,17 +172,23 @@ class ProductList extends StatefulWidget {
     required this.crossAxisCount,
     required this.mainSpace,
     required this.crossSpace,
-  }) : super(key: key);
+    this.productListKey,
+  }) : super(key: key ?? productListKey);
 
   @override
   State<ProductList> createState() => _ProductListState();
 }
 
-class _ProductListState extends State<ProductList> {
+class _ProductListState extends State<ProductList>
+    with AutomaticKeepAliveClientMixin {
   int currentIndex = 0;
   List<ProductItem> products = [];
   ScrollController _scrollController = ScrollController();
   bool isLoading = false;
+  bool initialized = false;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -191,23 +198,38 @@ class _ProductListState extends State<ProductList> {
   }
 
   @override
+  void didUpdateWidget(ProductList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.productData != widget.productData) {
+      _reloadData();
+    }
+  }
+
+  @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels ==
-            _scrollController.position.maxScrollExtent &&
+    if (_scrollController.position.maxScrollExtent -
+                _scrollController.position.pixels <=
+            300 &&
         !isLoading) {
       _loadMoreData();
     }
   }
 
-  // Hàm để cuộn sang trái
+  void _reloadData() {
+    setState(() {
+      products = [];
+      currentIndex = 0;
+    });
+    _loadMoreData();
+  }
+
   void _scrollLeft() {
-    final double scrollAmount =
-        widget.gridWidth * 0.8; // Cuộn 80% chiều rộng grid
+    final double scrollAmount = widget.gridWidth * 0.8;
     _scrollController.animateTo(
       (_scrollController.offset - scrollAmount)
           .clamp(0, _scrollController.position.maxScrollExtent),
@@ -216,10 +238,8 @@ class _ProductListState extends State<ProductList> {
     );
   }
 
-  // Hàm để cuộn sang phải
   void _scrollRight() {
-    final double scrollAmount =
-        widget.gridWidth * 0.8; // Cuộn 80% chiều rộng grid
+    final double scrollAmount = widget.gridWidth * 0.8;
     _scrollController.animateTo(
       (_scrollController.offset + scrollAmount)
           .clamp(0, _scrollController.position.maxScrollExtent),
@@ -229,10 +249,11 @@ class _ProductListState extends State<ProductList> {
   }
 
   Future<void> _loadMoreData() async {
-    if (currentIndex >= widget.productData.length) return;
+    if (currentIndex >= widget.productData.length || isLoading) return;
 
     setState(() => isLoading = true);
-    await Future.delayed(const Duration(seconds: 1));
+
+    await Future.delayed(const Duration(milliseconds: 500));
 
     int nextIndex = currentIndex + widget.itemsPerPage;
     List<ProductItem> newProducts = widget.productData
@@ -260,12 +281,13 @@ class _ProductListState extends State<ProductList> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return SizedBox(
       height: widget.gridHeight,
       width: widget.gridWidth,
       child: Stack(
         children: [
-          // GridView container
+          // Main content container
           Container(
             color: Colors.white,
             child: GridView.builder(
@@ -277,17 +299,14 @@ class _ProductListState extends State<ProductList> {
                 mainAxisSpacing: widget.mainSpace,
                 crossAxisSpacing: widget.crossSpace,
               ),
-              itemCount: products.length + (isLoading ? 1 : 0),
+              itemCount: products.length,
               itemBuilder: (context, index) {
-                if (index == products.length) {
-                  return const Center(child: CircularProgressIndicator());
-                }
                 return products[index];
               },
             ),
           ),
 
-          // Left arrow button
+          // Left arrow button - always visible
           Positioned(
             left: 5,
             top: 0,
@@ -316,7 +335,7 @@ class _ProductListState extends State<ProductList> {
             ),
           ),
 
-          // Right arrow button
+          // Right arrow button - always visible
           Positioned(
             right: 5,
             top: 0,
@@ -345,6 +364,37 @@ class _ProductListState extends State<ProductList> {
               ),
             ),
           ),
+
+          // Center loading indicator with overlay
+          if (isLoading)
+            Positioned.fill(
+              child: Center(
+                child: Container(
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                      SizedBox(height: 10),
+                      Text(
+                        'Đang tải dữ liệu...',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

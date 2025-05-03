@@ -26,6 +26,9 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
   final GlobalKey _categoriesSectionKey = GlobalKey();
   final GlobalKey _paginatedGridKey = GlobalKey();
   final GlobalKey _footerKey = GlobalKey();
+  final GlobalKey _newProductsKey = GlobalKey(debugLabel: 'newProducts');
+  final GlobalKey _promoProductsKey = GlobalKey(debugLabel: 'promoProducts');
+  final GlobalKey _bestSellerKey = GlobalKey(debugLabel: 'bestSeller');
   bool _showFloatingCategories = false;
   bool _isPanelExpanded = false; // For mobile panel expansion
   int? _selectedCategory;
@@ -232,30 +235,13 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                   child: Column(
                     children: [
                       if (kIsWeb && isMobile)
-                        // Container(
-                        //   height: 60,
-                        //   child: ListView(
-                        //     scrollDirection: Axis.horizontal,
-                        //     children: [
-                        //       _buildHorizontalCategoryItem(
-                        //           'Laptop', 'assets/banner6.jpg', 0),
-                        //       _buildHorizontalCategoryItem(
-                        //           'Ram', 'assets/banner6.jpg', 1),
-                        //       _buildHorizontalCategoryItem(
-                        //           'Card đồ họa', 'assets/banner6.jpg', 2),
-                        //       _buildHorizontalCategoryItem(
-                        //           'Màn hình', 'assets/banner6.jpg', 3),
-                        //       _buildHorizontalCategoryItem(
-                        //           'Ổ cứng', 'assets/banner6.jpg', 4),
-                        //     ],
-                        //   ),
-                        // ),
                         Heading(Icons.bolt, Colors.yellowAccent,
                             'Sản phẩm khuyến mãi'),
                       SizedBox(height: 10),
                       Container(
                         height: 320,
                         child: product_item.ProductList(
+                          productListKey: _promoProductsKey,
                           scroll: Axis.horizontal,
                           productData: productData,
                           itemsPerPage: isMobile ? 6 : 7,
@@ -293,6 +279,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                               SizedBox(width: 10),
                               Expanded(
                                 child: product_item.ProductList(
+                                  productListKey: _newProductsKey,
                                   scroll: Axis.horizontal,
                                   productData: productData,
                                   itemsPerPage: 8,
@@ -311,9 +298,10 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                         Container(
                           height: isMobile ? 320 : 600,
                           child: product_item.ProductList(
+                            productListKey: _newProductsKey,
                             scroll: Axis.horizontal,
                             productData: productData,
-                            itemsPerPage: isMobile ? 6 : 12,
+                            itemsPerPage: !isMobile ? 12 : 10,
                             gridHeight: isMobile ? 250 : 600,
                             gridWidth: screenWidth,
                             childAspectRatio: isMobile ? 0.8 : 1.47,
@@ -329,6 +317,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                       Container(
                         height: isMobile ? 320 : 600,
                         child: product_item.ProductList(
+                          productListKey: _bestSellerKey,
                           scroll: Axis.horizontal,
                           productData: productData,
                           itemsPerPage: 12,
