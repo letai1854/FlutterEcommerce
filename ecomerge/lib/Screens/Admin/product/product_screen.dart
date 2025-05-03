@@ -44,56 +44,73 @@ class _ProductScreenState extends State<ProductScreen> {
     }
   }
 
-  // This method is not strictly necessary for the layout fix,
-  // but kept as it was in the original code.
-  // It needs to be integrated with the actual filtering logic.
   DateTime _getStartDate() {
     switch (_selectedFilter) {
       case 'Hôm nay':
-        // This calculation seems off for "Hôm nay". Should likely be start of today.
-        // Returning a dummy date for now as filtering isn't fully implemented.
         return DateTime.now().subtract(const Duration(days: 1));
       case 'Hôm qua':
-         // Returning a dummy date for now
         return DateTime.now().subtract(const Duration(days: 2));
       case 'Tuần này':
-        // Returning a dummy date for now
         return DateTime.now().subtract(const Duration(days: 7));
       case 'Tháng này':
-        // Returning a dummy date for now
         return DateTime.now().subtract(const Duration(days: 30));
       case 'Khoảng thời gian cụ thể':
-        return _customDateRange?.start ?? DateTime.now(); // Use start date from picker
+        return _customDateRange?.start ?? DateTime.now();
       default:
-        return DateTime(2020); // Default or earliest possible date
+        return DateTime(2020);
     }
   }
 
-  // Sample data for demonstration
+  // Sample data for demonstration - updated to include multiple images and variants
   final List<Map<String, dynamic>> _productData = List.generate(
-    25, // More data to potentially exceed screen width/height
+    25,
     (index) => {
-      'name': 'Sản phẩm rất dài để kiểm tra cuộn ngang của bảng dữ liệu số ${index + 1}',
-      'image': 'assets/product${(index % 3) + 1}.jpg', // Dummy image
+      'id': index + 1,
+      'name':
+          'Sản phẩm rất dài để kiểm tra cuộn ngang của bảng dữ liệu số ${index + 1}',
+      'images': [
+        'assets/product${(index % 3) + 1}.jpg',
+        'assets/product${((index + 1) % 3) + 1}.jpg',
+        'assets/product${((index + 2) % 3) + 1}.jpg',
+      ],
       'brand': 'Thương hiệu ${index % 5 + 1}',
       'category': 'Danh mục ${index % 3 + 1}',
-      'description': 'Mô tả chi tiết cho sản phẩm số ${index + 1}. Đây là một đoạn mô tả dài hơn để kiểm tra hiển thị.',
-      'price': (index + 1) * 1000000,
-      'quantity': index + 10,
-      'rating': (index % 5) + 1.0,
+      'description':
+          'Mô tả chi tiết cho sản phẩm số ${index + 1}. Đây là một đoạn mô tả dài hơn để kiểm tra hiển thị.',
       'createdDate': DateTime.now().subtract(Duration(days: index)),
-      'discount': index % 2 == 0 ? (index % 5) * 5 : 0, // Dummy discount
+      'updatedDate': DateTime.now()
+          .subtract(Duration(days: index % 5)), // Added updated date
+      'discount': index % 2 == 0 ? (index % 5) * 5 : 0,
+      'variants': List.generate(
+        2 + (index % 3),
+        (varIndex) => {
+          'id': varIndex + 1,
+          'name':
+              'Biến thể ${varIndex + 1} - ${index % 2 == 0 ? "Màu Đen" : "Màu Trắng"}, RAM ${8 + (varIndex * 8)}GB',
+          // Make SKU optional - only add for some variants
+          if ((index + varIndex) % 3 != 0)
+            'sku': 'SKU-${index + 1}-${varIndex + 1}',
+          'price': ((index + 1) * 1000000) + (varIndex * 500000),
+          'quantity': (index + 5) + (varIndex * 3),
+          'image': 'assets/product${((index + varIndex) % 3) + 1}.jpg',
+          'created_date': DateTime.now()
+              .subtract(Duration(days: index))
+              .toString()
+              .split(' ')[0],
+          'updated_date': DateTime.now()
+              .subtract(Duration(days: index % 3))
+              .toString()
+              .split(' ')[0],
+        },
+      ),
     },
   );
 
-  // State variable to control visibility of product list and add/update screen
   bool _showProductList = true;
 
-  // Thêm các biến cần thiết cho phân trang
   int _currentPage = 0;
   final int _rowsPerPage = 10;
 
-  // Lấy danh sách sản phẩm cho trang hiện tại
   List<Map<String, dynamic>> get _paginatedData {
     final startIndex = _currentPage * _rowsPerPage;
     final endIndex = min(startIndex + _rowsPerPage, _productData.length);
@@ -102,7 +119,6 @@ class _ProductScreenState extends State<ProductScreen> {
     return _productData.sublist(startIndex, endIndex);
   }
 
-  // Tính số trang dựa trên dữ liệu và số hàng mỗi trang
   int get _pageCount => (_productData.length / _rowsPerPage).ceil();
 
   @override
@@ -112,36 +128,30 @@ class _ProductScreenState extends State<ProductScreen> {
 
   @override
   void dispose() {
-    // Dispose any controllers if added (e.g., for search)
     super.dispose();
   }
 
-  // Function to handle product deletion
   void _deleteProduct(int index) {
     setState(() {
-      // TODO: Connect with controller for actual deletion from data source
-      // Example: await _productController.deleteProduct(_productData[index]['id']);
-
-      // Remove the product from the local data list
       _productData.removeAt(index);
-
-      // Adjust current page if the last item on the current page was deleted
-      // and there are still items on the previous page
-      if (_currentPage > 0 && _paginatedData.isEmpty && _productData.isNotEmpty) {
+      if (_currentPage > 0 &&
+          _paginatedData.isEmpty &&
+          _productData.isNotEmpty) {
         _currentPage--;
       }
-       // If the last item overall was deleted and we were on the last page
       if (_currentPage > 0 && _paginatedData.isEmpty && _productData.isEmpty) {
-         _currentPage = 0;
+        _currentPage = 0;
       }
     });
-    // TODO: Show a confirmation message (e.g., using ScaffoldMessenger)
     print('Deleted product at index $index');
   }
 
+  Widget _buildInfoRow(String label, String value, {int maxLength = 80}) {
+    String displayValue = value;
+    if (value.length > maxLength) {
+      displayValue = value.substring(0, maxLength) + '...';
+    }
 
-  // Add the _buildInfoRow method here inside _ProductScreenState
-  Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
@@ -156,7 +166,7 @@ class _ProductScreenState extends State<ProductScreen> {
           ),
           Expanded(
             child: Text(
-              value,
+              displayValue,
               style: const TextStyle(color: Colors.black87),
             ),
           ),
@@ -165,40 +175,142 @@ class _ProductScreenState extends State<ProductScreen> {
     );
   }
 
+  void _showVariantsDialog(Map<String, dynamic> product) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        'Biến thể của ${product['name']}',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                        softWrap: true,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                    )
+                  ],
+                ),
+                Divider(),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.5,
+                  ),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: product['variants'].length,
+                    itemBuilder: (context, index) {
+                      final variant = product['variants'][index];
+                      return Card(
+                        margin: EdgeInsets.symmetric(vertical: 4),
+                        child: ListTile(
+                          leading: Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              image: DecorationImage(
+                                image: AssetImage(variant['image']),
+                                fit: BoxFit.cover,
+                              ),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          title: Text(variant['name'],
+                              style: TextStyle(fontWeight: FontWeight.w500)),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (variant.containsKey('sku') &&
+                                  variant['sku'] != null &&
+                                  variant['sku'].toString().isNotEmpty)
+                                Text('Mã sự kiện: ${variant['sku']}'),
+                              Text(
+                                  'Giá: ${variant['price'].toStringAsFixed(0)} VNĐ'),
+                              Text('Tồn kho: ${variant['quantity']}'),
+                              Text('Ngày tạo: ${variant['created_date']}'),
+                              Text('Cập nhật: ${variant['updated_date']}'),
+                            ],
+                          ),
+                          isThreeLine: true,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildImageGallery(List<String> images) {
+    return Container(
+      height: 120,
+      width: 80,
+      child: PageView.builder(
+        itemCount: images.length,
+        itemBuilder: (context, i) {
+          return Container(
+            width: 80,
+            height: 120,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              image: DecorationImage(
+                image: AssetImage(images[i]),
+                fit: BoxFit.cover,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // To debug layout issues, uncomment the following line:
-    // debugPaintSizeEnabled = true; // Helps visualize layout bounds
-
-    // Calculate the available width for the controls area
-    // This is the total screen width minus the horizontal padding (16.0 on both sides)
     final double availableWidth = MediaQuery.of(context).size.width - 2 * 16.0;
 
     return Scaffold(
       body: _showProductList
-          ? SingleChildScrollView( // Wrap with SingleChildScrollView for overall page scrolling
+          ? SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: _buildSmallScreenLayout(availableWidth), // Always use small screen layout
+                child: _buildSmallScreenLayout(availableWidth),
               ),
             )
-          : const AddUpdateProductScreen(), // Assuming AddUpdateProductScreen is a widget
+          : const AddUpdateProductScreen(),
     );
   }
 
-  // Layout cho màn hình nhỏ (mobile, tablet nhỏ)
   Widget _buildSmallScreenLayout(double availableWidth) {
-    return Column( // Changed from ListView to Column as it's wrapped by SingleChildScrollView
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Tiêu đề trang
         Text(
           'Quản lý sản phẩm',
           style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 20),
-
-        // --- Controls Area (Search, Filter, Add Button) ---
         SizedBox(
           width: availableWidth,
           child: Wrap(
@@ -206,20 +318,18 @@ class _ProductScreenState extends State<ProductScreen> {
             runSpacing: 10,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              // Search TextField
               SizedBox(
                 width: 250,
                 child: TextField(
                   decoration: const InputDecoration(
                     hintText: 'Tìm kiếm...',
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                     isDense: true,
                   ),
                 ),
               ),
-
-              // Filter Dropdown
               SizedBox(
                 width: 250,
                 child: DropdownButtonFormField<String>(
@@ -242,21 +352,21 @@ class _ProductScreenState extends State<ProductScreen> {
                   },
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                     isDense: true,
                   ),
                 ),
               ),
-
-              // Add Product Button
               ElevatedButton(
                 onPressed: () {
                   setState(() {
-                    _showProductList = false; // Hide product list, show add/update screen
+                    _showProductList = false;
                   });
                 },
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 16),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 15, horizontal: 16),
                   textStyle: const TextStyle(fontSize: 14),
                   minimumSize: const Size(0, 48),
                 ),
@@ -266,18 +376,14 @@ class _ProductScreenState extends State<ProductScreen> {
           ),
         ),
         const SizedBox(height: 20),
-
-        // Header for the table section
         Text(
           'Danh sách sản phẩm',
           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 10),
-
-        // Danh sách sản phẩm
         ListView.builder(
           shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(), // Disable ListView scrolling
+          physics: const NeverScrollableScrollPhysics(),
           itemCount: _paginatedData.length,
           itemBuilder: (context, index) {
             final product = _paginatedData[index];
@@ -288,23 +394,10 @@ class _ProductScreenState extends State<ProductScreen> {
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start, // Align items to the top
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Product Image
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            image: DecorationImage(
-                              image: AssetImage(product['image']),
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
+                        _buildImageGallery(product['images']),
                         const SizedBox(width: 10),
-
-                        // Product Info
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,46 +405,61 @@ class _ProductScreenState extends State<ProductScreen> {
                             children: [
                               Text(
                                 product['name'],
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 14),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 4),
                               _buildInfoRow('Thương hiệu:', product['brand']),
                               _buildInfoRow('Danh mục:', product['category']),
-                              _buildInfoRow('Mô tả:', product['description']),
-                              _buildInfoRow('Giá:', '${product['price']} VNĐ'),
-                              _buildInfoRow('Tồn kho:', product['quantity'].toString()),
-                              _buildInfoRow('Số sao:', product['rating'].toString()),
-                              _buildInfoRow('Ngày tạo:', '${product['createdDate'].toLocal().toString().split(' ')[0]}'),
-                              _buildInfoRow('Giảm giá:', '${product['discount']}%'),
+                              _buildInfoRow('Mô tả:', product['description'],
+                                  maxLength: 80),
+                              _buildInfoRow('Ngày tạo:',
+                                  '${product['createdDate'].toLocal().toString().split(' ')[0]}'),
+                              _buildInfoRow('Ngày cập nhật:',
+                                  '${product['updatedDate'].toLocal().toString().split(' ')[0]}'),
+                              _buildInfoRow(
+                                  'Giảm giá:', '${product['discount']}%'),
+                              _buildInfoRow('Số biến thể:',
+                                  '${product['variants'].length}'),
                             ],
                           ),
                         ),
-
-                        // Action Buttons
                         Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            TextButton(
+                              onPressed: () {
+                                _showVariantsDialog(product);
+                              },
+                              child: Text('Xem biến thể'),
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                minimumSize: Size(0, 30),
+                              ),
+                            ),
                             IconButton(
                               onPressed: () {
                                 print('Chỉnh sửa ${product['name']}');
-                                // TODO: Navigate to AddUpdateProductScreen for editing
                               },
                               icon: const Icon(Icons.edit, size: 18),
                               tooltip: 'Chỉnh sửa',
-                              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                              constraints: const BoxConstraints(
+                                  minWidth: 36, minHeight: 36),
                               padding: EdgeInsets.zero,
                             ),
                             IconButton(
                               onPressed: () {
-                                // Calculate the actual index in the full data list
-                                final actualIndex = (_currentPage * _rowsPerPage) + index;
+                                final actualIndex =
+                                    (_currentPage * _rowsPerPage) + index;
                                 _deleteProduct(actualIndex);
                               },
                               icon: const Icon(Icons.delete, size: 18),
                               tooltip: 'Xóa',
-                              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                              constraints: const BoxConstraints(
+                                  minWidth: 36, minHeight: 36),
                               padding: EdgeInsets.zero,
                             ),
                           ],
@@ -366,8 +474,6 @@ class _ProductScreenState extends State<ProductScreen> {
             );
           },
         ),
-
-        // Phần điều khiển phân trang
         Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           margin: const EdgeInsets.only(top: 8),
@@ -377,14 +483,11 @@ class _ProductScreenState extends State<ProductScreen> {
           ),
           child: Column(
             children: [
-              // Widget hiển thị thông tin phân trang
               Text(
                 'Hiển thị ${_paginatedData.isEmpty ? 0 : (_currentPage * _rowsPerPage) + 1} - ${(_currentPage * _rowsPerPage) + _paginatedData.length} trên ${_productData.length}',
                 style: TextStyle(color: Colors.grey[600]),
               ),
               const SizedBox(height: 8),
-
-              // Nút điều hướng phân trang
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -425,6 +528,4 @@ class _ProductScreenState extends State<ProductScreen> {
       ],
     );
   }
-
- 
 }

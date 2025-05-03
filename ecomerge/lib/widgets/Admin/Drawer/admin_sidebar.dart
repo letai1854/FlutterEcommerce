@@ -51,7 +51,6 @@ class AdminSidebar extends StatelessWidget {
           const Spacer(),
 
           // Logout option at the bottom
-          
         ],
       ),
     );
