@@ -29,12 +29,19 @@ class _ResponsiveUserInfoState extends State<ResponsiveUserInfo>
   int _selectedOrderTab = 0;
   int _selectedOrderStatus = 0;
 
-  // Form state for PersonalInfoForm - with initial values
+  // Form state for PersonalInfoForm - with initial values and saved state
   String _name = "Lê Văn Tài";
   String _email = "example@gmail.com";
   String _phone = "0123456789";
   String _gender = "male";
   String _birthDate = "01/01/1990";
+
+  // Saved state to track last saved values
+  String _savedName = "Lê Văn Tài";
+  String _savedEmail = "example@gmail.com";
+  String _savedPhone = "0123456789";
+  String _savedGender = "male";
+  String _savedBirthDate = "01/01/1990";
 
   // Form state for ChangePasswordContent
   String _currentPassword = "";
@@ -152,14 +159,56 @@ class _ResponsiveUserInfoState extends State<ResponsiveUserInfo>
   }
 
   // Navigation handlers
+  void _resetPersonalInfoToSaved() {
+    setState(() {
+      _name = _savedName;
+      _email = _savedEmail;
+      _phone = _savedPhone;
+      _gender = _savedGender;
+      _birthDate = _savedBirthDate;
+
+      _nameController.text = _savedName;
+      _emailController.text = _savedEmail;
+      _phoneController.text = _savedPhone;
+    });
+  }
+
+  void _clearPasswordFields() {
+    setState(() {
+      _currentPassword = "";
+      _newPassword = "";
+      _confirmPassword = "";
+      _currentPasswordController.clear();
+      _newPasswordController.clear();
+      _confirmPasswordController.clear();
+    });
+  }
+
   void _handleMainSectionChanged(MainSection section) {
     setState(() {
+      if (_selectedMainSection == MainSection.profile) {
+        // Clear forms when leaving profile section
+        _clearPasswordFields();
+        _resetPersonalInfoToSaved();
+      }
       _selectedMainSection = section;
     });
   }
 
   void _handleProfileSectionChanged(ProfileSection section) {
     setState(() {
+      if (_selectedProfileSection == ProfileSection.changePassword &&
+          section != ProfileSection.changePassword) {
+        // Clear password fields when leaving password section
+        _clearPasswordFields();
+      }
+
+      if (_selectedProfileSection == ProfileSection.personalInfo &&
+          section != ProfileSection.personalInfo) {
+        // Reset personal info when leaving without saving
+        _resetPersonalInfoToSaved();
+      }
+
       _selectedProfileSection = section;
     });
   }
@@ -211,6 +260,16 @@ class _ResponsiveUserInfoState extends State<ResponsiveUserInfo>
         _phoneController.text = value;
       });
     }
+  }
+
+  void _savePersonalInfo() {
+    setState(() {
+      _savedName = _name;
+      _savedEmail = _email;
+      _savedPhone = _phone;
+      _savedGender = _gender;
+      _savedBirthDate = _birthDate;
+    });
   }
 
   void _handleGenderChanged(String value) {
@@ -295,6 +354,7 @@ class _ResponsiveUserInfoState extends State<ResponsiveUserInfo>
       onPhoneChanged: _handlePhoneChanged,
       onGenderChanged: _handleGenderChanged,
       onBirthDateChanged: _handleBirthDateChanged,
+      onSave: _savePersonalInfo,
     );
   }
 

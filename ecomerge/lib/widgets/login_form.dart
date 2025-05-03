@@ -18,11 +18,38 @@ class _LoginFormState extends State<LoginForm> {
   final UserController _userController = UserController();
 
   @override
+  void initState() {
+    super.initState();
+    // Mark that we're in the form, no need to reset when building
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<LoginFormProvider>(context, listen: false);
+      provider.setScreenResize(true);
+    });
+  }
+
+  @override
   void dispose() {
     // Only dispose focus nodes here - controllers are managed by the provider
     _emailFocusNode.dispose();
     _passwordFocusNode.dispose();
+
+    // Mark form as not in resize mode when leaving
+    final provider = Provider.of<LoginFormProvider>(context, listen: false);
+    provider.setScreenResize(false);
+
     super.dispose();
+  }
+
+  @override
+  void deactivate() {
+    // Reset the form when navigating away (unless it's just a resize)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final provider = Provider.of<LoginFormProvider>(context, listen: false);
+        provider.resetForm();
+      }
+    });
+    super.deactivate();
   }
 
   Future<void> _handleLogin(LoginFormProvider provider) async {
@@ -48,6 +75,9 @@ class _LoginFormState extends State<LoginForm> {
       if (mounted) {
         // Store user in provider
         UserProvider().setUser(user);
+
+        // Set flag to false before navigating away
+        provider.setScreenResize(false);
 
         Navigator.pushNamedAndRemoveUntil(
           context,

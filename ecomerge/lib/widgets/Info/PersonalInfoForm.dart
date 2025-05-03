@@ -17,6 +17,7 @@ class PersonalInfoForm extends StatefulWidget {
   final Function(String) onPhoneChanged;
   final Function(String) onGenderChanged;
   final Function(String) onBirthDateChanged;
+  final VoidCallback onSave;
 
   const PersonalInfoForm({
     Key? key,
@@ -33,6 +34,7 @@ class PersonalInfoForm extends StatefulWidget {
     required this.onPhoneChanged,
     required this.onGenderChanged,
     required this.onBirthDateChanged,
+    required this.onSave,
   }) : super(key: key);
 
   @override
@@ -164,7 +166,7 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
               const SizedBox(height: 40),
               ElevatedButton(
                 onPressed: () {
-                  // Save changes logic
+                  widget.onSave();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text("Thông tin đã được lưu"),
