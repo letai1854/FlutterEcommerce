@@ -1,5 +1,4 @@
 import 'package:carousel_slider/carousel_slider.dart';
-import 'package:e_commerce_app/Constants/productTest.dart';
 import 'package:e_commerce_app/widgets/Product/PaginatedProductGrid.dart';
 import 'package:e_commerce_app/widgets/Search/FilterPanel.dart';
 import 'package:e_commerce_app/widgets/SortingBar.dart';
@@ -9,7 +8,56 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 
 class SearchProduct extends StatefulWidget {
-  const SearchProduct({super.key});
+  // Pass all required properties from PageSearch
+  final int current;
+  final List<String> imgList;
+  final List<Map<String, dynamic>> filteredProducts;
+  final GlobalKey<ScaffoldState> scaffoldKey;
+  final ScrollController scrollController;
+  final Function({
+    required List<int> categories,
+    required List<String> brands,
+    required int minPrice,
+    required int maxPrice
+  }) onFiltersApplied;
+  
+  // FilterPanel state variables
+  final Map<int, bool> selectedCategories;
+  final Set<String> selectedBrands;
+  final int minPrice;
+  final int maxPrice;
+  final TextEditingController minPriceController;
+  final TextEditingController maxPriceController;
+  final int priceStep;
+  final List<Map<String, dynamic>> catalog;
+  final List<String> brands;
+  final Function(int) updateMinPrice;
+  final Function(int) updateMaxPrice;
+  final String Function(int) formatPrice;
+  final int Function(String) parsePrice;
+
+  const SearchProduct({
+    super.key,
+    required this.current,
+    required this.imgList,
+    required this.filteredProducts,
+    required this.scaffoldKey,
+    required this.scrollController,
+    required this.onFiltersApplied,
+    required this.selectedCategories,
+    required this.selectedBrands,
+    required this.minPrice,
+    required this.maxPrice,
+    required this.minPriceController,
+    required this.maxPriceController,
+    required this.priceStep,
+    required this.catalog,
+    required this.brands,
+    required this.updateMinPrice,
+    required this.updateMaxPrice,
+    required this.formatPrice,
+    required this.parsePrice,
+  });
   
   @override
   State<SearchProduct> createState() => _SearchProductState();
@@ -17,47 +65,11 @@ class SearchProduct extends StatefulWidget {
 
 class _SearchProductState extends State<SearchProduct> {
   int _current = 0;
-  List<Map<String, dynamic>> productData = Productest.productData;
-  List<Map<String, dynamic>> filteredProducts = [];
-  final ScrollController _scrollController = ScrollController();
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  
-  final List<String> imgList = [
-    'assets/bannerMain.jpg',
-    'assets/banner2.jpg',
-    'assets/banner6.jpg',
-  ];
 
   @override
   void initState() {
     super.initState();
-    filteredProducts = List.from(productData);
-  }
-
-  void onFiltersApplied({
-    required List<int> categories,
-    required List<String> brands,
-    required int minPrice,
-    required int maxPrice,
-  }) {
-    setState(() {
-      filteredProducts = productData.where((product) {
-        bool matchesCategory = categories.isEmpty || categories.contains(product['category_id']);
-        bool matchesBrand = brands.isEmpty || brands.contains(product['brand']);
-        bool matchesPrice = product['price'] >= minPrice && product['price'] <= maxPrice;
-        return matchesCategory && matchesBrand && matchesPrice;
-      }).toList();
-      
-      if (MediaQuery.of(context).size.width < 1100) {
-        Navigator.of(context).pop();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
+    _current = widget.current;
   }
 
   @override
@@ -79,11 +91,26 @@ class _SearchProductState extends State<SearchProduct> {
         : size.width - (spacing * 2);
 
     return Scaffold(
-      key: _scaffoldKey,
+      key: widget.scaffoldKey,
       endDrawer: !isWideScreen ? 
         Drawer(
           width: min(size.width * 0.85, 400.0),
-          child: FilterPanel(onFiltersApplied: onFiltersApplied),
+          child: FilterPanel(
+            onFiltersApplied: widget.onFiltersApplied,
+            selectedCategories: widget.selectedCategories,
+            selectedBrands: widget.selectedBrands,
+            minPrice: widget.minPrice,
+            maxPrice: widget.maxPrice,
+            minPriceController: widget.minPriceController,
+            maxPriceController: widget.maxPriceController,
+            priceStep: widget.priceStep,
+            catalog: widget.catalog,
+            brands: widget.brands,
+            updateMinPrice: widget.updateMinPrice,
+            updateMaxPrice: widget.updateMaxPrice,
+            formatPrice: widget.formatPrice,
+            parsePrice: widget.parsePrice,
+          ),
         ) : null,
       body: Container(
         color: Colors.grey[100],
@@ -95,7 +122,22 @@ class _SearchProductState extends State<SearchProduct> {
                 padding: EdgeInsets.all(spacing),
                 child: SizedBox(
                   width: filterWidth,
-                  child: FilterPanel(onFiltersApplied: onFiltersApplied),
+                  child: FilterPanel(
+                    onFiltersApplied: widget.onFiltersApplied,
+                    selectedCategories: widget.selectedCategories,
+                    selectedBrands: widget.selectedBrands,
+                    minPrice: widget.minPrice,
+                    maxPrice: widget.maxPrice,
+                    minPriceController: widget.minPriceController,
+                    maxPriceController: widget.maxPriceController,
+                    priceStep: widget.priceStep,
+                    catalog: widget.catalog,
+                    brands: widget.brands,
+                    updateMinPrice: widget.updateMinPrice,
+                    updateMaxPrice: widget.updateMaxPrice,
+                    formatPrice: widget.formatPrice,
+                    parsePrice: widget.parsePrice,
+                  ),
                 ),
               ),
             
@@ -103,7 +145,7 @@ class _SearchProductState extends State<SearchProduct> {
               child: Padding(
                 padding: EdgeInsets.all(spacing),
                 child: SingleChildScrollView(
-                  controller: _scrollController,
+                  controller: widget.scrollController,
                   child: Column(
                     children: [
                       // Carousel Section
@@ -111,7 +153,7 @@ class _SearchProductState extends State<SearchProduct> {
                         width: mainContentWidth,
                         height: mainContentWidth * 0.3,
                         child: CarouselSlider(
-                          items: imgList.map((item) => Container(
+                          items: widget.imgList.map((item) => Container(
                             margin: EdgeInsets.symmetric(horizontal: spacing/2),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(8.0),
@@ -148,7 +190,7 @@ class _SearchProductState extends State<SearchProduct> {
                             ),
                             if (!isWideScreen)
                               IconButton(
-                                onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
+                                onPressed: () => widget.scaffoldKey.currentState?.openEndDrawer(),
                                 icon: const Icon(Icons.filter_list),
                                 color: Colors.red,
                               ),
@@ -170,7 +212,7 @@ class _SearchProductState extends State<SearchProduct> {
                             final double itemSpacing = spacing * 0.75;
 
                             return PaginatedProductGrid(
-                              productData: filteredProducts,
+                              productData: widget.filteredProducts,
                               itemsPerPage: columns * 2,
                               gridWidth: constraints.maxWidth,
                               childAspectRatio: 0.7,  // Taller items for better layout
