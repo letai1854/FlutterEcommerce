@@ -173,7 +173,11 @@ class _UserInfoMobileState extends State<UserInfoMobile> {
 
           IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pushNamed(context, '/home'),
+            onPressed: () => Navigator.pushReplacementNamed(
+              context,
+              '/home',
+              arguments: {'selectedIndex': 0},
+            ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
           ),
@@ -243,6 +247,9 @@ class _UserInfoMobileState extends State<UserInfoMobile> {
                         ),
                         body: const PointsContent(),
                       ),
+                      settings: RouteSettings(
+                        arguments: {'selectedIndex': -1},
+                      ),
                     ),
                   );
                 },
@@ -276,7 +283,8 @@ class _UserInfoMobileState extends State<UserInfoMobile> {
                   ],
                 ),
                 onPressed: () {
-                  Navigator.pushNamed(context, '/cart');
+                  Navigator.pushNamed(context, '/cart',
+                      arguments: {'selectedIndex': -1});
                 },
                 tooltip: 'Giỏ hàng',
                 padding: EdgeInsets.zero,
@@ -288,7 +296,8 @@ class _UserInfoMobileState extends State<UserInfoMobile> {
               IconButton(
                 icon: const Icon(Icons.chat),
                 onPressed: () {
-                  Navigator.pushNamed(context, '/chat');
+                  Navigator.pushNamed(context, '/chat',
+                      arguments: {'selectedIndex': -1});
                 },
                 tooltip: 'Chat',
                 padding: EdgeInsets.zero,
