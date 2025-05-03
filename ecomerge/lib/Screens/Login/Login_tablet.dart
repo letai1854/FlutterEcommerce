@@ -18,33 +18,29 @@ class _LoginTabletState extends State<LoginTablet> {
       backgroundColor: const Color.fromARGB(255, 234, 29, 7),
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(80),
-        child: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          title: Navbar(),
-          actions: [
-            Builder(
-              builder: (context) => Container(
-                margin: EdgeInsets.only(right: 10),
-              ),
-            ),
-          ],
-        ),
+        child: Navbar(),
       ),
-      body: SizedBox( // Change to SizedBox to take full screen height
+      body: SizedBox(
+        // Change to SizedBox to take full screen height
         height: MediaQuery.of(context).size.height,
         child: SingleChildScrollView(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final isTablet = constraints.maxWidth > 600; // Define tablet breakpoint
+              final isTablet =
+                  constraints.maxWidth > 600; // Define tablet breakpoint
 
               return Column(
                 children: [
                   SizedBox(height: 20),
-                  Center( // Center the login form
-                    child: ConstrainedBox( // Limit the width on larger screens
+                  Center(
+                    // Center the login form
+                    child: ConstrainedBox(
+                      // Limit the width on larger screens
                       constraints: BoxConstraints(
-                        maxWidth: isTablet ? 400 : double.infinity, // Max width for tablet, full width otherwise
+                        maxWidth: isTablet
+                            ? 400
+                            : double
+                                .infinity, // Max width for tablet, full width otherwise
                       ),
                       child: const LoginForm(),
                     ),
