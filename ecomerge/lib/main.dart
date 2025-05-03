@@ -2,11 +2,12 @@ import 'dart:io';
 
 import 'package:e_commerce_app/Provider/UserProvider.dart';
 import 'package:e_commerce_app/Screens/Admin/AdminReponsicve.dart';
-import 'package:e_commerce_app/Screens/Cart/CartResponsive.dart';
+import 'package:e_commerce_app/Screens/Cart/PageCart.dart';
 import 'package:e_commerce_app/Screens/ForgotPassword/ForgotPasswordResponsive.dart';
-import 'package:e_commerce_app/Screens/ListProduct/ListProduct_responsive.dart';
+import 'package:e_commerce_app/Screens/ListProduct/PageListProduct.dart';
 import 'package:e_commerce_app/Screens/Payment/PaymentResponsive.dart';
 import 'package:e_commerce_app/Screens/ProductDetail/ProductDeitalResponsive.dart';
+import 'package:e_commerce_app/Screens/Search/PageSearch.dart';
 import 'package:e_commerce_app/Screens/SuccessPayment/SucccessPaymentResponsive.dart';
 import 'package:e_commerce_app/Screens/UserInfo/ResponsiveUserInfo.dart';
 import 'package:flutter/material.dart';
@@ -15,8 +16,6 @@ import 'package:e_commerce_app/Screens/Chat/ResponsiveChat.dart';
 import 'package:e_commerce_app/Screens/Home/home_responsive.dart';
 import 'package:e_commerce_app/Screens/Login/login_responsive.dart';
 import 'package:e_commerce_app/Screens/SignUp/SignUp_Reponsive.dart';
-import 'package:e_commerce_app/Screens/Search/Search_Responsive.dart';
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:e_commerce_app/providers/signup_form_provider.dart';
@@ -91,7 +90,7 @@ class MyApp extends StatelessWidget {
 
           case '/catalog_product':
             return PageRouteBuilder(
-              pageBuilder: (context, _, __) => const ResponsiveListProduct(),
+              pageBuilder: (context, _, __) => const PageListProduct(),
               settings: settings,
             );
           case '/product_detail':
@@ -101,7 +100,7 @@ class MyApp extends StatelessWidget {
             );
           case '/cart':
             return PageRouteBuilder(
-              pageBuilder: (context, _, __) => const ResponsiveCart(),
+              pageBuilder: (context, _, __) => const PageCart(),
               settings: settings,
             );
           case '/payment':
@@ -121,7 +120,7 @@ class MyApp extends StatelessWidget {
             );
           case '/search':
             return PageRouteBuilder(
-              pageBuilder: (context, _, __) => const SearchResponsive(),
+              pageBuilder: (context, _, __) => const PageSearch(),
               settings: settings,
             );
           case '/admin':

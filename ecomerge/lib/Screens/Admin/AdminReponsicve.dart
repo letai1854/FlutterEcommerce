@@ -2,9 +2,7 @@ import 'package:e_commerce_app/Responsive/ResponsiveLayout.dart';
 import 'package:e_commerce_app/Screens/Admin/Admin_Desktop.dart';
 import 'package:e_commerce_app/Screens/Admin/Admin_Mobile.dart';
 import 'package:e_commerce_app/Screens/Admin/Admin_Tablet.dart';
-import 'package:e_commerce_app/Screens/Cart/CartDeskTop.dart';
-import 'package:e_commerce_app/Screens/Cart/CartMobile.dart';
-import 'package:e_commerce_app/Screens/Cart/CartTablet.dart';
+
 
 import 'package:flutter/material.dart';
 

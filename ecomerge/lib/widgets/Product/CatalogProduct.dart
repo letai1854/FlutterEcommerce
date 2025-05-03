@@ -7,56 +7,47 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 
 class CatalogProduct extends StatefulWidget {
-  const CatalogProduct({super.key});
+  final List<Map<String, dynamic>> filteredProducts;
+  final GlobalKey<ScaffoldState> scaffoldKey;
+  final ScrollController scrollController;
+  final String currentSortMethod;
+  final int selectedCategoryId;
+  final List<Map<String, dynamic>> catalog;
+  final Function(int) updateSelectedCategory;
+  final Function(String) updateSortMethod;
+
+  const CatalogProduct({
+    super.key,
+    required this.filteredProducts,
+    required this.scaffoldKey,
+    required this.scrollController,
+    required this.currentSortMethod,
+    required this.selectedCategoryId,
+    required this.catalog,
+    required this.updateSelectedCategory,
+    required this.updateSortMethod,
+  });
 
   @override
   State<CatalogProduct> createState() => _CatalogProductState();
 }
 
 class _CatalogProductState extends State<CatalogProduct> {
-  List<Map<String, dynamic>> productData = Productest.productData;
-  List<Map<String, dynamic>> filteredProducts = [];
-  final ScrollController _scrollController = ScrollController();
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  String currentSortMethod = '';
-  int selectedCategoryId = 1;
-
-  final List<Map<String, dynamic>> catalog = [
-    {'name': 'Laptop', 'id': 1, 'image': 'https://dlcdnwebimgs.asus.com/gain/28BC0310-AD69-4C0D-9DE7-C27974A50B96'},
-    {'name': 'Bàn phím', 'id': 2, 'image': 'https://bizweb.dktcdn.net/100/438/322/products/k1-black-1.jpg?v=1702469045657'},
-    {'name': 'Chuột', 'id': 3, 'image': 'https://lh3.googleusercontent.com/NP_cA_KiUpZi0D1QAiu8s5k3PiEWqO0SOgyLH99MPgR1VhsUPyVKL737pqRjq_yXjHaEjEK9pbVI2V0quyiAE2NhVg'},
-    {'name': 'Hub', 'id': 4, 'image': 'https://vn.canon/media/image/2021/07/12/fe2cb6c6e86145899db11898c8492482_EOS+R5_FrontSlantLeft_RF24-105mmF4LISUSM.png'},
-    {'name': 'Tai nghe', 'id': 5, 'image': 'https://researchstore.vn/uploads/2023/10/hinh-anh-thuong-hieu-logitech.jpg'},
-    {'name': 'Bàn', 'id': 6, 'image': 'https://tinhocngoisao.cdn.vccloud.vn/wp-content/uploads/2021/09/asus-gaming-rog.jpg'},
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    filteredProducts = List.from(productData);
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
   Widget _buildCategoryPanel(double width, bool isMobile) {
     return Container(
       width: width,
       color: Colors.white,
       child: ListView.builder(
         padding: EdgeInsets.symmetric(vertical: 8),
-        itemCount: catalog.length,
+        itemCount: widget.catalog.length,
         itemBuilder: (context, index) {
-          final category = catalog[index];
-          final bool isSelected = selectedCategoryId == category['id'];
+          final category = widget.catalog[index];
+          final bool isSelected = widget.selectedCategoryId == category['id'];
           
           return Material(
             color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.transparent,
             child: InkWell(
-              onTap: () => setState(() => selectedCategoryId = category['id']),
+              onTap: () => widget.updateSelectedCategory(category['id']),
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
@@ -98,9 +89,9 @@ class _CatalogProductState extends State<CatalogProduct> {
   }
 
   List<Map<String, dynamic>> getSortedProducts() {
-    var products = List<Map<String, dynamic>>.from(filteredProducts);
-    if (currentSortMethod.isNotEmpty) {
-      switch (currentSortMethod) {
+    var products = List<Map<String, dynamic>>.from(widget.filteredProducts);
+    if (widget.currentSortMethod.isNotEmpty) {
+      switch (widget.currentSortMethod) {
         case 'name':
           products.sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
           break;
@@ -140,7 +131,7 @@ class _CatalogProductState extends State<CatalogProduct> {
         : size.width - categoryWidth - (spacing * 2);
     
     return Scaffold(
-      key: _scaffoldKey,
+      key: widget.scaffoldKey,
       backgroundColor: Colors.grey[100],
       // Drawer for mobile view
       drawer: isMobile ? Drawer(
@@ -158,7 +149,7 @@ class _CatalogProductState extends State<CatalogProduct> {
             child: Padding(
               padding: EdgeInsets.all(spacing),
               child: SingleChildScrollView(
-                controller: _scrollController,
+                controller: widget.scrollController,
                 child: Column(
                   children: [
                     // Sorting Bar Section with mobile menu button
@@ -181,12 +172,12 @@ class _CatalogProductState extends State<CatalogProduct> {
                           if (isMobile) 
                             IconButton(
                               icon: Icon(Icons.menu),
-                              onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                              onPressed: () => widget.scaffoldKey.currentState?.openDrawer(),
                             ),
                           Expanded(
                             child: SortingBar(
                               width: double.infinity,
-                              onSortChanged: (sortType) => setState(() => currentSortMethod = sortType),
+                              onSortChanged: widget.updateSortMethod,
                             ),
                           ),
                         ],
