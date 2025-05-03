@@ -567,6 +567,7 @@ class _UserInfoMobileState extends State<UserInfoMobile> {
                     onPhoneChanged: _handlePhoneChanged,
                     onGenderChanged: _handleGenderChanged,
                     onBirthDateChanged: _handleBirthDateChanged,
+                    onSave: () {},
                   )),
                 ),
                 Divider(height: 1, thickness: 1, color: Colors.grey.shade100),
