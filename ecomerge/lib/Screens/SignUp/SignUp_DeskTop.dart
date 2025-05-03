@@ -43,7 +43,7 @@ class SignUpDesktop extends StatelessWidget {
                               child: Container(
                                 width: 500,
                                 constraints: BoxConstraints(
-                                  maxHeight: 480,
+                                  maxHeight: 510,
                                   minHeight: 350,
                                 ),
                                 child: SignForm(),

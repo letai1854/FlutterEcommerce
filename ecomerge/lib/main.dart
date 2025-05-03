@@ -18,15 +18,8 @@ import 'package:e_commerce_app/Screens/SignUp/SignUp_Reponsive.dart';
 import 'package:e_commerce_app/Screens/Search/Search_Responsive.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
-// class MyHttpOverrides extends HttpOverrides {
-//   @override
-//   HttpClient createHttpClient(SecurityContext? context) {
-//     return super.createHttpClient(context)
-//       ..badCertificateCallback =
-//           (X509Certificate cert, String host, int port) => true;
-//   }
-// }
+import 'package:provider/provider.dart';
+import 'package:e_commerce_app/providers/signup_form_provider.dart';
 
 Future<void> initApp() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,9 +31,15 @@ Future<void> initApp() async {
 }
 
 void main() async {
-  // HttpOverrides.global = MyHttpOverrides();
   await initApp();
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => SignupFormProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

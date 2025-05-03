@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 class MessageList extends StatefulWidget {
   const MessageList({Key? key}) : super(key: key);
@@ -28,67 +27,67 @@ class _MessageListState extends State<MessageList> {
       'avatar': 'assets/logoS.jpg',
       'isOnline': true,
     },
-        {
+    {
       'name': 'Da banh ko???',
       'message': 'Nguyễn Minh Trường đã thêm G... 6 giờ',
       'avatar': 'assets/logoS.jpg',
       'isOnline': true,
     },
-        {
+    {
       'name': 'Da banh ko???',
       'message': 'Nguyễn Minh Trường đã thêm G... 6 giờ',
       'avatar': 'assets/logoS.jpg',
       'isOnline': true,
     },
-        {
+    {
       'name': 'Da banh ko???',
       'message': 'Nguyễn Minh Trường đã thêm G... 6 giờ',
       'avatar': 'assets/logoS.jpg',
       'isOnline': true,
     },
-        {
+    {
       'name': 'Da banh ko???',
       'message': 'Nguyễn Minh Trường đã thêm G... 6 giờ',
       'avatar': 'assets/logoS.jpg',
       'isOnline': true,
     },
-        {
+    {
       'name': 'Da banh ko???',
       'message': 'Nguyễn Minh Trường đã thêm G... 6 giờ',
       'avatar': 'assets/logoS.jpg',
       'isOnline': true,
     },
-        {
+    {
       'name': 'Da banh ko???',
       'message': 'Nguyễn Minh Trường đã thêm G... 6 giờ',
       'avatar': 'assets/logoS.jpg',
       'isOnline': true,
     },
-        {
+    {
       'name': 'Da banh ko???',
       'message': 'Nguyễn Minh Trường đã thêm G... 6 giờ',
       'avatar': 'assets/logoS.jpg',
       'isOnline': true,
     },
-        {
+    {
       'name': 'Da banh ko???',
       'message': 'Nguyễn Minh Trường đã thêm G... 6 giờ',
       'avatar': 'assets/logoS.jpg',
       'isOnline': true,
     },
-        {
+    {
       'name': 'Da banh ko???',
       'message': 'Nguyễn Minh Trường đã thêm G... 6 giờ',
       'avatar': 'assets/logoS.jpg',
       'isOnline': true,
     },
-        {
+    {
       'name': 'Da banh ko???',
       'message': 'Nguyễn Minh Trường đã thêm G... 6 giờ',
       'avatar': 'assets/logoS.jpg',
       'isOnline': true,
     },
-        {
+    {
       'name': 'Da banh ko???',
       'message': 'Nguyễn Minh Trường đã thêm G... 6 giờ',
       'avatar': 'assets/logoS.jpg',
@@ -150,7 +149,8 @@ class _MessageListState extends State<MessageList> {
   Widget _buildListItem(Map<String, dynamic> message) {
     return ListTile(
       leading: CircleAvatar(
-        backgroundImage: AssetImage(message['avatar']!), // Nếu là URL, dùng CachedNetworkImage
+        backgroundImage: AssetImage(
+            message['avatar']!), // Nếu là URL, dùng CachedNetworkImage
       ),
       title: Text(message['name']!),
       subtitle: Text(message['message']!),

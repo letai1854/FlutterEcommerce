@@ -1,17 +1,25 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:provider/provider.dart';
+import 'package:e_commerce_app/providers/signup_form_provider.dart';
 
 class LocationSelection extends StatefulWidget {
   final Function(String, String, String) onLocationSelected;
+  final String initialProvince;
+  final String initialDistrict;
+  final String initialWard;
 
   const LocationSelection({
     Key? key,
     required this.onLocationSelected,
+    this.initialProvince = '',
+    this.initialDistrict = '',
+    this.initialWard = '',
   }) : super(key: key);
 
   @override
-  _LocationSelectionState createState() => _LocationSelectionState();
+  State<LocationSelection> createState() => _LocationSelectionState();
 }
 
 class _LocationSelectionState extends State<LocationSelection> {
@@ -23,172 +31,294 @@ class _LocationSelectionState extends State<LocationSelection> {
   String? selectedDistrict;
   String? selectedWard;
 
+  bool isLoadingProvinces = true;
+  bool isLoadingDistricts = false;
+  bool isLoadingWards = false;
+
   @override
   void initState() {
     super.initState();
-    fetchProvinces();
+    fetchProvinces().then((_) {
+      if (widget.initialProvince.isNotEmpty) {
+        setState(() {
+          selectedProvince = widget.initialProvince;
+        });
+
+        if (widget.initialDistrict.isNotEmpty) {
+          fetchDistrictsForProvince(widget.initialProvince).then((_) {
+            setState(() {
+              selectedDistrict = widget.initialDistrict;
+            });
+
+            if (widget.initialWard.isNotEmpty) {
+              fetchWardsForDistrict(widget.initialDistrict).then((_) {
+                setState(() {
+                  selectedWard = widget.initialWard;
+                });
+                widget.onLocationSelected(selectedProvince ?? '',
+                    selectedDistrict ?? '', selectedWard ?? '');
+              });
+            }
+          });
+        }
+      }
+    });
   }
 
   Future<void> fetchProvinces() async {
+    setState(() {
+      isLoadingProvinces = true;
+    });
+
     try {
-      final String jsonString = await DefaultAssetBundle.of(context)
-          .loadString('assets/vietnam_locations.json');
-      setState(() {
-        provinces = json.decode(jsonString);
-      });
+      final response = await http.get(
+        Uri.parse('https://provinces.open-api.vn/api/p/'),
+        headers: {'Accept-Charset': 'UTF-8'},
+      );
+
+      if (response.statusCode == 200) {
+        final decodedData = utf8.decode(response.bodyBytes);
+        setState(() {
+          provinces = json.decode(decodedData);
+          isLoadingProvinces = false;
+        });
+      } else {
+        setState(() {
+          isLoadingProvinces = false;
+        });
+        print('Failed to load provinces: ${response.statusCode}');
+      }
     } catch (e) {
-      print('Error loading provinces: $e');
+      setState(() {
+        isLoadingProvinces = false;
+      });
+      print('Exception when fetching provinces: $e');
     }
   }
 
-  void updateDistricts(String provinceName) {
-    final province = provinces.firstWhere(
-      (p) => p['Name'] == provinceName,
-      orElse: () => null,
-    );
+  Future<void> fetchDistrictsForProvince(String provinceCode) async {
+    if (provinceCode.isEmpty) return;
 
-    if (province != null) {
+    setState(() {
+      isLoadingDistricts = true;
+      districts = [];
+      selectedDistrict = null;
+      selectedWard = null;
+      wards = [];
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse('https://provinces.open-api.vn/api/p/$provinceCode?depth=2'),
+        headers: {'Accept-Charset': 'UTF-8'},
+      );
+
+      if (response.statusCode == 200) {
+        final decodedData = utf8.decode(response.bodyBytes);
+        final data = json.decode(decodedData);
+        setState(() {
+          districts = data['districts'] ?? [];
+          isLoadingDistricts = false;
+        });
+      } else {
+        setState(() {
+          isLoadingDistricts = false;
+        });
+        print('Failed to load districts: ${response.statusCode}');
+      }
+    } catch (e) {
       setState(() {
-        districts = province['Districts'];
-        wards = [];
-        selectedDistrict = null;
-        selectedWard = null;
+        isLoadingDistricts = false;
       });
+      print('Exception when fetching districts: $e');
     }
   }
 
-  void updateWards(String districtName) {
-    final district = districts.firstWhere(
-      (d) => d['Name'] == districtName,
-      orElse: () => null,
-    );
+  Future<void> fetchWardsForDistrict(String districtCode) async {
+    if (districtCode.isEmpty) return;
 
-    if (district != null) {
+    setState(() {
+      isLoadingWards = true;
+      wards = [];
+      selectedWard = null;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse('https://provinces.open-api.vn/api/d/$districtCode?depth=2'),
+        headers: {'Accept-Charset': 'UTF-8'},
+      );
+
+      if (response.statusCode == 200) {
+        final decodedData = utf8.decode(response.bodyBytes);
+        final data = json.decode(decodedData);
+        setState(() {
+          wards = data['wards'] ?? [];
+          isLoadingWards = false;
+        });
+      } else {
+        setState(() {
+          isLoadingWards = false;
+        });
+        print('Failed to load wards: ${response.statusCode}');
+      }
+    } catch (e) {
       setState(() {
-        wards = district['Wards'];
-        selectedWard = null;
+        isLoadingWards = false;
       });
+      print('Exception when fetching wards: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final fontSize = screenWidth < 600 ? 12.0 : 14.0;
-    final verticalPadding = screenWidth < 600 ? 2.0 : 5.0;
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Province Dropdown
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              decoration: const InputDecoration(
+                labelText: 'Tỉnh/TP',
+                border: OutlineInputBorder(),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              ),
+              isExpanded: true,
+              value: selectedProvince,
+              icon: const Icon(Icons.arrow_drop_down),
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 14,
+                fontFamily: 'Roboto',
+              ),
+              items: provinces.map((province) {
+                String name = province['name'] ?? '';
+                return DropdownMenuItem<String>(
+                  value: province['code'].toString(),
+                  child: Text(
+                    name,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Roboto',
+                      fontSize: 14,
+                    ),
+                  ),
+                );
+              }).toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() {
+                    selectedProvince = value;
+                    selectedDistrict = null;
+                    selectedWard = null;
+                  });
+                  fetchDistrictsForProvince(value);
+                  widget.onLocationSelected(value, '', '');
+                }
+              },
+              dropdownColor: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 8),
 
-    return Row(
-      children: <Widget>[
-        Expanded(
-          flex: 2,
-          child: DropdownButtonFormField<String>(
-            isExpanded: true,
-            style: TextStyle(fontSize: fontSize),
-            decoration: InputDecoration(
-              contentPadding: EdgeInsets.symmetric(
-                  horizontal: 10, vertical: verticalPadding),
-              hintText: 'Tỉnh/Thành',
-              border: OutlineInputBorder(),
-              isDense: screenWidth < 600,
+          // District Dropdown
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              decoration: const InputDecoration(
+                labelText: 'Quận/Huyện',
+                border: OutlineInputBorder(),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              ),
+              isExpanded: true,
+              value: selectedDistrict,
+              icon: const Icon(Icons.arrow_drop_down),
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 14,
+                fontFamily: 'Roboto',
+              ),
+              items: districts.map((district) {
+                String name = district['name'] ?? '';
+                return DropdownMenuItem<String>(
+                  value: district['code'].toString(),
+                  child: Text(
+                    name,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Roboto',
+                      fontSize: 14,
+                    ),
+                  ),
+                );
+              }).toList(),
+              onChanged: selectedProvince == null
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        setState(() {
+                          selectedDistrict = value;
+                          selectedWard = null;
+                        });
+                        fetchWardsForDistrict(value);
+                        widget.onLocationSelected(
+                            selectedProvince ?? '', value, '');
+                      }
+                    },
+              dropdownColor: Colors.white,
             ),
-            value: selectedProvince,
-            items: provinces.map<DropdownMenuItem<String>>((province) {
-              return DropdownMenuItem<String>(
-                value: province['Name'],
-                child: Text(
-                  province['Name'],
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: fontSize),
-                ),
-              );
-            }).toList(),
-            onChanged: (String? newValue) {
-              setState(() {
-                selectedProvince = newValue;
-              });
-              if (newValue != null) {
-                updateDistricts(newValue);
-                widget.onLocationSelected(newValue, '', '');
-              }
-            },
           ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          flex: 2,
-          child: DropdownButtonFormField<String>(
-            isExpanded: true,
-            style: TextStyle(fontSize: fontSize),
-            decoration: InputDecoration(
-              contentPadding: EdgeInsets.symmetric(
-                  horizontal: 10, vertical: verticalPadding),
-              hintText: 'Quận/Huyện',
-              border: OutlineInputBorder(),
-              isDense: screenWidth < 600,
+          const SizedBox(width: 8),
+
+          // Ward Dropdown
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              decoration: const InputDecoration(
+                labelText: 'Phường/Xã',
+                border: OutlineInputBorder(),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              ),
+              isExpanded: true,
+              value: selectedWard,
+              icon: const Icon(Icons.arrow_drop_down),
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 14,
+                fontFamily: 'Roboto',
+              ),
+              items: wards.map((ward) {
+                String name = ward['name'] ?? '';
+                return DropdownMenuItem<String>(
+                  value: ward['code'].toString(),
+                  child: Text(
+                    name,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Roboto',
+                      fontSize: 14,
+                    ),
+                  ),
+                );
+              }).toList(),
+              onChanged: selectedDistrict == null
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        setState(() {
+                          selectedWard = value;
+                        });
+                        widget.onLocationSelected(selectedProvince ?? '',
+                            selectedDistrict ?? '', value);
+                      }
+                    },
+              dropdownColor: Colors.white,
             ),
-            value: selectedDistrict,
-            items: districts.map<DropdownMenuItem<String>>((district) {
-              return DropdownMenuItem<String>(
-                value: district['Name'],
-                child: Text(
-                  district['Name'],
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: fontSize),
-                ),
-              );
-            }).toList(),
-            onChanged: selectedProvince == null
-                ? null
-                : (String? newValue) {
-                    setState(() {
-                      selectedDistrict = newValue;
-                    });
-                    if (newValue != null) {
-                      updateWards(newValue);
-                      widget.onLocationSelected(
-                          selectedProvince!, newValue, '');
-                    }
-                  },
           ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          flex: 2,
-          child: DropdownButtonFormField<String>(
-            isExpanded: true,
-            style: TextStyle(fontSize: fontSize),
-            decoration: InputDecoration(
-              contentPadding: EdgeInsets.symmetric(
-                  horizontal: 10, vertical: verticalPadding),
-              hintText: 'Phường/Xã',
-              border: OutlineInputBorder(),
-              isDense: screenWidth < 600,
-            ),
-            value: selectedWard,
-            items: wards.map<DropdownMenuItem<String>>((ward) {
-              return DropdownMenuItem<String>(
-                value: ward['Name'],
-                child: Text(
-                  ward['Name'],
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: fontSize),
-                ),
-              );
-            }).toList(),
-            onChanged: selectedDistrict == null
-                ? null
-                : (String? newValue) {
-                    setState(() {
-                      selectedWard = newValue;
-                    });
-                    if (newValue != null) {
-                      widget.onLocationSelected(
-                          selectedProvince!, selectedDistrict!, newValue);
-                    }
-                  },
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
