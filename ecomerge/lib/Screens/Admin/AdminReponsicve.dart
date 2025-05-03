@@ -1,9 +1,4 @@
-import 'package:e_commerce_app/Responsive/ResponsiveLayout.dart';
 import 'package:e_commerce_app/Screens/Admin/Admin_Desktop.dart';
-import 'package:e_commerce_app/Screens/Admin/Admin_Mobile.dart';
-import 'package:e_commerce_app/Screens/Admin/Admin_Tablet.dart';
-
-
 import 'package:flutter/material.dart';
 
 class AdminResponsive extends StatelessWidget {
@@ -11,10 +6,7 @@ class AdminResponsive extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ResponsiveLayout(
-      mobileScaffold: const AdminDesktop(),
-      tableScaffold: const AdminDesktop(),
-      destopScaffold: const AdminDesktop(),
-    );
+    // Directly return AdminDesktop since it's used for all screen sizes
+    return const AdminDesktop();
   }
 }
