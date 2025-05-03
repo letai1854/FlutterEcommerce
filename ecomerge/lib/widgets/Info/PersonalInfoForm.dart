@@ -4,20 +4,42 @@ import 'package:e_commerce_app/widgets/Field/GenderSelect.dart';
 import 'package:flutter/material.dart';
 
 class PersonalInfoForm extends StatefulWidget {
-  const PersonalInfoForm({Key? key}) : super(key: key);
+  final String name;
+  final String email;
+  final String phone;
+  final String gender;
+  final String birthDate;
+  final TextEditingController nameController;
+  final TextEditingController emailController;
+  final TextEditingController phoneController;
+  final Function(String) onNameChanged;
+  final Function(String) onEmailChanged;
+  final Function(String) onPhoneChanged;
+  final Function(String) onGenderChanged;
+  final Function(String) onBirthDateChanged;
+
+  const PersonalInfoForm({
+    Key? key,
+    required this.name,
+    required this.email,
+    required this.phone,
+    required this.gender,
+    required this.birthDate,
+    required this.nameController,
+    required this.emailController,
+    required this.phoneController,
+    required this.onNameChanged,
+    required this.onEmailChanged,
+    required this.onPhoneChanged,
+    required this.onGenderChanged,
+    required this.onBirthDateChanged,
+  }) : super(key: key);
 
   @override
   State<PersonalInfoForm> createState() => _PersonalInfoFormState();
 }
 
 class _PersonalInfoFormState extends State<PersonalInfoForm> {
-  // Add state variables as needed
-  String name = "Lê Văn Tài";
-  String email = "example@gmail.com";
-  String phone = "0123456789";
-  String gender = "male";
-  String birthDate = "01/01/1990";
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -98,26 +120,18 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
               Row(
                 children: [
                   Expanded(
-                    child: CustomFormField(
+                    child: _buildCustomTextField(
                       label: "Họ và tên",
-                      initialValue: name,
-                      onChanged: (value) {
-                        setState(() {
-                          name = value;
-                        });
-                      },
+                      controller: widget.nameController,
+                      onChanged: widget.onNameChanged,
                     ),
                   ),
                   const SizedBox(width: 24),
                   Expanded(
-                    child: CustomFormField(
+                    child: _buildCustomTextField(
                       label: "Email",
-                      initialValue: email,
-                      onChanged: (value) {
-                        setState(() {
-                          email = value;
-                        });
-                      },
+                      controller: widget.emailController,
+                      onChanged: widget.onEmailChanged,
                     ),
                   ),
                 ],
@@ -126,25 +140,17 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
               Row(
                 children: [
                   Expanded(
-                    child: CustomFormField(
+                    child: _buildCustomTextField(
                       label: "Số điện thoại",
-                      initialValue: phone,
-                      onChanged: (value) {
-                        setState(() {
-                          phone = value;
-                        });
-                      },
+                      controller: widget.phoneController,
+                      onChanged: widget.onPhoneChanged,
                     ),
                   ),
                   const SizedBox(width: 24),
                   Expanded(
                     child: GenderSelect(
-                      initialValue: gender,
-                      onChanged: (value) {
-                        setState(() {
-                          gender = value;
-                        });
-                      },
+                      initialValue: widget.gender,
+                      onChanged: widget.onGenderChanged,
                     ),
                   ),
                 ],
@@ -152,12 +158,8 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
               const SizedBox(height: 24),
               DateField(
                 label: "Ngày sinh",
-                initialValue: birthDate,
-                onChanged: (value) {
-                  setState(() {
-                    birthDate = value;
-                  });
-                },
+                initialValue: widget.birthDate,
+                onChanged: widget.onBirthDateChanged,
               ),
               const SizedBox(height: 40),
               ElevatedButton(
@@ -181,6 +183,23 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
           ),
         ),
       ],
+    );
+  }
+
+  // Custom text field with controller
+  Widget _buildCustomTextField({
+    required String label,
+    required TextEditingController controller,
+    required Function(String) onChanged,
+  }) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      ),
+      onChanged: onChanged,
     );
   }
 }

@@ -1,15 +1,48 @@
-// Change Password Content widget
-import 'package:e_commerce_app/widgets/Password/PasswordField.dart';
 import 'package:flutter/material.dart';
 
 class ChangePasswordContent extends StatefulWidget {
-  const ChangePasswordContent({Key? key}) : super(key: key);
+  final String currentPassword;
+  final String newPassword;
+  final String confirmPassword;
+  final TextEditingController currentPasswordController;
+  final TextEditingController newPasswordController;
+  final TextEditingController confirmPasswordController;
+  final bool obscureCurrentPassword;
+  final bool obscureNewPassword;
+  final bool obscureConfirmPassword;
+  final Function(String) onCurrentPasswordChanged;
+  final Function(String) onNewPasswordChanged;
+  final Function(String) onConfirmPasswordChanged;
+  final VoidCallback onToggleCurrentPasswordVisibility;
+  final VoidCallback onToggleNewPasswordVisibility;
+  final VoidCallback onToggleConfirmPasswordVisibility;
+
+  const ChangePasswordContent({
+    Key? key,
+    required this.currentPassword,
+    required this.newPassword,
+    required this.confirmPassword,
+    required this.currentPasswordController,
+    required this.newPasswordController,
+    required this.confirmPasswordController,
+    required this.obscureCurrentPassword,
+    required this.obscureNewPassword,
+    required this.obscureConfirmPassword,
+    required this.onCurrentPasswordChanged,
+    required this.onNewPasswordChanged,
+    required this.onConfirmPasswordChanged,
+    required this.onToggleCurrentPasswordVisibility,
+    required this.onToggleNewPasswordVisibility,
+    required this.onToggleConfirmPasswordVisibility,
+  }) : super(key: key);
 
   @override
   State<ChangePasswordContent> createState() => _ChangePasswordContentState();
 }
 
 class _ChangePasswordContentState extends State<ChangePasswordContent> {
+  final _formKey = GlobalKey<FormState>();
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -39,40 +72,96 @@ class _ChangePasswordContentState extends State<ChangePasswordContent> {
               ),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              PasswordField(
-                label: "Mật khẩu hiện tại",
-                initialValue: "",
-                onChanged: (value) {},
-              ),
-              const SizedBox(height: 24),
-              PasswordField(
-                label: "Mật khẩu mới",
-                initialValue: "",
-                onChanged: (value) {},
-              ),
-              const SizedBox(height: 24),
-              PasswordField(
-                label: "Xác nhận mật khẩu mới",
-                initialValue: "",
-                onChanged: (value) {},
-              ),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                  backgroundColor: Colors.blue,
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildPasswordField(
+                  "Mật khẩu hiện tại",
+                  widget.currentPasswordController,
+                  widget.onCurrentPasswordChanged,
+                  widget.obscureCurrentPassword,
+                  widget.onToggleCurrentPasswordVisibility,
                 ),
-                child: const Text("Xác nhận thay đổi"),
-              ),
-            ],
+                const SizedBox(height: 24),
+                _buildPasswordField(
+                  "Mật khẩu mới",
+                  widget.newPasswordController,
+                  widget.onNewPasswordChanged,
+                  widget.obscureNewPassword,
+                  widget.onToggleNewPasswordVisibility,
+                ),
+                const SizedBox(height: 24),
+                _buildPasswordField(
+                  "Xác nhận mật khẩu mới",
+                  widget.confirmPasswordController,
+                  widget.onConfirmPasswordChanged,
+                  widget.obscureConfirmPassword,
+                  widget.onToggleConfirmPasswordVisibility,
+                  validator: (value) {
+                    if (value != widget.newPassword) {
+                      return 'Mật khẩu xác nhận không khớp';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: () {
+                    if (_formKey.currentState!.validate()) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Mật khẩu đã được đổi thành công"),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32, vertical: 12),
+                    backgroundColor: Colors.blue,
+                  ),
+                  child: const Text("Xác nhận thay đổi"),
+                ),
+              ],
+            ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildPasswordField(
+    String label,
+    TextEditingController controller,
+    Function(String) onChanged,
+    bool obscureText,
+    VoidCallback toggleVisibility, {
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(),
+        suffixIcon: IconButton(
+          icon: Icon(obscureText ? Icons.visibility_off : Icons.visibility),
+          onPressed: toggleVisibility,
+        ),
+      ),
+      obscureText: obscureText,
+      onChanged: onChanged,
+      validator: validator ??
+          (value) {
+            if (value == null || value.isEmpty) {
+              return 'Vui lòng nhập $label';
+            } else if (value.length < 6) {
+              return 'Mật khẩu phải có ít nhất 6 ký tự';
+            }
+            return null;
+          },
     );
   }
 }
