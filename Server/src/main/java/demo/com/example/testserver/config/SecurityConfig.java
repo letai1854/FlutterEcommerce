@@ -1,7 +1,5 @@
 package demo.com.example.testserver.config;
 
-import demo.com.example.testserver.security.JwtAuthenticationFilter;
-import demo.com.example.testserver.security.UserDetailsServiceImpl; // Import UserDetailsService implementation
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,14 +16,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter; // Import filter
 
+import demo.com.example.testserver.user.security.JwtAuthenticationFilter;
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity // Enable @PreAuthorize, @PostAuthorize, etc.
 public class SecurityConfig {
-
-    @Autowired
-    private UserDetailsServiceImpl userDetailsService; // Inject custom UserDetailsService
-
     @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter; // Inject JWT filter
 
@@ -47,11 +43,11 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
                 // Public endpoints
-                .requestMatchers("/users/ping").permitAll()
-                .requestMatchers(HttpMethod.POST, "/users/login").permitAll()
-                .requestMatchers(HttpMethod.POST, "/users/register").permitAll()
-                .requestMatchers(HttpMethod.POST, "/users/forgot-password").permitAll()
-                .requestMatchers(HttpMethod.POST, "/users/reset-password").permitAll()
+                .requestMatchers("/api/users/ping").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/users/login").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/users/register").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/users/forgot-password").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/users/reset-password").permitAll()
                 // Allow product viewing without login (example)
                 .requestMatchers(HttpMethod.GET, "/products/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/categories/**").permitAll()

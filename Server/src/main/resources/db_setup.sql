@@ -32,8 +32,19 @@ CREATE TABLE nguoi_dung (
     vai_tro ENUM('khach_hang', 'quan_tri') NOT NULL DEFAULT 'khach_hang',
     trang_thai ENUM('kich_hoat', 'khoa') NOT NULL DEFAULT 'kich_hoat',
     diem_khach_hang_than_thiet DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    password_reset_token VARCHAR(255) NULL, -- Thêm cột token reset mật khẩu
+    password_reset_token_expiry TIMESTAMP NULL, -- Thêm cột thời gian hết hạn token
     ngay_tao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ngay_cap_nhat TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ================= Bảng Token Reset Mật khẩu (Password Reset Tokens) =================
+CREATE TABLE password_reset_tokens (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    token_hash VARCHAR(255) NOT NULL UNIQUE, -- Changed from 'token' to 'token_hash'
+    user_id INT NOT NULL,
+    expiry_date TIMESTAMP NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES nguoi_dung(id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ================= Bảng Danh sách Địa chỉ (User Addresses) =================
