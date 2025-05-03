@@ -26,6 +26,9 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
   final GlobalKey _categoriesSectionKey = GlobalKey();
   final GlobalKey _paginatedGridKey = GlobalKey();
   final GlobalKey _footerKey = GlobalKey();
+  final GlobalKey _newProductsKey = GlobalKey(debugLabel: 'newProducts');
+  final GlobalKey _promoProductsKey = GlobalKey(debugLabel: 'promoProducts');
+  final GlobalKey _bestSellerKey = GlobalKey(debugLabel: 'bestSeller');
   bool _showFloatingCategories = false;
   bool _isPanelExpanded = false; // For mobile panel expansion
   int? _selectedCategory;
@@ -232,30 +235,13 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                   child: Column(
                     children: [
                       if (kIsWeb && isMobile)
-                        // Container(
-                        //   height: 60,
-                        //   child: ListView(
-                        //     scrollDirection: Axis.horizontal,
-                        //     children: [
-                        //       _buildHorizontalCategoryItem(
-                        //           'Laptop', 'assets/banner6.jpg', 0),
-                        //       _buildHorizontalCategoryItem(
-                        //           'Ram', 'assets/banner6.jpg', 1),
-                        //       _buildHorizontalCategoryItem(
-                        //           'Card đồ họa', 'assets/banner6.jpg', 2),
-                        //       _buildHorizontalCategoryItem(
-                        //           'Màn hình', 'assets/banner6.jpg', 3),
-                        //       _buildHorizontalCategoryItem(
-                        //           'Ổ cứng', 'assets/banner6.jpg', 4),
-                        //     ],
-                        //   ),
-                        // ),
                         Heading(Icons.bolt, Colors.yellowAccent,
                             'Sản phẩm khuyến mãi'),
                       SizedBox(height: 10),
                       Container(
                         height: 320,
                         child: product_item.ProductList(
+                          productListKey: _promoProductsKey,
                           scroll: Axis.horizontal,
                           productData: productData,
                           itemsPerPage: isMobile ? 6 : 7,
@@ -293,6 +279,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                               SizedBox(width: 10),
                               Expanded(
                                 child: product_item.ProductList(
+                                  productListKey: _newProductsKey,
                                   scroll: Axis.horizontal,
                                   productData: productData,
                                   itemsPerPage: 8,
@@ -311,9 +298,10 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                         Container(
                           height: isMobile ? 320 : 600,
                           child: product_item.ProductList(
+                            productListKey: _newProductsKey,
                             scroll: Axis.horizontal,
                             productData: productData,
-                            itemsPerPage: isMobile ? 6 : 12,
+                            itemsPerPage: !isMobile ? 12 : 10,
                             gridHeight: isMobile ? 250 : 600,
                             gridWidth: screenWidth,
                             childAspectRatio: isMobile ? 0.8 : 1.47,
@@ -329,6 +317,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                       Container(
                         height: isMobile ? 320 : 600,
                         child: product_item.ProductList(
+                          productListKey: _bestSellerKey,
                           scroll: Axis.horizontal,
                           productData: productData,
                           itemsPerPage: 12,
@@ -377,8 +366,8 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
           ),
         ),
         if (_showFloatingCategories)
-          isMobile
-              ? _buildMobileFloatingCategories()
+          (isMobile || isTablet)
+              ? _buildMobileFloatingCategories(isTablet: isTablet)
               : _buildFloatingCategories(),
       ],
     );
@@ -400,10 +389,12 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
     return 6;
   }
 
-  Widget _buildMobileFloatingCategories() {
+  Widget _buildMobileFloatingCategories({bool isTablet = false}) {
     return Positioned(
       right: 0,
-      top: MediaQuery.of(context).size.height / 2 - 50,
+      top: isTablet
+          ? 100 // Higher position for tablets
+          : MediaQuery.of(context).size.height / 2 - 50,
       child: AnimatedOpacity(
         opacity: _showFloatingCategories ? 1.0 : 0.0,
         duration: Duration(milliseconds: 100),
@@ -411,7 +402,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
           children: [
             AnimatedContainer(
               duration: Duration(milliseconds: 300),
-              width: _isPanelExpanded ? 150 : 0,
+              width: _isPanelExpanded ? (isTablet ? 200 : 150) : 0,
               curve: Curves.easeInOut,
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -430,7 +421,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
               ),
               child: _isPanelExpanded
                   ? Padding(
-                      padding: EdgeInsets.all(8.0),
+                      padding: EdgeInsets.all(isTablet ? 12.0 : 8.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
@@ -440,13 +431,13 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                             child: Text(
                               'Danh mục',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: isTablet ? 18 : 16,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
                           Container(
-                            height: 200,
+                            height: isTablet ? 300 : 200,
                             child: ListView(
                               shrinkWrap: true,
                               children: [
@@ -475,13 +466,13 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                 });
               },
               child: Container(
-                width: 25,
-                height: 50,
+                width: isTablet ? 30 : 25,
+                height: isTablet ? 60 : 50,
                 decoration: BoxDecoration(
                   color: Colors.grey[400],
                   borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(50),
-                    bottomLeft: Radius.circular(50),
+                    topLeft: Radius.circular(isTablet ? 60 : 50),
+                    bottomLeft: Radius.circular(isTablet ? 60 : 50),
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -498,7 +489,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                         ? Icons.arrow_forward_ios
                         : Icons.arrow_back_ios,
                     color: Colors.white,
-                    size: 20,
+                    size: isTablet ? 24 : 20,
                   ),
                 ),
               ),
