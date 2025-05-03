@@ -366,8 +366,8 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
           ),
         ),
         if (_showFloatingCategories)
-          isMobile
-              ? _buildMobileFloatingCategories()
+          (isMobile || isTablet)
+              ? _buildMobileFloatingCategories(isTablet: isTablet)
               : _buildFloatingCategories(),
       ],
     );
@@ -389,10 +389,12 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
     return 6;
   }
 
-  Widget _buildMobileFloatingCategories() {
+  Widget _buildMobileFloatingCategories({bool isTablet = false}) {
     return Positioned(
       right: 0,
-      top: MediaQuery.of(context).size.height / 2 - 50,
+      top: isTablet
+          ? 100 // Higher position for tablets
+          : MediaQuery.of(context).size.height / 2 - 50,
       child: AnimatedOpacity(
         opacity: _showFloatingCategories ? 1.0 : 0.0,
         duration: Duration(milliseconds: 100),
@@ -400,7 +402,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
           children: [
             AnimatedContainer(
               duration: Duration(milliseconds: 300),
-              width: _isPanelExpanded ? 150 : 0,
+              width: _isPanelExpanded ? (isTablet ? 200 : 150) : 0,
               curve: Curves.easeInOut,
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -419,7 +421,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
               ),
               child: _isPanelExpanded
                   ? Padding(
-                      padding: EdgeInsets.all(8.0),
+                      padding: EdgeInsets.all(isTablet ? 12.0 : 8.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
@@ -429,13 +431,13 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                             child: Text(
                               'Danh mục',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: isTablet ? 18 : 16,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
                           Container(
-                            height: 200,
+                            height: isTablet ? 300 : 200,
                             child: ListView(
                               shrinkWrap: true,
                               children: [
@@ -464,13 +466,13 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                 });
               },
               child: Container(
-                width: 25,
-                height: 50,
+                width: isTablet ? 30 : 25,
+                height: isTablet ? 60 : 50,
                 decoration: BoxDecoration(
                   color: Colors.grey[400],
                   borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(50),
-                    bottomLeft: Radius.circular(50),
+                    topLeft: Radius.circular(isTablet ? 60 : 50),
+                    bottomLeft: Radius.circular(isTablet ? 60 : 50),
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -487,7 +489,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                         ? Icons.arrow_forward_ios
                         : Icons.arrow_back_ios,
                     color: Colors.white,
-                    size: 20,
+                    size: isTablet ? 24 : 20,
                   ),
                 ),
               ),
