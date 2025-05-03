@@ -106,7 +106,25 @@ class _ProductScreenState extends State<ProductScreen> {
     },
   );
 
+  // State variable to control visibility of product list and add/update screen
   bool _showProductList = true;
+  Map<String, dynamic>? _productToEdit;
+
+  // Method to navigate to Add/Update screen
+  void _navigateToAddUpdateScreen({Map<String, dynamic>? product}) {
+    setState(() {
+      _productToEdit = product;
+      _showProductList = false; // Hide product list, show add/update screen
+    });
+  }
+
+  // Method to return from Add/Update screen
+  void _returnToProductList() {
+    setState(() {
+      _productToEdit = null;
+      _showProductList = true; // Show product list again
+    });
+  }
 
   int _currentPage = 0;
   final int _rowsPerPage = 10;
@@ -298,7 +316,11 @@ class _ProductScreenState extends State<ProductScreen> {
                 child: _buildSmallScreenLayout(availableWidth),
               ),
             )
-          : const AddUpdateProductScreen(),
+          : AddUpdateProductScreen(
+              product: _productToEdit,
+              key: ValueKey(
+                  _productToEdit != null ? _productToEdit!['id'] : 'new'),
+            ),
     );
   }
 
@@ -360,9 +382,7 @@ class _ProductScreenState extends State<ProductScreen> {
               ),
               ElevatedButton(
                 onPressed: () {
-                  setState(() {
-                    _showProductList = false;
-                  });
+                  _navigateToAddUpdateScreen();
                 },
                 style: ElevatedButton.styleFrom(
                   padding:
@@ -442,7 +462,7 @@ class _ProductScreenState extends State<ProductScreen> {
                             ),
                             IconButton(
                               onPressed: () {
-                                print('Chỉnh sửa ${product['name']}');
+                                _navigateToAddUpdateScreen(product: product);
                               },
                               icon: const Icon(Icons.edit, size: 18),
                               tooltip: 'Chỉnh sửa',
