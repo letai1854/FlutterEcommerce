@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-
-// New FilterPanel StatefulWidget
 class FilterPanel extends StatefulWidget {
   final Function({
     required List<int> categories,
@@ -9,10 +7,36 @@ class FilterPanel extends StatefulWidget {
     required int minPrice, 
     required int maxPrice
   }) onFiltersApplied;
+  final Map<int, bool> selectedCategories;
+  final Set<String> selectedBrands;
+  final int minPrice;
+  final int maxPrice;
+  final TextEditingController minPriceController;
+  final TextEditingController maxPriceController;
+  final int priceStep;
+  final List<Map<String, dynamic>> catalog;
+  final List<String> brands;
+  final Function(int) updateMinPrice;
+  final Function(int) updateMaxPrice;
+  final String Function(int) formatPrice;
+  final int Function(String) parsePrice;
 
   const FilterPanel({
     Key? key,
     required this.onFiltersApplied,
+    required this.selectedCategories,
+    required this.selectedBrands,
+    required this.minPrice,
+    required this.maxPrice,
+    required this.minPriceController,
+    required this.maxPriceController,
+    required this.priceStep,
+    required this.catalog,
+    required this.brands,
+    required this.updateMinPrice,
+    required this.updateMaxPrice,
+    required this.formatPrice,
+    required this.parsePrice,
   }) : super(key: key);
 
   @override
@@ -20,119 +44,22 @@ class FilterPanel extends StatefulWidget {
 }
 
 class _FilterPanelState extends State<FilterPanel> {
-  // State variables for tracking selections
-  Map<int, bool> selectedCategories = {};
-  Set<String> selectedBrands = {};
-  TextEditingController minPriceController = TextEditingController();
-  TextEditingController maxPriceController = TextEditingController();
-  
-  // Values for min and max prices
-  int minPrice = 0;
-  int maxPrice = 10000000; // 10 million VND default max
-  final int priceStep = 1000000; // Step by 1 million VND
-  
-  final List<Map<String, dynamic>> catalog = [
-    {
-      'name': 'Laptop',
-      'img': 'https://anhnail.com/wp-content/uploads/2024/11/son-goku-ngau-nhat.jpg',
-      'id': 1,
-    },
-    {
-      'name': 'Bàn phím',
-      'img': 'https://hoangtuan.vn/media/product/844_ban_phim_co_geezer_gs2_rgb_blue_switch.jpg',
-      'id': 2,
-    },
-    {
-      'name': 'Chuột',
-      'img': 'https://png.pngtree.com/png-vector/20240626/ourlar…n-transparent-background-a-png-image_12849468.png',
-      'id': 3,
-    },
-    {
-      'name': 'Hub',
-      'img': 'https://vienthongxanh.vn/wp-content/uploads/2022/12/hinh-anh-minh-hoa-thiet-bi-switch.png',
-      'id': 4,
-    },
-    {
-      'name': 'Tai nghe',
-      'img': 'https://img.lovepik.com/free-png/20211120/lovepik-headset-png-image_401058941_wh1200.png',
-      'id': 5,
-    }
-  ];
-
-  // List of brands
-  final List<String> brands = [
-    'Apple',
-    'Samsung',
-    'Dell',
-    'HP',
-    'Asus',
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    // Initialize the text controllers with formatted values
-    minPriceController.text = formatPrice(minPrice);
-    maxPriceController.text = formatPrice(maxPrice);
-  }
-
-  @override
-  void dispose() {
-    minPriceController.dispose();
-    maxPriceController.dispose();
-    super.dispose();
-  }
-
-  // Format price with commas
-  String formatPrice(int price) {
-    return price.toString().replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (match) => '${match[1]},');
-  }
-  
-  // Parse price from formatted string
-  int parsePrice(String text) {
-    if (text.isEmpty) return 0;
-    return int.tryParse(text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-  }
-  
-  // Update min price with validation
-  void updateMinPrice(int newValue) {
-    if (newValue < 0) newValue = 0;
-    if (newValue > maxPrice) newValue = maxPrice;
-    
-    setState(() {
-      minPrice = newValue;
-      minPriceController.text = formatPrice(newValue);
-    });
-  }
-  
-  // Update max price with validation
-  void updateMaxPrice(int newValue) {
-    if (newValue < minPrice) newValue = minPrice;
-    
-    setState(() {
-      maxPrice = newValue;
-      maxPriceController.text = formatPrice(newValue);
-    });
-  }
-  
-  // Apply the filters
   void applyFilters() {
     // Convert selected categories to list
-    List<int> categoryIds = selectedCategories.entries
+    List<int> categoryIds = widget.selectedCategories.entries
         .where((entry) => entry.value)
         .map((entry) => entry.key)
         .toList();
         
     // Convert selected brands to list
-    List<String> brandNames = selectedBrands.toList();
+    List<String> brandNames = widget.selectedBrands.toList();
     
     // Notify parent about filters
     widget.onFiltersApplied(
       categories: categoryIds,
       brands: brandNames,
-      minPrice: minPrice,
-      maxPrice: maxPrice,
+      minPrice: widget.minPrice,
+      maxPrice: widget.maxPrice,
     );
   }
 
@@ -178,26 +105,25 @@ class _FilterPanelState extends State<FilterPanel> {
             SizedBox(height: 10),
             
             // Selectable category items
-            ...catalog.map((category) => Padding(
+            ...widget.catalog.map((category) => Padding(
               padding: const EdgeInsets.only(bottom: 8.0),
               child: InkWell(
                 onTap: () {
                   setState(() {
                     // Toggle selection for this category
-                    selectedCategories[category['id']] = 
-                        !(selectedCategories[category['id']] ?? false);
+                    widget.selectedCategories[category['id']] = 
+                        !(widget.selectedCategories[category['id']] ?? false);
                   });
-                  print('Selected category: ${category['name']}, isSelected: ${selectedCategories[category['id']]}');
                 },
                 child: Container(
                   padding: EdgeInsets.symmetric(vertical: 8, horizontal: 10),
                   decoration: BoxDecoration(
-                    color: (selectedCategories[category['id']] ?? false)
+                    color: (widget.selectedCategories[category['id']] ?? false)
                         ? Colors.red.withOpacity(0.1)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
-                      color: (selectedCategories[category['id']] ?? false)
+                      color: (widget.selectedCategories[category['id']] ?? false)
                           ? Colors.red
                           : Colors.grey.withOpacity(0.3),
                       width: 1,
@@ -206,11 +132,11 @@ class _FilterPanelState extends State<FilterPanel> {
                   child: Row(
                     children: [
                       Icon(
-                        (selectedCategories[category['id']] ?? false)
+                        (widget.selectedCategories[category['id']] ?? false)
                             ? Icons.check_circle
                             : Icons.circle_outlined,
                         size: 16,
-                        color: (selectedCategories[category['id']] ?? false)
+                        color: (widget.selectedCategories[category['id']] ?? false)
                             ? Colors.red
                             : Colors.grey,
                       ),
@@ -220,10 +146,10 @@ class _FilterPanelState extends State<FilterPanel> {
                           category['name'],
                           style: TextStyle(
                             fontSize: 13,
-                            fontWeight: (selectedCategories[category['id']] ?? false)
+                            fontWeight: (widget.selectedCategories[category['id']] ?? false)
                                 ? FontWeight.bold
                                 : FontWeight.normal,
-                            color: (selectedCategories[category['id']] ?? false)
+                            color: (widget.selectedCategories[category['id']] ?? false)
                                 ? Colors.red
                                 : Colors.black87,
                           ),
@@ -249,29 +175,28 @@ class _FilterPanelState extends State<FilterPanel> {
             SizedBox(height: 10),
             
             // Selectable brand items
-            ...brands.map((brand) => Padding(
+            ...widget.brands.map((brand) => Padding(
               padding: const EdgeInsets.only(bottom: 8.0),
               child: InkWell(
                 onTap: () {
                   setState(() {
                     // Toggle selection for this brand
-                    if (selectedBrands.contains(brand)) {
-                      selectedBrands.remove(brand);
+                    if (widget.selectedBrands.contains(brand)) {
+                      widget.selectedBrands.remove(brand);
                     } else {
-                      selectedBrands.add(brand);
+                      widget.selectedBrands.add(brand);
                     }
                   });
-                  print('Selected brand: $brand, isSelected: ${selectedBrands.contains(brand)}');
                 },
                 child: Container(
                   padding: EdgeInsets.symmetric(vertical: 8, horizontal: 10),
                   decoration: BoxDecoration(
-                    color: selectedBrands.contains(brand)
+                    color: widget.selectedBrands.contains(brand)
                         ? Colors.red.withOpacity(0.1)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
-                      color: selectedBrands.contains(brand)
+                      color: widget.selectedBrands.contains(brand)
                           ? Colors.red
                           : Colors.grey.withOpacity(0.3),
                       width: 1,
@@ -280,11 +205,11 @@ class _FilterPanelState extends State<FilterPanel> {
                   child: Row(
                     children: [
                       Icon(
-                        selectedBrands.contains(brand)
+                        widget.selectedBrands.contains(brand)
                             ? Icons.check_circle
                             : Icons.circle_outlined,
                         size: 16,
-                        color: selectedBrands.contains(brand)
+                        color: widget.selectedBrands.contains(brand)
                             ? Colors.red
                             : Colors.grey,
                       ),
@@ -294,10 +219,10 @@ class _FilterPanelState extends State<FilterPanel> {
                           brand,
                           style: TextStyle(
                             fontSize: 13,
-                            fontWeight: selectedBrands.contains(brand)
+                            fontWeight: widget.selectedBrands.contains(brand)
                                 ? FontWeight.bold
                                 : FontWeight.normal,
-                            color: selectedBrands.contains(brand)
+                            color: widget.selectedBrands.contains(brand)
                                 ? Colors.red
                                 : Colors.black87,
                           ),
@@ -345,7 +270,7 @@ class _FilterPanelState extends State<FilterPanel> {
                     borderRadius: BorderRadius.horizontal(left: Radius.circular(8)),
                     child: InkWell(
                       borderRadius: BorderRadius.horizontal(left: Radius.circular(8)),
-                      onTap: () => updateMinPrice(minPrice - priceStep),
+                      onTap: () => widget.updateMinPrice(widget.minPrice - widget.priceStep),
                       child: Container(
                         height: 40,
                         width: 40,
@@ -374,7 +299,7 @@ class _FilterPanelState extends State<FilterPanel> {
                         color: Colors.white,
                       ),
                       child: TextField(
-                        controller: minPriceController,
+                        controller: widget.minPriceController,
                         textAlign: TextAlign.center,
                         decoration: InputDecoration(
                           isDense: true,
@@ -390,11 +315,11 @@ class _FilterPanelState extends State<FilterPanel> {
                         keyboardType: TextInputType.number,
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                         onChanged: (value) {
-                          int parsedValue = parsePrice(value);
-                          minPrice = parsedValue;
+                          int parsedValue = widget.parsePrice(value);
+                          widget.updateMinPrice(parsedValue);
                         },
                         onSubmitted: (value) {
-                          updateMinPrice(parsePrice(value));
+                          widget.updateMinPrice(widget.parsePrice(value));
                         },
                       ),
                     ),
@@ -406,7 +331,7 @@ class _FilterPanelState extends State<FilterPanel> {
                     borderRadius: BorderRadius.horizontal(right: Radius.circular(8)),
                     child: InkWell(
                       borderRadius: BorderRadius.horizontal(right: Radius.circular(8)),
-                      onTap: () => updateMinPrice(minPrice + priceStep),
+                      onTap: () => widget.updateMinPrice(widget.minPrice + widget.priceStep),
                       child: Container(
                         height: 40,
                         width: 40,
@@ -451,7 +376,7 @@ class _FilterPanelState extends State<FilterPanel> {
                     borderRadius: BorderRadius.horizontal(left: Radius.circular(8)),
                     child: InkWell(
                       borderRadius: BorderRadius.horizontal(left: Radius.circular(8)),
-                      onTap: () => updateMaxPrice(maxPrice - priceStep),
+                      onTap: () => widget.updateMaxPrice(widget.maxPrice - widget.priceStep),
                       child: Container(
                         height: 40,
                         width: 40,
@@ -480,7 +405,7 @@ class _FilterPanelState extends State<FilterPanel> {
                         color: Colors.white,
                       ),
                       child: TextField(
-                        controller: maxPriceController,
+                        controller: widget.maxPriceController,
                         textAlign: TextAlign.center,
                         decoration: InputDecoration(
                           isDense: true,
@@ -496,11 +421,11 @@ class _FilterPanelState extends State<FilterPanel> {
                         keyboardType: TextInputType.number,
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                         onChanged: (value) {
-                          int parsedValue = parsePrice(value);
-                          maxPrice = parsedValue;
+                          int parsedValue = widget.parsePrice(value);
+                          widget.updateMaxPrice(parsedValue);
                         },
                         onSubmitted: (value) {
-                          updateMaxPrice(parsePrice(value));
+                          widget.updateMaxPrice(widget.parsePrice(value));
                         },
                       ),
                     ),
@@ -512,7 +437,7 @@ class _FilterPanelState extends State<FilterPanel> {
                     borderRadius: BorderRadius.horizontal(right: Radius.circular(8)),
                     child: InkWell(
                       borderRadius: BorderRadius.horizontal(right: Radius.circular(8)),
-                      onTap: () => updateMaxPrice(maxPrice + priceStep),
+                      onTap: () => widget.updateMaxPrice(widget.maxPrice + widget.priceStep),
                       child: Container(
                         height: 40,
                         width: 40,
@@ -558,4 +483,3 @@ class _FilterPanelState extends State<FilterPanel> {
     );
   }
 }
-
