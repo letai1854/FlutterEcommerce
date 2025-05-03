@@ -33,7 +33,7 @@ class _ProductItemState extends State<ProductItem> {
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: () {
-           Navigator.pushNamed(context, '/product_detail');
+          Navigator.pushNamed(context, '/product_detail');
         },
         child: Container(
           decoration: BoxDecoration(
