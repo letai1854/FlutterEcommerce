@@ -5,27 +5,60 @@ import java.util.Date;
 import java.util.List;
 
 @Entity
-@Table(name = "conversations")
+@Table(name = "cuoc_hoi_thoai") // Map to correct table name
 public class Conversation {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-    
-    @Column(name = "customer_id")
-    private Integer customerId;
-    
-    @Column(name = "created_date")
+
+    @ManyToOne(fetch = FetchType.LAZY) // Relationship to User (customer)
+    @JoinColumn(name = "nguoi_dung_id", nullable = false) // Map to correct column name
+    private User customer;
+
+    @ManyToOne(fetch = FetchType.LAZY) // Relationship to User (admin)
+    @JoinColumn(name = "admin_id") // Map to correct column name
+    private User admin;
+
+    @Column(name = "tieu_de") // Map to correct column name
+    private String title;
+
+    @Column(name = "trang_thai", nullable = false) // Map to correct column name
+    @Enumerated(EnumType.STRING)
+    private ConversationStatus status = ConversationStatus.moi; // Default value from DB
+
+    @Column(name = "ngay_tao", updatable = false) // Map to correct column name
     @Temporal(TemporalType.TIMESTAMP)
     private Date createdDate;
-    
-    @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL)
+
+    @Column(name = "ngay_cap_nhat") // Map to correct column name
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date updatedDate; // Add updated date field
+
+    @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Message> messages;
 
-    // Constructors
+    // --- Enum ---
+    public enum ConversationStatus {
+        moi, dang_xu_ly, da_dong
+    }
+
+    // --- Lifecycle Callbacks ---
+    @PrePersist
+    protected void onCreate() {
+        createdDate = new Date();
+        updatedDate = new Date();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedDate = new Date();
+    }
+
+    // --- Constructors ---
     public Conversation() {}
 
-    // Getters and Setters
+    // --- Getters and Setters ---
     public Integer getId() {
         return id;
     }
@@ -34,12 +67,36 @@ public class Conversation {
         this.id = id;
     }
 
-    public Integer getCustomerId() {
-        return customerId;
+    public User getCustomer() {
+        return customer;
     }
 
-    public void setCustomerId(Integer customerId) {
-        this.customerId = customerId;
+    public void setCustomer(User customer) {
+        this.customer = customer;
+    }
+
+    public User getAdmin() {
+        return admin;
+    }
+
+    public void setAdmin(User admin) {
+        this.admin = admin;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public ConversationStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(ConversationStatus status) {
+        this.status = status;
     }
 
     public Date getCreatedDate() {
@@ -48,6 +105,14 @@ public class Conversation {
 
     public void setCreatedDate(Date createdDate) {
         this.createdDate = createdDate;
+    }
+
+    public Date getUpdatedDate() {
+        return updatedDate;
+    }
+
+    public void setUpdatedDate(Date updatedDate) {
+        this.updatedDate = updatedDate;
     }
 
     public List<Message> getMessages() {

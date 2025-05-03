@@ -1,113 +1,80 @@
-import 'dart:convert';
+import 'dart:convert'; // Keep for potential future use, though direct json encoding is moved
 import 'dart:math';
 import 'package:e_commerce_app/Provider/UserProvider.dart';
-import 'package:e_commerce_app/constants.dart';
-import 'package:http/http.dart' as http;
+import 'package:e_commerce_app/services/user_api_service.dart'; // Import the new service
+import 'package:e_commerce_app/services/api_service.dart'; // Import ApiException if needed for specific handling
 import '../Models/User_model.dart';
-class UserController {  
-  final String _baseEndpoint = '$baseUrl/users';
+
+class UserController {
+  // Instantiate the UserApiService
+  final UserApiService _userApiService = UserApiService();
+
   int generateChatId() {
     return Random().nextInt(25) + 1; // Returns 1-25
   }
+
   // Đăng ký
-Future<User> register(Map<String, dynamic> userData) async {
-  try {
-    final chatId = generateChatId();
-    
-    final requestData = {
-      'email': userData['email'],
-      'fullName': userData['full_name'],
-      'password': userData['password'],
-      'address': userData['address'],
-      'role': 'customer',
-      'status': true,
-      'customerPoints': 0,
-      'chatId': chatId,
-      'createdDate': DateTime.now().toIso8601String()
-    };
-    
-    final response = await http.post(
-      Uri.parse('$_baseEndpoint/register'),
-      headers: {
-        'Content-Type': 'application/json; charset=UTF-8',
-        'Accept': 'application/json'
-      },
-      body: json.encode(requestData),
-    );
+  Future<User> register(Map<String, dynamic> userData) async {
+    try {
+      final chatId = generateChatId();
 
-    if (response.statusCode == 201) {
-      final String decodedBody = utf8.decode(response.bodyBytes);
-      final responseData = json.decode(decodedBody);
-      final user = User.fromJson(responseData);
-      // UserProvider().setUser(user);
+      // Prepare data, keeping business logic here
+      final requestData = {
+        'email': userData['email'],
+        'fullName': userData['full_name'], // Ensure key matches API expectation
+        'password': userData['password'],
+        'address': userData['address'],
+        'role': 'customer',
+        'status': true,
+        'customerPoints': 0,
+        'chatId': chatId,
+        'createdDate': DateTime.now().toIso8601String()
+      };
+
+      // Delegate API call to the service
+      final user = await _userApiService.registerUser(requestData);
       return user;
-    } else if (response.statusCode == 409) {
-      throw Exception('Email đã tồn tại');
-    } else {
-      final errorMessage = utf8.decode(response.bodyBytes);
-      throw Exception(errorMessage);
+    } on ApiException catch (e) {
+      print('Registration failed: ${e.message} (Status: ${e.statusCode})');
+      rethrow;
+    } catch (e) {
+      print('Unexpected error during registration: $e');
+      throw Exception('Đã xảy ra lỗi không mong muốn trong quá trình đăng ký.');
     }
-  } catch (e) {
-    rethrow; // Propagate the error with the original message
   }
-}
-
 
   Future<User> login(String email, String password) async {
     try {
-      final response = await http.post(
-        Uri.parse('$_baseEndpoint/login'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: json.encode({
-          'email': email,
-          'password': password,
-        }),
-      );
+      // Delegate API call to the service
+      final user = await _userApiService.loginUser(email, password);
 
-      print('Login response status: ${response.statusCode}');
-      print('Login response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final responseData = json.decode(utf8.decode(response.bodyBytes));
-        final user = User.fromJson(responseData);
-        
-        // Store user in provider
-        UserProvider().setUser(user);
-        if(UserProvider().currentUser != null){
-          print('User: ${UserProvider().currentUser!.fullName}');
-        }
-        return user;
-      } else if (response.statusCode == 401) {
-        throw Exception('Email hoặc mật khẩu không đúng');
-      } else {
-        throw Exception('Đăng nhập thất bại');
+      // Store user in provider after successful login
+      UserProvider().setUser(user);
+      if (UserProvider().currentUser != null) {
+        print('User Logged In: ${UserProvider().currentUser!.fullName}');
       }
-    } catch (e) {
-      print('Login error: $e');
+      return user;
+    } on ApiException catch (e) {
+      print('Login failed: ${e.message} (Status: ${e.statusCode})');
       rethrow;
+    } catch (e) {
+      print('Unexpected error during login: $e');
+      throw Exception('Đã xảy ra lỗi không mong muốn trong quá trình đăng nhập.');
     }
   }
 
   // Cập nhật thông tin user
   Future<User> updateUser(String userId, Map<String, dynamic> updateData) async {
     try {
-      final response = await http.put(
-        Uri.parse('$_baseEndpoint/$userId'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(updateData),
-      );
-
-      if (response.statusCode == 200) {
-        return User.fromJson(json.decode(response.body));
-      } else {
-        throw Exception('Cập nhật thất bại');
-      }
+      // Delegate API call to the service
+      final updatedUser = await _userApiService.updateUser(userId, updateData);
+      return updatedUser;
+    } on ApiException catch (e) {
+      print('Update failed: ${e.message} (Status: ${e.statusCode})');
+      rethrow;
     } catch (e) {
-      throw Exception('Lỗi kết nối: $e');
+      print('Unexpected error during update: $e');
+      throw Exception('Đã xảy ra lỗi không mong muốn trong quá trình cập nhật.');
     }
   }
 }
-//user
