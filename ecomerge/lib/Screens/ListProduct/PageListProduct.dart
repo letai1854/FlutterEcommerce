@@ -1,6 +1,6 @@
 import 'package:e_commerce_app/Constants/productTest.dart';
-import 'package:e_commerce_app/widgets/NavbarMobile/NavarFixTablet.dart';
-import 'package:e_commerce_app/widgets/NavbarMobile/NavbarMobile.dart';
+import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForTablet.dart';
+import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
 import 'package:e_commerce_app/widgets/Product/CatalogProduct.dart';
 import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
 import 'package:flutter/material.dart';
@@ -84,12 +84,12 @@ class _PageListProductState extends State<PageListProduct> {
 
         if (screenWidth < 768) {
           // Mobile layout
-          return NavbarFixmobile(
+          return NavbarFormobile(
             body: body,
           );
         } else if (screenWidth < 1100) {
           // Tablet layout
-          return NavbarFixTablet(
+          return NavbarForTablet(
             body: body,
           );
         } else {

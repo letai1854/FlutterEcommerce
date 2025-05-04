@@ -3,7 +3,7 @@ import 'package:e_commerce_app/utils/my_box.dart';
 import 'package:e_commerce_app/utils/my_tile.dart';
 import 'package:e_commerce_app/widgets/BottomNavigation.dart';
 import 'package:e_commerce_app/widgets/Home/bodyHomeMobile.dart';
-import 'package:e_commerce_app/widgets/NavbarMobile/NavbarMobile.dart';
+import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
 import 'package:e_commerce_app/widgets/footer.dart';
 import 'package:e_commerce_app/widgets/navbarHomeMobile.dart';
 import 'package:flutter/material.dart';
@@ -29,7 +29,7 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   @override
   Widget build(BuildContext context) {
-    return NavbarFixmobile(
+    return NavbarFormobile(
       body: bodyHomeMobile(), // Truyền body vào NavbarFixmobile
     );
     // return SingleChildScrollView(

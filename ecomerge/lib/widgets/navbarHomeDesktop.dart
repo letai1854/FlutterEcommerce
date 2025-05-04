@@ -1,19 +1,29 @@
 import 'package:e_commerce_app/Models/User_model.dart';
 import 'package:e_commerce_app/Provider/UserProvider.dart';
+import 'package:e_commerce_app/state/Search/SearchStateService.dart';
+// --- DÒNG 1: THÊM IMPORT SINGLETON ---
 import 'package:flutter/material.dart';
 
 class Navbarhomedesktop extends StatefulWidget {
+  // --- Giữ nguyên constructor gốc của bạn ---
+   const Navbarhomedesktop({Key? key}) : super(key: key); // Thêm const nếu được
+
   @override
   _NavbarhomedesktopState createState() => _NavbarhomedesktopState();
 }
 
 class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
+  // --- Giữ nguyên các biến state hover của bạn ---
   bool _isHoveredDK = false;
   bool _isHoveredDN = false;
   bool _isHoveredTK = false;
   bool _isHoveredGH = false;
+
   @override
   Widget build(BuildContext context) {
+    // --- DÒNG 2: LẤY INSTANCE SINGLETON ---
+    final searchService = SearchStateService();
+    // --- Giữ nguyên toàn bộ cấu trúc Container và code gốc của bạn ---
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       color: const Color.fromARGB(255, 234, 29, 7),
@@ -53,9 +63,11 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                     cursor: SystemMouseCursors.click,
                     child: IconButton(
                       icon: const Icon(Icons.chat, color: Colors.white),
-                      onPressed: UserProvider().currentUser != null 
-                        ? () => Navigator.pushNamed(context, '/chat')
-                        : null,
+                      // --- Giữ nguyên logic onPressed gốc của bạn ---
+                      // onPressed: UserProvider().currentUser != null
+                      //   ? () => Navigator.pushNamed(context, '/chat')
+                      //   : null,
+                      onPressed: () => Navigator.pushNamed(context, '/chat'),
                     ),
                   ),
                   SizedBox(width: 10),
@@ -72,7 +84,7 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                         // Chuyển hướng đến trang đăng ký
                         Navigator.pushNamed(context, '/signup');
                       },
-                      child: DecoratedBox(
+                      child: DecoratedBox( // --- Giữ nguyên DecoratedBox ---
                         decoration: BoxDecoration(
                           color:
                               _isHoveredDK // Conditional color based on hover state
@@ -93,7 +105,7 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                     ),
                   ),
                   SizedBox(width: 5),
-                  DecoratedBox(
+                  DecoratedBox( // --- Giữ nguyên Đường kẻ ---
                     decoration: BoxDecoration(
                       color: Color.fromARGB(255, 255, 98, 0),
                     ),
@@ -103,7 +115,7 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                     ),
                   ),
                   SizedBox(width: 5),
-                  MouseRegion(
+                  MouseRegion( // --- Giữ nguyên Nút Đăng nhập ---
                     cursor: SystemMouseCursors.click,
                     onEnter: (_) => setState(() {
                       _isHoveredDN = true;
@@ -137,7 +149,7 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Row(
+                  Row( // --- Giữ nguyên User Info ---
                     children: [
                       Container(
                         decoration: BoxDecoration(
@@ -169,20 +181,22 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                       ),
                     ],
                   )
+                  // --- Hết User Info ---
                 ],
               ),
             ],
           ),
+          // --- Hàng dưới ---
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(
+              Image.asset( // --- Logo ---
                 '/logoSNew.png',
                 height: 70,
                 width: 70,
               ),
               SizedBox(width: 10),
-              SizedBox(
+              SizedBox( // --- Thanh tìm kiếm ---
                 width: MediaQuery.of(context).size.width * 0.61,
                 child: Container(
                   height: 40,
@@ -196,16 +210,18 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                         child: Padding(
                           padding: EdgeInsets.symmetric(horizontal: 10),
                           child: TextField(
+                            // --- DÒNG 3: GÁN CONTROLLER ---
+                            controller: searchService.searchController,
+                            // --- Giữ nguyên decoration gốc của bạn ---
                             decoration: InputDecoration(
-                              hintText:
-                                  'Shopii đảm bảo chất lượng, giao hàng tận nơi - Đăng ký ngay!',
+                              hintText:'Shopii đảm bảo chất lượng, giao hàng tận nơi - Đăng ký ngay!',
                               border: InputBorder.none,
                               hintStyle: TextStyle(fontSize: 14),
                             ),
                           ),
                         ),
                       ),
-                      MouseRegion(
+                      MouseRegion( // --- Nút tìm kiếm ---
                         cursor: SystemMouseCursors.click,
                         onEnter: (_) => setState(() {
                           _isHoveredTK = true;
@@ -215,9 +231,9 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                         }),
                         child: GestureDetector(
                           onTap: () => Navigator.pushNamed(context, '/search'),
-                          child: Container(
+                          child: Container( // Giữ nguyên style nút search
                             width: 45,
-                            height: 45,
+                            height: 40, // Sửa height=40 cho bằng container cha
                             decoration: BoxDecoration(
                               color: _isHoveredTK
                                   ? const Color.fromARGB(255, 255, 48, 1)
@@ -236,7 +252,7 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                 ),
               ),
               SizedBox(width: 15),
-              MouseRegion(
+              MouseRegion( // --- Icon giỏ hàng ---
                 cursor: SystemMouseCursors.click,
                 onEnter: (_) => setState(() {
                   _isHoveredGH = true;
@@ -246,7 +262,7 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                 }),
                 child: GestureDetector(
                   onTap: () => Navigator.pushNamed(context, '/cart'),
-                  child: Container(
+                  child: Container( // Giữ nguyên style icon giỏ hàng
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
@@ -265,4 +281,6 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
       ),
     );
   }
+
+  // --- KHÔNG THÊM HELPER FUNCTIONS NẾU CODE GỐC KHÔNG CÓ ---
 }

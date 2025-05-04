@@ -1,40 +1,53 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart'; // Cần import intl ở đây
+
 class bodySuccessPayment extends StatefulWidget {
-  const bodySuccessPayment({super.key});
+  // *** Thêm trường final để lưu trữ orderData ***
+  final Map<String, dynamic> orderData;
+
+  // *** Sửa đổi constructor để yêu cầu orderData ***
+  const bodySuccessPayment({
+    super.key,
+    required this.orderData, // Thêm required parameter
+  });
 
   @override
   State<bodySuccessPayment> createState() => _bodySuccessPaymentState();
 }
 
 class _bodySuccessPaymentState extends State<bodySuccessPayment> {
-  // Helper method to format currency
+
+  // --- Thêm hàm _formatCurrency vào đây vì nó được sử dụng ở đây ---
   String _formatCurrency(num amount) {
+    // Đảm bảo amount không phải null, nếu là null thì trả về chuỗi rỗng hoặc giá trị mặc định
+    if (amount == null) return '₫0';
     final formatter = NumberFormat("#,###", "vi_VN");
     return '₫${formatter.format(amount)}';
   }
 
-  // Mock order data
-  final Map<String, dynamic> orderData = {
-    'customerID': 'KH12345678',
-    'customerName': 'Tuấn Tú',
-    'address': 'Gần Nhà Thờ An Phú An Giang, Thị Trấn An Phú, Huyện An Phú, An Giang',
-    'phone': '(+84) 583541716',
-    'orderID': 'SHOP2024061500123',
-    'createdTime': DateTime.now(),
-    'paymentMethod': 'Thanh toán khi nhận hàng',
-    'itemsTotal': 42000,
-    'shippingFee': 30000,
-    'tax': 4200,
-    'discount': 0,
-    'totalAmount': 76200,
-  };
-  
   @override
   Widget build(BuildContext context) {
     // Check if we're on a small screen (mobile)
     final bool isMobile = MediaQuery.of(context).size.width < 600;
-    
+
+    // *** Truy cập orderData thông qua widget.orderData ***
+    final orderData = widget.orderData; // Lấy dữ liệu từ widget
+
+    // Kiểm tra null an toàn hơn cho các giá trị trong orderData nếu cần
+    final String customerID = orderData['customerID'] ?? 'N/A';
+    final String customerName = orderData['customerName'] ?? 'N/A';
+    final String address = orderData['address'] ?? 'N/A';
+    final String phone = orderData['phone'] ?? 'N/A';
+    final String orderID = orderData['orderID'] ?? 'N/A';
+    final DateTime createdTime = orderData['createdTime'] ?? DateTime.now();
+    final String paymentMethod = orderData['paymentMethod'] ?? 'N/A';
+    final num itemsTotal = orderData['itemsTotal'] ?? 0;
+    final num shippingFee = orderData['shippingFee'] ?? 0;
+    final num tax = orderData['tax'] ?? 0;
+    final num discount = orderData['discount'] ?? 0;
+    final num totalAmount = orderData['totalAmount'] ?? 0;
+
+
     return SingleChildScrollView(
       child: Container(
         color: Colors.grey[100],
@@ -74,9 +87,9 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
                       color: Colors.green,
                     ),
                   ),
-                  
+
                   SizedBox(height: 24),
-                  
+
                   // Success message
                   Text(
                     'Đặt hàng thành công!',
@@ -86,9 +99,9 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
                       color: Colors.green,
                     ),
                   ),
-                  
+
                   SizedBox(height: 8),
-                  
+
                   Text(
                     'Cảm ơn bạn đã mua hàng tại Topick Global',
                     textAlign: TextAlign.center,
@@ -97,19 +110,19 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
                       color: Colors.grey[700],
                     ),
                   ),
-                  
+
                   SizedBox(height: 32),
-                  
+
                   // Order information
-                  _buildOrderInfoSection(isMobile),
-                  
+                  _buildOrderInfoSection(isMobile, orderData), // Truyền orderData vào hàm helper
+
                   SizedBox(height: 32),
-                  
+
                   // Payment summary
-                  _buildPaymentSummarySection(isMobile),
-                  
+                  _buildPaymentSummarySection(isMobile, orderData), // Truyền orderData vào hàm helper
+
                   SizedBox(height: 32),
-                  
+
                   // Back to home button
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
@@ -126,7 +139,7 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
                     ),
                     onPressed: () {
                       // Navigate back to home or order history
-                      Navigator.of(context).pushNamed('/');
+                      Navigator.of(context).pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false); // Quay về home và xóa các trang trước đó
                     },
                     child: Text(
                       'Quay về trang chủ',
@@ -144,9 +157,19 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
       ),
     );
   }
-  
+
   // Build order information section
-  Widget _buildOrderInfoSection(bool isMobile) {
+  // *** Sửa đổi hàm để nhận orderData ***
+  Widget _buildOrderInfoSection(bool isMobile, Map<String, dynamic> orderData) {
+     // Lấy dữ liệu từ tham số, thêm kiểm tra null nếu cần
+    final String customerID = orderData['customerID'] ?? 'N/A';
+    final String customerName = orderData['customerName'] ?? 'N/A';
+    final String address = orderData['address'] ?? 'N/A';
+    final String phone = orderData['phone'] ?? 'N/A';
+    final String orderID = orderData['orderID'] ?? 'N/A';
+    final DateTime createdTime = orderData['createdTime'] ?? DateTime.now();
+    final String paymentMethod = orderData['paymentMethod'] ?? 'N/A';
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(20),
@@ -166,28 +189,37 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
               color: Colors.black87,
             ),
           ),
-          
+
           SizedBox(height: 16),
-          
+
           // Order information items
-          _buildInfoRow('Mã khách hàng:', orderData['customerID'], isMobile),
-          _buildInfoRow('Họ và tên:', orderData['customerName'], isMobile),
-          _buildInfoRow('Địa chỉ:', orderData['address'], isMobile, isMultiLine: true),
-          _buildInfoRow('Số điện thoại:', orderData['phone'], isMobile),
-          _buildInfoRow('Mã đơn hàng:', orderData['orderID'], isMobile),
+          _buildInfoRow('Mã khách hàng:', customerID, isMobile),
+          _buildInfoRow('Họ và tên:', customerName, isMobile),
+          _buildInfoRow('Địa chỉ:', address, isMobile, isMultiLine: true),
+          _buildInfoRow('Số điện thoại:', phone, isMobile),
+          _buildInfoRow('Mã đơn hàng:', orderID, isMobile),
           _buildInfoRow(
             'Thời gian tạo:',
-            DateFormat('dd/MM/yyyy HH:mm:ss').format(orderData['createdTime']),
+            // Đảm bảo createdTime không null trước khi format
+            createdTime != null ? DateFormat('dd/MM/yyyy HH:mm:ss').format(createdTime) : 'N/A',
             isMobile,
           ),
-          _buildInfoRow('Phương thức thanh toán:', orderData['paymentMethod'], isMobile),
+          _buildInfoRow('Phương thức thanh toán:', paymentMethod, isMobile),
         ],
       ),
     );
   }
-  
+
   // Build payment summary section
-  Widget _buildPaymentSummarySection(bool isMobile) {
+  // *** Sửa đổi hàm để nhận orderData ***
+  Widget _buildPaymentSummarySection(bool isMobile, Map<String, dynamic> orderData) {
+    // Lấy dữ liệu từ tham số, thêm kiểm tra null nếu cần
+    final num itemsTotal = orderData['itemsTotal'] ?? 0;
+    final num shippingFee = orderData['shippingFee'] ?? 0;
+    final num tax = orderData['tax'] ?? 0;
+    final num discount = orderData['discount'] ?? 0;
+    final num totalAmount = orderData['totalAmount'] ?? 0;
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(20),
@@ -207,21 +239,21 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
               color: Colors.black87,
             ),
           ),
-          
+
           SizedBox(height: 16),
-          
+
           // Payment info
-          _buildPaymentRow('Tổng tiền hàng:', _formatCurrency(orderData['itemsTotal']), isMobile),
-          _buildPaymentRow('Phí vận chuyển:', _formatCurrency(orderData['shippingFee']), isMobile),
-          _buildPaymentRow('Thuế VAT (10%):', _formatCurrency(orderData['tax']), isMobile),
-          _buildPaymentRow('Giảm giá voucher:', _formatCurrency(orderData['discount']), isMobile),
-          
+          _buildPaymentRow('Tổng tiền hàng:', _formatCurrency(itemsTotal), isMobile),
+          _buildPaymentRow('Phí vận chuyển:', _formatCurrency(shippingFee), isMobile),
+          _buildPaymentRow('Thuế VAT (10%):', _formatCurrency(tax), isMobile),
+          _buildPaymentRow('Giảm giá voucher:', _formatCurrency(discount), isMobile),
+
           Divider(height: 32),
-          
+
           // Total amount
           _buildPaymentRow(
             'Tổng thanh toán:',
-            _formatCurrency(orderData['totalAmount']),
+            _formatCurrency(totalAmount),
             isMobile,
             isTotal: true,
           ),
@@ -229,9 +261,11 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
       ),
     );
   }
-  
+
   // Helper method to build information row
   Widget _buildInfoRow(String label, String value, bool isMobile, {bool isMultiLine = false}) {
+    // Đảm bảo value không null
+    value = value ?? 'N/A';
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8.0),
       child: isMobile || isMultiLine
@@ -281,9 +315,11 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
             ),
     );
   }
-  
+
   // Helper method to build payment row
   Widget _buildPaymentRow(String label, String value, bool isMobile, {bool isTotal = false}) {
+     // Đảm bảo value không null
+    value = value ?? '₫0';
     final TextStyle labelStyle = isTotal
         ? TextStyle(
             fontWeight: FontWeight.bold,
@@ -294,7 +330,7 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
             fontSize: 14,
             color: Colors.grey[700],
           );
-    
+
     final TextStyle valueStyle = isTotal
         ? TextStyle(
             fontWeight: FontWeight.bold,
@@ -304,7 +340,7 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
         : TextStyle(
             fontSize: 15,
           );
-    
+
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
