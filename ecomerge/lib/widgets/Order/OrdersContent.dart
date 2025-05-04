@@ -6,15 +6,20 @@ import 'package:e_commerce_app/widgets/Order/OrderStatusTab.dart';
 import 'package:flutter/material.dart';
 
 class OrdersContent extends StatefulWidget {
-  const OrdersContent({Key? key}) : super(key: key);
+  final int selectedTab;
+  final Function(int) onTabChanged;
+
+  const OrdersContent({
+    Key? key,
+    required this.selectedTab,
+    required this.onTabChanged,
+  }) : super(key: key);
 
   @override
   State<OrdersContent> createState() => _OrdersContentState();
 }
 
 class _OrdersContentState extends State<OrdersContent> {
-  int _selectedOrderTab = 0;
-
   // Keep the shorter status names as requested
   String _getShortStatusName(int tabIndex) {
     switch (tabIndex) {
@@ -129,8 +134,8 @@ class _OrdersContentState extends State<OrdersContent> {
 
             final orderId = "DH123${456 + index}";
             final orderDate = "01/05/2023";
-            final status =
-                _getShortStatusName(_selectedOrderTab); // Use short status name
+            final status = _getShortStatusName(
+                widget.selectedTab); // Use short status name
 
             return MouseRegion(
               cursor: SystemMouseCursors.click,
@@ -169,13 +174,11 @@ class _OrdersContentState extends State<OrdersContent> {
 
   // Improved responsive tab with optimized spacing
   Widget _buildResponsiveTab(String title, int index, bool isSmallScreen) {
-    final isSelected = _selectedOrderTab == index;
+    final isSelected = widget.selectedTab == index;
 
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _selectedOrderTab = index;
-        });
+        widget.onTabChanged(index);
       },
       child: Container(
         // More compact width calculation

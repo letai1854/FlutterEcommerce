@@ -56,6 +56,8 @@ class _BottomNavBarState extends State<BottomNavBar> {
     // Đọc arguments trong build method (nếu cần)
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+    // Check for arguments first
     if (args != null && args.containsKey('selectedIndex')) {
       final newIndex = args['selectedIndex'] as int;
       if (newIndex != _selectedIndex) {
@@ -68,12 +70,66 @@ class _BottomNavBarState extends State<BottomNavBar> {
         });
       }
     }
+    // Then check the route if no arguments are provided
+    else {
+      final String currentRoute = ModalRoute.of(context)?.settings.name ?? '';
+
+      // If we're at home route with no arguments (app just started), select home tab
+      if (currentRoute == '/' || currentRoute == '/home') {
+        if (_selectedIndex != 0) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                _selectedIndex = 0;
+              });
+            }
+          });
+        }
+      }
+      // Handle other main routes
+      else if (currentRoute == '/catalog_product' && _selectedIndex != 1) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _selectedIndex = 1;
+            });
+          }
+        });
+      } else if (currentRoute == '/product_detail' && _selectedIndex != 2) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _selectedIndex = 2;
+            });
+          }
+        });
+      } else if (currentRoute == '/info' && _selectedIndex != 3) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _selectedIndex = 3;
+            });
+          }
+        });
+      }
+      // For non-main routes, unselect all tabs
+      else if (!['/home', '/', '/catalog_product', '/product_detail', '/info']
+              .contains(currentRoute) &&
+          _selectedIndex >= 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _selectedIndex = -1;
+            });
+          }
+        });
+      }
+    }
 
     return BottomNavigationBar(
       currentIndex: _selectedIndex < 0 ? 0 : _selectedIndex,
-      selectedItemColor: _selectedIndex < 0
-          ? Colors.grey
-          : Colors.red, // Màu chữ & icon khi được chọn
+      unselectedItemColor: Colors.grey,
+      selectedItemColor: _selectedIndex < 0 ? Colors.grey : Colors.red,
       onTap: _onItemTapped,
       type: BottomNavigationBarType.fixed,
       items: [
@@ -88,12 +144,13 @@ class _BottomNavBarState extends State<BottomNavBar> {
   // Hàm tạo BottomNavigationBarItem với màu sắc phù hợp
   BottomNavigationBarItem _buildNavItem(
       IconData icon, String label, int index) {
+    final bool isSelected = _selectedIndex == index;
+    final bool noSelection = _selectedIndex < 0;
+
     return BottomNavigationBarItem(
       icon: Icon(
         icon,
-        color: _selectedIndex < 0
-            ? Colors.grey
-            : (_selectedIndex == index ? Colors.red : Colors.grey),
+        color: (noSelection || !isSelected) ? Colors.grey : Colors.red,
       ),
       label: label,
     );

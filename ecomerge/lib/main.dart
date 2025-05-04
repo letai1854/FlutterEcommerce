@@ -19,6 +19,7 @@ import 'package:e_commerce_app/Screens/SignUp/SignUp_Reponsive.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:e_commerce_app/providers/signup_form_provider.dart';
+import 'package:e_commerce_app/providers/login_form_provider.dart';
 
 Future<void> initApp() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,6 +36,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => SignupFormProvider()),
+        ChangeNotifierProvider(create: (_) => LoginFormProvider()),
       ],
       child: const MyApp(),
     ),

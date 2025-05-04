@@ -13,18 +13,7 @@ class SignupTablet extends StatelessWidget {
       backgroundColor: const Color.fromARGB(255, 234, 29, 7),
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(80),
-        child: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          title: Navbar(),
-          actions: [
-            Builder(
-              builder: (context) => Container(
-                margin: EdgeInsets.only(right: 10),
-              ),
-            ),
-          ],
-        ),
+        child: Navbar(),
       ),
       body: SizedBox(
         height: MediaQuery.of(context).size.height,

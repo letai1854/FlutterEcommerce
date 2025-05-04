@@ -1,8 +1,7 @@
 import 'package:e_commerce_app/Screens/UserInfo/UserInfoTypes.dart';
-import 'package:e_commerce_app/widgets/Password/ForgotPasswordContentInfo.dart';
 import 'package:flutter/material.dart';
 
-class RightColumnContent extends StatefulWidget {
+class RightColumnContent extends StatelessWidget {
   final MainSection selectedMainSection;
   final ProfileSection selectedProfileSection;
   final Widget Function() buildPersonalInfoForm;
@@ -10,6 +9,7 @@ class RightColumnContent extends StatefulWidget {
   final Widget Function() buildAddressManagement;
   final Widget Function() buildOrdersContent;
   final Widget Function() buildPointsContent;
+  final Widget Function() buildForgotPasswordContent;
 
   const RightColumnContent({
     Key? key,
@@ -20,33 +20,29 @@ class RightColumnContent extends StatefulWidget {
     required this.buildAddressManagement,
     required this.buildOrdersContent,
     required this.buildPointsContent,
+    required this.buildForgotPasswordContent,
   }) : super(key: key);
 
   @override
-  State<RightColumnContent> createState() => _RightColumnContentState();
-}
-
-class _RightColumnContentState extends State<RightColumnContent> {
-  @override
   Widget build(BuildContext context) {
-    if (widget.selectedMainSection == MainSection.profile) {
-      switch (widget.selectedProfileSection) {
+    if (selectedMainSection == MainSection.profile) {
+      switch (selectedProfileSection) {
         case ProfileSection.personalInfo:
-          return widget.buildPersonalInfoForm();
+          return buildPersonalInfoForm();
         case ProfileSection.forgotPassword:
-          return const ForgotPasswordContentInfo();
+          return buildForgotPasswordContent();
         case ProfileSection.changePassword:
-          return widget.buildChangePasswordContent();
+          return buildChangePasswordContent();
         case ProfileSection.addresses:
-          return widget.buildAddressManagement();
+          return buildAddressManagement();
       }
-    } else if (widget.selectedMainSection == MainSection.orders) {
-      return widget.buildOrdersContent();
-    } else if (widget.selectedMainSection == MainSection.points) {
-      return widget.buildPointsContent();
+    } else if (selectedMainSection == MainSection.orders) {
+      return buildOrdersContent();
+    } else if (selectedMainSection == MainSection.points) {
+      return buildPointsContent();
     }
 
     // Default fallback
-    return widget.buildPersonalInfoForm();
+    return buildPersonalInfoForm();
   }
 }

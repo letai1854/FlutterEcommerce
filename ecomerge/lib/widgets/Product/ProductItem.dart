@@ -29,6 +29,9 @@ class _ProductItemState extends State<ProductItem> {
         ? widget.price * (1 - widget.discount! / 100)
         : widget.price;
 
+    // Format description to show only 5 words with ellipsis
+    String formattedDescription = _formatDescription(widget.describe);
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
@@ -93,7 +96,7 @@ class _ProductItemState extends State<ProductItem> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        widget.describe,
+                        formattedDescription,
                         style: TextStyle(
                           color: Colors.grey[600],
                           fontSize: 12,
@@ -146,6 +149,16 @@ class _ProductItemState extends State<ProductItem> {
         ),
       ),
     );
+  }
+
+  // Helper method to format description to show only 5 words
+  String _formatDescription(String description) {
+    final words = description.split(' ');
+    if (words.length <= 5) {
+      return description;
+    } else {
+      return '${words.take(5).join(' ')}...';
+    }
   }
 }
 
