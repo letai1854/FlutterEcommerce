@@ -1,0 +1,31 @@
+2025-05-04 19:19:03.612 [restartedMain] INFO  d.c.e.testserver.ServerApplication - Starting ServerApplication using Java 17.0.12 with PID 21424 (D:\Study\HK2_24_25\FLutter\FlutterEcomerge\Server\target\classes started by letie in D:\Study\HK2_24_25\FLutter\FlutterEcomerge\Server)
+2025-05-04 19:19:03.615 [restartedMain] INFO  d.c.e.testserver.ServerApplication - The following 1 profile is active: "dev"
+2025-05-04 19:19:03.681 [restartedMain] INFO  o.s.b.d.e.DevToolsPropertyDefaultsPostProcessor - Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+2025-05-04 19:19:03.681 [restartedMain] INFO  o.s.b.d.e.DevToolsPropertyDefaultsPostProcessor - For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+2025-05-04 19:19:04.552 [restartedMain] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-05-04 19:19:04.666 [restartedMain] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 102 ms. Found 3 JPA repository interfaces.
+2025-05-04 19:19:05.651 [restartedMain] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with ports 8443 (https), 8080 (http)
+2025-05-04 19:19:05.673 [restartedMain] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2025-05-04 19:19:05.673 [restartedMain] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.24]
+2025-05-04 19:19:05.765 [restartedMain] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-05-04 19:19:05.765 [restartedMain] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 2083 ms
+2025-05-04 19:19:05.798 [restartedMain] INFO  d.c.e.t.u.security.JwtTokenProvider - Successfully decoded JWT secret from Base64.
+2025-05-04 19:19:05.800 [restartedMain] INFO  d.c.e.t.u.security.JwtTokenProvider - JWT Secret Key initialized successfully.
+2025-05-04 19:19:05.935 [restartedMain] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2025-05-04 19:19:06.195 [restartedMain] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@214a4f7b
+2025-05-04 19:19:06.198 [restartedMain] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2025-05-04 19:19:06.252 [restartedMain] INFO  o.h.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-05-04 19:19:06.376 [restartedMain] INFO  org.hibernate.Version - HHH000412: Hibernate ORM core version 6.5.2.Final
+2025-05-04 19:19:06.443 [restartedMain] INFO  o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2025-05-04 19:19:06.837 [restartedMain] INFO  o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-05-04 19:19:06.928 [restartedMain] WARN  org.hibernate.dialect.Dialect - HHH000511: The 5.5.5 version for [org.hibernate.dialect.MySQLDialect] is no longer supported, hence certain features may not work properly. The minimum supported version is 8.0.0. Check the community dialects project for available legacy versions.
+2025-05-04 19:19:08.162 [restartedMain] INFO  o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-05-04 19:19:08.165 [restartedMain] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-05-04 19:19:08.530 [restartedMain] INFO  o.s.d.j.r.query.QueryEnhancerFactory - Hibernate is in classpath; If applicable, HQL parser will be used.
+2025-05-04 19:19:09.109 [restartedMain] INFO  o.s.s.c.a.a.c.InitializeUserDetailsBeanManagerConfigurer$InitializeUserDetailsManagerConfigurer - Global AuthenticationManager configured with UserDetailsService bean with name userDetailsServiceImpl
+2025-05-04 19:19:09.200 [restartedMain] WARN  o.s.b.a.o.j.JpaBaseConfiguration$JpaWebConfiguration - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-05-04 19:19:09.608 [restartedMain] INFO  o.s.s.web.DefaultSecurityFilterChain - Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@5098a4aa, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@6ba8bf67, org.springframework.security.web.context.SecurityContextHolderFilter@7846f8c5, org.springframework.security.web.header.HeaderWriterFilter@3409963d, org.springframework.web.filter.CorsFilter@77a51f18, org.springframework.security.web.authentication.logout.LogoutFilter@763e1f37, demo.com.example.testserver.user.security.JwtAuthenticationFilter@200adcbb, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@7f14b81b, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@61ec4f0d, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@ee8e26d, org.springframework.security.web.session.SessionManagementFilter@7dc2d92, org.springframework.security.web.access.ExceptionTranslationFilter@63660d67, org.springframework.security.web.access.intercept.AuthorizationFilter@7659ba44]
+2025-05-04 19:19:09.897 [restartedMain] INFO  o.s.b.d.a.OptionalLiveReloadServer - LiveReload server is running on port 35729
+2025-05-04 19:19:10.049 [restartedMain] INFO  o.a.t.u.net.NioEndpoint.certificate - Connector [https-jsse-nio-8443], TLS virtual host [_default_], certificate type [UNDEFINED] configured from keystore [C:\Users\letie\.keystore] using alias [mycert] with trust store [null]
+2025-05-04 19:19:10.069 [restartedMain] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on ports 8443 (https), 8080 (http) with context path '/'
+2025-05-04 19:19:10.078 [restartedMain] INFO  d.c.e.testserver.ServerApplication - Started ServerApplication in 6.921 seconds (process running for 7.429)
