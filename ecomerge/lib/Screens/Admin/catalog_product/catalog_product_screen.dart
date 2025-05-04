@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class CatalogProductScreen extends StatefulWidget {
   const CatalogProductScreen({Key? key}) : super(key: key);
@@ -21,20 +24,17 @@ class _CatalogProductScreenState extends State<CatalogProductScreen> {
 
   DateTimeRange? _customDateRange;
 
-  // Thêm các biến cần thiết cho phân trang
   int _currentPage = 0;
   final int _rowsPerPage = 10;
-  
-  // Lấy danh sách danh mục cho trang hiện tại
+
   List<Map<String, dynamic>> get _paginatedData {
     final startIndex = _currentPage * _rowsPerPage;
     final endIndex = min(startIndex + _rowsPerPage, _catalogProductData.length);
-    
+
     if (startIndex >= _catalogProductData.length) return [];
     return _catalogProductData.sublist(startIndex, endIndex);
   }
-  
-  // Tính số trang dựa trên dữ liệu và số hàng mỗi trang
+
   int get _pageCount => (_catalogProductData.length / _rowsPerPage).ceil();
 
   void _showDateRangePicker() async {
@@ -42,16 +42,16 @@ class _CatalogProductScreenState extends State<CatalogProductScreen> {
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
-      initialDateRange: _customDateRange ?? DateTimeRange(
-        start: DateTime.now().subtract(const Duration(days: 7)),
-        end: DateTime.now(),
-      ),
+      initialDateRange: _customDateRange ??
+          DateTimeRange(
+            start: DateTime.now().subtract(const Duration(days: 7)),
+            end: DateTime.now(),
+          ),
     );
     if (picked != null) {
       setState(() {
         _customDateRange = picked;
         _selectedFilter = 'Khoảng thời gian cụ thể';
-        // TODO: Implement filter logic based on _customDateRange
       });
     }
   }
@@ -73,20 +73,190 @@ class _CatalogProductScreenState extends State<CatalogProductScreen> {
     }
   }
 
-  // Sample data for demonstration
   final List<Map<String, dynamic>> _catalogProductData = List.generate(
       25,
       (index) => {
-            'name': 'Danh mục ${index + 1}',
-            'description': 'Mô tả cho danh mục ${index + 1}',
+            'id': index + 1,
+            'ten_danh_muc': 'Danh mục ${index + 1}',
+            'hinh_anh': 'https://picsum.photos/seed/${index + 100}/200/200',
+            'ngay_tao':
+                DateTime.now().subtract(Duration(days: index)).toString(),
+            'ngay_cap_nhat': DateTime.now().toString(),
           });
 
   late CatalogProductDataSource _catalogProductDataSource;
 
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() {
+        _selectedImage = image;
+      });
+    }
+  }
+
+  XFile? _selectedImage;
+
+  void _showCategoryDialog([Map<String, dynamic>? category]) {
+    final bool isEditing = category != null;
+    final TextEditingController nameController = TextEditingController(
+      text: isEditing ? category['ten_danh_muc'] : '',
+    );
+    _selectedImage = null;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          title: Text(isEditing ? 'Chỉnh sửa danh mục' : 'Thêm danh mục mới'),
+          content: SingleChildScrollView(
+              child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Tên danh mục',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  await _pickImage();
+                  setStateDialog(() {}); // Refresh dialog UI
+                },
+                icon: const Icon(Icons.image),
+                label: const Text('Chọn ảnh'),
+              ),
+              const SizedBox(height: 16),
+              if (_selectedImage != null ||
+                  (isEditing && category['hinh_anh'] != null)) ...[
+                Container(
+                  height: 100,
+                  width: 100,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                  ),
+                  child: _selectedImage != null
+                      ? kIsWeb
+                          ? Image.network(_selectedImage!.path,
+                              fit: BoxFit.cover)
+                          : Image.file(File(_selectedImage!.path),
+                              fit: BoxFit.cover)
+                      : Image.network(
+                          category?['hinh_anh'] ?? '',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Center(
+                                child: Icon(Icons.image_not_supported));
+                          },
+                        ),
+                ),
+              ],
+            ],
+          )),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Hủy'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (nameController.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Vui lòng nhập tên danh mục')),
+                  );
+                  return;
+                }
+
+                if (!isEditing && _selectedImage == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Vui lòng chọn hình ảnh')),
+                  );
+                  return;
+                }
+
+                String imagePath = '';
+                if (_selectedImage != null) {
+                  imagePath = _selectedImage!.path;
+                } else if (isEditing) {
+                  imagePath = category!['hinh_anh'];
+                }
+
+                if (isEditing) {
+                  final index = _catalogProductData.indexWhere(
+                    (item) => item['id'] == category['id'],
+                  );
+                  if (index != -1) {
+                    setState(() {
+                      _catalogProductData[index]['ten_danh_muc'] =
+                          nameController.text;
+                      _catalogProductData[index]['hinh_anh'] = imagePath;
+                      _catalogProductData[index]['ngay_cap_nhat'] =
+                          DateTime.now().toString();
+                      _catalogProductDataSource =
+                          CatalogProductDataSource(_catalogProductData, this);
+                    });
+                  }
+                } else {
+                  setState(() {
+                    _catalogProductData.add({
+                      'id': _catalogProductData.length + 1,
+                      'ten_danh_muc': nameController.text,
+                      'hinh_anh': imagePath,
+                      'ngay_tao': DateTime.now().toString(),
+                      'ngay_cap_nhat': DateTime.now().toString(),
+                    });
+                    _catalogProductDataSource =
+                        CatalogProductDataSource(_catalogProductData, this);
+                  });
+                }
+                Navigator.pop(context);
+              },
+              child: Text(isEditing ? 'Cập nhật' : 'Thêm'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(Map<String, dynamic> category) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xác nhận xóa'),
+        content: Text(
+            'Bạn có chắc chắn muốn xóa danh mục "${category['ten_danh_muc']}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _catalogProductData
+                    .removeWhere((item) => item['id'] == category['id']);
+                _catalogProductDataSource =
+                    CatalogProductDataSource(_catalogProductData, this);
+              });
+              Navigator.pop(context);
+            },
+            child: const Text('Xóa', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
-    _catalogProductDataSource = CatalogProductDataSource(_catalogProductData);
+    _catalogProductDataSource =
+        CatalogProductDataSource(_catalogProductData, this);
   }
 
   @override
@@ -96,24 +266,20 @@ class _CatalogProductScreenState extends State<CatalogProductScreen> {
 
     return Scaffold(
       body: isSmallScreen
-        ? _buildSmallScreenLayout(availableWidth)
-        : _buildLargeScreenLayout(availableWidth),
+          ? _buildSmallScreenLayout(availableWidth)
+          : _buildLargeScreenLayout(availableWidth),
     );
   }
 
-  // Layout cho màn hình nhỏ (mobile, tablet nhỏ)
   Widget _buildSmallScreenLayout(double availableWidth) {
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
-        // Tiêu đề trang
         Text(
           'Quản lý danh mục sản phẩm',
           style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 20),
-
-        // --- Controls Area (Search, Filter, Add Button) ---
         SizedBox(
           width: availableWidth,
           child: Wrap(
@@ -121,20 +287,18 @@ class _CatalogProductScreenState extends State<CatalogProductScreen> {
             runSpacing: 10,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              // Search TextField
               SizedBox(
                 width: 250,
                 child: TextField(
                   decoration: const InputDecoration(
                     hintText: 'Tìm kiếm...',
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                     isDense: true,
                   ),
                 ),
               ),
-
-              // Filter Dropdown
               SizedBox(
                 width: 250,
                 child: DropdownButtonFormField<String>(
@@ -150,26 +314,24 @@ class _CatalogProductScreenState extends State<CatalogProductScreen> {
                       _selectedFilter = newValue!;
                       if (newValue == 'Khoảng thời gian cụ thể') {
                         _showDateRangePicker();
-                      } else {
-                        print('Selected filter: $newValue');
                       }
                     });
                   },
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                     isDense: true,
                   ),
                 ),
               ),
-
-              // Add Button
               ElevatedButton(
                 onPressed: () {
-                  print('Thêm danh mục sản phẩm Pressed');
+                  _showCategoryDialog();
                 },
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 16),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 15, horizontal: 16),
                   textStyle: const TextStyle(fontSize: 14),
                   minimumSize: const Size(0, 48),
                 ),
@@ -179,21 +341,17 @@ class _CatalogProductScreenState extends State<CatalogProductScreen> {
           ),
         ),
         const SizedBox(height: 20),
-
-        // Header for the table section
         Text(
           'Danh sách danh mục sản phẩm',
           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 10),
-
-        // Danh sách danh mục
         ListView.builder(
           shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(), // Disable ListView scrolling
+          physics: const NeverScrollableScrollPhysics(),
           itemCount: _paginatedData.length,
           itemBuilder: (context, index) {
-            final product = _paginatedData[index];
+            final category = _paginatedData[index];
             return Column(
               children: [
                 Card(
@@ -203,50 +361,61 @@ class _CatalogProductScreenState extends State<CatalogProductScreen> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        // Phần thông tin danh mục
+                        Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: (category['hinh_anh'] != null &&
+                                  category['hinh_anh'].toString().isNotEmpty)
+                              ? Image.network(
+                                  category['hinh_anh'].toString(),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Center(
+                                      child: Icon(Icons.image_not_supported,
+                                          color: Colors.grey),
+                                    );
+                                  },
+                                )
+                              : const Center(
+                                  child: Icon(Icons.image_not_supported,
+                                      color: Colors.grey),
+                                ),
+                        ),
+                        const SizedBox(width: 12),
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                product['name'].toString(),
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              
-                              Text(
-                                product['description'].toString(),
-                                style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
+                          child: Text(
+                            category['ten_danh_muc'].toString(),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 14),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        
-                        // Các nút chức năng
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
                               onPressed: () {
-                                print('Chỉnh sửa ${product['name']}');
+                                _showCategoryDialog(category);
                               },
                               icon: const Icon(Icons.edit, size: 18),
                               tooltip: 'Chỉnh sửa',
-                              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                              constraints: const BoxConstraints(
+                                  minWidth: 36, minHeight: 36),
                               padding: EdgeInsets.zero,
                             ),
                             IconButton(
                               onPressed: () {
-                                print('Xóa ${product['name']}');
+                                _showDeleteConfirmation(category);
                               },
                               icon: const Icon(Icons.delete, size: 18),
                               tooltip: 'Xóa',
-                              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                              constraints: const BoxConstraints(
+                                  minWidth: 36, minHeight: 36),
                               padding: EdgeInsets.zero,
                             ),
                           ],
@@ -261,8 +430,6 @@ class _CatalogProductScreenState extends State<CatalogProductScreen> {
             );
           },
         ),
-
-        // Phần điều khiển phân trang
         Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           margin: const EdgeInsets.only(top: 8),
@@ -272,14 +439,11 @@ class _CatalogProductScreenState extends State<CatalogProductScreen> {
           ),
           child: Column(
             children: [
-              // Widget hiển thị thông tin phân trang
               Text(
                 'Hiển thị ${_paginatedData.isEmpty ? 0 : (_currentPage * _rowsPerPage) + 1} - ${(_currentPage * _rowsPerPage) + _paginatedData.length} trên ${_catalogProductData.length}',
                 style: TextStyle(color: Colors.grey[600]),
               ),
               const SizedBox(height: 8),
-              
-              // Nút điều hướng phân trang
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -321,7 +485,6 @@ class _CatalogProductScreenState extends State<CatalogProductScreen> {
     );
   }
 
-  // Layout cho màn hình lớn (desktop, tablet lớn)
   Widget _buildLargeScreenLayout(double availableWidth) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -333,8 +496,6 @@ class _CatalogProductScreenState extends State<CatalogProductScreen> {
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 20),
-
-          // --- Controls Area ---
           SizedBox(
             width: availableWidth,
             child: Wrap(
@@ -342,20 +503,18 @@ class _CatalogProductScreenState extends State<CatalogProductScreen> {
               runSpacing: 10,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                // Search TextField
                 SizedBox(
                   width: 250,
                   child: TextField(
                     decoration: const InputDecoration(
                       hintText: 'Tìm kiếm...',
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                       isDense: true,
                     ),
                   ),
                 ),
-
-                // Filter Dropdown
                 SizedBox(
                   width: 250,
                   child: DropdownButtonFormField<String>(
@@ -371,26 +530,24 @@ class _CatalogProductScreenState extends State<CatalogProductScreen> {
                         _selectedFilter = newValue!;
                         if (newValue == 'Khoảng thời gian cụ thể') {
                           _showDateRangePicker();
-                        } else {
-                          print('Selected filter: $newValue');
                         }
                       });
                     },
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                       isDense: true,
                     ),
                   ),
                 ),
-
-                // Add Button
                 ElevatedButton(
                   onPressed: () {
-                    print('Thêm danh mục sản phẩm Pressed');
+                    _showCategoryDialog();
                   },
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 15, horizontal: 16),
                     textStyle: const TextStyle(fontSize: 14),
                     minimumSize: const Size(0, 48),
                   ),
@@ -400,15 +557,11 @@ class _CatalogProductScreenState extends State<CatalogProductScreen> {
             ),
           ),
           const SizedBox(height: 20),
-
-          // Header for the table section
           Text(
             'Danh sách danh mục sản phẩm',
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
-
-          // Table Area
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -424,7 +577,7 @@ class _CatalogProductScreenState extends State<CatalogProductScreen> {
                         horizontalMargin: 10,
                         columns: const [
                           DataColumn(label: Text('Tên danh mục')),
-                          DataColumn(label: Text('Mô tả')),
+                          DataColumn(label: Text('Hình ảnh')),
                           DataColumn(label: Text('Chức năng')),
                         ],
                         source: _catalogProductDataSource,
@@ -444,26 +597,41 @@ class _CatalogProductScreenState extends State<CatalogProductScreen> {
 
 class CatalogProductDataSource extends DataTableSource {
   final List<Map<String, dynamic>> _data;
+  final _CatalogProductScreenState _state;
 
-  CatalogProductDataSource(this._data);
+  CatalogProductDataSource(this._data, this._state);
 
   @override
   DataRow? getRow(int index) {
     if (index >= _data.length) {
       return null;
     }
-    final catalogProduct = _data[index];
+    final category = _data[index];
     return DataRow(cells: [
-      DataCell(Text(catalogProduct['name'])),
-      DataCell(Text(catalogProduct['description'])),
+      DataCell(Text(category['ten_danh_muc'])),
+      DataCell(
+        (category['hinh_anh'] != null &&
+                category['hinh_anh'].toString().isNotEmpty)
+            ? SizedBox(
+                width: 60,
+                height: 60,
+                child: Image.network(
+                  category['hinh_anh'].toString(),
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Center(child: Icon(Icons.image_not_supported));
+                  },
+                ),
+              )
+            : const Center(child: Icon(Icons.image_not_supported)),
+      ),
       DataCell(
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
               onPressed: () {
-                // TODO: Implement edit logic
-                print('Chỉnh sửa ${catalogProduct['name']}');
+                _state._showCategoryDialog(category);
               },
               icon: const Icon(Icons.edit),
               tooltip: 'Chỉnh sửa',
@@ -472,8 +640,7 @@ class CatalogProductDataSource extends DataTableSource {
             ),
             IconButton(
               onPressed: () {
-                // TODO: Implement delete logic
-                print('Xóa ${catalogProduct['name']}');
+                _state._showDeleteConfirmation(category);
               },
               icon: const Icon(Icons.delete),
               tooltip: 'Xóa',
