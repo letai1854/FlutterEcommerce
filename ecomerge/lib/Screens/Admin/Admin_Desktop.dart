@@ -98,8 +98,8 @@ class _AdminDesktopState extends State<AdminDesktop> {
                   isMobile: isMobile,
                 ),
 
-                // Stats row
-                const DashboardStatsRow(),
+                // Stats row - ONLY show on Dashboard page
+                if (_currentPage == 'Dashboard') const DashboardStatsRow(),
 
                 // Main content
                 Expanded(
