@@ -65,6 +65,16 @@ public class Product {
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
     private List<ProductReview> reviews;
 
+    // Denormalized fields
+    @Column(name = "min_price", precision = 12, scale = 2)
+    private BigDecimal minPrice;
+
+    @Column(name = "max_price", precision = 12, scale = 2)
+    private BigDecimal maxPrice;
+
+    @Column(name = "average_rating")
+    private Double averageRating;
+
 
     // Lifecycle Callbacks
     @PrePersist
@@ -176,5 +186,29 @@ public class Product {
 
     public void setReviews(List<ProductReview> reviews) {
         this.reviews = reviews;
+    }
+
+    public BigDecimal getMinPrice() {
+        return minPrice;
+    }
+
+    public void setMinPrice(BigDecimal minPrice) {
+        this.minPrice = minPrice;
+    }
+
+    public BigDecimal getMaxPrice() {
+        return maxPrice;
+    }
+
+    public void setMaxPrice(BigDecimal maxPrice) {
+        this.maxPrice = maxPrice;
+    }
+
+    public Double getAverageRating() {
+        return averageRating;
+    }
+
+    public void setAverageRating(Double averageRating) {
+        this.averageRating = averageRating;
     }
 }
