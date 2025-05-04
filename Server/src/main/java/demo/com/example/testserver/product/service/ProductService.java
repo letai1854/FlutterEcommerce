@@ -1,5 +1,6 @@
 package demo.com.example.testserver.product.service;
 
+import demo.com.example.testserver.product.dto.CreateProductRequestDTO;
 import demo.com.example.testserver.product.dto.ProductDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +34,14 @@ public interface ProductService {
             String sortBy,
             String sortDir
     );
+
+    /**
+     * Creates a new product based on the provided data.
+     *
+     * @param requestDTO DTO containing the details for the new product.
+     * @return The created ProductDTO.
+     */
+    ProductDTO createProduct(CreateProductRequestDTO requestDTO);
 
     // Add other methods as needed, e.g., findProductById
 }

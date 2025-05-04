@@ -48,10 +48,13 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/users/register").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/users/forgot-password").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/users/reset-password").permitAll()
-                // Allow product viewing without login (example)
-                .requestMatchers(HttpMethod.GET, "/products/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/categories/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/brands/**").permitAll()
+                // Allow product viewing without login
+                .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+                // Secure product creation - only ADMIN role at the new path
+                .requestMatchers(HttpMethod.POST, "/api/products/create").hasRole("ADMIN") // Updated path
+                // Allow public access to categories and brands (assuming they exist under /api)
+                .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/brands/**").permitAll()
                 // Secure all other requests
                 .anyRequest().authenticated()
             );
