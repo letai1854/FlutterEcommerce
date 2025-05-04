@@ -1,7 +1,10 @@
 package demo.com.example.testserver.product.controller;
 
+import demo.com.example.testserver.product.dto.CreateProductRequestDTO; // Import new DTO
 import demo.com.example.testserver.product.dto.ProductDTO;
 import demo.com.example.testserver.product.service.ProductService;
+import jakarta.persistence.EntityNotFoundException; // Import
+import jakarta.validation.Valid; // Import for validation
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,8 +14,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize; // Import PreAuthorize
 
 import java.math.BigDecimal;
+import java.net.URI; // Import for location header
 
 @RestController
 @RequestMapping("/api/products")
@@ -58,7 +63,29 @@ public class ProductController {
         }
     }
 
-    // Add other endpoints like getProductById, createProduct, updateProduct, deleteProduct as needed
+    @PostMapping("/create") // Changed from @PostMapping
+    @PreAuthorize("hasRole('ADMIN')") // Only allow users with ADMIN role
+    public ResponseEntity<?> createProduct(@Valid @RequestBody CreateProductRequestDTO requestDTO) {
+        try {
+            logger.info("Received request to create product: {}", requestDTO.getName());
+            ProductDTO createdProduct = productService.createProduct(requestDTO);
+            // Return 201 Created status with the location of the new resource and the resource itself
+            URI location = URI.create(String.format("/api/products/%s", createdProduct.getId()));
+            return ResponseEntity.created(location).body(createdProduct);
+        } catch (EntityNotFoundException e) {
+            logger.warn("Failed to create product. Reason: {}", e.getMessage());
+            // Return 404 or 400 depending on whether it's a client error (bad ID) or server state
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage()); // e.g., "Category not found..."
+        } catch (IllegalArgumentException e) {
+             logger.warn("Invalid request data for creating product: {}", e.getMessage());
+             return ResponseEntity.badRequest().body(e.getMessage()); // Or a more structured error response
+        } catch (Exception e) {
+            logger.error("Error creating product", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred while creating the product.");
+        }
+    }
+
+    // Add other endpoints like getProductById, updateProduct, deleteProduct as needed
     // Example:
     /*
     @GetMapping("/{id}")
