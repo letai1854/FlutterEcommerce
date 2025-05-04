@@ -19,13 +19,15 @@ import jakarta.persistence.TemporalType;
 @Table(name = "password_reset_tokens") // Ensure table name matches SQL
 public class PasswordResetToken {
 
-    public static final int EXPIRATION = 60*24; // Expiry time in minutes (24 hours) - Make public
+    // OTP expires after 15 minutes
+    public static final int EXPIRATION = 15; // Expiry time in minutes
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "token_hash") // Match the repository method exactly
+    // Stores the HASH of the 6-digit OTP code
+    @Column(name = "token_hash", unique = true) // OTP hash should be unique
     private String tokenHash;
 
     @OneToOne(targetEntity = User.class, fetch = FetchType.EAGER)
@@ -40,6 +42,7 @@ public class PasswordResetToken {
     public PasswordResetToken() {}
 
     public PasswordResetToken(String tokenHash, User user, Date expiryDate) {
+        // Note: Hashing should happen BEFORE calling this constructor (in the service layer)
         this.tokenHash = tokenHash;
         this.user = user;
         this.expiryDate = expiryDate;
@@ -72,6 +75,7 @@ public class PasswordResetToken {
     }
 
     public void setTokenHash(String tokenHash) {
+        // Note: Hashing should happen BEFORE calling this setter (in the service layer)
         this.tokenHash = tokenHash;
     }
 

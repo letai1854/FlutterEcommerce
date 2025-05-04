@@ -48,6 +48,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/users/register").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/users/forgot-password").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/users/reset-password").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/users/verify-otp").permitAll() // Added path
+                .requestMatchers(HttpMethod.POST, "/api/users/set-new-password").permitAll() // Added path
                 // Allow product viewing without login
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                 // Secure product creation - only ADMIN role at the new path
