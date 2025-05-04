@@ -1,8 +1,8 @@
 import 'package:e_commerce_app/Provider/UserProvider.dart';
 import 'package:e_commerce_app/providers/login_form_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:e_commerce_app/Controllers/User_controller.dart';
 import 'package:provider/provider.dart';
+import '../database/services/user_service.dart'; // Import UserService
 
 class LoginForm extends StatefulWidget {
   const LoginForm({Key? key}) : super(key: key);
@@ -15,7 +15,7 @@ class _LoginFormState extends State<LoginForm> {
   // Initialize focus nodes
   final FocusNode _emailFocusNode = FocusNode();
   final FocusNode _passwordFocusNode = FocusNode();
-  final UserController _userController = UserController();
+  final UserService _userService = UserService(); // Create UserService instance
 
   @override
   void initState() {
@@ -67,33 +67,31 @@ class _LoginFormState extends State<LoginForm> {
     provider.setErrorMessage(null);
 
     try {
-      final user = await _userController.login(
+      final success = await _userService.loginUser(
         emailController.text,
         passwordController.text,
       );
 
       if (mounted) {
-        // Store user in provider
-        UserProvider().setUser(user);
-
-        // Set flag to false before navigating away
-        provider.setScreenResize(false);
-
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/home',
-          (route) => false,
-        );
+        if (success == true) {
+          // Login successful, navigate to home
+          // UserInfo singleton already updated in UserService
+          provider.setScreenResize(false);
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/home',
+            (route) => false,
+          );
+        } else {
+          // Login failed
+          provider.setErrorMessage('Email hoặc mật khẩu không đúng'); // Assuming this is the common failure reason
+          _emailFocusNode.requestFocus(); // Focus email field on failure
+        }
       }
     } catch (e) {
       if (mounted) {
-        String errorMsg = e.toString().replaceAll('Exception: ', '');
-        provider.setErrorMessage(errorMsg);
-
-        // Focus email field if credentials are invalid
-        if (errorMsg.contains('Email hoặc mật khẩu không đúng')) {
-          _emailFocusNode.requestFocus();
-        }
+        // Handle other potential errors during the API call
+        provider.setErrorMessage('Đã xảy ra lỗi khi đăng nhập: ${e.toString()}');
       }
     } finally {
       if (mounted) {

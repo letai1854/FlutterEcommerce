@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:e_commerce_app/database/database_helper.dart';
 import 'package:http/http.dart' as http;
 import '../models/user_model.dart'; // Assuming User model is here
+import '../Storage/UserInfo.dart'; // Import UserInfo singleton
 
 class UserService {
-  final String baseUrl = baseurl; // TODO: Replace with your actual backend URL
+  final String baseUrl = "https://localhost:8443"; // Updated backend URL
   String? _authToken; // To store JWT token
 
   // Method to set the authentication token after login
@@ -48,7 +49,7 @@ class UserService {
   }
 
   // Method to login user
-  Future<Map<String, dynamic>?> loginUser(String email, String password) async {
+  Future<bool> loginUser(String email, String password) async {
     final url = Uri.parse('$baseUrl/api/users/login');
     try {
       final response = await http.post(
@@ -59,20 +60,18 @@ class UserService {
 
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(response.body);
-        // Store the token
-        if (responseBody['token'] != null) {
-          setAuthToken(responseBody['token']);
-        }
-        // Return the full response body (includes token and user DTO)
-        return responseBody;
+        // Store the token and user info in the singleton
+        UserInfo().updateUserInfo(responseBody);
+        // Return true to indicate successful login
+        return true;
       } else {
         print('Failed to login user: ${response.statusCode}');
         print('Response body: ${response.body}');
-        return null;
+        return false;
       }
     } catch (e) {
       print('Error during user login: $e');
-      return null;
+      return false;
     }
   }
 
