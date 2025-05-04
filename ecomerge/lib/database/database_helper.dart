@@ -2,13 +2,14 @@
 
 import 'dart:io';
 
+import 'package:e_commerce_app/constants.dart';
 import 'package:flutter/foundation.dart'; // Import for kIsWeb and kDebugMode
 import 'package:http/http.dart' as http; // Import standard http client
 import 'package:http/io_client.dart';
 // Chỉ import IOClient và dart:io khi không phải Web, sử dụng 'conditional import'
 // Đây là cách an toàn nhất để đảm bảo code dart:io không bao giờ bị biên dịch/thực thi trên Web
 
-final String baseurl = kIsWeb
+final String baseurl = !isMobile
     ? 'https://localhost:8443'
     : 'https://10.0.2.2:8443'; // Example for Web/Android Emulator HTTPS
 

@@ -1377,8 +1377,8 @@ class _MobilePasswordChangeScreenState
                         );
                         final userService = UserService();
                         // userService.testRegistration();
-                        final loginResult = await userService.loginUser(
-                            "letai1854@gmail.com", "123456");
+                        // final loginResult = await userService.loginUser(
+                        //     "letai1854@gmail.com", "123456");
                         // bool checkChangePass = false;
                         bool checkChangePass =
                             await userService.changeCurrentUserPassword(
