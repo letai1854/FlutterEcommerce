@@ -33,11 +33,14 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import demo.com.example.testserver.common.service.EmailService;
 import demo.com.example.testserver.user.dto.UserDTO; // Import UserDTO
+import demo.com.example.testserver.user.dto.RegistrationRequest; // Import RegistrationRequest
 import demo.com.example.testserver.user.model.User;
+import demo.com.example.testserver.user.model.Address; // Import Address
 import demo.com.example.testserver.user.repository.UserRepository;
 import demo.com.example.testserver.user.security.JwtTokenProvider;
 import demo.com.example.testserver.user.service.PasswordResetTokenService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/users")
@@ -181,34 +184,42 @@ public class UserController {
 
     // Create new user (Register)
     @PostMapping("/register")
-    public ResponseEntity<?> createUser(@RequestBody User user) { // Return UserDTO
+    public ResponseEntity<?> createUser(@Valid @RequestBody RegistrationRequest request) { // Use RegistrationRequest and @Valid
         try {
-            if (userRepository.findByEmail(user.getEmail()).isPresent()) {
-                logger.warn("Registration attempt failed: Email [{}] already exists.", user.getEmail());
+            if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+                logger.warn("Registration attempt failed: Email [{}] already exists.", request.getEmail());
                 return new ResponseEntity<>("Email already exists", HttpStatus.CONFLICT);
             }
-            if (user.getPassword() == null || user.getPassword().isEmpty()) {
-                logger.warn("Registration attempt failed: Password was empty for email [{}].", user.getEmail());
-                return new ResponseEntity<>("Password is required", HttpStatus.BAD_REQUEST);
-            }
 
-            // *** SECURITY *** Hash the password before saving
-            user.setPassword(passwordEncoder.encode(user.getPassword()));
+            // Create new User entity
+            User newUser = new User();
+            newUser.setEmail(request.getEmail());
+            newUser.setFullName(request.getFullName()); // Set full name
+            newUser.setPassword(passwordEncoder.encode(request.getPassword())); // Hash password
+            newUser.setStatus(User.UserStatus.kich_hoat);
+            newUser.setCustomerPoints(BigDecimal.ZERO);
+            newUser.setRole(User.UserRole.khach_hang); // Default role
 
-            user.setStatus(User.UserStatus.kich_hoat);
-            user.setCustomerPoints(BigDecimal.ZERO);
-            if (user.getRole() == null) {
-                user.setRole(User.UserRole.khach_hang);
-            }
+            // Create new Address entity
+            Address newAddress = new Address();
+            newAddress.setRecipientName(request.getFullName()); // Use full name as recipient name
+            newAddress.setPhoneNumber("0"); // Default phone number
+            newAddress.setSpecificAddress(request.getAddress()); // Set specific address
+            newAddress.setDefault(true); // Make this the default address
+            // newAddress.setUser(newUser); // Set the user relationship (done via convenience method)
 
-            User savedUser = userRepository.save(user);
+            // Add address to user's address list (this also sets user in address)
+            newUser.addAddress(newAddress);
+
+            // Save the user (Address will be saved due to CascadeType.ALL)
+            User savedUser = userRepository.save(newUser);
             UserDTO userDTO = new UserDTO(savedUser); // Create DTO from saved entity
 
             logger.info("User registered successfully: ID [{}], Email [{}]", savedUser.getId(), savedUser.getEmail());
             return new ResponseEntity<>(userDTO, HttpStatus.CREATED); // Return DTO
 
         } catch (Exception e) {
-            logger.error("Registration failed for email [{}]: {}", user.getEmail(), e.getMessage(), e); // Log error with stack trace
+            logger.error("Registration failed for email [{}]: {}", request.getEmail(), e.getMessage(), e); // Log error with stack trace
             return new ResponseEntity<>("Registration failed: " + e.getMessage(),
                 HttpStatus.INTERNAL_SERVER_ERROR);
         }
