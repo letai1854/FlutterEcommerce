@@ -1,4 +1,8 @@
 import 'package:flutter/foundation.dart';
+enum UserRole {
+  quan_tri,
+  khach_hang
+}
 
 // DTO for User responses - excludes sensitive info like password
 class User {

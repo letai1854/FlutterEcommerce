@@ -1,6 +1,6 @@
 import 'package:e_commerce_app/Models/ChatMessage.dart';
-import 'package:e_commerce_app/Models/User_model.dart'; // Giả sử bạn cần UserRole
-import 'package:e_commerce_app/Provider/UserProvider.dart'; // Giả sử bạn dùng provider này
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
+import 'package:e_commerce_app/database/models/user_model.dart';
 import 'package:e_commerce_app/widgets/Chat/chat_content.dart';
 import 'package:e_commerce_app/widgets/Chat/message_list.dart';
 import 'package:e_commerce_app/widgets/navbarAdmin.dart'; // Giả sử Navbar này phù hợp
@@ -122,9 +122,9 @@ class _PagechatState extends State<Pagechat> {
   Widget build(BuildContext context) {
     // Xác định vai trò người dùng (ví dụ)
     // Bạn nên lấy thông tin này từ Provider hoặc service xác thực
-    final userProvider = UserProvider(); // Giả sử bạn có thể truy cập trực tiếp
+    final userProvider = UserInfo(); // Giả sử bạn có thể truy cập trực tiếp
     // final bool isAdmin = userProvider.currentUser?.role == UserRole.admin;
-    final bool isAdmin = userProvider.currentUser?.role == UserRole.admin;
+    final bool isAdmin = userProvider.currentUser?.role == UserRole.quan_tri;
 
     // Hoặc final bool isAdmin = Provider.of<UserProvider>(context).currentUser?.role == UserRole.admin;
 
