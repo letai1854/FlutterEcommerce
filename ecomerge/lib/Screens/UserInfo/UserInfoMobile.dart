@@ -1,5 +1,6 @@
 import 'package:e_commerce_app/Screens/UserInfo/UserInfoTypes.dart';
 import 'package:e_commerce_app/constants.dart';
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/services/user_service.dart';
 import 'package:e_commerce_app/widgets/Address/AddressManagement.dart';
 import 'package:e_commerce_app/widgets/Info/PersonalInfoForm.dart';
@@ -23,17 +24,17 @@ class _UserInfoMobileState extends State<UserInfoMobile> {
   int _selectedOrderTab = 0;
 
   // Form state for PersonalInfoForm
-  String _name = "Lê Văn Tài";
-  String _email = "example@gmail.com";
+  String _name = UserInfo().currentUser?.fullName ?? "";
+  String _email = UserInfo().currentUser?.email ?? "";
   String _phone = "0123456789";
   String _gender = "male";
   String _birthDate = "01/01/1990";
 
   // Form controllers for PersonalInfoForm
   final TextEditingController _nameController =
-      TextEditingController(text: "Lê Văn Tài");
+      TextEditingController(text: UserInfo().currentUser?.fullName ?? "");
   final TextEditingController _emailController =
-      TextEditingController(text: "example@gmail.com");
+      TextEditingController(text: UserInfo().currentUser?.email ?? "");
   final TextEditingController _phoneController =
       TextEditingController(text: "0123456789");
 
@@ -1156,115 +1157,6 @@ class _MobilePersonalInfoScreenState extends State<_MobilePersonalInfoScreen> {
                     return null;
                   },
                 ),
-                // _buildFormField(
-                //   label: "Số điện thoại",
-                //   controller: _phoneController,
-                //   keyboardType: TextInputType.phone,
-                //   validator: (value) {
-                //     if (value == null || value.isEmpty) {
-                //       return 'Vui lòng nhập số điện thoại';
-                //     } else if (value.length < 10) {
-                //       return 'Số điện thoại không hợp lệ';
-                //     }
-                //     return null;
-                //   },
-                // ),
-
-                // Gender selection
-                // Column(
-                //   crossAxisAlignment: CrossAxisAlignment.start,
-                //   children: [
-                //     Padding(
-                //       padding: const EdgeInsets.only(top: 16, bottom: 8),
-                //       child: Text(
-                //         "Giới tính",
-                //         style: TextStyle(
-                //           fontWeight: FontWeight.w500,
-                //           fontSize: 16,
-                //         ),
-                //       ),
-                //     ),
-                //     Row(
-                //       children: [
-                //         Expanded(
-                //           child: RadioListTile<String>(
-                //             title: Text("Nam"),
-                //             value: "male",
-                //             groupValue: _gender,
-                //             onChanged: (value) {
-                //               setState(() {
-                //                 _gender = value!;
-                //               });
-                //             },
-                //           ),
-                //         ),
-                //         Expanded(
-                //           child: RadioListTile<String>(
-                //             title: Text("Nữ"),
-                //             value: "female",
-                //             groupValue: _gender,
-                //             onChanged: (value) {
-                //               setState(() {
-                //                 _gender = value!;
-                //               });
-                //             },
-                //           ),
-                //         ),
-                //       ],
-                //     ),
-                //   ],
-                // ),
-
-                // Date of birth
-                // Column(
-                //   crossAxisAlignment: CrossAxisAlignment.start,
-                //   children: [
-                //     Padding(
-                //       padding: const EdgeInsets.only(top: 16, bottom: 8),
-                //       child: Text(
-                //         "Ngày sinh",
-                //         style: TextStyle(
-                //           fontWeight: FontWeight.w500,
-                //           fontSize: 16,
-                //         ),
-                //       ),
-                //     ),
-                //     GestureDetector(
-                //       onTap: () async {
-                //         final DateTime? picked = await showDatePicker(
-                //           context: context,
-                //           initialDate:
-                //               DateTime.now().subtract(Duration(days: 365 * 18)),
-                //           firstDate: DateTime(1940),
-                //           lastDate: DateTime.now(),
-                //         );
-                //         if (picked != null) {
-                //           setState(() {
-                //             _birthDate =
-                //                 "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
-                //           });
-                //         }
-                //       },
-                //       child: Container(
-                //         padding:
-                //             EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                //         decoration: BoxDecoration(
-                //           border: Border.all(color: Colors.grey),
-                //           borderRadius: BorderRadius.circular(4),
-                //         ),
-                //         width: double.infinity,
-                //         child: Row(
-                //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                //           children: [
-                //             Text(_birthDate),
-                //             Icon(Icons.calendar_today),
-                //           ],
-                //         ),
-                //       ),
-                //     ),
-                //   ],
-                // ),
-
                 const SizedBox(height: 40),
 
                 // Save button - full width

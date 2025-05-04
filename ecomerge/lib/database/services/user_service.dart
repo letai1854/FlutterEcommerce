@@ -84,6 +84,7 @@ class UserService {
         setAuthToken(responseBody['token']);
         UserInfo().updateUserInfo(responseBody);
         // Return true to indicate successful login
+        print('Login successful---------------------------------------------------: ${UserInfo().authToken}');
         return true;
       } else {
         print('Failed to login user: ${response.statusCode}');
