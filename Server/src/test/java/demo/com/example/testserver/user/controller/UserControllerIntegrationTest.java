@@ -2,6 +2,7 @@ package demo.com.example.testserver.user.controller;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -32,9 +33,11 @@ import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import demo.com.example.testserver.user.model.User;
+import demo.com.example.testserver.user.model.Address;
 import demo.com.example.testserver.user.repository.UserRepository;
 import demo.com.example.testserver.user.service.PasswordResetTokenService;
 import demo.com.example.testserver.user.dto.UserDTO;
+import demo.com.example.testserver.user.dto.RegistrationRequest;
 
 @SpringBootTest // Load full application context
 @AutoConfigureMockMvc // Configure MockMvc
@@ -59,11 +62,12 @@ class UserControllerIntegrationTest {
     private final String testEmail = "test@example.com";
     private final String testPassword = "password123";
     private final String testFullName = "Test User";
+    private final String testAddress = "123 Test Street, Test City";
 
     @BeforeEach
     void setUp() {
         // Clean up potential leftovers from previous failed tests if @Transactional wasn't effective
-        userRepository.deleteAll();
+        userRepository.deleteAll(); // Cascading delete should handle associated addresses
         // Note: PasswordResetToken cleanup might be needed if not handled by @Transactional or service logic
     }
 
@@ -82,10 +86,11 @@ class UserControllerIntegrationTest {
     // Helper method to register and login a user, returning the auth token
     private String registerAndLoginUser(String email, String password, String fullName) throws Exception {
         // Register
-        User registrationRequest = new User();
+        RegistrationRequest registrationRequest = new RegistrationRequest();
         registrationRequest.setEmail(email);
         registrationRequest.setPassword(password);
         registrationRequest.setFullName(fullName);
+        registrationRequest.setAddress(testAddress);
 
         mockMvc.perform(post("/api/users/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -109,7 +114,6 @@ class UserControllerIntegrationTest {
         return (String) responseMap.get("token");
     }
 
-
     @Test
     void ping_shouldReturnSuccessMessage() throws Exception {
         mockMvc.perform(get("/api/users/ping"))
@@ -118,27 +122,41 @@ class UserControllerIntegrationTest {
     }
 
     @Test
-    void registerUser_whenValid_shouldCreateUser() throws Exception {
-        User newUser = new User();
-        newUser.setEmail(testEmail);
-        newUser.setPassword(testPassword);
-        newUser.setFullName(testFullName);
+    void registerUser_whenValid_shouldCreateUserAndAddress() throws Exception {
+        RegistrationRequest newUserRequest = new RegistrationRequest();
+        newUserRequest.setEmail(testEmail);
+        newUserRequest.setPassword(testPassword);
+        newUserRequest.setFullName(testFullName);
+        newUserRequest.setAddress(testAddress);
 
         mockMvc.perform(post("/api/users/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(newUser)))
+                        .content(objectMapper.writeValueAsString(newUserRequest)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.email", is(testEmail))) // DTO structure
-                .andExpect(jsonPath("$.fullName", is(testFullName))) // DTO structure
-                .andExpect(jsonPath("$.password").doesNotExist()) // Password not in DTO
-                .andExpect(jsonPath("$.role", is(User.UserRole.khach_hang.toString()))) // DTO structure
-                .andExpect(jsonPath("$.status", is(User.UserStatus.kich_hoat.toString()))); // DTO structure
+                .andExpect(jsonPath("$.email", is(testEmail)))
+                .andExpect(jsonPath("$.fullName", is(testFullName)))
+                .andExpect(jsonPath("$.password").doesNotExist())
+                .andExpect(jsonPath("$.role", is(User.UserRole.khach_hang.toString())))
+                .andExpect(jsonPath("$.status", is(User.UserStatus.kich_hoat.toString())));
 
         // Verify user exists in DB
-        Optional<User> savedUser = userRepository.findByEmail(testEmail);
-        assertTrue(savedUser.isPresent());
-        assertEquals(testEmail, savedUser.get().getEmail());
-        assertTrue(passwordEncoder.matches(testPassword, savedUser.get().getPassword())); // Check encoded password
+        Optional<User> savedUserOpt = userRepository.findByEmail(testEmail);
+        assertTrue(savedUserOpt.isPresent(), "User should be saved in DB");
+        User savedUser = savedUserOpt.get();
+        assertEquals(testEmail, savedUser.getEmail());
+        assertEquals(testFullName, savedUser.getFullName());
+        assertTrue(passwordEncoder.matches(testPassword, savedUser.getPassword()));
+
+        // Verify address exists in DB and is linked to the user by accessing the user's addresses
+        List<Address> addresses = savedUser.getAddresses(); // Get addresses from the user entity
+        assertNotNull(addresses, "Addresses list should not be null");
+        assertEquals(1, addresses.size(), "User should have one address");
+        Address savedAddress = addresses.get(0);
+        assertEquals(testFullName, savedAddress.getRecipientName());
+        assertEquals("0", savedAddress.getPhoneNumber());
+        assertEquals(testAddress, savedAddress.getSpecificAddress());
+        assertTrue(savedAddress.getDefault(), "Address should be default");
+        assertEquals(savedUser.getId(), savedAddress.getUser().getId());
     }
 
     @Test
@@ -147,30 +165,84 @@ class UserControllerIntegrationTest {
         createUserInDb(testEmail, "somepassword", "Existing User", User.UserRole.khach_hang, User.UserStatus.kich_hoat);
 
         // Act & Assert
-        User newUser = new User();
-        newUser.setEmail(testEmail); // Same email
-        newUser.setPassword(testPassword);
-        newUser.setFullName(testFullName);
+        RegistrationRequest newUserRequest = new RegistrationRequest();
+        newUserRequest.setEmail(testEmail);
+        newUserRequest.setPassword(testPassword);
+        newUserRequest.setFullName(testFullName);
+        newUserRequest.setAddress(testAddress);
 
         mockMvc.perform(post("/api/users/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(newUser)))
+                        .content(objectMapper.writeValueAsString(newUserRequest)))
                 .andExpect(status().isConflict())
                 .andExpect(content().string("Email already exists"));
     }
 
-     @Test
+    @Test
     void registerUser_whenPasswordMissing_shouldReturnBadRequest() throws Exception {
-        User newUser = new User();
-        newUser.setEmail(testEmail);
-        newUser.setFullName(testFullName);
-        // Password missing
+        RegistrationRequest newUserRequest = new RegistrationRequest();
+        newUserRequest.setEmail(testEmail);
+        newUserRequest.setFullName(testFullName);
+        newUserRequest.setAddress(testAddress);
 
         mockMvc.perform(post("/api/users/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(newUser)))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().string("Password is required"));
+                        .content(objectMapper.writeValueAsString(newUserRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void registerUser_whenFullNameMissing_shouldReturnBadRequest() throws Exception {
+        RegistrationRequest newUserRequest = new RegistrationRequest();
+        newUserRequest.setEmail(testEmail);
+        newUserRequest.setPassword(testPassword);
+        newUserRequest.setAddress(testAddress);
+
+        mockMvc.perform(post("/api/users/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(newUserRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void registerUser_whenAddressMissing_shouldReturnBadRequest() throws Exception {
+        RegistrationRequest newUserRequest = new RegistrationRequest();
+        newUserRequest.setEmail(testEmail);
+        newUserRequest.setPassword(testPassword);
+        newUserRequest.setFullName(testFullName);
+
+        mockMvc.perform(post("/api/users/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(newUserRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void registerUser_whenPasswordTooShort_shouldReturnBadRequest() throws Exception {
+        RegistrationRequest newUserRequest = new RegistrationRequest();
+        newUserRequest.setEmail(testEmail);
+        newUserRequest.setPassword("12345");
+        newUserRequest.setFullName(testFullName);
+        newUserRequest.setAddress(testAddress);
+
+        mockMvc.perform(post("/api/users/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(newUserRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void registerUser_whenInvalidEmail_shouldReturnBadRequest() throws Exception {
+        RegistrationRequest newUserRequest = new RegistrationRequest();
+        newUserRequest.setEmail("invalid-email");
+        newUserRequest.setPassword(testPassword);
+        newUserRequest.setFullName(testFullName);
+        newUserRequest.setAddress(testAddress);
+
+        mockMvc.perform(post("/api/users/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(newUserRequest)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -189,9 +261,9 @@ class UserControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").exists())
                 .andExpect(jsonPath("$.token", is(not(emptyString()))))
-                .andExpect(jsonPath("$.user.email", is(testEmail))) // Check DTO structure
-                .andExpect(jsonPath("$.user.fullName", is(testFullName))) // Check DTO structure
-                .andExpect(jsonPath("$.user.password").doesNotExist()); // Ensure password is not returned in DTO
+                .andExpect(jsonPath("$.user.email", is(testEmail)))
+                .andExpect(jsonPath("$.user.fullName", is(testFullName)))
+                .andExpect(jsonPath("$.user.password").doesNotExist());
     }
 
     @Test
@@ -201,7 +273,7 @@ class UserControllerIntegrationTest {
 
         Map<String, String> credentials = new HashMap<>();
         credentials.put("email", testEmail);
-        credentials.put("password", "wrongpassword"); // Incorrect password
+        credentials.put("password", "wrongpassword");
 
         // Act & Assert
         mockMvc.perform(post("/api/users/login")
@@ -211,10 +283,10 @@ class UserControllerIntegrationTest {
                 .andExpect(content().string("Invalid credentials or user not active"));
     }
 
-     @Test
+    @Test
     void loginUser_whenUserInactive_shouldReturnUnauthorized() throws Exception {
         // Arrange: Create an inactive user
-        createUserInDb(testEmail, testPassword, testFullName, User.UserRole.khach_hang, User.UserStatus.khoa); // Inactive status
+        createUserInDb(testEmail, testPassword, testFullName, User.UserRole.khach_hang, User.UserStatus.khoa);
 
         Map<String, String> credentials = new HashMap<>();
         credentials.put("email", testEmail);
@@ -251,18 +323,18 @@ class UserControllerIntegrationTest {
 
         // Act & Assert
         mockMvc.perform(get("/api/users/me")
-                        .header("Authorization", "Bearer " + token)) // Add auth token
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email", is(testEmail))) // DTO structure
-                .andExpect(jsonPath("$.fullName", is(testFullName))) // DTO structure
-                .andExpect(jsonPath("$.password").doesNotExist()); // Password not in DTO
+                .andExpect(jsonPath("$.email", is(testEmail)))
+                .andExpect(jsonPath("$.fullName", is(testFullName)))
+                .andExpect(jsonPath("$.password").doesNotExist());
     }
 
     @Test
     void getCurrentUserProfile_whenNotAuthenticated_shouldReturnUnauthorized() throws Exception {
         // Act & Assert without token
         mockMvc.perform(get("/api/users/me"))
-                .andExpect(status().isForbidden()); // Changed from isUnauthorized() to isForbidden() based on test results
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -282,10 +354,10 @@ class UserControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updates)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email", is(testEmail))) // Response is DTO
-                .andExpect(jsonPath("$.fullName", is(newFullName))) // Response is DTO
-                .andExpect(jsonPath("$.avatar", is(newAvatar))) // Response is DTO
-                .andExpect(jsonPath("$.password").doesNotExist()); // Password not in DTO
+                .andExpect(jsonPath("$.email", is(testEmail)))
+                .andExpect(jsonPath("$.fullName", is(newFullName)))
+                .andExpect(jsonPath("$.avatar", is(newAvatar)))
+                .andExpect(jsonPath("$.password").doesNotExist());
 
         // Verify update in DB
         Optional<User> updatedUser = userRepository.findByEmail(testEmail);
@@ -315,12 +387,12 @@ class UserControllerIntegrationTest {
         // Verify password changed in DB by trying to login with the new password
         Map<String, String> loginCredentials = new HashMap<>();
         loginCredentials.put("email", testEmail);
-        loginCredentials.put("password", newPassword); // Use new password
+        loginCredentials.put("password", newPassword);
 
         mockMvc.perform(post("/api/users/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginCredentials)))
-                .andExpect(status().isOk()); // Should successfully login with new password
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -330,7 +402,7 @@ class UserControllerIntegrationTest {
         String newPassword = "newStrongPassword123";
 
         Map<String, String> passwordChangeRequest = new HashMap<>();
-        passwordChangeRequest.put("oldPassword", "wrongOldPassword"); // Incorrect old password
+        passwordChangeRequest.put("oldPassword", "wrongOldPassword");
         passwordChangeRequest.put("newPassword", newPassword);
 
         // Act & Assert
@@ -356,9 +428,6 @@ class UserControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(emailRequest)))
                 .andExpect(status().isOk())
                 .andExpect(content().string("If an account with that email exists, a password reset link has been sent."));
-
-        // Optional: Verify a token was created (requires access to PasswordResetTokenRepository or service method)
-        // This depends on the implementation details of PasswordResetTokenService
     }
 
     @Test
@@ -372,7 +441,7 @@ class UserControllerIntegrationTest {
         mockMvc.perform(post("/api/users/forgot-password")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(emailRequest)))
-                .andExpect(status().isOk()) // Should return OK for security reasons (don't reveal existing emails)
+                .andExpect(status().isOk())
                 .andExpect(content().string("If an account with that email exists, a password reset link has been sent."));
     }
 
@@ -380,7 +449,7 @@ class UserControllerIntegrationTest {
     void resetPassword_whenValidToken_shouldResetPassword() throws Exception {
         // Arrange: Create user and generate a reset token
         User user = createUserInDb(testEmail, testPassword, testFullName, User.UserRole.khach_hang, User.UserStatus.kich_hoat);
-        String plainToken = passwordResetTokenService.createPasswordResetToken(user); // Get the plain token
+        String plainToken = passwordResetTokenService.createPasswordResetToken(user);
         String newPassword = "resetPassword123";
 
         assertNotNull(plainToken, "Failed to generate password reset token");
@@ -401,7 +470,7 @@ class UserControllerIntegrationTest {
         assertTrue(updatedUser.isPresent());
         assertTrue(passwordEncoder.matches(newPassword, updatedUser.get().getPassword()));
 
-        // Optional: Verify token is invalidated (depends on service implementation)
+        // Verify token is invalidated
         assertFalse(passwordResetTokenService.getUserByPasswordResetToken(plainToken).isPresent(), "Token should be invalidated after use");
     }
 
@@ -423,60 +492,19 @@ class UserControllerIntegrationTest {
                 .andExpect(content().string("Invalid or expired password reset token."));
     }
 
-     @Test
+    @Test
     void resetPassword_whenTokenExpired_shouldReturnBadRequest() throws Exception {
-        // Arrange: Create user and generate a reset token
-        // This test requires manipulating time or token expiry logic, which can be complex.
-        // A simpler approach is to assume the service handles expiry correctly and test the "invalid token" case,
-        // as an expired token should be treated as invalid by the service.
-        // If specific expiry testing is needed, consider mocking the time source or the token service.
+        String invalidToken = "expired-or-invalid-token";
+        String newPassword = "resetPassword123";
 
-        // For now, we rely on the invalid token test case above to cover expired tokens implicitly.
-         String invalidToken = "expired-or-invalid-token"; // Simulate an expired/invalid token
-         String newPassword = "resetPassword123";
+        Map<String, String> resetRequest = new HashMap<>();
+        resetRequest.put("token", invalidToken);
+        resetRequest.put("newPassword", newPassword);
 
-         Map<String, String> resetRequest = new HashMap<>();
-         resetRequest.put("token", invalidToken);
-         resetRequest.put("newPassword", newPassword);
-
-         mockMvc.perform(post("/api/users/reset-password")
-                         .contentType(MediaType.APPLICATION_JSON)
-                         .content(objectMapper.writeValueAsString(resetRequest)))
-                 .andExpect(status().isBadRequest())
-                 .andExpect(content().string("Invalid or expired password reset token."));
+        mockMvc.perform(post("/api/users/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(resetRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Invalid or expired password reset token."));
     }
-
-    // --- Admin Endpoint Tests (Require Admin Role/Mocking) ---
-    // These tests would typically require setting up an authenticated admin user.
-    // Example using @WithMockUser (requires spring-security-test dependency):
-    /*
-    @Test
-    @WithMockUser(roles = "ADMIN") // Mock an authenticated user with ADMIN role
-    void getAllUsers_whenAdmin_shouldReturnUserList() throws Exception {
-        // Arrange: Create some users
-        createUserInDb("user1@example.com", "pass1", "User One", User.UserRole.khach_hang, User.UserStatus.kich_hoat);
-        createUserInDb("user2@example.com", "pass2", "User Two", User.UserRole.khach_hang, User.UserStatus.kich_hoat);
-
-        mockMvc.perform(get("/api/users"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(greaterThanOrEqualTo(2)))) // Check size >= 2 (includes potential admin user)
-                .andExpect(jsonPath("$[0].email").exists()) // DTO structure
-                .andExpect(jsonPath("$[0].password").doesNotExist()); // Password not in DTO
-    }
-
-    @Test
-    void getAllUsers_whenNotAdmin_shouldReturnForbidden() throws Exception {
-         // Arrange: Register and login as a regular user
-        String token = registerAndLoginUser(testEmail, testPassword, testFullName); // UserRole.khach_hang
-
-        mockMvc.perform(get("/api/users")
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isForbidden()); // Expect 403 Forbidden
-    }
-    */
-
-    // Add similar tests for other admin-only endpoints like getUserById, updateUser, deleteUser, getUserByEmail
-    // Remember to handle authentication (@WithMockUser or manual token generation for an admin user)
-    // and assert the correct status codes (OK for success, Forbidden/Unauthorized for lack of permissions, NotFound if applicable).
-
 }

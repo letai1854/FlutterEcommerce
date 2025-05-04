@@ -139,30 +139,30 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
                 ],
               ),
               const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildCustomTextField(
-                      label: "Số điện thoại",
-                      controller: widget.phoneController,
-                      onChanged: widget.onPhoneChanged,
-                    ),
-                  ),
-                  const SizedBox(width: 24),
-                  Expanded(
-                    child: GenderSelect(
-                      initialValue: widget.gender,
-                      onChanged: widget.onGenderChanged,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              DateField(
-                label: "Ngày sinh",
-                initialValue: widget.birthDate,
-                onChanged: widget.onBirthDateChanged,
-              ),
+              // Row(
+              //   children: [
+              //     Expanded(
+              //       child: _buildCustomTextField(
+              //         label: "Số điện thoại",
+              //         controller: widget.phoneController,
+              //         onChanged: widget.onPhoneChanged,
+              //       ),
+              //     ),
+              //     const SizedBox(width: 24),
+              //     Expanded(
+              //       child: GenderSelect(
+              //         initialValue: widget.gender,
+              //         onChanged: widget.onGenderChanged,
+              //       ),
+              //     ),
+              //   ],
+              // ),
+              // const SizedBox(height: 24),
+              // DateField(
+              //   label: "Ngày sinh",
+              //   initialValue: widget.birthDate,
+              //   onChanged: widget.onBirthDateChanged,
+              // ),
               const SizedBox(height: 40),
               ElevatedButton(
                 onPressed: () {

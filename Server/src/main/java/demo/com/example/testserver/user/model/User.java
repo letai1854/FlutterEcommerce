@@ -1,6 +1,7 @@
 package demo.com.example.testserver.user.model;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -73,7 +74,7 @@ public class User {
     // --- Relationships ---
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Address> addresses;
+    private List<Address> addresses = new ArrayList<>(); // Initialize the list
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CartItem> cartItems;
@@ -221,6 +222,16 @@ public class User {
 
     public void setAddresses(List<Address> addresses) {
         this.addresses = addresses;
+    }
+
+    public void addAddress(Address address) { // Convenience method to add address
+        addresses.add(address);
+        address.setUser(this);
+    }
+
+    public void removeAddress(Address address) { // Convenience method to remove address
+        addresses.remove(address);
+        address.setUser(null);
     }
 
     public List<CartItem> getCartItems() {
