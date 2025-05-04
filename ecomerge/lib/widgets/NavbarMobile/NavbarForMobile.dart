@@ -3,16 +3,16 @@ import 'package:e_commerce_app/widgets/BottomNavigation.dart';
 import 'package:e_commerce_app/widgets/navbarHomeMobile.dart';
 import 'package:flutter/material.dart';
 
-class NavbarFixmobile extends StatefulWidget {
+class NavbarFormobile extends StatefulWidget {
   final Widget? body; // Thêm body để hiển thị nội dung bên trong Scaffold
 
-  const NavbarFixmobile({super.key, this.body});
+  const NavbarFormobile({super.key, this.body});
 
   @override
-  State<NavbarFixmobile> createState() => _NavbarmobileDrawerState();
+  State<NavbarFormobile> createState() => _NavbarmobileDrawerState();
 }
 
-class _NavbarmobileDrawerState extends State<NavbarFixmobile> {
+class _NavbarmobileDrawerState extends State<NavbarFormobile> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(

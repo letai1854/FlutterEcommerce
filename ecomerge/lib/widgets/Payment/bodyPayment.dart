@@ -1,75 +1,61 @@
-import 'package:e_commerce_app/widgets/Payment/AddressSelector.dart';
-import 'package:e_commerce_app/widgets/Payment/VoucherSelector.dart';
+import 'package:e_commerce_app/Screens/Payment/PagePayment.dart';
+import 'package:e_commerce_app/widgets/Payment/AddressSelector.dart'; // Chỉ cần import model nếu dùng chung
+import 'package:e_commerce_app/widgets/Payment/VoucherSelector.dart'; // Chỉ cần import model nếu dùng chung
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-class bodyPayment extends StatefulWidget {
-  const bodyPayment({Key? key}) : super(key: key);
+import 'package:intl/intl.dart'; // Import intl nếu hàm formatCurrency chuyển vào đây
 
-  @override
-  State<bodyPayment> createState() => _bodyPaymentDesktopState();
-}
+// Import Data Models nếu tách file
+// import 'models/address_data.dart';
+// import 'models/voucher_data.dart';
 
-class _bodyPaymentDesktopState extends State<bodyPayment> {
-  // Mock product data
-  final List<Map<String, dynamic>> products = [
-    {
-      'image': 'https://i.imgur.com/kZTgHwQ.png',
-      'name': 'Điều Khiển Từ Xa Thay Thế Chuyên Dụng Cho...',
-      'price': 42000,
-      'quantity': 1,
-    },
-  ];
+class BodyPayment extends StatelessWidget { // Chuyển thành StatelessWidget
+  // --- Dữ liệu nhận từ PagePayment ---
+  final AddressData currentAddress;
+  final List<Map<String, dynamic>> products;
+  final VoucherData? currentVoucher;
+  final String selectedPaymentMethod;
+  final double subtotal;
+  final double shippingFee;
+  final double taxAmount;
+  final double taxRate; // Giả sử thuế VAT là 10%
+  final double discountAmount;
+  final double totalAmount;
+  final bool isProcessingOrder;
 
-  // Current selected address data
-  AddressData _currentAddress = AddressData(
-    name: 'Tuấn Tú',
-    phone: '(+84) 583541716',
-    address: 'Gần Nhà Thờ An Phú An Giang, Thị Trấn An Phú, Huyện An Phú, An Giang',
-    isDefault: true,
-  );
-  
-  // Current selected voucher data
-  VoucherData? _currentVoucher;
+  // --- Callbacks nhận từ PagePayment ---
+  final VoidCallback onChangeAddress; // Hàm gọi khi nhấn nút thay đổi địa chỉ
+  final VoidCallback onSelectVoucher; // Hàm gọi khi nhấn nút chọn voucher
+  final Function(String) onChangePaymentMethod; // Hàm gọi khi chọn phương thức TT mới
+  final VoidCallback onPlaceOrder; // Hàm gọi khi nhấn nút Đặt hàng
+  final String Function(num) formatCurrency; // Hàm định dạng tiền tệ
 
-  // Add state to track selected payment method
-  String _selectedPaymentMethod = 'Thanh toán khi nhận hàng'; // Default payment method
+  const BodyPayment({
+    Key? key,
+    required this.currentAddress,
+    required this.products,
+    required this.currentVoucher,
+    required this.selectedPaymentMethod,
+    required this.subtotal,
+    required this.shippingFee,
+    required this.taxAmount,
+    required this.taxRate,
+    required this.discountAmount,
+    required this.totalAmount,
+    required this.isProcessingOrder,
+    required this.onChangeAddress,
+    required this.onSelectVoucher,
+    required this.onChangePaymentMethod,
+    required this.onPlaceOrder,
+    required this.formatCurrency, // Nhận hàm format
+  }) : super(key: key);
 
-  // Helper method to format currency
-  String _formatCurrency(num amount) {
-    final formatter = NumberFormat("#,###", "vi_VN");
-    return '₫${formatter.format(amount)}';
-  }
-  
-  // Thêm debug print để kiểm tra xem hàm có được gọi không
-  void _openVoucherDialog() {
-    print('Opening voucher dialog');
-    try {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: VoucherSelector(
-              onVoucherSelected: (voucher) {
-                setState(() {
-                  _currentVoucher = voucher;
-                  print('Voucher selected: ${voucher?.code}');
-                });
-              },
-            ),
-          );
-        },
-      ).then((_) {
-        print('Dialog closed');
-      }).catchError((error) {
-        print('Error showing dialog: $error');
-      });
-    } catch (e) {
-      print('Exception occurred: $e');
-    }
-  }
 
-  // Improve address display with more visual separation
+ // Không cần state, initState, dispose nữa
+
+  // Các hàm build (_buildAddressDisplay, _buildProductItem, ...) giữ nguyên
+  // nhưng sử dụng dữ liệu và callbacks đã nhận qua constructor.
+
+  // Ví dụ sửa đổi hàm build address display:
   Widget _buildAddressDisplay() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -79,461 +65,368 @@ class _bodyPaymentDesktopState extends State<bodyPayment> {
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16.0,
+            color: Colors.grey.shade800, // Thêm màu cho dễ đọc
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 8), // Tăng khoảng cách
         Row(
           children: [
             Text(
-              _currentAddress.name,
-              style: TextStyle(
-                fontWeight: FontWeight.w500,
-                fontSize: 14.0
+              currentAddress.name, // Sử dụng currentAddress từ props
+              style: const TextStyle(
+                fontWeight: FontWeight.w500, // Đậm hơn chút
+                fontSize: 15.0 // To hơn chút
               ),
             ),
             const SizedBox(width: 12),
             Text(
-              _currentAddress.phone,
-              style: TextStyle(fontSize: 14.0),
+              currentAddress.phone, // Sử dụng currentAddress từ props
+              style: TextStyle(fontSize: 14.0, color: Colors.grey.shade700), // Màu nhạt hơn
             ),
           ],
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 4), // Giảm khoảng cách
         Text(
-          _currentAddress.address,
-          style: TextStyle(fontSize: 14.0),
+          currentAddress.fullAddress, // Sử dụng phương thức getter
+          style: TextStyle(fontSize: 14.0, color: Colors.grey.shade700), // Màu nhạt hơn
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
       ],
     );
   }
 
-  // Method to update the current address that forces UI to refresh
-  void _updateAddress(AddressData address) {
-    print("Updating address to: ${address.name}");
-    setState(() {
-      _currentAddress = address;
-      print("Address updated in state: ${_currentAddress.name}");
-    });
+  // Ví dụ sửa đổi nút thay đổi địa chỉ:
+  Widget _buildDesktopAddressSection() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start, // Canh trên cho Icon
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 2.0), // Dịch icon xuống chút nếu cần
+          child: Icon(Icons.location_on_outlined, color: Colors.red.shade700, size: 20),
+        ), // Icon khác
+        const SizedBox(width: 12.0), // Tăng khoảng cách
+        Expanded(
+          child: _buildAddressDisplay(), // Sử dụng hàm đã sửa
+        ),
+        TextButton(
+          onPressed: onChangeAddress, // Gọi callback từ props
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.blue.shade700, // Màu chữ
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          child: const Text(
+             'Thay Đổi',
+              style: TextStyle(fontWeight: FontWeight.w600) // Đậm hơn
+           ),
+        ),
+      ],
+    );
   }
 
-  // Thêm biến tax rate với giá trị rõ ràng hơn
-  final double _taxRate = 0.1; // 10% thuế
-  
+  // Ví dụ sửa đổi nút chọn voucher:
+   Widget _buildDesktopVoucherSection() {
+    final bool hasVoucher = currentVoucher != null;
+    final currencyFormatter = NumberFormat("#,###", "vi_VN"); // Tạo formatter nếu cần trong này
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12.0), // Thêm padding
+      child: Row(
+        children: [
+          Icon(Icons.local_offer_outlined, color: Colors.orange.shade700, size: 20), // Icon khác
+          const SizedBox(width: 12),
+          const Text(
+            'Shop Voucher',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+          ),
+          const Spacer(), // Đẩy sang phải
+          if (hasVoucher)
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: Text(
+                '-${formatCurrency(discountAmount)}', // Hiển thị số tiền giảm giá đã tính
+                style: TextStyle(
+                    color: Colors.green.shade700, fontWeight: FontWeight.w500),
+              ),
+            ),
+          TextButton(
+            onPressed: onSelectVoucher, // Gọi callback từ props
+             style: TextButton.styleFrom(
+                foregroundColor: Colors.blue.shade700, // Màu chữ
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+             ),
+            child: Text(
+              hasVoucher ? 'Xem / Đổi Voucher' : 'Chọn Voucher',
+               style: TextStyle(fontWeight: FontWeight.w600)
+            ),
+          ),
+        ],
+      ),
+    );
+   }
+
+   // Sửa đổi _buildPaymentOption để gọi callback
+    Widget _buildPaymentOption(String title, IconData icon, bool isSelected) {
+      return InkWell(
+        onTap: () {
+          onChangePaymentMethod(title); // Gọi callback khi nhấn
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.red.withOpacity(0.05) : Colors.transparent,
+            border: Border.all(
+              color: isSelected ? Colors.red : Colors.grey.shade300,
+              width: isSelected ? 1.5 : 1, // Độ dày viền
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  color: isSelected ? Colors.red.shade700 : Colors.grey.shade700,
+                  size: 20,
+                ),
+                const SizedBox(width: 10), // Tăng khoảng cách
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: isSelected ? Colors.red.shade700 : Colors.black87, // Màu chữ
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 14, // Giảm cỡ chữ chút
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+   // Sửa đổi nút Đặt hàng
+   Widget _buildPlaceOrderButton() {
+      return Align(
+          alignment: Alignment.centerRight,
+          child: ElevatedButton.icon( // Sử dụng ElevatedButton.icon nếu muốn thêm icon
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade700, // Màu đậm hơn
+              foregroundColor: Colors.white, // Màu chữ/icon
+              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14), // Padding lớn hơn
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: isProcessingOrder ? 0 : 2, // Bỏ shadow khi đang xử lý
+            ),
+            // Vô hiệu hóa nút và hiển thị loading khi isProcessingOrder là true
+            onPressed: isProcessingOrder ? null : onPlaceOrder,
+            icon: isProcessingOrder
+                ? Container( // Thay bằng SizedBox để không làm thay đổi layout
+                    width: 18,
+                    height: 18,
+                    child: const CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Icon(Icons.shopping_cart_checkout, size: 18), // Icon đặt hàng
+            label: Text(
+              isProcessingOrder ? 'Đang xử lý...' : 'Đặt hàng',
+              style: const TextStyle(
+                // color: Colors.white, // Đã set ở foregroundColor
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+   }
+
+
   @override
   Widget build(BuildContext context) {
-    // Thêm kiểm tra chiều rộng màn hình để xác định thiết bị
     final bool isMobile = MediaQuery.of(context).size.width < 600;
-    
-    // Calculate discount amount
-    final int discountAmount = _currentVoucher != null 
-        ? (_currentVoucher!.isPercent 
-            ? ((products.fold<num>(0, (sum, product) => sum + product['price'] * product['quantity']) * _currentVoucher!.discountAmount) ~/ 100) 
-            : _currentVoucher!.discountAmount)
-        : 0;
-    
-    // Tính tổng tiền hàng - đảm bảo kết quả là int
-    final int itemsTotal = products.fold<int>(0, (int sum, dynamic product) => 
-        sum + ((product['price'] as num).toInt() * (product['quantity'] as int)));
-        
-    // Tính tiền thuế - đảm bảo kết quả không bị làm tròn xuống 0
-    final int taxAmount = (itemsTotal * _taxRate).ceil(); // Sử dụng ceil để làm tròn lên
-    print('Tax calculation: $itemsTotal * $_taxRate = $taxAmount'); // Debug print
-    
-    // Calculate final total - bao gồm cả thuế
-    final int totalAmount = itemsTotal + 30000 + taxAmount - discountAmount;
+     final currencyFormatter = NumberFormat("#,###", "vi_VN"); // Tạo formatter ở đây nếu cần
 
-    
     return SingleChildScrollView(
       child: Container(
-        color: Colors.grey[200], // Match background color with scaffold
+        color: Colors.grey[100], // Màu nền nhạt hơn
+        padding: const EdgeInsets.symmetric(vertical: 16.0), // Padding dọc cho cả trang
         child: Center(
           child: Container(
             padding: const EdgeInsets.all(20.0),
-            constraints: BoxConstraints(maxWidth: 1000), // Reduced max width
-            margin: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            constraints: const BoxConstraints(maxWidth: 1000),
+            margin: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 24), // Margin nhỏ hơn trên mobile
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  spreadRadius: 2,
-                  blurRadius: 5,
-                  offset: Offset(0, 2),
+                  color: Colors.grey.withOpacity(0.15), // Shadow rõ hơn chút
+                  spreadRadius: 1,
+                  blurRadius: 6,
+                  offset: const Offset(0, 3),
                 ),
               ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Address Section - Responsive layout
+                // --- Address Section ---
                 Container(
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.grey.shade200),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                   padding: const EdgeInsets.all(16.0),
+                   margin: const EdgeInsets.only(bottom: 20), // Khoảng cách dưới
+                   decoration: BoxDecoration(
+                     // Thêm viền nhẹ hoặc nền khác biệt nếu muốn
+                      border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 1.0))
+                    // borderRadius: BorderRadius.circular(8),
+                    // color: Colors.grey.shade50,
+                   ),
                   child: isMobile ? _buildMobileAddressSection() : _buildDesktopAddressSection(),
                 ),
-                const SizedBox(height: 20.0),
+                // const SizedBox(height: 20.0), // Bỏ SizedBox nếu dùng margin
 
-                // Product Section
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.grey.shade200),
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
-                        spreadRadius: 1,
-                        blurRadius: 2,
-                        offset: Offset(0, 1),
-                      ),
-                    ],
-                  ),
+                // --- Product Section ---
+                _buildSectionContainer(
+                  title: 'Sản phẩm',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Sản phẩm',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18.0,
-                        ),
-                      ),
-                      const SizedBox(height: 16.0),
-                      
-                      // Header row - chỉ hiện trên desktop
-                      if (!isMobile)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 10.0),
-                          child: Row(
-                            children: [
-                              SizedBox(width: 60), // Space for image
-                              Expanded(
-                                flex: 3,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(left: 16),
-                                  child: Text(
-                                    'Tên sản phẩm',
-                                    style: TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 1,
-                                child: Center(
-                                  child: Text(
-                                    'Đơn giá',
-                                    style: TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 1, 
-                                child: Center(
-                                  child: Text(
-                                    'Số lượng',
-                                    style: TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 1,
-                                child: Center(
-                                  child: Text(
-                                    'Thành tiền',
-                                    style: TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      
-                      Divider(),
-                      
-                      // Product list với layout khác nhau dựa trên kích thước màn hình
+                      // Header row (chỉ hiện trên desktop)
+                      if (!isMobile) _buildDesktopProductHeader(),
+                      if (!isMobile) const Divider(height: 1),
+
+                      // Product list
                       ...products.map((product) => isMobile
                           ? _buildMobileProductItem(product)
                           : _buildDesktopProductItem(product)
                       ),
-                      
-                      Divider(),
-                      
-                      // Voucher row centered - make responsive
-                      isMobile 
-                      ? _buildMobileVoucherSection()
-                      : Center(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Checkbox(
-                                value: _currentVoucher != null,
-                                onChanged: (bool? value) {
-                                  if (value == false) {
-                                    setState(() {
-                                      _currentVoucher = null;
-                                    });
-                                  } else {
-                                    _openVoucherDialog();
-                                  }
-                                },
-                                activeColor: Colors.red,
-                              ),
-                              Text('Voucher của Shop'),
-                              const SizedBox(width: 16),
-                              TextButton.icon(
-                                onPressed: _openVoucherDialog,
-                                icon: Icon(Icons.card_giftcard, color: Colors.red), 
-                                label: Text(
-                                  _currentVoucher != null ? _currentVoucher!.code : 'Chọn Voucher', 
-                                  style: TextStyle(color: Colors.red),
-                                ),
-                                style: TextButton.styleFrom(
-                                  backgroundColor: Colors.red.withOpacity(0.1),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+
+                       const Divider(height: 20), // Khoảng cách trước voucher
+
+                      // Voucher row
+                      isMobile
+                          ? _buildMobileVoucherSection()
+                          : _buildDesktopVoucherSection(), // Sử dụng hàm đã sửa
                     ],
                   ),
                 ),
                 const SizedBox(height: 20.0),
 
-                // Payment Method Section
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.grey.shade200),
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
-                        spreadRadius: 1,
-                        blurRadius: 2,
-                        offset: Offset(0, 1),
-                      ),
-                    ],
-                  ),
+                // --- Payment Method Section ---
+                _buildSectionContainer(
+                  title: 'Phương thức thanh toán',
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Text(
-                        'Phương thức thanh toán',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18.0,
-                        ),
-                      ),
-                      const SizedBox(height: 20.0),
-                      Center(
-                        child: Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          alignment: WrapAlignment.center,
-                          children: [
-                            _buildPaymentOption(
-                              'Ngân hàng', 
-                              Icons.credit_card, 
-                              _selectedPaymentMethod == 'Ngân hàng'  // Fixed the typo here
-                            ),
-                            _buildPaymentOption(
-                              'Thanh toán khi nhận hàng', 
-                              Icons.local_shipping, 
-                              _selectedPaymentMethod == 'Thanh toán khi nhận hàng'
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12.0),
-                      Text(
-                        'Thanh toán khi nhận hàng. Phí thu hộ: 40 VNĐ. Ưu đãi về phí vận chuyển (nếu có) áp dụng cả với phí thu hộ.',
-                        style: TextStyle(fontSize: 12.0, color: Colors.grey),
+                       const SizedBox(height: 10), // Khoảng cách trên
+                       Wrap( // Dùng Wrap để tự xuống hàng
+                        spacing: 12,
+                        runSpacing: 12,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          // Truyền selectedPaymentMethod từ props
+                          _buildPaymentOption(
+                            'Ngân hàng',
+                            Icons.account_balance_wallet_outlined, // Icon khác
+                            selectedPaymentMethod == 'Ngân hàng',
+                          ),
+                          _buildPaymentOption(
+                            'Thanh toán khi nhận hàng',
+                            Icons.local_shipping_outlined, // Icon khác
+                            selectedPaymentMethod == 'Thanh toán khi nhận hàng',
+                          ),
+                           // Thêm các phương thức khác nếu có
+                           _buildPaymentOption(
+                             'Ví điện tử',
+                             Icons.wallet_giftcard,
+                             selectedPaymentMethod == 'Ví điện tử',
+                          ),
+                        ],
+                       ),
+                       const SizedBox(height: 16.0),
+                       Text(
+                        // Thông tin về phí thu hộ có thể lấy từ config hoặc tính toán
+                        selectedPaymentMethod == 'Thanh toán khi nhận hàng'
+                          ? 'Thanh toán khi nhận hàng. Phí thu hộ: ${formatCurrency(0)}. Ưu đãi vận chuyển (nếu có) áp dụng cả với phí thu hộ.' // Ví dụ phí thu hộ 0
+                          : 'Chọn phương thức thanh toán phù hợp với bạn.',
+                        style: TextStyle(fontSize: 12.0, color: Colors.grey.shade600),
                         textAlign: TextAlign.center,
-                      ),
+                       ),
                     ],
-                  ),
+                  )
                 ),
-                const SizedBox(height: 20.0),
+                 const SizedBox(height: 20.0),
 
-                // Order Summary Section
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.grey.shade200),
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
-                        spreadRadius: 1,
-                        blurRadius: 2,
-                        offset: Offset(0, 1),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Tổng thanh toán',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18.0,
-                        ),
-                      ),
-                      const SizedBox(height: 16.0),
-                      
-                      // Right-aligned payment summary
-                      Padding(
-                        padding: const EdgeInsets.only(right: 16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Text('Tổng tiền hàng:', style: TextStyle(fontSize: 14)),
-                                const SizedBox(width: 16),
-                                Text(
-                                  _formatCurrency(itemsTotal),
-                                  style: TextStyle(fontSize: 14),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8.0),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Text('Phí vận chuyển:', style: TextStyle(fontSize: 14)),
-                                const SizedBox(width: 16),
-                                Text(
-                                  _formatCurrency(30000),
-                                  style: TextStyle(fontSize: 14),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8.0),
-                            // Thêm dòng thuế với style nổi bật hơn
-                            const SizedBox(height: 8.0),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Text(
-                                  'Thuế VAT (10%):',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Text(
-                                  _formatCurrency(taxAmount),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            
-                            const SizedBox(height: 8.0),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Text('Giảm giá voucher:', style: TextStyle(fontSize: 14)),
-                                const SizedBox(width: 16),
-                                Text(
-                                  _formatCurrency(discountAmount),
-                                  style: TextStyle(fontSize: 14),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16.0),
-                            Divider(),
-                            const SizedBox(height: 8.0),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Text(
-                                  'Tổng thanh toán:',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16.0,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Text(
-                                  _formatCurrency(totalAmount),
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18.0,
-                                    color: Colors.red,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            
-                            // Thêm chi tiết thuế
-                            const SizedBox(height: 4),
-                            Text(
-                              '(Đã bao gồm thuế VAT)',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 20.0),
-                      
-                      // Place Order Button - Right aligned
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                            padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          onPressed: () {},
-                          child: Text(
-                            'Đặt hàng',
-                            style: TextStyle(
-                              color: Colors.white, 
-                              fontSize: 16, 
-                              fontWeight: FontWeight.bold
-                            ),
-                          ),
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 10.0),
-                      
-                      // Terms and Conditions Text
-                      Center(
-                        child: Text(
-                          'Nhấn "Đặt hàng" đồng nghĩa với việc bạn đồng ý tuân theo Điều khoản Shopii',
-                          style: TextStyle(fontSize: 12.0, color: Colors.grey),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                // --- Order Summary Section ---
+                _buildSectionContainer(
+                   title: 'Chi tiết thanh toán', // Đổi title
+                   child: Column(
+                     crossAxisAlignment: CrossAxisAlignment.start, // Canh trái mặc định
+                     children: [
+                       const SizedBox(height: 10),
+                       _buildSummaryRow('Tổng tiền hàng:', formatCurrency(subtotal)), // Sử dụng giá trị từ props
+                       _buildSummaryRow('Phí vận chuyển:', formatCurrency(shippingFee)),
+                       if (taxAmount > 0) _buildSummaryRow('Thuế VAT (${(taxRate * 100).toStringAsFixed(0)}%):', formatCurrency(taxAmount)),
+                       if (discountAmount > 0) _buildSummaryRow('Giảm giá voucher:', '-${formatCurrency(discountAmount)}', isDiscount: true), // Thêm isDiscount
+
+                       const Divider(height: 24, thickness: 1), // Dày hơn
+
+                       // Tổng thanh toán cuối cùng
+                       Row(
+                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                         children: [
+                           const Text(
+                             'Tổng thanh toán:',
+                             style: TextStyle(
+                               fontWeight: FontWeight.bold,
+                               fontSize: 17.0, // To hơn
+                             ),
+                           ),
+                           Text(
+                             formatCurrency(totalAmount), // Sử dụng giá trị từ props
+                             style: TextStyle(
+                               fontWeight: FontWeight.bold,
+                               fontSize: 19.0, // To hơn nữa
+                               color: Colors.red.shade700,
+                             ),
+                           ),
+                         ],
+                       ),
+                        // if (taxAmount > 0) // Chỉ hiển thị nếu có thuế
+                        //   Padding(
+                        //     padding: const EdgeInsets.only(top: 4.0, left: 0), // Canh phải
+                        //     child: Text(
+                        //       '(Đã bao gồm thuế VAT)',
+                        //       style: TextStyle(
+                        //         fontSize: 12,
+                        //         color: Colors.grey.shade600,
+                        //         fontStyle: FontStyle.italic,
+                        //       ),
+                        //        textAlign: TextAlign.right,
+                        //     ),
+                        //   ),
+
+                       const SizedBox(height: 24.0),
+
+                       // Place Order Button
+                       _buildPlaceOrderButton(), // Sử dụng hàm đã sửa
+
+                       const SizedBox(height: 16.0),
+
+                       // Terms and Conditions Text
+                       const Center(
+                         child: Text(
+                           'Nhấn "Đặt hàng" đồng nghĩa với việc bạn đồng ý tuân theo Điều khoản Shopii',
+                           style: TextStyle(fontSize: 12.0, color: Colors.grey),
+                           textAlign: TextAlign.center,
+                         ),
+                       ),
+                     ],
+                   )
+                 ),
               ],
             ),
           ),
@@ -541,108 +434,194 @@ class _bodyPaymentDesktopState extends State<bodyPayment> {
       ),
     );
   }
-  
-  // Updated method to build payment options with tap detection
-  Widget _buildPaymentOption(String title, IconData icon, bool isSelected) {
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _selectedPaymentMethod = title;
-          print('Selected payment method: $_selectedPaymentMethod');
-        });
-      },
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: isSelected ? Colors.red : Colors.grey.shade300,
-            width: isSelected ? 2 : 1,
+
+  // --- Helper Widgets ---
+
+  // Helper widget để tạo các container section đồng nhất
+  Widget _buildSectionContainer({required String title, required Widget child}) {
+    return Container(
+       padding: const EdgeInsets.all(16.0),
+       margin: const EdgeInsets.only(bottom: 0), // Bỏ margin nếu section liền nhau
+       decoration: BoxDecoration(
+         color: Colors.white, // Nền trắng cho các section bên trong
+         // border: Border.all(color: Colors.grey.shade200), // Bỏ viền nếu không muốn
+         borderRadius: BorderRadius.circular(8), // Bo góc nhẹ
+         // Thêm shadow nhẹ cho từng section nếu muốn
+         // boxShadow: [
+         //   BoxShadow(
+         //     color: Colors.grey.withOpacity(0.08),
+         //     spreadRadius: 0,
+         //     blurRadius: 4,
+         //     offset: Offset(0, 2),
+         //   ),
+         // ],
+       ),
+       child: Column(
+         crossAxisAlignment: CrossAxisAlignment.start,
+         children: [
+           Text(
+             title,
+             style: TextStyle(
+               fontWeight: FontWeight.bold,
+               fontSize: 17.0, // Cỡ chữ title section
+               color: Colors.grey.shade800,
+             ),
+           ),
+           const SizedBox(height: 16.0), // Khoảng cách dưới title
+           child,
+         ],
+       ),
+    );
+  }
+
+  // Helper widget cho header bảng sản phẩm desktop
+   Widget _buildDesktopProductHeader() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10.0, left: 8, right: 8), // Thêm padding ngang
+      child: Row(
+        children: const [
+          SizedBox(width: 60 + 16), // Image width + padding
+          Expanded(
+            flex: 4, // Tăng flex cho tên SP
+            child: Text(
+              'Sản phẩm', // Đổi thành "Sản phẩm"
+              style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey), // Đậm vừa, màu xám
+            ),
           ),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon, 
-                color: isSelected ? Colors.red : Colors.grey.shade700,
-                size: 20,
+          Expanded(
+            flex: 2, // Giảm flex
+            child: Center(
+              child: Text(
+                'Đơn giá',
+                style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey),
               ),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  color: isSelected ? Colors.red : Colors.black,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          Expanded(
+            flex: 1, // Giảm flex
+            child: Center(
+              child: Text(
+                'SL', // Viết tắt Số lượng
+                style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2, // Tăng flex
+            child: Align( // Canh phải
+              alignment: Alignment.centerRight,
+              child: Text(
+                'Thành tiền',
+                style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
-  
-  // Widget cho hiển thị sản phẩm trên màn hình lớn (Desktop)
+
+  // Helper widget cho dòng tổng kết
+  Widget _buildSummaryRow(String label, String value, {bool isDiscount = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0), // Giảm padding dọc
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween, // Canh đều 2 bên
+        children: [
+          Text(
+            label,
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade700), // Màu nhạt hơn
+          ),
+          // const SizedBox(width: 16), // Không cần SizedBox nếu dùng SpaceBetween
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14.5, // To hơn chút
+              fontWeight: FontWeight.w500, // Đậm vừa
+              color: isDiscount ? Colors.green.shade700 : Colors.black87, // Màu xanh cho giảm giá
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+ // Giữ nguyên các hàm build item sản phẩm (Desktop/Mobile) và address (Mobile)
+ // Chỉ cần đảm bảo chúng sử dụng dữ liệu từ props (`currentAddress`, `products`, `formatCurrency`)
+ // và gọi đúng callbacks (`onChangeAddress`, `onSelectVoucher`).
+
+  // --- Widget cho hiển thị sản phẩm trên màn hình lớn (Desktop) ---
   Widget _buildDesktopProductItem(Map<String, dynamic> product) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12.0),
+      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0), // Thêm padding ngang
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // Ảnh
           Container(
             width: 60,
             height: 60,
             decoration: BoxDecoration(
               border: Border.all(color: Colors.grey.shade200),
               borderRadius: BorderRadius.circular(4),
+              image: DecorationImage(
+                image: NetworkImage(product['image']),
+                fit: BoxFit.cover,
+                 onError: (exception, stackTrace) => Icon(Icons.error), // Xử lý lỗi tải ảnh
+              )
             ),
-            child: Image.network(
-              product['image'],
-              fit: BoxFit.cover,
+             // child: Image.network(
+             //   product['image'],
+             //   fit: BoxFit.cover,
+             //   errorBuilder: (context, error, stackTrace) => Icon(Icons.image_not_supported, color: Colors.grey), // Placeholder khi lỗi ảnh
+             // ),
+          ),
+          const SizedBox(width: 16), // Tăng padding
+
+          // Tên sản phẩm
+          Expanded(
+            flex: 4, // Bằng flex header
+            child: Text(
+              product['name'],
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade800),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
+
+          // Đơn giá
           Expanded(
-            flex: 3,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Text(
-                product['name'],
-                style: TextStyle(fontSize: 14),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 1,
+            flex: 2, // Bằng flex header
             child: Center(
               child: Text(
-                _formatCurrency(product['price']),
-                style: TextStyle(fontSize: 14),
+                formatCurrency(product['price']), // Sử dụng formatCurrency từ props
+                style: const TextStyle(fontSize: 14),
               ),
             ),
           ),
+
+          // Số lượng
           Expanded(
-            flex: 1,
+            flex: 1, // Bằng flex header
             child: Center(
               child: Text(
                 '${product['quantity']}',
-                style: TextStyle(fontSize: 14),
+                style: const TextStyle(fontSize: 14),
               ),
             ),
           ),
+
+          // Thành tiền
           Expanded(
-            flex: 1,
-            child: Center(
+            flex: 2, // Bằng flex header
+            child: Align( // Canh phải
+              alignment: Alignment.centerRight,
               child: Text(
-                _formatCurrency(product['price'] * product['quantity']),
+                formatCurrency(product['price'] * product['quantity']), // Sử dụng formatCurrency
                 style: TextStyle(
-                  fontSize: 14, 
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red
+                  fontSize: 14.5, // To hơn chút
+                  fontWeight: FontWeight.w500, // Đậm vừa
+                  color: Colors.red.shade700, // Màu đỏ đậm hơn
                 ),
               ),
             ),
@@ -651,47 +630,49 @@ class _bodyPaymentDesktopState extends State<bodyPayment> {
       ),
     );
   }
-  
-  // Widget mới cho hiển thị sản phẩm trên màn hình nhỏ (Mobile)
+
+  // --- Widget cho hiển thị sản phẩm trên màn hình nhỏ (Mobile) ---
   Widget _buildMobileProductItem(Map<String, dynamic> product) {
     return Card(
-      margin: EdgeInsets.symmetric(vertical: 8),
-      elevation: 0,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      elevation: 0.5, // Thêm shadow nhẹ
       shape: RoundedRectangleBorder(
-        side: BorderSide(color: Colors.grey.shade200),
+        side: BorderSide(color: Colors.grey.shade200, width: 0.5), // Viền mỏng hơn
         borderRadius: BorderRadius.circular(8),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Phần trên: ảnh và thông tin sản phẩm
+            // Phần trên: Ảnh và Tên
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Ảnh sản phẩm
                 Container(
-                  width: 60,
-                  height: 60,
+                  width: 65, // To hơn chút
+                  height: 65,
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade200),
-                    borderRadius: BorderRadius.circular(4),
+                     border: Border.all(color: Colors.grey.shade200),
+                     borderRadius: BorderRadius.circular(4),
+                     image: DecorationImage(
+                       image: NetworkImage(product['image']),
+                       fit: BoxFit.cover,
+                       onError: (exception, stackTrace) => Icon(Icons.error),
+                    )
                   ),
-                  child: Image.network(
-                    product['image'],
-                    fit: BoxFit.cover,
-                  ),
+                  // child: Image.network(
+                  //    product['image'],
+                  //    fit: BoxFit.cover,
+                  //    errorBuilder: (context, error, stackTrace) => Icon(Icons.image_not_supported, color: Colors.grey),
+                  //  ),
                 ),
-                SizedBox(width: 12),
-                
-                // Tên sản phẩm
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     product['name'],
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
+                    style: const TextStyle(
+                      fontSize: 14.5, // To hơn chút
+                      fontWeight: FontWeight.w500, // Đậm vừa
                     ),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
@@ -699,81 +680,22 @@ class _bodyPaymentDesktopState extends State<bodyPayment> {
                 ),
               ],
             ),
-            
-            SizedBox(height: 12),
-            Divider(height: 1),
-            SizedBox(height: 12),
-            
-            // Phần dưới: giá, số lượng, thành tiền
+
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+
+            // Phần dưới: Giá, Số lượng, Thành tiền
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Cột đơn giá
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Đơn giá',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      _formatCurrency(product['price']),
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-                
-                // Cột số lượng
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Số lượng',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      '${product['quantity']}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-                
-                // Cột thành tiền
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      'Thành tiền',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      _formatCurrency(product['price'] * product['quantity']),
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.red,
-                      ),
-                    ),
-                  ],
-                ),
+                _buildMobilePriceColumn('Đơn giá', formatCurrency(product['price'])),
+                _buildMobilePriceColumn('Số lượng', 'x ${product['quantity']}'),
+                _buildMobilePriceColumn(
+                   'Thành tiền',
+                   formatCurrency(product['price'] * product['quantity']),
+                   isTotal: true
+                 ),
               ],
             ),
           ],
@@ -781,83 +703,81 @@ class _bodyPaymentDesktopState extends State<bodyPayment> {
       ),
     );
   }
-  
-  // New method for desktop address section
-  Widget _buildDesktopAddressSection() {
-    return Row(
-      children: [
-        Icon(Icons.location_on, color: Colors.red),
-        const SizedBox(width: 8.0),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: _buildAddressDisplay(),
-          ),
-        ),
-        TextButton(
-          onPressed: () {
-            print("Opening address selector dialog");
-            showAddressSelectorDialog(
-              context, 
-              _updateAddress,
-            );
-          },
-          child: Text('Thay Đổi'),
-        ),
-      ],
-    );
+
+  // Helper cho cột giá/sl/tổng tiền trên mobile
+  Widget _buildMobilePriceColumn(String label, String value, {bool isTotal = false}) {
+     return Column(
+       crossAxisAlignment: isTotal ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+       children: [
+         Text(
+           label,
+           style: TextStyle(
+             fontSize: 12.5, // Nhỏ hơn chút
+             color: Colors.grey.shade600,
+           ),
+         ),
+         const SizedBox(height: 4),
+         Text(
+           value,
+           style: TextStyle(
+             fontSize: 14.5, // To hơn chút
+             fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
+             color: isTotal ? Colors.red.shade700 : Colors.black87,
+           ),
+         ),
+       ],
+     );
   }
-  
-  // New method for mobile address section
+
+  // --- Widget cho phần địa chỉ trên Mobile ---
   Widget _buildMobileAddressSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(Icons.location_on, color: Colors.red),
+            Icon(Icons.location_on_outlined, color: Colors.red.shade700, size: 20),
             const SizedBox(width: 8.0),
-            Text(
+            const Text(
               'Địa Chỉ Nhận Hàng',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16.0,
+                 color: Color.fromARGB(255, 201, 201, 201),
               ),
             ),
-            Spacer(),
+            const Spacer(),
             TextButton(
-              onPressed: () {
-                print("Opening address selector dialog");
-                showAddressSelectorDialog(
-                  context, 
-                  _updateAddress,
-                );
-              },
-              child: Text('Thay Đổi'),
+              onPressed: onChangeAddress, // Gọi callback
+               style: TextButton.styleFrom(
+                 foregroundColor: Colors.blue.shade700,
+                 padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Padding nhỏ hơn
+               ),
+              child: const Text('Thay Đổi', style: TextStyle(fontWeight: FontWeight.w600)),
             ),
           ],
         ),
+        const SizedBox(height: 8), // Thêm khoảng cách
         Padding(
-          padding: const EdgeInsets.only(left: 32.0),
+          padding: const EdgeInsets.only(left: 28.0), // Thụt lề bằng icon + SizedBox
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _currentAddress.name,
-                style: TextStyle(
+                '${currentAddress.name} | ${currentAddress.phone}', // Gộp tên và SĐT
+                style: const TextStyle(
                   fontWeight: FontWeight.w500,
-                  fontSize: 14.0
+                  fontSize: 14.5
                 ),
+                 maxLines: 1,
+                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 4),
               Text(
-                _currentAddress.phone,
-                style: TextStyle(fontSize: 14.0),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _currentAddress.address,
-                style: TextStyle(fontSize: 14.0),
+                currentAddress.fullAddress, // Sử dụng fullAddress
+                style: TextStyle(fontSize: 14.0, color: Colors.grey.shade700),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -865,50 +785,55 @@ class _bodyPaymentDesktopState extends State<bodyPayment> {
       ],
     );
   }
-  
-  // New method for mobile voucher section
+
+  // --- Widget cho phần voucher trên Mobile ---
   Widget _buildMobileVoucherSection() {
+     final bool hasVoucher = currentVoucher != null;
+      final currencyFormatter = NumberFormat("#,###", "vi_VN");
+
     return Column(
+       crossAxisAlignment: CrossAxisAlignment.start, // Canh trái
       children: [
-        Row(
-          children: [
-            Checkbox(
-              value: _currentVoucher != null,
-              onChanged: (bool? value) {
-                if (value == false) {
-                  setState(() {
-                    _currentVoucher = null;
-                  });
-                } else {
-                  _openVoucherDialog();
-                }
-              },
-              activeColor: Colors.red,
-            ),
-            Text('Voucher của Shop'),
-            Spacer(),
-          ],
-        ),
-        Padding(
-          padding: EdgeInsets.only(left: 16, right: 16, top: 8),
-          child: TextButton.icon(
-            onPressed: _openVoucherDialog,
-            icon: Icon(Icons.card_giftcard, color: Colors.red), 
-            label: Text(
-              _currentVoucher != null ? _currentVoucher!.code : 'Chọn Voucher', 
-              style: TextStyle(color: Colors.red),
-            ),
-            style: TextButton.styleFrom(
-              backgroundColor: Colors.red.withOpacity(0.1),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              padding: EdgeInsets.symmetric(vertical: 12),
-              minimumSize: Size(double.infinity, 0), // Full width button
-            ),
-          ),
+         Row(
+           children: [
+             Icon(Icons.local_offer_outlined, color: Colors.orange.shade700, size: 20),
+             const SizedBox(width: 8),
+             const Text(
+               'Shop Voucher',
+               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+             ),
+              if (hasVoucher) ...[ // Hiển thị tiền giảm nếu có voucher
+                 const Spacer(),
+                 Text(
+                  '-${formatCurrency(discountAmount)}',
+                  style: TextStyle(
+                    color: Colors.green.shade700, fontWeight: FontWeight.w500
+                  ),
+                 ),
+              ]
+           ],
+         ),
+        const SizedBox(height: 12),
+        SizedBox( // Để nút chiếm full width
+           width: double.infinity,
+           child: OutlinedButton.icon( // Dùng OutlinedButton cho khác biệt
+             onPressed: onSelectVoucher, // Gọi callback
+             icon: Icon(Icons.search, size: 18, color: Colors.blue.shade700), // Icon tìm kiếm
+             label: Text(
+               hasVoucher ? 'Xem / Đổi Voucher' : 'Chọn hoặc nhập mã',
+               style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w600),
+             ),
+             style: OutlinedButton.styleFrom(
+               side: BorderSide(color: Colors.blue.shade200), // Viền xanh nhạt
+               shape: RoundedRectangleBorder(
+                 borderRadius: BorderRadius.circular(8),
+               ),
+               padding: const EdgeInsets.symmetric(vertical: 12),
+             ),
+           ),
         ),
       ],
     );
   }
+
 }

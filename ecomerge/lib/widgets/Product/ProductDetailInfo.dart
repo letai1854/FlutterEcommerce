@@ -1,351 +1,211 @@
-import 'package:e_commerce_app/widgets/ProductDetail/ProductDetialWidget.dart';
 import 'package:flutter/material.dart';
 
-class ProductDetialInfo extends StatefulWidget {
-  const ProductDetialInfo({Key? key}) : super(key: key);
+// --- Main Detail Widget ---
+class ProductDetialInfo extends StatelessWidget {
+  // Product Info
+  final String productName;
+  final String brandName;
+  final double averageRating;
+  final int ratingCount;
+  final String shortDescription;
+  final List<String> illustrationImages; // Danh sách ảnh minh họa cố định
 
-  @override
-  State<ProductDetialInfo> createState() => _ProductDetialInfoState();
-}
+  // Variant Info
+  final List<Map<String, dynamic>> productVariants;
+  final int selectedVariantIndex;
+  final int currentStock;
+  final Function(int) onVariantSelected;
 
-class _ProductDetialInfoState extends State<ProductDetialInfo> {
-  int _current = 0;
-  final ScrollController _scrollController = ScrollController();
-  int _selectedRating = 0;
-  final TextEditingController _commentController = TextEditingController();
-  List<Map<String, dynamic>> _displayedReviews = []; // Danh sách đánh giá hiển thị
-  int _reviewsPerPage = 2; // Số lượng đánh giá hiển thị ban đầu
-  bool _isLoading = false;
+  // Image Display Info & Callbacks
+  final String displayedMainImageUrl; // URL ảnh chính đang hiển thị
+  final Function(String) onIllustrationImageSelected; // Callback nhấn ảnh minh họa
 
-  // Dữ liệu giả
-  final List<Map<String, dynamic>> productData = [
-    {
-      'color': 'Đen',
-      'mainImage':
-          'https://spencil.vn/wp-content/uploads/2024/11/chup-anh-san-pham-SPencil-Agency-1.jpg',
-      'thumbnails': [
-        'https://spencil.vn/wp-content/uploads/2024/11/chup-anh-san-pham-SPencil-Agency-1.jpg',
-        'https://spencil.vn/wp-content/uploads/2024/11/chup-anh-san-pham-SPencil-Agency-1.jpg',
-        'https://cdn.tgdd.vn/Files/2022/07/24/1450033/laptop-man-hinh-full-hd-la-gi-kinh-nghiem-chon-mu-2.jpg',
-      ],
-    },
-    {
-      'color': 'Trắng',
-      'mainImage':
-          'https://cdn.tgdd.vn/Files/2022/07/24/1450033/laptop-man-hinh-full-hd-la-gi-kinh-nghiem-chon-mu-2.jpg',
-      'thumbnails': [
-        'https://cdn.tgdd.vn/Files/2022/07/24/1450033/laptop-man-hinh-full-hd-la-gi-kinh-nghiem-chon-mu-2.jpg',
-        'https://spencil.vn/wp-content/uploads/2024/11/chup-anh-san-pham-SPencil-Agency-1.jpg',
-        'https://cdn.tgdd.vn/Files/2022/07/24/1450033/laptop-man-hinh-full-hd-la-gi-kinh-nghiem-chon-mu-2.jpg',
-      ],
-    },
-    {
-      'color': 'Xanh',
-      'mainImage':
-          'https://spencil.vn/wp-content/uploads/2024/11/chup-anh-san-pham-SPencil-Agency-1.jpg',
-      'thumbnails': [
-        'https://spencil.vn/wp-content/uploads/2024/11/chup-anh-san-pham-SPencil-Agency-1.jpg',
-        'https://cdn.tgdd.vn/Files/2022/07/24/1450033/laptop-man-hinh-full-hd-la-gi-kinh-nghiem-chon-mu-2.jpg',
-        'https://spencil.vn/wp-content/uploads/2024/11/chup-anh-san-pham-SPencil-Agency-1.jpg',
-      ],
-    },
-  ];
+  // Review Info & Callbacks
+  final ScrollController scrollController;
+  final List<Map<String, dynamic>> displayedReviews;
+  final int totalReviews;
+  final bool isLoadingReviews;
+  final bool canLoadMoreReviews;
+  final VoidCallback loadMoreReviews;
+  final VoidCallback submitReview;
+  final TextEditingController commentController;
+  final int selectedRating;
+  final Function(int) onRatingChanged;
 
-  final List<Map<String, dynamic>> reviews = [
-    {
-      'name': 'Nguyễn Văn A',
-      'rating': 5,
-      'comment': 'Sản phẩm tuyệt vời, đáng mua!',
-      'avatar': 'assets/avatar1.png',
-    },
-    {
-      'name': 'Trần Thị B',
-      'rating': 4,
-      'comment': 'Chất lượng tốt, giá cả hợp lý.',
-      'avatar': 'assets/avatar2.png',
-    },
-    {
-      'name': 'Lê Văn C',
-      'rating': 3,
-      'comment': 'Sản phẩm ổn, nhưng giao hàng hơi chậm.',
-      'avatar': 'assets/avatar3.png',
-    },
-    {
-      'name': 'Phạm Thị D',
-      'rating': 5,
-      'comment': 'Rất hài lòng về sản phẩm và dịch vụ.',
-      'avatar': 'assets/avatar4.png',
-    },
-    {
-      'name': 'Hoàng Văn E',
-      'rating': 4,
-      'comment': 'Sản phẩm tốt, đóng gói cẩn thận.',
-      'avatar': 'assets/avatar5.png',
-    },
-    {
-      'name': 'Đặng Thị F',
-      'rating': 3,
-      'comment': 'Giá hơi cao so với chất lượng.',
-      'avatar': 'assets/avatar6.png',
-    },
-  ];
+  // Action Callbacks
+  final VoidCallback onAddToCart;
+  final VoidCallback onBuyNow;
 
-  String mainImageUrl =
-      'https://spencil.vn/wp-content/uploads/2024/11/chup-anh-san-pham-SPencil-Agency-1.jpg';
-  List<String> thumbnails = [
-    'https://spencil.vn/wp-content/uploads/2024/11/chup-anh-san-pham-SPencil-Agency-1.jpg',
-    'https://cdn.tgdd.vn/Files/2022/07/24/1450033/laptop-man-hinh-full-hd-la-gi-kinh-nghiem-chon-mu-2.jpg',
-    'https://spencil.vn/wp-content/uploads/2024/11/chup-anh-san-pham-SPencil-Agency-1.jpg',
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadInitialReviews();
-    _scrollController.addListener(_loadMoreReviewsOnScroll);
-  }
-
-  @override
-  void dispose() {
-    _scrollController.removeListener(_loadMoreReviewsOnScroll);
-    _scrollController.dispose();
-    _commentController.dispose();
-    super.dispose();
-  }
-
-  void _loadInitialReviews() {
-    setState(() {
-      _displayedReviews = reviews.take(_reviewsPerPage).toList();
-    });
-  }
-
-  Future<void> _loadMoreReviews() async {
-    if (_isLoading) return; // Không tải thêm nếu đang tải
-    _isLoading = true;
-
-    // Giả lập thời gian tải dữ liệu từ server
-    await Future.delayed(Duration(milliseconds: 500));
-
-    setState(() {
-      // Tính toán số lượng đánh giá cần tải thêm
-      int startIndex = _displayedReviews.length;
-      int endIndex = startIndex + _reviewsPerPage;
-
-      // Nếu endIndex vượt quá tổng số đánh giá, giới hạn lại
-      if (endIndex > reviews.length) {
-        endIndex = reviews.length;
-      }
-
-      // Nếu startIndex vẫn còn nhỏ hơn tổng số đánh giá
-      if (startIndex < reviews.length) {
-        _displayedReviews.addAll(reviews.sublist(startIndex, endIndex));
-      }
-      _isLoading = false;
-    });
-  }
-
-
-  void _loadMoreReviewsOnScroll() {
-    if (_scrollController.position.pixels ==
-        _scrollController.position.maxScrollExtent) {
-      _loadMoreReviews();
-    }
-  }
-
-  void _onColorSelected(int index) {
-    setState(() {
-      mainImageUrl = productData[index]['mainImage'];
-      thumbnails = List<String>.from(productData[index]['thumbnails']);
-    });
-  }
-
-  void _onThumbnailSelected(String imageUrl) {
-    setState(() {
-      mainImageUrl = imageUrl;
-    });
-  }
-
-  void _submitReview() {
-    if ( _commentController.text.isNotEmpty) {
-
-      setState(() {
-        _commentController.clear();
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Vui lòng cung cấp đánh giá và bình luận.')),
-      );
-    }
-  }
+  const ProductDetialInfo({
+    Key? key,
+    // Product
+    required this.productName,
+    required this.brandName,
+    required this.averageRating,
+    required this.ratingCount,
+    required this.shortDescription,
+    required this.illustrationImages,
+    // Variants
+    required this.productVariants,
+    required this.selectedVariantIndex,
+    required this.currentStock,
+    required this.onVariantSelected,
+    // Image Display
+    required this.displayedMainImageUrl,
+    required this.onIllustrationImageSelected,
+    // Reviews
+    required this.scrollController,
+    required this.displayedReviews,
+    required this.totalReviews,
+    required this.isLoadingReviews,
+    required this.canLoadMoreReviews,
+    required this.loadMoreReviews,
+    required this.submitReview,
+    required this.commentController,
+    required this.selectedRating,
+    required this.onRatingChanged,
+    // Actions
+    required this.onAddToCart,
+    required this.onBuyNow,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
     return Container(
-      color: Colors.grey[300],
-      padding: EdgeInsets.only(top: 16),
+      color: Colors.grey[200],
       child: SingleChildScrollView(
-        controller: _scrollController,
+        controller: scrollController,
         child: Center(
           child: Container(
-            constraints: BoxConstraints(maxWidth: 1200),
-            padding: EdgeInsets.all(16),
+            constraints: const BoxConstraints(maxWidth: 1200),
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.3),
-                  spreadRadius: 2,
-                  blurRadius: 5,
-                  offset: Offset(0, 3),
-                ),
-              ],
+              boxShadow: [ BoxShadow( color: Colors.grey.withOpacity(0.2), spreadRadius: 1, blurRadius: 4, offset: const Offset(0, 2), ), ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // --- Product Info Section ---
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    final isWideScreen = constraints.maxWidth > 768; // Define breakpoint
+                    final bool isWideScreen = constraints.maxWidth > 700;
 
-                    // Content for both Row and Column layouts
-                    final imageSection = Expanded(
-                      flex: isWideScreen ? 2 : 0, // Flex only on wide screens
+                    // --- Image Section ---
+                    final imageSection = Flexible(
+                      flex: isWideScreen ? 1 : 0,
+                      fit: FlexFit.loose,
                       child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Image.network(
-                            mainImageUrl,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Text('Không thể tải ảnh');
-                            },
+                          // --- Main Image Area ---
+                          AspectRatio(
+                            aspectRatio: 1.0,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8.0),
+                              child: displayedMainImageUrl.isEmpty
+                                ? Container( // Placeholder nếu không có ảnh
+                                    color: Colors.grey[200],
+                                    child: const Center(child: Icon(Icons.image_not_supported, color: Colors.grey, size: 50)),
+                                  )
+                                : Image.network( // Hiển thị ảnh chính
+                                    displayedMainImageUrl,
+                                    key: ValueKey(displayedMainImageUrl), // Key để update hiệu quả
+                                    fit: BoxFit.cover,
+                                    loadingBuilder: (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Center(child: CircularProgressIndicator(value: loadingProgress.expectedTotalBytes != null ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes! : null));
+                                    },
+                                    errorBuilder: (context, error, stackTrace) {
+                                      print("Error loading main image: $displayedMainImageUrl, Error: $error");
+                                      return Container(color: Colors.grey[200], child: const Center(child: Icon(Icons.broken_image, color: Colors.grey, size: 50)));
+                                    },
+                                  ),
+                            ),
                           ),
-                          SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: thumbnails
-                                .map((imageUrl) => BuildThumbnail(
-                                      imageUrl: imageUrl,
-                                      onThumbnailSelected: _onThumbnailSelected,
-                                    ))
-                                .toList(),
-                          ),
+                          const SizedBox(height: 12),
+                          // --- Illustration Images (Thumbnails) ---
+                          if (illustrationImages.isNotEmpty) // Chỉ hiển thị nếu có ảnh minh họa
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: illustrationImages.map((imageUrl) {
+                                  final bool isSelectedThumbnail = (imageUrl == displayedMainImageUrl);
+                                  return BuildThumbnail(
+                                    imageUrl: imageUrl,
+                                    isSelected: isSelectedThumbnail, // Highlight nếu ảnh này đang hiển thị chính
+                                    onTap: () => onIllustrationImageSelected(imageUrl), // Callback khi nhấn
+                                  );
+                                }).toList(),
+                              ),
+                            ),
                         ],
                       ),
                     );
 
-                    final detailsSection = Expanded(
-                      flex: isWideScreen ? 2 : 0, // Flex only on wide screens
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Tai nghe Bluetooth Air31',
-                              style: TextStyle(
-                                  fontSize: 24, fontWeight: FontWeight.bold)),
-                          SizedBox(height: 8),
-                          Wrap( // Use Wrap for responsive layout of rating and brand
-                            spacing: 16,
-                            runSpacing: 8, // Add vertical spacing for wrapping
-                            children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min, // Keep Row compact
-                                children: [
-                                  Icon(Icons.star, color: Colors.amber),
-                                  Text('4.8 (123 đánh giá)'),
-                                ],
+                    // --- Details Section ---
+                    final detailsSection = Flexible(
+                      flex: isWideScreen ? 1 : 0,
+                      fit: FlexFit.loose,
+                      child: Padding(
+                        padding: EdgeInsets.only(left: isWideScreen ? 16.0 : 0.0, top: !isWideScreen ? 16.0 : 0.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Product Name, Rating, Brand
+                            Text(productName, style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 8),
+                            Wrap( spacing: 16, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [ Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.star, color: Colors.amber, size: 18), const SizedBox(width: 4), Text('$averageRating ($ratingCount đánh giá)', style: textTheme.bodyMedium)]), Text('Thương hiệu: $brandName', style: textTheme.bodyMedium), ],),
+                            const SizedBox(height: 16),
+                            // Short Description
+                            if (shortDescription.isNotEmpty) Padding( padding: const EdgeInsets.only(bottom: 16.0), child: Text( shortDescription, style: textTheme.bodyMedium?.copyWith(color: Colors.grey[700]), ),),
+                            // Variant Selection Options
+                            Text('Chọn biến thể:', style: textTheme.titleMedium),
+                            const SizedBox(height: 8),
+                            if (productVariants.isNotEmpty) // Chỉ hiển thị nếu có biến thể
+                              SingleChildScrollView( scrollDirection: Axis.horizontal, child: Row( children: List.generate(productVariants.length, (index) {
+                                    final variant = productVariants[index];
+                                    return BuildVariantOption(
+                                      variantName: variant['name'] ?? 'N/A',
+                                      imageUrl: variant['variantThumbnail'] ?? '', // Ảnh nhỏ của biến thể
+                                      isSelected: index == selectedVariantIndex,   // Trạng thái chọn
+                                      onTap: () => onVariantSelected(index),        // Callback chọn
+                                    ); }), ),)
+                            else // Thông báo nếu không có biến thể
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                child: Text("Sản phẩm hiện chưa có biến thể.", style: textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic)),
                               ),
-                              Text('Thương hiệu: Hãng ABC'),
-                            ],
-                          ),
-                          SizedBox(height: 16),
-                          SingleChildScrollView( // Keep color options horizontal with scrolling
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: productData.map((data) {
-                                return BuilColorOption(
-                                  colorData: data,
-                                  onColorSelected: _onColorSelected,
-                                  productData: productData,
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                          Text('Kho: 3000', style: TextStyle(fontSize: 16)),
-                          SizedBox(height: 16),
-                          Wrap( // Use Wrap for responsive layout of buttons
-                            spacing: 16,
-                            runSpacing: 10, // Add vertical spacing for wrapping
-                            children: [
-                              ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: Colors.black,
-                                  side: BorderSide(color: Colors.red),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(5),
-                                  ),
-                                ),
-                                onPressed: () {},
-                                icon: Icon(Icons.shopping_cart,
-                                    color: Colors.black),
-                                label: Text('Thêm vào giỏ hàng',
-                                    style: TextStyle(color: Colors.black)),
-                              ),
-                              ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(5),
-                                  ),
-                                ),
-                                onPressed: () {},
-                                icon: Icon(Icons.payment, color: Colors.white),
-                                label: Text('Mua ngay',
-                                    style: TextStyle(color: Colors.white)),
-                                ),
-                              ],
-                            ),
+                            const SizedBox(height: 16),
+                            // Stock Display
+                            Text('Kho: $currentStock', style: textTheme.titleMedium),
+                            const SizedBox(height: 24),
+                            // Action Buttons
+                            Wrap( spacing: 12, runSpacing: 10, children: [ ElevatedButton.icon(style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade100,foregroundColor: Colors.orange.shade800, side: BorderSide(color: Colors.orange.shade300), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))), onPressed: onAddToCart, icon: const Icon(Icons.add_shopping_cart_outlined, size: 18), label: const Text('Thêm vào giỏ hàng')), ElevatedButton.icon(style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade600, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), elevation: 2), onPressed: onBuyNow, icon: const Icon(Icons.flash_on_outlined, size: 18), label: const Text('Mua ngay')), ],),
                           ],
                         ),
-                      );
+                      ),
+                    );
 
+                    // Responsive Layout
                     return isWideScreen
-                        ? Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              imageSection,
-                              SizedBox(width: 16), // Spacing for wide screen
-                              detailsSection,
-                            ],
-                          )
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              imageSection,
-                              SizedBox(height: 16), // Spacing for smaller screens
-                              detailsSection,
-                            ],
-                          );
+                        ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [imageSection, detailsSection])
+                        : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [imageSection, detailsSection]);
                   },
                 ),
-                SizedBox(height: 32),
-                buildReveiwSection(
-                  isLoading: _isLoading,
-                  displayedReviews: _displayedReviews,
-                  reviews: reviews,
-                  loadMoreReviews: _loadMoreReviews,
-                  submitReview: _submitReview,
-                  commentController: _commentController,
-                  selectedRating: _selectedRating,
-                  onRatingChanged: (int newRating) { 
-                    setState(() {
-                      _selectedRating = newRating; 
-                    });
-                  },
-                ),
+                const SizedBox(height: 24),
+                const Divider(),
+                const SizedBox(height: 16),
 
+                // --- Review Section ---
+                BuildReviewSection(
+                  context: context, isLoading: isLoadingReviews, displayedReviews: displayedReviews, totalReviews: totalReviews, canLoadMore: canLoadMoreReviews, loadMoreReviews: loadMoreReviews, submitReview: submitReview, commentController: commentController, selectedRating: selectedRating, onRatingChanged: onRatingChanged,
+                ),
               ],
             ),
           ),
@@ -353,8 +213,123 @@ class _ProductDetialInfoState extends State<ProductDetialInfo> {
       ),
     );
   }
+}
 
-  
 
+// --- Helper Widgets ---
 
+// BuildThumbnail: Hiển thị ảnh minh họa nhỏ.
+class BuildThumbnail extends StatelessWidget {
+  final String imageUrl;
+  final bool isSelected; // True nếu ảnh này đang hiển thị chính
+  final VoidCallback onTap;
+
+  const BuildThumbnail({
+    Key? key,
+    required this.imageUrl,
+    required this.isSelected,
+    required this.onTap,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: isSelected ? Colors.red : Colors.grey.shade300, // Viền đỏ nếu được chọn
+            width: isSelected ? 2.0 : 1.0,
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(2),
+          child: Image.network(
+            imageUrl, width: 50, height: 50, fit: BoxFit.cover,
+             errorBuilder: (context, error, stackTrace) => Container(width: 50, height: 50, color: Colors.grey[200], child: Icon(Icons.error_outline, size: 20, color: Colors.grey)),
+             loadingBuilder: (context, child, loadingProgress) => (loadingProgress == null) ? child : Container(width: 50, height: 50, color: Colors.grey[100], child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// BuildVariantOption: Hiển thị các tùy chọn biến thể.
+class BuildVariantOption extends StatelessWidget {
+  final String variantName;
+  final String imageUrl; // Ảnh đại diện biến thể
+  final bool isSelected; // True nếu biến thể này đang được chọn
+  final VoidCallback onTap; // Callback chọn biến thể
+
+  const BuildVariantOption({
+    Key? key,
+    required this.variantName,
+    required this.imageUrl,
+    required this.isSelected,
+    required this.onTap,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(right: 10),
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.red.withOpacity(0.05) : Colors.transparent,
+          border: Border.all( color: isSelected ? Colors.red : Colors.grey.shade400, width: isSelected ? 1.5 : 1.0, ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect( borderRadius: BorderRadius.circular(4), child: imageUrl.isEmpty
+              ? Container(width: 40, height: 40, color: Colors.grey[200], child: Icon(Icons.hide_image_outlined, size: 18, color: Colors.grey)) // Placeholder nếu ko có ảnh variant
+              : Image.network(imageUrl, width: 40, height: 40, fit: BoxFit.cover, errorBuilder: (c,e,s) => Container(width: 40, height: 40, color: Colors.grey[200], child: Icon(Icons.image_not_supported, size: 18, color: Colors.grey)), loadingBuilder: (c,child,p) => (p==null)?child:Container(width:40,height:40,color:Colors.grey[100],child:Center(child:SizedBox(width:15,height:15,child:CircularProgressIndicator(strokeWidth:2)))))),
+            const SizedBox(height: 4),
+            Padding( padding: const EdgeInsets.symmetric(horizontal: 4.0), child: Text( variantName, textAlign: TextAlign.center, style: TextStyle( fontSize: 12, color: isSelected ? Colors.red.shade700 : Colors.black87, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, ), maxLines: 1, overflow: TextOverflow.ellipsis, ),),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// BuildReviewSection: Widget để hiển thị và nhập đánh giá.
+Widget BuildReviewSection({
+  required BuildContext context, required bool isLoading, required List<Map<String, dynamic>> displayedReviews, required int totalReviews, required bool canLoadMore, required VoidCallback loadMoreReviews, required VoidCallback submitReview, required TextEditingController commentController, required int selectedRating, required Function(int) onRatingChanged,
+}) {
+   return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('Đánh giá sản phẩm (${displayedReviews.length}/$totalReviews)', style: Theme.of(context).textTheme.titleLarge),
+      const SizedBox(height: 16),
+      Card(
+        elevation: 1, margin: const EdgeInsets.only(bottom: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        child: Padding( padding: const EdgeInsets.all(16.0), child: Column( crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Viết đánh giá của bạn:', style: Theme.of(context).textTheme.titleMedium), const SizedBox(height: 8),
+              Row( mainAxisAlignment: MainAxisAlignment.start, children: List.generate(5, (index) => IconButton( icon: Icon( index < selectedRating ? Icons.star : Icons.star_border, color: Colors.amber,), onPressed: () => onRatingChanged(index + 1), padding: EdgeInsets.zero, constraints: const BoxConstraints(),))),
+              const SizedBox(height: 12),
+              TextField( controller: commentController, maxLines: 3, decoration: InputDecoration( hintText: 'Nhập bình luận của bạn...', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),),),
+              const SizedBox(height: 12),
+              Align( alignment: Alignment.centerRight, child: ElevatedButton( onPressed: submitReview, style: ElevatedButton.styleFrom( backgroundColor: Colors.red.shade600, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),), child: const Text('Gửi đánh giá'),),),
+            ],),),),
+      if (displayedReviews.isEmpty && !isLoading) const Center(child: Padding(padding: EdgeInsets.all(20.0), child: Text('Chưa có đánh giá nào.'))) else
+        ListView.separated(
+          shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: displayedReviews.length + (isLoading || canLoadMore ? 1 : 0),
+          itemBuilder: (context, index) {
+            if (index == displayedReviews.length) {
+              if (isLoading) return const Center(child: Padding(padding: EdgeInsets.symmetric(vertical: 16.0), child: CircularProgressIndicator()));
+              if (canLoadMore) return Center(child: Padding(padding: const EdgeInsets.symmetric(vertical: 8.0), child: OutlinedButton(onPressed: loadMoreReviews, child: const Text('Xem thêm đánh giá'))));
+              return const SizedBox.shrink();
+            }
+            final review = displayedReviews[index];
+            final String avatarAsset = review['avatar'] is String ? review['avatar'] : 'assets/default_avatar.png'; final String name = review['name'] ?? 'Ẩn danh'; final int rating = review['rating'] is int ? review['rating'] : 0; final String comment = review['comment'] ?? '';
+            return ListTile( leading: CircleAvatar(backgroundImage: AssetImage(avatarAsset), onBackgroundImageError: (_, __) {}, backgroundColor: Colors.grey[300], child: const Icon(Icons.person, color: Colors.white)), title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)), subtitle: Column( crossAxisAlignment: CrossAxisAlignment.start, children: [ Row( children: List.generate(5, (starIndex) => Icon( starIndex < rating ? Icons.star : Icons.star_border, color: Colors.amber, size: 16,))), const SizedBox(height: 4), Text(comment), ],),);
+          }, separatorBuilder: (context, index) => const Divider(height: 1), ), ], );
 }
