@@ -82,13 +82,13 @@ class UserService {
   Future<Map<String, dynamic>?> loginUser(String email, String password) async {
     final url = Uri.parse('$baseUrl/api/users/login');
     try {
-      final response = await http.post(
+      final response = await httpClient.post(
         url,
         headers: _getHeaders(),
         body: jsonEncode({'email': email, 'password': password}),
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final responseBody = jsonDecode(response.body);
         // Store the token
         if (responseBody['token'] != null) {
@@ -157,7 +157,7 @@ class UserService {
       String oldPassword, String newPassword) async {
     final url = Uri.parse('$baseUrl/api/users/me/change-password');
     try {
-      final response = await http.post(
+      final response = await httpClient.post(
         url,
         headers: _getHeaders(includeAuth: true),
         body: jsonEncode(
@@ -228,7 +228,7 @@ class UserService {
   // although the backend should enforce access control.
 
   Future<User?> testRegistration({
-    String email = 'hahehiho9999@gmail.com',
+    String email = 'haha@gmail.com',
     String fullName = 'tai',
     String password = '123456',
     String address = 'afew  adff ', // Add address field
