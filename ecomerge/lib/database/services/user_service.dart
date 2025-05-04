@@ -24,28 +24,37 @@ class UserService {
   }
 
   // Method to register a new user
-  Future<User?> registerUser(User user) async {
+  Future<bool?>  registerUser({
+    required String email,
+    required String fullName,
+    required String password,
+    required String address,
+  }) async {
     final url = Uri.parse('$baseUrl/api/users/register');
     try {
       final response = await http.post(
         url,
         headers: _getHeaders(),
-        body: jsonEncode(user.toMap()),
+        body: jsonEncode({
+          'email': email,
+          'fullName': fullName,
+          'password': password,
+          'address': address,
+        }),
       );
-
+     
       if (response.statusCode == 201) {
-        // User created successfully
-        return User.fromMap(jsonDecode(response.body));
+        return true;
       } else {
         // Handle other status codes (e.g., 409 Conflict for email exists)
         print('Failed to register user: ${response.statusCode}');
         print('Response body: ${response.body}');
-        return null;
+        return false;
       }
     } catch (e) {
       // Handle network errors
       print('Error during user registration: $e');
-      return null;
+      return false;
     }
   }
 

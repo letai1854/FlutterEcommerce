@@ -1,4 +1,5 @@
 import 'package:e_commerce_app/Provider/UserProvider.dart';
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:flutter/material.dart';
 
 class AuthGuard extends StatelessWidget {
@@ -15,7 +16,7 @@ class AuthGuard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Builder(
       builder: (BuildContext context) {
-        final currentUser = UserProvider().currentUser;
+        final currentUser = UserInfo().currentUser;
         final bool isAuthenticated = currentUser != null;
          print("bool "+isAuthenticated.toString());
         if (isAuthenticated && !requireAuth) {

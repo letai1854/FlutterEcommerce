@@ -1,4 +1,3 @@
-import 'package:e_commerce_app/Models/User_model.dart';
 import 'package:e_commerce_app/Provider/UserProvider.dart';
 import 'package:e_commerce_app/state/Search/SearchStateService.dart';
 // --- DÒNG 1: THÊM IMPORT SINGLETON ---

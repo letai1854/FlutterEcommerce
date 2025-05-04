@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:e_commerce_app/Provider/UserProvider.dart';
 import 'package:e_commerce_app/Screens/Admin/AdminReponsicve.dart';
 import 'package:e_commerce_app/Screens/Cart/PageCart.dart';
 import 'package:e_commerce_app/Screens/Chat/PageChat.dart';
@@ -9,13 +8,14 @@ import 'package:e_commerce_app/Screens/ListProduct/PageListProduct.dart';
 import 'package:e_commerce_app/Screens/Payment/PagePayment.dart';
 import 'package:e_commerce_app/Screens/ProductDetail/PageProductDetail.dart';
 import 'package:e_commerce_app/Screens/Search/PageSearch.dart';
+import 'package:e_commerce_app/Screens/SignUp/PageSignup.dart';
 import 'package:e_commerce_app/Screens/SuccessPayment/PageSuccessPayment.dart';
 import 'package:e_commerce_app/Screens/UserInfo/ResponsiveUserInfo.dart';
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:flutter/material.dart';
 import 'package:url_strategy/url_strategy.dart';
 import 'package:e_commerce_app/Screens/Home/home_responsive.dart';
 import 'package:e_commerce_app/Screens/Login/login_responsive.dart';
-import 'package:e_commerce_app/Screens/SignUp/SignUp_Reponsive.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:e_commerce_app/providers/signup_form_provider.dart';
@@ -26,9 +26,9 @@ Future<void> initApp() async {
   WidgetsFlutterBinding.ensureInitialized();
   setPathUrlStrategy();
 
-  // Initialize user session
-  final userProvider = UserProvider();
-  await userProvider.loadUserSession();
+  // // Initialize user session
+  // final userProvider = UserProvider();
+  // await userProvider.loadUserSession();
 }
 
 void main() async {
@@ -78,7 +78,7 @@ class MyApp extends StatelessWidget {
       onGenerateRoute: (settings) {
         switch (settings.name) {
           case '/login':
-            if (UserProvider().currentUser == null) {
+            if (UserInfo().currentUser == null) {
               return PageRouteBuilder(
                 pageBuilder: (context, _, __) => const ResponsiveLogin(),
                 settings: settings,
@@ -106,7 +106,7 @@ class MyApp extends StatelessWidget {
             );
           case '/signup':
             return PageRouteBuilder(
-              pageBuilder: (context, _, __) => const ReponsiveSignUp(),
+              pageBuilder: (context, _, __) => const PageSignup(),
               settings: settings,
             );
 
