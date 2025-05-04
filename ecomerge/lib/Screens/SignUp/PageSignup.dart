@@ -202,14 +202,7 @@ class _PageSignupState extends State<PageSignup> {
     bool? success; // Sử dụng biến success để lưu kết quả từ UserService (bool?)
 
     try {
-      // Call register method using UserService with specific parameters
-      // Use _getFullAddressString() to combine detailed address and location NAMES
-      // Assumes UserService returns bool? (true on success, false/null on failure)
-      // And ideally, throws an Exception on specific backend errors like duplicate email.
-      // *** NOTE: Your UserService.registerUser returning bool? doesn't allow specific error messages.
-      // If you want specific error messages (like "Email already exists"), you MUST modify
-      // UserService.registerUser to throw an Exception on non-201 status codes,
-      // and handle that Exception in the catch block below.
+
        success = await _userService.registerUser(
         email: _emailController.text.trim(), // Trim whitespace
         fullName: _nameController.text.trim(), // Trim whitespace

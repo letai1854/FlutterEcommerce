@@ -4,24 +4,14 @@ import 'package:e_commerce_app/database/database_helper.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/user_model.dart'; // Assuming User model is here
+import '/database/database_helper.dart'; // Assuming DatabaseHelper is here
+import '../database_helper.dart' as config;
 
 
 class UserService {
   final String baseUrl = baseurl; // TODO: Replace with your actual backend URL
   String? _authToken; // To store JWT token
-
-  // IOClient createHttpClientWithIgnoreBadCert() {
-  //   HttpClient client = HttpClient();
-  //   if (kDebugMode) {
-  //     // Chỉ bỏ qua trong chế độ debug
-  //     client.badCertificateCallback =
-  //         (X509Certificate cert, String host, int port) =>
-  //             true; // Accept any certificate
-  //   }
-  //   return IOClient(client);
-  // }
-
-  // late final IOClient _httpClient = createHttpClientWithIgnoreBadCert();
+   final _httpClient = http.Client(); // Using http.Client for better testability
   // Method to set the authentication token after login
   void setAuthToken(String token) {
     _authToken = token;
@@ -30,7 +20,8 @@ class UserService {
   // Helper to get headers, including auth token if available
   Map<String, String> _getHeaders({bool includeAuth = false}) {
     final headers = {'Content-Type': 'application/json'};
-    if (includeAuth && _authToken != null) {
+    if (includeAuth && UserInfo().authToken != null) {
+      _authToken = UserInfo().authToken;
       headers['Authorization'] = 'Bearer $_authToken';
     }
     return headers;
@@ -62,7 +53,7 @@ class UserService {
       print('Response body: ${response.body}');
 
       if (response.statusCode == 201) {
-         User.fromMap(jsonDecode(response.body));
+        User.fromMap(jsonDecode(response.body));
         return true;
       } else {
         print('Failed to register user: ${response.statusCode}');
@@ -82,16 +73,16 @@ class UserService {
   Future<bool> loginUser(String email, String password) async {
     final url = Uri.parse('$baseUrl/api/users/login');
     try {
-        final response = await httpClient.post(
+      final response = await httpClient.post(
         url,
         headers: _getHeaders(),
         body: jsonEncode({'email': email, 'password': password}),
       );
 
-
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(response.body);
         // Store the token and user info in the singleton
+        setAuthToken(responseBody['token']);
         UserInfo().updateUserInfo(responseBody);
         // Return true to indicate successful login
         return true;
@@ -110,7 +101,7 @@ class UserService {
   Future<User?> getCurrentUserProfile() async {
     final url = Uri.parse('$baseUrl/api/users/me');
     try {
-      final response = await http.get(
+      final response = await _httpClient.get(
         url,
         headers: _getHeaders(includeAuth: true),
       );
@@ -132,7 +123,7 @@ class UserService {
   Future<User?> updateCurrentUserProfile(Map<String, dynamic> updates) async {
     final url = Uri.parse('$baseUrl/api/users/me/update');
     try {
-      final response = await http.put(
+      final response = await _httpClient.put(
         url,
         headers: _getHeaders(includeAuth: true),
         body: jsonEncode(updates),
@@ -156,7 +147,7 @@ class UserService {
       String oldPassword, String newPassword) async {
     final url = Uri.parse('$baseUrl/api/users/me/change-password');
     try {
-      final response = await http.post(
+      final response = await _httpClient.post(
         url,
         headers: _getHeaders(includeAuth: true),
         body: jsonEncode(
@@ -180,7 +171,7 @@ class UserService {
   Future<bool> forgotPassword(String email) async {
     final url = Uri.parse('$baseUrl/api/users/forgot-password');
     try {
-      final response = await http.post(
+      final response = await _httpClient.post(
         url,
         headers: _getHeaders(),
         body: jsonEncode({'email': email}),
@@ -203,7 +194,7 @@ class UserService {
   Future<bool> resetPassword(String token, String newPassword) async {
     final url = Uri.parse('$baseUrl/api/users/reset-password');
     try {
-      final response = await http.post(
+      final response = await _httpClient.post(
         url,
         headers: _getHeaders(),
         body: jsonEncode({'token': token, 'newPassword': newPassword}),

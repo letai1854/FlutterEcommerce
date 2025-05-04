@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:http/io_client.dart';
 import 'dart:io';
 
-final String baseurl =
-    kIsWeb ? 'https://localhost:8443' : 'https://10.0.2.2:8443';
+final String baseurl = kIsWeb
+    ? 'https://localhost:8443' // Cho Web
+    : (defaultTargetPlatform == TargetPlatform.android && kDebugMode // Heuristic: Assume Android in Debug is Emulator
+        ? 'https://10.0.2.2:8443' // Cho Android Emulator (thường chỉ debug)
+        : 'https://localhost:8443');
 
 IOClient createHttpClientWithIgnoreBadCert() {
   HttpClient client = HttpClient();
