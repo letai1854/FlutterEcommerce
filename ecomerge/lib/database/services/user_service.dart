@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'package:e_commerce_app/database/database_helper.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/user_model.dart'; // Assuming User model is here
+import '/database/database_helper.dart'; // Assuming DatabaseHelper is here
+import '../database_helper.dart' as config;
 
 class UserService {
-  final String baseUrl = baseurl; // TODO: Replace with your actual backend URL
+  final String baseUrl = baseurl; // Base URL for API requests
   String? _authToken; // To store JWT token
 
   // Method to set the authentication token after login
@@ -122,13 +125,15 @@ class UserService {
   }
 
   // Method to change current authenticated user's password
-  Future<bool> changeCurrentUserPassword(String oldPassword, String newPassword) async {
+  Future<bool> changeCurrentUserPassword(
+      String oldPassword, String newPassword) async {
     final url = Uri.parse('$baseUrl/api/users/me/change-password');
     try {
       final response = await http.post(
         url,
         headers: _getHeaders(includeAuth: true),
-        body: jsonEncode({'oldPassword': oldPassword, 'newPassword': newPassword}),
+        body: jsonEncode(
+            {'oldPassword': oldPassword, 'newPassword': newPassword}),
       );
 
       if (response.statusCode == 200) {
