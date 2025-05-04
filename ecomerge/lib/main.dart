@@ -4,7 +4,7 @@ import 'package:e_commerce_app/Provider/UserProvider.dart';
 import 'package:e_commerce_app/Screens/Admin/AdminReponsicve.dart';
 import 'package:e_commerce_app/Screens/Cart/PageCart.dart';
 import 'package:e_commerce_app/Screens/Chat/PageChat.dart';
-import 'package:e_commerce_app/Screens/ForgotPassword/ForgotPasswordResponsive.dart';
+import 'package:e_commerce_app/Screens/ForgotPassword/PageForgotPassword.dart';
 import 'package:e_commerce_app/Screens/ListProduct/PageListProduct.dart';
 import 'package:e_commerce_app/Screens/Payment/PagePayment.dart';
 import 'package:e_commerce_app/Screens/ProductDetail/PageProductDetail.dart';
@@ -20,6 +20,7 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:e_commerce_app/providers/signup_form_provider.dart';
 import 'package:e_commerce_app/providers/login_form_provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 Future<void> initApp() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,6 +55,25 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate, // Cần cho Material DatePicker
+        GlobalWidgetsLocalizations.delegate,   // Cần cho các widget cơ bản
+        GlobalCupertinoLocalizations.delegate, // Tùy chọn nếu dùng Cupertino design
+      ],
+      supportedLocales: const [
+        Locale('en', ''), // Hỗ trợ Tiếng Anh
+        Locale('vi', 'VN'), // <-- HỖ TRỢ TIẾNG VIỆT CHO showDateRangePicker
+      ],
+      // Tùy chọn: Logic xác định ngôn ngữ mặc định
+      localeResolutionCallback: (locale, supportedLocales) {
+        for (var supportedLocale in supportedLocales) {
+          if (supportedLocale.languageCode == locale?.languageCode &&
+              supportedLocale.countryCode == locale?.countryCode) {
+            return supportedLocale;
+          }
+        }
+        return supportedLocales.first; // Mặc định là ngôn ngữ đầu tiên hỗ trợ
+      },
       initialRoute: '/', // Đảm bảo có route mặc định
       onGenerateRoute: (settings) {
         switch (settings.name) {
@@ -117,7 +137,7 @@ class MyApp extends StatelessWidget {
             );
           case '/forgot_password':
             return PageRouteBuilder(
-              pageBuilder: (context, _, __) => const ResponsiveForgotPassword(),
+              pageBuilder: (context, _, __) => const Pageforgotpassword(),
               settings: settings,
             );
           case '/search':
