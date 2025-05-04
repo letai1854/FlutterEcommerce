@@ -1,14 +1,30 @@
 import 'dart:convert';
+import 'dart:ffi';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/database_helper.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/user_model.dart'; // Assuming User model is here
+import '/database/database_helper.dart'; // Assuming DatabaseHelper is here
+import '../database_helper.dart' as config;
+
 
 class UserService {
   final String baseUrl = baseurl; // TODO: Replace with your actual backend URL
   String? _authToken; // To store JWT token
 
+  // IOClient createHttpClientWithIgnoreBadCert() {
+  //   HttpClient client = HttpClient();
+  //   if (kDebugMode) {
+  //     // Chỉ bỏ qua trong chế độ debug
+  //     client.badCertificateCallback =
+  //         (X509Certificate cert, String host, int port) =>
+  //             true; // Accept any certificate
+  //   }
+  //   return IOClient(client);
+  // }
+
+  // late final IOClient _httpClient = createHttpClientWithIgnoreBadCert();
   // Method to set the authentication token after login
   void setAuthToken(String token) {
     _authToken = token;
@@ -24,15 +40,17 @@ class UserService {
   }
 
   // Method to register a new user
-  Future<bool?>  registerUser({
+
+  Future<bool?> registerUser({
     required String email,
     required String fullName,
     required String password,
     required String address,
   }) async {
-    final url = Uri.parse('$baseUrl/api/users/register');
+    final url = Uri.parse('$baseurl/api/users/register');
     try {
-      final response = await http.post(
+      // Sử dụng _httpClient đã khai báo ở trên
+      final response = await httpClient.post(
         url,
         headers: _getHeaders(),
         body: jsonEncode({
@@ -42,18 +60,23 @@ class UserService {
           'address': address,
         }),
       );
-     
+
+      print('Registration response: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
       if (response.statusCode == 201) {
+         User.fromMap(jsonDecode(response.body));
         return true;
       } else {
-        // Handle other status codes (e.g., 409 Conflict for email exists)
         print('Failed to register user: ${response.statusCode}');
         print('Response body: ${response.body}');
         return false;
       }
     } catch (e) {
-      // Handle network errors
       print('Error during user registration: $e');
+      if (kDebugMode) {
+        print(e); 
+      }
       return false;
     }
   }
@@ -204,4 +227,41 @@ class UserService {
   // TODO: Implement methods for admin endpoints if needed (getAllUsers, getUserById, deleteUser, getUserByEmail)
   // These would require sending the auth token and potentially checking user role on the client side as well,
   // although the backend should enforce access control.
+
+  Future<User?> testRegistration({
+    String email = 'hahehiho9999@gmail.com',
+    String fullName = 'tai',
+    String password = '123456',
+    String address = 'afew  adff ', // Add address field
+  }) async {
+    final url = Uri.parse('$baseUrl/api/users/register');
+    try {
+      final response = await httpClient.post(
+        url,
+        headers: _getHeaders(),
+        body: jsonEncode({
+          'email': email,
+          'fullName': fullName,
+          'password': password,
+          'address': address, // Include address
+        }),
+      );
+
+      print('Registration response: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 201) {
+        // Assuming User.fromMap can handle UserDTO structure
+        return User.fromMap(jsonDecode(response.body));
+      } else {
+        print('Failed to register user: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        // You might want to return response.body for error messages
+        return null;
+      }
+    } catch (e) {
+      print('Error during user registration: $e');
+      return null;
+    }
+  }
 }
