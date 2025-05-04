@@ -1,337 +1,305 @@
-import 'package:e_commerce_app/Controllers/User_controller.dart';
-import 'package:e_commerce_app/Models/User_model.dart';
-import 'package:e_commerce_app/providers/signup_form_provider.dart';
-import 'package:e_commerce_app/widgets/SuccessMessage.dart';
+// lib/widgets/signup_form.dart
+// Bỏ các import liên quan đến Provider nếu không còn dùng nữa
+
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'location_selection.dart';
+import 'location_selection.dart'; // Đảm bảo import đúng đường dẫn
+
+// Định nghĩa các kiểu hàm (typedef) để code rõ ràng hơn
+// Callback cho locationSelected vẫn nhận TÊN tỉnh, huyện, xã
+typedef LocationSelectedCallback = void Function(String provinceName, String districtName, String wardName);
+// Không cần callback cho signup nữa, vì nút signup sẽ gọi trực tiếp hàm được truyền vào
 
 class SignForm extends StatefulWidget {
-  const SignForm({Key? key}) : super(key: key);
+  // Thêm các tham số required vào constructor. Đảm bảo tên khớp.
+  const SignForm({
+    Key? key,
+    // Controllers
+    required this.emailController,
+    required this.passwordController,
+    required this.nameController,
+    required this.addressController,
+    required this.rePasswordController,
+    // FocusNodes
+    required this.emailFocusNode,
+    required this.passwordFocusNode,
+    required this.nameFocusNode,
+    required this.addressFocusNode,
+    required this.rePasswordFocusNode,
+    // State variables (Initial values for LocationSelection - DÙNG TÊN MỚI)
+    required this.isLoading, // Đảm bảo tham số này tồn tại
+    required this.errorMessage, // Đảm bảo tham số này tồn tại
+    required this.isPasswordVisible, // Đảm bảo tham số này tồn tại
+    required this.isRePasswordVisible, // Đảm bảo tham số này tồn tại
+    required this.initialProvinceName, // Đổi tên tham số
+    required this.initialDistrictName, // Đổi tên tham số
+    required this.initialWardName,     // Đổi tên tham số
+    // Callbacks/Functions
+    required this.onLocationSelected, // Hàm xử lý chọn địa điểm (mong đợi nhận TÊN)
+    required this.onSignup,           // Hàm xử lý đăng ký khi nhấn nút
+    required this.togglePasswordVisibility, // Hàm toggle ẩn/hiện mk
+    required this.toggleRePasswordVisibility, // Hàm toggle ẩn/hiện nhập lại mk
+    required this.onTextChanged, // Hàm xử lý khi text thay đổi (để clear lỗi)
+  }) : super(key: key);
+
+  // Khai báo các biến final để lưu giá trị truyền vào. Đảm bảo tên khớp.
+  final TextEditingController emailController;
+  final TextEditingController passwordController;
+  final TextEditingController nameController;
+  final TextEditingController addressController;
+  final TextEditingController rePasswordController;
+
+  final FocusNode emailFocusNode;
+  final FocusNode passwordFocusNode;
+  final FocusNode nameFocusNode;
+  final FocusNode addressFocusNode;
+  final FocusNode rePasswordFocusNode;
+
+  final bool isLoading; // Đảm bảo biến final này tồn tại
+  final String? errorMessage; // Đảm bảo biến final này tồn tại
+  final bool isPasswordVisible; // Đảm bảo biến final này tồn tại
+  final bool isRePasswordVisible; // Đảm bảo biến final này tồn tại
+
+
+  // Biến lưu trữ initial values cho LocationSelection (DÙNG TÊN MỚI)
+  final String initialProvinceName;
+  final String initialDistrictName;
+  final String initialWardName;
+
+  final LocationSelectedCallback onLocationSelected; // Callback nhận TÊN
+  final VoidCallback onSignup;
+  final VoidCallback togglePasswordVisibility;
+  final VoidCallback toggleRePasswordVisibility;
+  final VoidCallback onTextChanged;
 
   @override
   State<SignForm> createState() => _SignFormState();
 }
 
 class _SignFormState extends State<SignForm> {
-  final FocusNode _emailFocusNode = FocusNode();
-  final FocusNode _passwordFocusNode = FocusNode();
-  final FocusNode _nameFocusNode = FocusNode();
-  final FocusNode _addressFocusNode = FocusNode();
-  final FocusNode _rePasswordFocusNode = FocusNode();
-
-  final UserController _userController = UserController();
-
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  void _handleLocationSelected(String province, String district, String ward) {
-    final formProvider =
-        Provider.of<SignupFormProvider>(context, listen: false);
-    formProvider.setLocation(province, district, ward);
-  }
-
-  String getFullAddress() {
-    final formProvider =
-        Provider.of<SignupFormProvider>(context, listen: false);
-    final specificAddress = formProvider.addressController.text;
-    final locationParts = [
-      formProvider.selectedWard,
-      formProvider.selectedDistrict,
-      formProvider.selectedProvince
-    ].where((part) => part.isNotEmpty).join(', ');
-
-    return [specificAddress, locationParts]
-        .where((part) => part.isNotEmpty)
-        .join(', ');
-  }
-
-  Future<void> _handleSignup() async {
-    final formProvider =
-        Provider.of<SignupFormProvider>(context, listen: false);
-
-    // Validate fields
-    if (formProvider.emailController.text.isEmpty ||
-        formProvider.nameController.text.isEmpty ||
-        formProvider.passwordController.text.isEmpty ||
-        formProvider.rePasswordController.text.isEmpty ||
-        formProvider.addressController.text.isEmpty) {
-      formProvider.setErrorMessage('Vui lòng điền đầy đủ thông tin');
-      return;
-    }
-
-    // Validate passwords match
-    if (formProvider.passwordController.text !=
-        formProvider.rePasswordController.text) {
-      formProvider.setErrorMessage('mật khẩu không trùng khớp');
-      return;
-    }
-
-    formProvider.setLoading(true);
-    formProvider.setErrorMessage(null);
-
-    try {
-      // Prepare user data
-      final userData = {
-        'email': formProvider.emailController.text,
-        'full_name': formProvider.nameController.text,
-        'password': formProvider.passwordController.text,
-        'address': formProvider.addressController.text,
-        'role': 'customer',
-        'status': true,
-        'customer_points': 0,
-        'avatar': null,
-        'created_date': DateTime.now().toIso8601String(),
-        'chat_id': null
-      };
-
-      // Call register method
-      await _userController.register(userData);
-
-      if (mounted) {
-        // Clear all input fields
-        formProvider.emailController.clear();
-        formProvider.passwordController.clear();
-        formProvider.nameController.clear();
-        formProvider.addressController.clear();
-        formProvider.rePasswordController.clear();
-
-        SuccessMessage.show(
-          context,
-          title: 'Đăng ký thành công!',
-          duration: const Duration(seconds: 2),
-          onDismissed: () {
-            Navigator.pushNamedAndRemoveUntil(
-              context,
-              '/login',
-              (route) => false,
-            );
-          },
-        );
-      }
-    } catch (e) {
-      // Extract clean error message
-      String errorMsg = e.toString().replaceAll('Exception: ', '');
-      formProvider.setErrorMessage(errorMsg);
-
-      // Show specific message for email duplicate
-      if (errorMsg.contains('Email đã tồn tại')) {
-        _emailFocusNode.requestFocus(); // Focus email field
-      }
-    } finally {
-      if (mounted) {
-        formProvider.setLoading(false);
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _emailFocusNode.dispose();
-    _passwordFocusNode.dispose();
-    _nameFocusNode.dispose();
-    _addressFocusNode.dispose();
-    _rePasswordFocusNode.dispose();
-    super.dispose();
-  }
+  // Không cần khai báo FocusNode, Controller, hoặc State variables ở đây nữa
+  // Chúng ta sẽ truy cập chúng qua widget.propertyName
 
   @override
   Widget build(BuildContext context) {
-    final formProvider = Provider.of<SignupFormProvider>(context);
+    // Không dùng Provider nữa
 
     return Container(
-      width: 400,
-      padding: EdgeInsets.all(20),
+      width: 400, // Có thể điều chỉnh kích thước này tùy theo bố cục
+      padding: const EdgeInsets.all(20), // Sử dụng const
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(5),
       ),
-      child: Column(
-        children: [
-          Text(
-            'Đăng ký',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 20),
-          TextFormField(
-            focusNode: _emailFocusNode,
-            controller: formProvider.emailController,
-            keyboardType: TextInputType.emailAddress,
-            textInputAction: TextInputAction.next,
-            onChanged: (value) {
-              if (formProvider.errorMessage != null) {
-                formProvider.setErrorMessage(null);
-              }
-            },
-            onFieldSubmitted: (_) {
-              FocusScope.of(context).requestFocus(_nameFocusNode);
-            },
-            decoration: InputDecoration(
-              hintText: 'Email',
-              prefixIcon: Icon(
-                Icons.email_outlined,
-                color: Colors.grey[600],
+      // *** Bọc nội dung bằng SingleChildScrollView ***
+      child: SingleChildScrollView( // Thêm SingleChildScrollView ở đây
+        child: Column(
+          mainAxisSize: MainAxisSize.min, // Giúp column chỉ chiếm không gian cần thiết
+          children: [
+            const Text( // Sử dụng const
+              'Đăng ký',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
               ),
-              border: OutlineInputBorder(),
             ),
-          ),
-          SizedBox(height: 10),
-          TextFormField(
-            controller: formProvider.nameController,
-            focusNode: _nameFocusNode,
-            keyboardType: TextInputType.text,
-            textInputAction: TextInputAction.next,
-            onChanged: (value) {
-              if (formProvider.errorMessage != null) {
-                formProvider.setErrorMessage(null);
-              }
-            },
-            onFieldSubmitted: (_) {
-              FocusScope.of(context).requestFocus(_addressFocusNode);
-            },
-            decoration: InputDecoration(
-              hintText: 'Nhập tên người dùng',
-              prefixIcon: Icon(
-                Icons.person,
-                color: Colors.grey[600],
-              ),
-              border: OutlineInputBorder(),
-            ),
-          ),
-          SizedBox(height: 10),
-          LocationSelection(
-            onLocationSelected: _handleLocationSelected,
-            initialProvince: formProvider.selectedProvince,
-            initialDistrict: formProvider.selectedDistrict,
-            initialWard: formProvider.selectedWard,
-          ),
-          SizedBox(height: 10),
-          TextFormField(
-            controller: formProvider.addressController,
-            focusNode: _addressFocusNode,
-            keyboardType: TextInputType.text,
-            textInputAction: TextInputAction.next,
-            onChanged: (value) {
-              if (formProvider.errorMessage != null) {
-                formProvider.setErrorMessage(null);
-              }
-            },
-            onFieldSubmitted: (_) {
-              FocusScope.of(context).requestFocus(_passwordFocusNode);
-            },
-            decoration: InputDecoration(
-              hintText: 'Nhập địa chỉ chi tiết khác',
-              prefixIcon: Icon(
-                Icons.location_city,
-                color: Colors.grey[600],
-              ),
-              border: OutlineInputBorder(),
-            ),
-          ),
-          SizedBox(height: 10),
-          TextFormField(
-            controller: formProvider.passwordController,
-            focusNode: _passwordFocusNode,
-            keyboardType: TextInputType.text,
-            textInputAction: TextInputAction.next,
-            obscureText: !formProvider.isPasswordVisible,
-            onChanged: (value) {
-              if (formProvider.errorMessage != null) {
-                formProvider.setErrorMessage(null);
-              }
-            },
-            decoration: InputDecoration(
-              hintText: 'Mật khẩu',
-              prefixIcon: Icon(
-                Icons.lock_outline,
-                color: Colors.grey[600],
-              ),
-              suffixIcon: IconButton(
-                onPressed: () => formProvider.togglePasswordVisibility(),
-                icon: Icon(
-                  formProvider.isPasswordVisible
-                      ? Icons.visibility_off
-                      : Icons.visibility,
+            const SizedBox(height: 20), // Sử dụng const
+            TextFormField(
+              // Sử dụng FocusNode và Controller được truyền vào qua widget
+              focusNode: widget.emailFocusNode,
+              controller: widget.emailController,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              onChanged: (value) {
+                // Gọi hàm callback được truyền vào khi text thay đổi
+                widget.onTextChanged();
+              },
+              onFieldSubmitted: (_) {
+                // Yêu cầu focus node tiếp theo (được truyền vào)
+                FocusScope.of(context).requestFocus(widget.nameFocusNode);
+              },
+              decoration: InputDecoration(
+                hintText: 'Email',
+                prefixIcon: Icon(
+                  Icons.email_outlined,
                   color: Colors.grey[600],
                 ),
+                border: const OutlineInputBorder(), // Sử dụng const
               ),
-              border: OutlineInputBorder(),
             ),
-          ),
-          SizedBox(height: 10),
-          TextFormField(
-            controller: formProvider.rePasswordController,
-            focusNode: _rePasswordFocusNode,
-            keyboardType: TextInputType.text,
-            textInputAction: TextInputAction.next,
-            obscureText: !formProvider.isRePasswordVisible,
-            onChanged: (value) {
-              if (formProvider.errorMessage != null) {
-                formProvider.setErrorMessage(null);
-              }
-            },
-            decoration: InputDecoration(
-              hintText: 'Nhập lại Mật khẩu',
-              prefixIcon: Icon(
-                Icons.lock_outline,
-                color: Colors.grey[600],
-              ),
-              suffixIcon: IconButton(
-                onPressed: () => formProvider.toggleRePasswordVisibility(),
-                icon: Icon(
-                  formProvider.isRePasswordVisible
-                      ? Icons.visibility_off
-                      : Icons.visibility,
+            const SizedBox(height: 10), // Sử dụng const
+            TextFormField(
+              controller: widget.nameController,
+              focusNode: widget.nameFocusNode, // Sử dụng FocusNode được truyền vào
+              keyboardType: TextInputType.text,
+              textInputAction: TextInputAction.next,
+              onChanged: (value) {
+                widget.onTextChanged();
+              },
+              onFieldSubmitted: (_) {
+                 FocusScope.of(context).requestFocus(widget.addressFocusNode); // Yêu cầu focus node tiếp theo
+              },
+              decoration: InputDecoration(
+                hintText: 'Nhập tên người dùng',
+                prefixIcon: Icon(
+                  Icons.person,
                   color: Colors.grey[600],
                 ),
-              ),
-              border: OutlineInputBorder(),
-            ),
-          ),
-          SizedBox(height: 10),
-          if (formProvider.errorMessage != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Text(
-                formProvider.errorMessage!,
-                style: const TextStyle(color: Colors.red),
+                border: const OutlineInputBorder(), // Sử dụng const
               ),
             ),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: 18),
-                backgroundColor: const Color.fromARGB(255, 234, 29, 7),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(2),
+            const SizedBox(height: 10), // Sử dụng const
+            // Truyền hàm onLocationSelected và initial values được nhận qua constructor
+            LocationSelection(
+              onLocationSelected: widget.onLocationSelected, // Truyền callback nhận TÊN
+              // TRUYỀN INITIAL NAMES VỚI TÊN THAM SỐ ĐÃ SỬA TRONG LOCATIONSELECTION
+              initialProvinceName: widget.initialProvinceName,
+              initialDistrictName: widget.initialDistrictName,
+              initialWardName: widget.initialWardName,
+            ),
+            const SizedBox(height: 10), // Sử dụng const
+            TextFormField(
+              controller: widget.addressController,
+              focusNode: widget.addressFocusNode, // Sử dụng FocusNode được truyền vào
+              keyboardType: TextInputType.text,
+              textInputAction: TextInputAction.next,
+               onChanged: (value) {
+                 widget.onTextChanged();
+              },
+              onFieldSubmitted: (_) {
+                 FocusScope.of(context).requestFocus(widget.passwordFocusNode); // Yêu cầu focus node tiếp theo
+              },
+              decoration: InputDecoration(
+                hintText: 'Nhập địa chỉ chi tiết khác',
+                prefixIcon: Icon(
+                  Icons.location_city,
+                  color: Colors.grey[600],
+                ),
+                border: const OutlineInputBorder(), // Sử dụng const
+              ),
+            ),
+            const SizedBox(height: 10), // Sử dụng const
+            TextFormField(
+              controller: widget.passwordController,
+              focusNode: widget.passwordFocusNode, // Sử dụng FocusNode được truyền vào
+              keyboardType: TextInputType.text,
+              textInputAction: TextInputAction.next,
+              // Sử dụng state visibility được truyền vào
+              obscureText: !widget.isPasswordVisible,
+               onChanged: (value) {
+                 widget.onTextChanged();
+              },
+              decoration: InputDecoration(
+                hintText: 'Mật khẩu',
+                prefixIcon: Icon(
+                  Icons.lock_outline,
+                  color: Colors.grey[600],
+                ),
+                // Gọi hàm toggle visibility được truyền vào
+                suffixIcon: IconButton(
+                  onPressed: widget.togglePasswordVisibility,
+                  icon: Icon(
+                    widget.isPasswordVisible
+                        ? Icons.visibility_off
+                        : Icons.visibility,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                border: const OutlineInputBorder(), // Sử dụng const
+              ),
+            ),
+            const SizedBox(height: 10), // Sử dụng const
+            TextFormField(
+              controller: widget.rePasswordController,
+              focusNode: widget.rePasswordFocusNode, // Sử dụng FocusNode được truyền vào
+              keyboardType: TextInputType.text,
+              textInputAction: TextInputAction.done, // Hành động cuối cùng
+              // Sử dụng state visibility được truyền vào
+              obscureText: !widget.isRePasswordVisible,
+               onChanged: (value) {
+                 widget.onTextChanged();
+              },
+              // Khi hoàn thành field cuối cùng, có thể gọi hàm đăng ký
+               onFieldSubmitted: (_) {
+                if (!widget.isLoading) { // Kiểm tra isLoading được truyền vào
+                  widget.onSignup(); // Gọi hàm đăng ký được truyền vào
+                }
+              },
+              decoration: InputDecoration(
+                hintText: 'Nhập lại Mật khẩu',
+                prefixIcon: Icon(
+                  Icons.lock_outline,
+                  color: Colors.grey[600],
+                ),
+                 // Gọi hàm toggle visibility được truyền vào
+                suffixIcon: IconButton(
+                  onPressed: widget.toggleRePasswordVisibility,
+                  icon: Icon(
+                    widget.isRePasswordVisible
+                        ? Icons.visibility_off
+                        : Icons.visibility,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                border: const OutlineInputBorder(), // Sử dụng const
+              ),
+            ),
+            const SizedBox(height: 10), // Sử dụng const
+            // Hiển thị lỗi được truyền vào
+            if (widget.errorMessage != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(
+                  widget.errorMessage!,
+                  style: const TextStyle(color: Colors.red), // Sử dụng const
                 ),
               ),
-              onPressed: formProvider.isLoading ? null : _handleSignup,
-              child: formProvider.isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 18), // Sử dụng const
+                  backgroundColor: const Color.fromARGB(255, 234, 29, 7), // Sử dụng const
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Nút bị disable nếu isLoading là true (state được truyền vào)
+                onPressed: widget.isLoading ? null : widget.onSignup,
+                child: widget.isLoading // Sử dụng state isLoading được truyền vào
+                    ? const SizedBox( // Sử dụng const
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Text( // Sử dụng const
+                        'Đăng ký',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
-                    )
-                  : const Text(
-                      'Đăng ký',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
+              ),
             ),
-          ),
-        ],
+            // Thêm phần "đã có tài khoản"
+            const SizedBox(height: 15), // Sử dụng const
+            GestureDetector(
+              onTap: () {
+                // Điều hướng vẫn dùng context từ widget
+                Navigator.pushReplacementNamed(context, '/login');
+              },
+              child: const Text( // Sử dụng const
+                'Bạn đã có tài khoản? Đăng nhập ngay!',
+                style: TextStyle(
+                  color: Colors.blueAccent,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
