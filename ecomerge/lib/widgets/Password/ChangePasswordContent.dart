@@ -119,13 +119,13 @@ class _ChangePasswordContentState extends State<ChangePasswordContent> {
                       );
                       final userService = UserService();
                       // userService.testRegistration();
-                      // Login to get token - use your test account
-                      final loginResult =
-                          await userService.loginUser("ha@gmail.com", "123456");
+                      // // Login to get token - use your test account
+                      // final loginResult =
+                      //     await userService.loginUser("ha@gmail.com", "123456");
 
-                      if (loginResult == null) {
-                        throw Exception("Đăng nhập thất bại");
-                      }
+                      // if (loginResult == null) {
+                      //   throw Exception("Đăng nhập thất bại");
+                      // }
 
                       // Change password with the authenticated session
                       bool changeSuccess =
