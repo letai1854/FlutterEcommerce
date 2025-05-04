@@ -1,12 +1,9 @@
 import 'dart:convert';
-import 'dart:ffi';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/database_helper.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/user_model.dart'; // Assuming User model is here
-import '/database/database_helper.dart'; // Assuming DatabaseHelper is here
-import '../database_helper.dart' as config;
 
 
 class UserService {
@@ -85,11 +82,12 @@ class UserService {
   Future<bool> loginUser(String email, String password) async {
     final url = Uri.parse('$baseUrl/api/users/login');
     try {
-      final response = await http.post(
+        final response = await httpClient.post(
         url,
         headers: _getHeaders(),
         body: jsonEncode({'email': email, 'password': password}),
       );
+
 
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(response.body);
