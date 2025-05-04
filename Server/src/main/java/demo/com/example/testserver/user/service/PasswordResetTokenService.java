@@ -8,29 +8,29 @@ import demo.com.example.testserver.user.model.User;
 public interface PasswordResetTokenService {
 
     /**
-     * Creates a new password reset token for the given user.
-     * Handles hashing and saving the token.
+     * Creates a new password reset OTP (One-Time Password) for the given user.
+     * Handles generating the OTP, hashing it, and saving the token entity.
      *
      * @param user The user requesting the reset.
-     * @return The plain (non-hashed) token generated.
+     * @return The plain 6-digit OTP code generated (to be sent via email).
      */
     String createPasswordResetToken(User user);
 
     /**
-     * Validates a plain password reset token.
+     * Validates a plain password reset OTP code.
      * Checks if a token with the corresponding hash exists and is not expired.
      *
-     * @param plainToken The plain token received from the user.
+     * @param plainOtp The plain 6-digit OTP code received from the user.
      * @return An Optional containing the valid PasswordResetToken entity if found and valid, otherwise empty.
      */
-    Optional<PasswordResetToken> validatePasswordResetToken(String plainToken);
+    Optional<PasswordResetToken> validatePasswordResetToken(String plainOtp);
 
     /**
-     * Invalidates/deletes a token based on its plain value.
+     * Invalidates/deletes a token based on its plain OTP value.
      *
-     * @param plainToken The plain token to invalidate.
+     * @param plainOtp The plain 6-digit OTP code to invalidate.
      */
-    void invalidateToken(String plainToken);
+    void invalidateToken(String plainOtp);
 
     /**
      * Deletes expired tokens. Intended for scheduled cleanup tasks.
@@ -38,10 +38,10 @@ public interface PasswordResetTokenService {
     void deleteExpiredTokens();
 
     /**
-     * Retrieves the User associated with a valid token.
+     * Retrieves the User associated with a valid OTP code.
      *
-     * @param plainToken The plain token.
-     * @return An Optional containing the User if the token is valid, otherwise empty.
+     * @param plainOtp The plain 6-digit OTP code.
+     * @return An Optional containing the User if the OTP is valid, otherwise empty.
      */
-    Optional<User> getUserByPasswordResetToken(String plainToken);
+    Optional<User> getUserByPasswordResetToken(String plainOtp);
 }

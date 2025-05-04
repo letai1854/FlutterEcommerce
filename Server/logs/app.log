@@ -287,3 +287,130 @@
 2025-05-04 18:30:46.165 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
 2025-05-04 18:30:46.180 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
 
+2025-05-04 23:20:13.033 [main] INFO  d.c.e.t.u.c.UserControllerPasswordResetTest - Starting UserControllerPasswordResetTest using Java 17.0.12 with PID 131980 (started by Minh in E:\Flutter\Ecommerce\FlutterEcommerce\Server)
+2025-05-04 23:20:13.054 [main] INFO  d.c.e.t.u.c.UserControllerPasswordResetTest - The following 1 profile is active: "dev"
+2025-05-04 23:20:15.894 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-05-04 23:20:16.164 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 246 ms. Found 5 JPA repository interfaces.
+2025-05-04 23:20:22.019 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2025-05-04 23:20:22.688 [main] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@7037a680
+2025-05-04 23:20:22.694 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2025-05-04 23:20:22.862 [main] INFO  o.h.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-05-04 23:20:23.132 [main] INFO  org.hibernate.Version - HHH000412: Hibernate ORM core version 6.5.2.Final
+2025-05-04 23:20:23.283 [main] INFO  o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2025-05-04 23:20:23.730 [main] INFO  o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-05-04 23:20:24.027 [main] WARN  org.hibernate.dialect.Dialect - HHH000511: The 5.5.5 version for [org.hibernate.dialect.MySQLDialect] is no longer supported, hence certain features may not work properly. The minimum supported version is 8.0.0. Check the community dialects project for available legacy versions.
+2025-05-04 23:20:27.139 [main] INFO  o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-05-04 23:20:27.146 [main] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-05-04 23:20:27.205 [main] INFO  d.c.e.t.u.security.JwtTokenProvider - Successfully decoded JWT secret from Base64.
+2025-05-04 23:20:27.212 [main] INFO  d.c.e.t.u.security.JwtTokenProvider - JWT Secret Key initialized successfully.
+2025-05-04 23:20:28.463 [main] INFO  o.s.s.c.a.a.c.InitializeUserDetailsBeanManagerConfigurer$InitializeUserDetailsManagerConfigurer - Global AuthenticationManager configured with UserDetailsService bean with name userDetailsServiceImpl
+2025-05-04 23:20:28.969 [main] WARN  o.s.b.a.o.j.JpaBaseConfiguration$JpaWebConfiguration - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-05-04 23:20:29.869 [main] INFO  o.s.s.web.DefaultSecurityFilterChain - Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@5a640f98, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@39e0fe23, org.springframework.security.web.context.SecurityContextHolderFilter@1bb90d4d, org.springframework.security.web.header.HeaderWriterFilter@6e774194, org.springframework.web.filter.CorsFilter@44f86613, org.springframework.security.web.authentication.logout.LogoutFilter@2ab91b65, demo.com.example.testserver.user.security.JwtAuthenticationFilter@403f6c04, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@69e346b3, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@43ac3b45, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@5e05dd42, org.springframework.security.web.session.SessionManagementFilter@46da7d39, org.springframework.security.web.access.ExceptionTranslationFilter@67954d71, org.springframework.security.web.access.intercept.AuthorizationFilter@50ccd6a]
+2025-05-04 23:20:30.591 [main] INFO  o.s.b.t.m.w.SpringBootMockServletContext - Initializing Spring TestDispatcherServlet ''
+2025-05-04 23:20:30.591 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Initializing Servlet ''
+2025-05-04 23:20:30.595 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Completed initialization in 3 ms
+2025-05-04 23:20:30.646 [main] INFO  d.c.e.t.u.c.UserControllerPasswordResetTest - Started UserControllerPasswordResetTest in 18.754 seconds (process running for 22.68)
+2025-05-04 23:20:31.106 [main] WARN  o.s.s.c.bcrypt.BCryptPasswordEncoder - Encoded password does not look like BCrypt
+2025-05-04 23:20:31.435 [main] WARN  o.s.s.c.bcrypt.BCryptPasswordEncoder - Encoded password does not look like BCrypt
+2025-05-04 23:20:31.688 [main] WARN  o.s.s.c.bcrypt.BCryptPasswordEncoder - Encoded password does not look like BCrypt
+2025-05-04 23:20:32.305 [main] INFO  d.c.e.t.u.controller.UserController - Password reset OTP sent to: test@example.com
+2025-05-04 23:20:32.648 [main] WARN  o.s.s.c.bcrypt.BCryptPasswordEncoder - Encoded password does not look like BCrypt
+2025-05-04 23:20:32.919 [main] WARN  d.c.e.t.u.controller.UserController - Password reset requested for non-existent or inactive email: notfound@example.com
+2025-05-04 23:20:33.150 [main] WARN  o.s.s.c.bcrypt.BCryptPasswordEncoder - Encoded password does not look like BCrypt
+2025-05-04 23:20:33.638 [main] WARN  d.c.e.t.u.controller.UserController - Forgot password request failed: Email is required.
+2025-05-04 23:20:34.914 [main] WARN  o.s.s.c.bcrypt.BCryptPasswordEncoder - Encoded password does not look like BCrypt
+2025-05-04 23:20:35.126 [SpringApplicationShutdownHook] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+2025-05-04 23:20:35.136 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2025-05-04 23:20:35.193 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
+2025-05-04 23:24:23.441 [main] INFO  d.c.e.t.u.c.UserControllerPasswordResetTest - Starting UserControllerPasswordResetTest using Java 17.0.12 with PID 149076 (started by Minh in E:\Flutter\Ecommerce\FlutterEcommerce\Server)
+2025-05-04 23:24:23.443 [main] INFO  d.c.e.t.u.c.UserControllerPasswordResetTest - The following 1 profile is active: "dev"
+2025-05-04 23:24:25.646 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-05-04 23:24:25.870 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 193 ms. Found 5 JPA repository interfaces.
+2025-05-04 23:24:30.524 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2025-05-04 23:24:31.024 [main] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@5ee581db
+2025-05-04 23:24:31.030 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2025-05-04 23:24:31.144 [main] INFO  o.h.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-05-04 23:24:31.333 [main] INFO  org.hibernate.Version - HHH000412: Hibernate ORM core version 6.5.2.Final
+2025-05-04 23:24:31.464 [main] INFO  o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2025-05-04 23:24:31.885 [main] INFO  o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-05-04 23:24:32.131 [main] WARN  org.hibernate.dialect.Dialect - HHH000511: The 5.5.5 version for [org.hibernate.dialect.MySQLDialect] is no longer supported, hence certain features may not work properly. The minimum supported version is 8.0.0. Check the community dialects project for available legacy versions.
+2025-05-04 23:24:35.078 [main] INFO  o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-05-04 23:24:35.083 [main] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-05-04 23:24:35.137 [main] INFO  d.c.e.t.u.security.JwtTokenProvider - Successfully decoded JWT secret from Base64.
+2025-05-04 23:24:35.142 [main] INFO  d.c.e.t.u.security.JwtTokenProvider - JWT Secret Key initialized successfully.
+2025-05-04 23:24:37.073 [main] INFO  o.s.s.c.a.a.c.InitializeUserDetailsBeanManagerConfigurer$InitializeUserDetailsManagerConfigurer - Global AuthenticationManager configured with UserDetailsService bean with name userDetailsServiceImpl
+2025-05-04 23:24:37.867 [main] WARN  o.s.b.a.o.j.JpaBaseConfiguration$JpaWebConfiguration - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-05-04 23:24:39.219 [main] INFO  o.s.s.web.DefaultSecurityFilterChain - Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@41a940a9, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@423e35f0, org.springframework.security.web.context.SecurityContextHolderFilter@50ccd6a, org.springframework.security.web.header.HeaderWriterFilter@21288943, org.springframework.web.filter.CorsFilter@14bbfdee, org.springframework.security.web.authentication.logout.LogoutFilter@5b1e5366, demo.com.example.testserver.user.security.JwtAuthenticationFilter@4bc75792, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@26c7940a, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@6d98e607, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@139a97e7, org.springframework.security.web.session.SessionManagementFilter@16ef07fa, org.springframework.security.web.access.ExceptionTranslationFilter@6ce7d6ab, org.springframework.security.web.access.intercept.AuthorizationFilter@41185195]
+2025-05-04 23:24:40.320 [main] INFO  o.s.b.t.m.w.SpringBootMockServletContext - Initializing Spring TestDispatcherServlet ''
+2025-05-04 23:24:40.323 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Initializing Servlet ''
+2025-05-04 23:24:40.328 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Completed initialization in 4 ms
+2025-05-04 23:24:40.401 [main] INFO  d.c.e.t.u.c.UserControllerPasswordResetTest - Started UserControllerPasswordResetTest in 17.812 seconds (process running for 20.759)
+2025-05-04 23:24:41.269 [main] INFO  d.c.e.t.u.controller.UserController - Password reset OTP sent to: test@example.com
+2025-05-04 23:24:41.354 [main] WARN  d.c.e.t.u.controller.UserController - Password reset requested for non-existent or inactive email: notfound@example.com
+2025-05-04 23:24:41.498 [main] WARN  d.c.e.t.u.controller.UserController - Forgot password request failed: Email is required.
+2025-05-04 23:24:42.724 [SpringApplicationShutdownHook] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+2025-05-04 23:24:42.729 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2025-05-04 23:24:42.799 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
+2025-05-04 23:26:05.315 [main] INFO  d.c.e.t.u.c.UserControllerPasswordResetTest - Starting UserControllerPasswordResetTest using Java 17.0.12 with PID 140924 (started by Minh in E:\Flutter\Ecommerce\FlutterEcommerce\Server)
+2025-05-04 23:26:05.317 [main] INFO  d.c.e.t.u.c.UserControllerPasswordResetTest - The following 1 profile is active: "dev"
+2025-05-04 23:26:07.217 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-05-04 23:26:07.419 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 186 ms. Found 5 JPA repository interfaces.
+2025-05-04 23:26:12.679 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2025-05-04 23:26:13.490 [main] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@638d2ce3
+2025-05-04 23:26:13.495 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2025-05-04 23:26:13.715 [main] INFO  o.h.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-05-04 23:26:14.016 [main] INFO  org.hibernate.Version - HHH000412: Hibernate ORM core version 6.5.2.Final
+2025-05-04 23:26:14.137 [main] INFO  o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2025-05-04 23:26:14.556 [main] INFO  o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-05-04 23:26:14.830 [main] WARN  org.hibernate.dialect.Dialect - HHH000511: The 5.5.5 version for [org.hibernate.dialect.MySQLDialect] is no longer supported, hence certain features may not work properly. The minimum supported version is 8.0.0. Check the community dialects project for available legacy versions.
+2025-05-04 23:26:18.113 [main] INFO  o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-05-04 23:26:18.122 [main] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-05-04 23:26:18.190 [main] INFO  d.c.e.t.u.security.JwtTokenProvider - Successfully decoded JWT secret from Base64.
+2025-05-04 23:26:18.197 [main] INFO  d.c.e.t.u.security.JwtTokenProvider - JWT Secret Key initialized successfully.
+2025-05-04 23:26:20.156 [main] INFO  o.s.s.c.a.a.c.InitializeUserDetailsBeanManagerConfigurer$InitializeUserDetailsManagerConfigurer - Global AuthenticationManager configured with UserDetailsService bean with name userDetailsServiceImpl
+2025-05-04 23:26:21.029 [main] WARN  o.s.b.a.o.j.JpaBaseConfiguration$JpaWebConfiguration - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-05-04 23:26:22.420 [main] INFO  o.s.s.web.DefaultSecurityFilterChain - Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@5536542e, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@77a27356, org.springframework.security.web.context.SecurityContextHolderFilter@592efd6, org.springframework.security.web.header.HeaderWriterFilter@39e0fe23, org.springframework.web.filter.CorsFilter@73c21b13, org.springframework.security.web.authentication.logout.LogoutFilter@5d8edf2, demo.com.example.testserver.user.security.JwtAuthenticationFilter@193710c3, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@6149adee, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@264f18fe, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@66e6e5e9, org.springframework.security.web.session.SessionManagementFilter@428e875f, org.springframework.security.web.access.ExceptionTranslationFilter@26c7940a, org.springframework.security.web.access.intercept.AuthorizationFilter@63a833c5]
+2025-05-04 23:26:23.341 [main] INFO  o.s.b.t.m.w.SpringBootMockServletContext - Initializing Spring TestDispatcherServlet ''
+2025-05-04 23:26:23.342 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Initializing Servlet ''
+2025-05-04 23:26:23.350 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Completed initialization in 7 ms
+2025-05-04 23:26:23.426 [main] INFO  d.c.e.t.u.c.UserControllerPasswordResetTest - Started UserControllerPasswordResetTest in 18.857 seconds (process running for 22.174)
+2025-05-04 23:26:23.992 [SpringApplicationShutdownHook] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+2025-05-04 23:26:23.997 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2025-05-04 23:26:24.021 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
+2025-05-04 23:28:26.823 [main] INFO  d.c.e.t.u.c.UserControllerPasswordResetTest - Starting UserControllerPasswordResetTest using Java 17.0.12 with PID 120080 (started by Minh in E:\Flutter\Ecommerce\FlutterEcommerce\Server)
+2025-05-04 23:28:26.831 [main] INFO  d.c.e.t.u.c.UserControllerPasswordResetTest - The following 1 profile is active: "dev"
+2025-05-04 23:28:28.778 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-05-04 23:28:28.960 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 157 ms. Found 5 JPA repository interfaces.
+2025-05-04 23:28:32.556 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2025-05-04 23:28:32.973 [main] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@1926f962
+2025-05-04 23:28:32.977 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2025-05-04 23:28:33.099 [main] INFO  o.h.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-05-04 23:28:33.310 [main] INFO  org.hibernate.Version - HHH000412: Hibernate ORM core version 6.5.2.Final
+2025-05-04 23:28:33.415 [main] INFO  o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2025-05-04 23:28:33.793 [main] INFO  o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-05-04 23:28:33.957 [main] WARN  org.hibernate.dialect.Dialect - HHH000511: The 5.5.5 version for [org.hibernate.dialect.MySQLDialect] is no longer supported, hence certain features may not work properly. The minimum supported version is 8.0.0. Check the community dialects project for available legacy versions.
+2025-05-04 23:28:36.559 [main] INFO  o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-05-04 23:28:36.565 [main] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-05-04 23:28:36.614 [main] INFO  d.c.e.t.u.security.JwtTokenProvider - Successfully decoded JWT secret from Base64.
+2025-05-04 23:28:36.622 [main] INFO  d.c.e.t.u.security.JwtTokenProvider - JWT Secret Key initialized successfully.
+2025-05-04 23:28:38.139 [main] INFO  o.s.s.c.a.a.c.InitializeUserDetailsBeanManagerConfigurer$InitializeUserDetailsManagerConfigurer - Global AuthenticationManager configured with UserDetailsService bean with name userDetailsServiceImpl
+2025-05-04 23:28:38.592 [main] WARN  o.s.b.a.o.j.JpaBaseConfiguration$JpaWebConfiguration - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-05-04 23:28:39.656 [main] INFO  o.s.s.web.DefaultSecurityFilterChain - Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@35307365, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@15d04c41, org.springframework.security.web.context.SecurityContextHolderFilter@7220ff10, org.springframework.security.web.header.HeaderWriterFilter@410c1f44, org.springframework.web.filter.CorsFilter@2968d3c0, org.springframework.security.web.authentication.logout.LogoutFilter@423e35f0, demo.com.example.testserver.user.security.JwtAuthenticationFilter@2d0ce8a1, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@4ba29b51, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@6149adee, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@4290332d, org.springframework.security.web.session.SessionManagementFilter@f714749, org.springframework.security.web.access.ExceptionTranslationFilter@21f8aa9c, org.springframework.security.web.access.intercept.AuthorizationFilter@7d4bb16b]
+2025-05-04 23:28:40.301 [main] INFO  o.s.b.t.m.w.SpringBootMockServletContext - Initializing Spring TestDispatcherServlet ''
+2025-05-04 23:28:40.302 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Initializing Servlet ''
+2025-05-04 23:28:40.304 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Completed initialization in 2 ms
+2025-05-04 23:28:40.371 [main] INFO  d.c.e.t.u.c.UserControllerPasswordResetTest - Started UserControllerPasswordResetTest in 14.392 seconds (process running for 16.94)
+2025-05-04 23:28:40.778 [main] INFO  d.c.e.t.u.controller.UserController - Password has been reset successfully for user: test@example.com
+2025-05-04 23:28:40.924 [main] INFO  d.c.e.t.u.controller.UserController - OTP verified successfully for user: test@example.com
+2025-05-04 23:28:40.956 [main] WARN  d.c.e.t.u.controller.UserController - Expired OTP provided during password set for user: test@example.com
+2025-05-04 23:28:41.022 [main] INFO  d.c.e.t.u.controller.UserController - Password reset OTP sent to: test@example.com
+2025-05-04 23:28:41.056 [main] WARN  d.c.e.t.u.controller.UserController - Incorrect OTP provided during password set for user: test@example.com
+2025-05-04 23:28:41.145 [main] WARN  d.c.e.t.u.controller.UserController - Password reset requested for non-existent or inactive email: notfound@example.com
+2025-05-04 23:28:41.169 [main] WARN  d.c.e.t.u.controller.UserController - Incorrect OTP provided for user: test@example.com
+2025-05-04 23:28:41.193 [main] WARN  d.c.e.t.u.controller.UserController - No OTP found for user: test@example.com
+2025-05-04 23:28:41.209 [main] WARN  d.c.e.t.u.controller.UserController - Forgot password request failed: Email is required.
+2025-05-04 23:28:41.254 [main] WARN  d.c.e.t.u.controller.UserController - OTP verification attempt for non-existent or inactive email: notfound@example.com
+2025-05-04 23:28:41.302 [main] WARN  d.c.e.t.u.controller.UserController - Expired OTP provided for user: test@example.com
+2025-05-04 23:28:41.507 [SpringApplicationShutdownHook] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+2025-05-04 23:28:41.510 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2025-05-04 23:28:41.593 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
