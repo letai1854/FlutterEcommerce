@@ -73,6 +73,9 @@ CREATE TABLE san_pham (
     ngay_cap_nhat TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (danh_muc_id) REFERENCES danh_muc(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     FOREIGN KEY (thuong_hieu_id) REFERENCES thuong_hieu(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    min_price DECIMAL(12, 2) NULL DEFAULT NULL,
+    max_price DECIMAL(12, 2) NULL DEFAULT NULL,
+    average_rating DOUBLE NULL DEFAULT NULL,
     CHECK (phan_tram_giam_gia IS NULL OR (phan_tram_giam_gia > 0 AND phan_tram_giam_gia <= 50.00)) -- Giới hạn % giảm giá
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -250,3 +253,7 @@ CREATE INDEX idx_ctdh_bienthe ON chi_tiet_don_hang(bien_the_san_pham_id);
 CREATE INDEX idx_dgsp_sanpham ON danh_gia_san_pham(san_pham_id);
 CREATE INDEX idx_dgsp_user ON danh_gia_san_pham(nguoi_dung_id);
 CREATE INDEX idx_tn_cuochoithoai ON tin_nhan(cuoc_hoi_thoai_id);
+CREATE INDEX idx_sp_min_price ON san_pham(min_price);
+CREATE INDEX idx_sp_max_price ON san_pham(max_price);
+CREATE INDEX idx_sp_avg_rating ON san_pham(average_rating);
+CREATE INDEX idx_sp_created_date ON san_pham(ngay_tao); -- Thêm nếu chưa có và thường xuyên sắp xếp theo ngày tạo

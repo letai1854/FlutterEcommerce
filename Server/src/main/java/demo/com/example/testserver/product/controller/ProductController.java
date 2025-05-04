@@ -1,0 +1,69 @@
+package demo.com.example.testserver.product.controller;
+
+import demo.com.example.testserver.product.dto.ProductDTO;
+import demo.com.example.testserver.product.service.ProductService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
+
+@RestController
+@RequestMapping("/api/products")
+@CrossOrigin(origins = "*") // Allow requests from any origin
+public class ProductController {
+
+    private static final Logger logger = LoggerFactory.getLogger(ProductController.class);
+
+    @Autowired
+    private ProductService productService;
+
+    @GetMapping
+    public ResponseEntity<Page<ProductDTO>> getProducts(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Integer categoryId,
+            @RequestParam(required = false) Integer brandId,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) Double minRating,
+            @RequestParam(defaultValue = "createdDate") String sortBy, // Default sort: newest
+            @RequestParam(defaultValue = "desc") String sortDir,      // Default direction: descending
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        try {
+            Pageable pageable = PageRequest.of(page, size); // Sort will be handled by the service
+
+            Page<ProductDTO> productPage = productService.findProducts(
+                    pageable, search, categoryId, brandId, minPrice, maxPrice, minRating, sortBy, sortDir
+            );
+
+            if (productPage.isEmpty()) {
+                return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+            }
+            return ResponseEntity.ok(productPage);
+
+        } catch (IllegalArgumentException e) {
+             logger.warn("Invalid request parameter: {}", e.getMessage());
+             return new ResponseEntity<>(HttpStatus.BAD_REQUEST); // Or return a specific error DTO
+        } catch (Exception e) {
+            logger.error("Error fetching products", e);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Add other endpoints like getProductById, createProduct, updateProduct, deleteProduct as needed
+    // Example:
+    /*
+    @GetMapping("/{id}")
+    public ResponseEntity<ProductDTO> getProductById(@PathVariable Integer id) {
+        // Implementation using productService.findProductById(id)
+    }
+    */
+}
