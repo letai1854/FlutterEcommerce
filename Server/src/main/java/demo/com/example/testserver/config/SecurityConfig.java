@@ -57,6 +57,9 @@ public class SecurityConfig {
                 // Allow public access to categories and brands (assuming they exist under /api)
                 .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/brands/**").permitAll()
+                // --- Image Routes ---
+                .requestMatchers(HttpMethod.GET, "/api/images/**").permitAll() // Allow public viewing of images
+                .requestMatchers(HttpMethod.POST, "/api/images/upload").authenticated() // Require authentication for uploads
                 // Secure all other requests
                 .anyRequest().authenticated()
             );
