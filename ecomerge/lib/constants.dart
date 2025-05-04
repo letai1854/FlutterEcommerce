@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 final String baseUrl = kIsWeb 
-    ? 'http://localhost:8081' // For web
-    : 'http://10.0.2.2:8081'; // For Android emulator
-// final String baseUrl = 'https://192.168.189.247:8443';
+    ? 'http://localhost:8443' // For web
+    : 'http://10.0.2.2:8443'; // For Android emulator
+
 
 final bool isWeb = kIsWeb;
 var myDeflaultBackground = const Color.fromARGB(255, 213, 213, 213);
