@@ -241,7 +241,9 @@ class _LoginFormState extends State<LoginForm> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/forgot_password');
+                  },
                   child: Text(
                     'Quên mật khẩu',
                     style: TextStyle(
