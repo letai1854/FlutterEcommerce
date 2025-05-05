@@ -66,6 +66,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/brands").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/brands/{id}").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/brands/{id}").hasRole("ADMIN")
+                // Secure Coupon management - only ADMIN role
+                .requestMatchers("/api/coupons/**").hasRole("ADMIN") // Add this line for coupons
                 // Image Routes
                 .requestMatchers(HttpMethod.GET, "/api/images/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/images/upload").authenticated()

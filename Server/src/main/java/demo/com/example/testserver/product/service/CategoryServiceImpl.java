@@ -5,15 +5,20 @@ import demo.com.example.testserver.product.dto.CreateCategoryRequestDTO;
 import demo.com.example.testserver.product.dto.UpdateCategoryRequestDTO;
 import demo.com.example.testserver.product.model.Category;
 import demo.com.example.testserver.product.repository.CategoryRepository;
+import demo.com.example.testserver.product.specification.CategorySpecification; // Import Specification
 import jakarta.persistence.EntityNotFoundException;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page; // Import Page
+import org.springframework.data.domain.Pageable; // Import Pageable
+import org.springframework.data.jpa.domain.Specification; // Import Specification
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Date; // Import Date
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -28,13 +33,26 @@ public class CategoryServiceImpl implements CategoryService {
     @Autowired
     private ModelMapper modelMapper; // Ensure ModelMapper bean is configured
 
+    // Implement the new findCategories method
     @Override
     @Transactional(readOnly = true)
-    public List<CategoryDTO> findAllCategories() {
-        logger.info("Fetching all categories");
-        return categoryRepository.findAll().stream()
-                .map(category -> modelMapper.map(category, CategoryDTO.class))
-                .collect(Collectors.toList());
+    public Page<CategoryDTO> findCategories(Pageable pageable, Date startDate, Date endDate) {
+        logger.info("Fetching categories with pagination: {}, startDate: {}, endDate: {}", pageable, startDate, endDate);
+        Specification<Category> spec = Specification.where(null); // Start with empty spec
+
+        if (startDate != null) {
+            spec = spec.and(CategorySpecification.createdDateGreaterThanOrEqual(startDate));
+        }
+        if (endDate != null) {
+            // Add 1 day to endDate to make it inclusive of the end date
+            long oneDayInMillis = 24 * 60 * 60 * 1000L;
+            Date inclusiveEndDate = new Date(endDate.getTime() + oneDayInMillis);
+            spec = spec.and(CategorySpecification.createdDateLessThan(inclusiveEndDate));
+        }
+
+        Page<Category> categoryPage = categoryRepository.findAll(spec, pageable);
+        logger.info("Found {} categories matching criteria.", categoryPage.getTotalElements());
+        return categoryPage.map(category -> modelMapper.map(category, CategoryDTO.class));
     }
 
     @Override
