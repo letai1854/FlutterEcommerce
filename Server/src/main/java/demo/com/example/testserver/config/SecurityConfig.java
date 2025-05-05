@@ -44,14 +44,14 @@ public class SecurityConfig {
             .authorizeHttpRequests(authz -> authz
                 // Public endpoints
                 .requestMatchers("/api/users/ping").permitAll() // Keep ping public
-                // --- Authentication Endpoints ---
-                .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated() // Require auth for logout
-                // --- Password Reset Endpoints ---
-                .requestMatchers(HttpMethod.POST, "/api/password-reset/forgot-password").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/password-reset/verify-otp").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/password-reset/set-new-password").permitAll()
+                // --- Authentication Endpoints (under /api/users) ---
+                .requestMatchers(HttpMethod.POST, "/api/users/login").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/users/register").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/users/logout").authenticated() // Require auth for logout
+                // --- Password Reset Endpoints (under /api/users) ---
+                .requestMatchers(HttpMethod.POST, "/api/users/forgot-password").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/users/verify-otp").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/users/set-new-password").permitAll()
                 // --- Product/Category/Brand Public Access ---
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
@@ -73,9 +73,16 @@ public class SecurityConfig {
                 // --- Image Routes ---
                 .requestMatchers(HttpMethod.GET, "/api/images/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/images/upload").authenticated()
-                // --- Admin User Management ---
-                .requestMatchers("/api/admin/users/**").hasRole("ADMIN") // Secure all admin user routes
-                // --- Current User Profile Management ---
+                // --- Admin User Management (under /api/users) ---
+                .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN") // Get all users
+                .requestMatchers(HttpMethod.GET, "/api/users/search").hasRole("ADMIN") // Search users
+                .requestMatchers(HttpMethod.GET, "/api/users/email/{email}").hasRole("ADMIN") // Get user by email
+                // Need to be careful with GET /api/users/{id} if non-admins should access their own
+                // .requestMatchers(HttpMethod.GET, "/api/users/{id}").hasRole("ADMIN") // Temporarily restrict all GET by ID to ADMIN
+                // Or use method security in AdminUserController for GET /api/users/{id} if needed later
+                .requestMatchers(HttpMethod.PUT, "/api/users/{id}").hasRole("ADMIN") // Update user by ID
+                .requestMatchers(HttpMethod.DELETE, "/api/users/{id}").hasRole("ADMIN") // Delete user by ID
+                // --- Current User Profile Management (under /api/users/me) ---
                 .requestMatchers("/api/users/me/**").authenticated() // Secure all /me routes (profile, update, change password)
                 // --- Address Management ---
                 .requestMatchers("/api/addresses/me/**").authenticated() // Secure all /me address routes

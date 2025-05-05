@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/auth") // Changed base path
+@RequestMapping("/api/users") // Reverted base path
 @CrossOrigin(origins = "*")
 public class AuthController {
 

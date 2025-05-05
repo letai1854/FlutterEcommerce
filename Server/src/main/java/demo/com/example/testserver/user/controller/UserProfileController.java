@@ -17,7 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/users/me") // Base path for current user actions
+@RequestMapping("/api/users") // Reverted base path
 @CrossOrigin(origins = "*")
 public class UserProfileController {
 
@@ -30,7 +30,7 @@ public class UserProfileController {
     private PasswordEncoder passwordEncoder;
 
     // Get current authenticated user's profile
-    @GetMapping
+    @GetMapping("/me") // Keep /me in method mapping
     public ResponseEntity<?> getCurrentUserProfile(@AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) {
             return new ResponseEntity<>("Authentication required.", HttpStatus.UNAUTHORIZED);
@@ -49,7 +49,7 @@ public class UserProfileController {
     }
 
     // Update current authenticated user's profile
-    @PutMapping("/update")
+    @PutMapping("/me/update") // Keep /me/update in method mapping
     public ResponseEntity<?> updateCurrentUserProfile(@AuthenticationPrincipal UserDetails userDetails, @RequestBody User userUpdates) {
         if (userDetails == null) {
             return new ResponseEntity<>("Authentication required.", HttpStatus.UNAUTHORIZED);
@@ -86,7 +86,7 @@ public class UserProfileController {
     }
 
     // Change current authenticated user's password
-    @PostMapping("/change-password")
+    @PostMapping("/me/change-password") // Keep /me/change-password in method mapping
     public ResponseEntity<String> changeCurrentUserPassword(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestBody Map<String, String> passwordRequest) {

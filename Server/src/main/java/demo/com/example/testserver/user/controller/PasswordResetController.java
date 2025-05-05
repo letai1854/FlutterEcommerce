@@ -18,7 +18,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/password-reset") // Changed base path
+@RequestMapping("/api/users") // Reverted base path
 @CrossOrigin(origins = "*")
 public class PasswordResetController {
 

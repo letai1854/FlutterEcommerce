@@ -20,7 +20,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/admin/users") // Changed base path to reflect admin scope
+@RequestMapping("/api/users") // Reverted base path
 @CrossOrigin(origins = "*")
 @PreAuthorize("hasRole('ADMIN')") // Secure all endpoints in this controller
 public class AdminUserController {
@@ -67,7 +67,6 @@ public class AdminUserController {
     }
 
     // Get user by ID
-    // Note: @PreAuthorize("hasRole('ADMIN') or @securityService.isOwner(authentication, #id)") is removed as the whole controller requires ADMIN
     @GetMapping("/{id}")
     public ResponseEntity<UserDTO> getUserById(@PathVariable int id) {
         Optional<User> userData = userRepository.findById(id);
