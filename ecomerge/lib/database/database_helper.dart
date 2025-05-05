@@ -1,25 +1,62 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+// lib/utils/http_client_config.dart
 
-import 'package:http/io_client.dart';
 import 'dart:io';
 
-final String baseurl = kIsWeb
-    ? 'https://localhost:8443' // Cho Web
-    : (defaultTargetPlatform == TargetPlatform.android && kDebugMode // Heuristic: Assume Android in Debug is Emulator
-        ? 'https://10.0.2.2:8443' // Cho Android Emulator (thường chỉ debug)
-        : 'https://localhost:8443');
+import 'package:e_commerce_app/constants.dart';
+import 'package:flutter/foundation.dart'; // Import for kIsWeb and kDebugMode
+import 'package:http/http.dart' as http; // Import standard http client
+import 'package:http/io_client.dart';
+// Chỉ import IOClient và dart:io khi không phải Web, sử dụng 'conditional import'
+// Đây là cách an toàn nhất để đảm bảo code dart:io không bao giờ bị biên dịch/thực thi trên Web
 
-IOClient createHttpClientWithIgnoreBadCert() {
-  HttpClient client = HttpClient();
-  if (kDebugMode) {
-    // Chỉ bỏ qua trong chế độ debug
-    client.badCertificateCallback =
-        (X509Certificate cert, String host, int port) =>
-            true; // Accept any certificate
+final String baseurl = !isMobile
+    ? 'https://localhost:8443'
+    : 'https://10.0.2.2:8443'; // Example for Web/Android Emulator HTTPS
+
+// Khai báo biến client ở tầm vực top-level, nhưng không khởi tạo ngay
+// Sử dụng kiểu động 'dynamic' hoặc kiểu chung nhất 'http.Client'
+dynamic
+    _client; // Dùng dynamic vì kiểu cụ thể (IOClient/BrowserClient) phụ thuộc nền tảng
+
+// --- Public Getter for the appropriate HTTP Client ---
+// Đây là hàm sẽ khởi tạo client LƯỜI BIẾNG và TRÊN NỀN TẢNG PHÙ HỢP
+http.Client get httpClient {
+  // Nếu client chưa được khởi tạo
+  if (_client == null) {
+    if (kIsWeb) {
+      // Trên Web, sử dụng BrowserClient (hoặc http.Client)
+      _client = http.Client(); // http.Client tự dùng BrowserClient trên web
+    } else {
+      // Trên Native (Mobile/Desktop)
+      // Kiểm tra xem dart:io có sẵn không
+      if (Platform.isAndroid ||
+          Platform.isIOS ||
+          Platform.isWindows ||
+          Platform.isMacOS ||
+          Platform.isLinux) {
+        HttpClient nativeClient = HttpClient(); // Đây là dart:io.HttpClient
+
+        // Chỉ bỏ qua lỗi chứng chỉ trong chế độ debug trên native
+        if (kDebugMode) {
+          nativeClient.badCertificateCallback =
+              (X509Certificate cert, String host, int port) =>
+                  true; // !!! DANGER: DO NOT USE IN PRODUCTION !!!
+        }
+        _client =
+            IOClient(nativeClient); // Bọc dart:io.HttpClient trong IOClient
+      } else {
+        // Fallback hoặc xử lý trường hợp nền tảng không xác định
+        _client = http.Client(); // Sử dụng client chuẩn
+      }
+    }
   }
-  return IOClient(client);
+  // Trả về client đã được khởi tạo
+  return _client as http
+      .Client; // Cast về http.Client vì cả IOClient và BrowserClient đều implement interface này
 }
 
-late final IOClient _httpClient = createHttpClientWithIgnoreBadCert();
-IOClient get httpClient => _httpClient;
+// Optional: Dispose clients when app shuts down
+void disposeHttpClients() {
+  _client?.close(); // Chỉ đóng nếu client đã được khởi tạo
+  _client = null; // Reset về null
+}

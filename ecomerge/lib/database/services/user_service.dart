@@ -7,11 +7,10 @@ import '../models/user_model.dart'; // Assuming User model is here
 import '/database/database_helper.dart'; // Assuming DatabaseHelper is here
 import '../database_helper.dart' as config;
 
-
 class UserService {
   final String baseUrl = baseurl; // TODO: Replace with your actual backend URL
   String? _authToken; // To store JWT token
-   final _httpClient = http.Client(); // Using http.Client for better testability
+  final _httpClient = http.Client(); // Using http.Client for better testability
   // Method to set the authentication token after login
   void setAuthToken(String token) {
     _authToken = token;
@@ -64,7 +63,7 @@ class UserService {
     } catch (e) {
       print('Error during user registration: $e');
       if (kDebugMode) {
-        print(e); 
+        print(e);
       }
       return false;
     }
@@ -80,13 +79,14 @@ class UserService {
         body: jsonEncode({'email': email, 'password': password}),
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final responseBody = jsonDecode(response.body);
         // Store the token and user info in the singleton
         setAuthToken(responseBody['token']);
         UserInfo().updateUserInfo(responseBody);
         // Return true to indicate successful login
-        print('Login successful---------------------------------------------------: ${UserInfo().authToken}');
+        print(
+            'Login successful---------------------------------------------------: ${UserInfo().authToken}');
         return true;
       } else {
         print('Failed to login user: ${response.statusCode}');
@@ -331,7 +331,7 @@ class UserService {
   // although the backend should enforce access control.
 
   Future<User?> testRegistration({
-    String email = 'hahehiho9999@gmail.com',
+    String email = 'haha@gmail.com',
     String fullName = 'tai',
     String password = '123456',
     String address = 'afew  adff ', // Add address field

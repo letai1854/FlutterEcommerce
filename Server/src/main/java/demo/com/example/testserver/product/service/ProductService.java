@@ -4,6 +4,7 @@ import demo.com.example.testserver.product.dto.CreateProductRequestDTO;
 import demo.com.example.testserver.product.dto.ProductDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import demo.com.example.testserver.product.dto.UpdateProductRequestDTO; // Import Update DTO
 
 import java.math.BigDecimal;
 
@@ -43,5 +44,34 @@ public interface ProductService {
      */
     ProductDTO createProduct(CreateProductRequestDTO requestDTO);
 
-    // Add other methods as needed, e.g., findProductById
+    /**
+     * Finds a single product by its ID.
+     * Includes detailed information like variants.
+     *
+     * @param id The ID of the product to find.
+     * @return The ProductDTO containing detailed product information.
+     * @throws jakarta.persistence.EntityNotFoundException if the product with the given ID is not found.
+     */
+    ProductDTO findProductById(Long id);
+
+    /**
+     * Updates an existing product with the provided data.
+     * Handles merging/updating of variants and images.
+     *
+     * @param productId The ID of the product to update.
+     * @param requestDTO DTO containing the updated product details.
+     * @return The updated ProductDTO.
+     * @throws jakarta.persistence.EntityNotFoundException if the product, category, or brand is not found.
+     */
+    ProductDTO updateProduct(Long productId, UpdateProductRequestDTO requestDTO);
+
+    /**
+     * Deletes a product and its associated variants and images.
+     *
+     * @param productId The ID of the product to delete.
+     * @throws jakarta.persistence.EntityNotFoundException if the product is not found.
+     */
+    void deleteProduct(Long productId);
+
+    // Add other methods as needed
 }
