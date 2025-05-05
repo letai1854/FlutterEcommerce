@@ -156,88 +156,90 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Row(
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                        ),
-                        child: ClipOval(
-                          child: SizedBox(
-                            width: 33,
-                            height: 33,
-                            child: Material(
-                              color: Colors.transparent,
-                              child: UserInfo().currentUser?.avatar != null
-                                  ? FutureBuilder<Uint8List?>(
-                                      future: UserService().getAvatarBytes(
-                                          UserInfo().currentUser?.avatar),
-                                      builder: (context, snapshot) {
-                                        if (snapshot.connectionState ==
-                                                ConnectionState.waiting &&
-                                            !snapshot.hasData) {
-                                          return const Center(
-                                              child: SizedBox(
-                                                  width: 15,
-                                                  height: 15,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                          strokeWidth: 2)));
-                                        } else if (snapshot.hasData &&
-                                            snapshot.data != null) {
-                                          // Use cached image if available
-                                          return GestureDetector(
-                                            onTap: () => Navigator.pushNamed(
-                                                context, '/info'),
-                                            child: Image.memory(
-                                              snapshot.data!,
-                                              fit: BoxFit.cover,
-                                            ),
-                                          );
-                                        } else {
-                                          // Fall back to network image if cache failed
-                                          return GestureDetector(
-                                            onTap: () => Navigator.pushNamed(
-                                                context, '/info'),
-                                            child: Image.network(
-                                              UserInfo().currentUser!.avatar!,
-                                              fit: BoxFit.cover,
-                                              errorBuilder:
-                                                  (context, error, stackTrace) {
-                                                return IconButton(
-                                                  padding: EdgeInsets.zero,
-                                                  icon: const Icon(Icons.person,
-                                                      color: Colors.black),
-                                                  onPressed: () =>
-                                                      Navigator.pushNamed(
-                                                          context, '/info'),
-                                                );
-                                              },
-                                            ),
-                                          );
-                                        }
-                                      },
-                                    )
-                                  : IconButton(
-                                      padding: EdgeInsets.zero,
-                                      icon: const Icon(Icons.person,
-                                          color: Colors.black),
-                                      onPressed: () {
-                                        Navigator.pushNamed(context, '/info');
-                                      },
-                                    ),
+                  if (UserInfo().currentUser != null)
+                    Row(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                          ),
+                          child: ClipOval(
+                            child: SizedBox(
+                              width: 33,
+                              height: 33,
+                              child: Material(
+                                color: Colors.transparent,
+                                child: UserInfo().currentUser?.avatar != null
+                                    ? FutureBuilder<Uint8List?>(
+                                        future: UserService().getAvatarBytes(
+                                            UserInfo().currentUser?.avatar),
+                                        builder: (context, snapshot) {
+                                          if (snapshot.connectionState ==
+                                                  ConnectionState.waiting &&
+                                              !snapshot.hasData) {
+                                            return const Center(
+                                                child: SizedBox(
+                                                    width: 15,
+                                                    height: 15,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                            strokeWidth: 2)));
+                                          } else if (snapshot.hasData &&
+                                              snapshot.data != null) {
+                                            // Use cached image if available
+                                            return GestureDetector(
+                                              onTap: () => Navigator.pushNamed(
+                                                  context, '/info'),
+                                              child: Image.memory(
+                                                snapshot.data!,
+                                                fit: BoxFit.cover,
+                                              ),
+                                            );
+                                          } else {
+                                            // Fall back to network image if cache failed
+                                            return GestureDetector(
+                                              onTap: () => Navigator.pushNamed(
+                                                  context, '/info'),
+                                              child: Image.network(
+                                                UserInfo().currentUser!.avatar!,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (context, error,
+                                                    stackTrace) {
+                                                  return IconButton(
+                                                    padding: EdgeInsets.zero,
+                                                    icon: const Icon(
+                                                        Icons.person,
+                                                        color: Colors.black),
+                                                    onPressed: () =>
+                                                        Navigator.pushNamed(
+                                                            context, '/info'),
+                                                  );
+                                                },
+                                              ),
+                                            );
+                                          }
+                                        },
+                                      )
+                                    : IconButton(
+                                        padding: EdgeInsets.zero,
+                                        icon: const Icon(Icons.person,
+                                            color: Colors.black),
+                                        onPressed: () {
+                                          Navigator.pushNamed(context, '/info');
+                                        },
+                                      ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        UserInfo().currentUser?.fullName ?? 'Chưa đăng nhập',
-                        style: TextStyle(color: Colors.white, fontSize: 13),
-                      ),
-                    ],
-                  )
+                        const SizedBox(width: 10),
+                        Text(
+                          UserInfo().currentUser?.fullName ?? '',
+                          style: TextStyle(color: Colors.white, fontSize: 13),
+                        ),
+                      ],
+                    )
                 ],
               ),
             ],

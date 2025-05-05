@@ -1,38 +1,33 @@
 import 'dart:convert';
 import 'package:e_commerce_app/database/PageResponse.dart' show PageResponse;
+import 'package:e_commerce_app/database/PageResponsive.dart';
 import 'package:e_commerce_app/database/database_helper.dart'; // Import database_helper để lấy baseUrl và httpClient
+import 'package:e_commerce_app/database/models/brand.dart';
+import 'package:e_commerce_app/database/models/categories.dart';
 import 'package:e_commerce_app/database/models/create_product_request_dto.dart'; // Import đúng
 import 'package:e_commerce_app/database/models/product_dto.dart'; // Import đúng
 import 'package:e_commerce_app/database/models/update_product_request_dto.dart'; // Import đúng
 import 'package:e_commerce_app/database/Storage/UserInfo.dart'; // Import UserInfo để lấy token
 import 'package:http/http.dart' as http;
-import 'dart:io'; // Import để bắt SocketException
-import 'package:flutter/foundation.dart'; // Import kDebugMode
+import 'dart:io'; 
+import 'package:flutter/foundation.dart'; 
 
-// Sử dụng baseUrl và httpClient từ database_helper.dart
-// const String baseurl = 'YOUR_BASE_URL_HERE'; // Xóa hoặc chú thích dòng này
-// final http.Client _httpClient = http.Client(); // Xóa hoặc chú thích dòng này
+
 
 
 class ProductService {
   final String baseUrl = baseurl; // Lấy từ database_helper
 
-  // Helper to get headers including Authorization token
   Map<String, String> _getHeaders({bool includeAuth = true}) {
     final headers = {'Content-Type': 'application/json'};
-    // Lấy token từ UserInfo singleton
-    final authToken = UserInfo().authToken; // Giả định authToken được lưu ở đây
+    final authToken = UserInfo().authToken; 
     if (includeAuth && authToken != null) {
       headers['Authorization'] = 'Bearer $authToken';
     }
     return headers;
   }
 
-  // === PRODUCT CRUD METHODS ===
 
-  // Get Product By ID
-  // Returns ProductDTO on success (200)
-  // Throws Exception on API error or network error
   Future<ProductDTO> getProductById(int id) async {
     final url = Uri.parse('$baseUrl/api/products/$id');
     try {
@@ -113,7 +108,77 @@ class ProductService {
        throw Exception('An unexpected error occurred: ${e.toString()}');
     }
   }
+ // Method to upload an image file to the server
+  Future<String?> uploadImage(List<int> imageBytes, String fileName) async {
+    final url = Uri.parse('$baseUrl/api/images/upload');
 
+    try {
+      // Create a multipart request for the image upload
+      final request = http.MultipartRequest('POST', url);
+
+      // Add authorization header if user is logged in
+      if (UserInfo().authToken != null) {
+        request.headers['Authorization'] = 'Bearer ${UserInfo().authToken}';
+      }
+
+      // Add the file to the request
+      final multipartFile = http.MultipartFile.fromBytes(
+        'file',
+        imageBytes,
+        filename: fileName,
+      );
+      request.files.add(multipartFile);
+
+      // Send the request
+      final streamedResponse = await request.send();
+
+      // Convert the response stream to a regular response
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 201) {
+        // Parse the response to get the image path
+        final responseData = jsonDecode(response.body);
+        final imagePath = responseData['imagePath'];
+        print('Image uploaded successfully: $imagePath');
+        return imagePath;
+      } else {
+        print('Failed to upload image: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Error uploading image: $e');
+      return null;
+    }
+  }
+
+  // Method to upload image from file path (for mobile platforms)
+  Future<String?> uploadImageFile(String filePath) async {
+    try {
+      final file = File(filePath);
+      final bytes = await file.readAsBytes();
+      final fileName = filePath.split('/').last;
+      return uploadImage(bytes, fileName);
+    } catch (e) {
+      print('Error reading image file: $e');
+      return null;
+    }
+  }
+
+  // Helper method to get the complete image URL
+  String getImageUrl(String? imagePath) {
+    if (imagePath == null) return '';
+
+    // If the path already starts with http/https, return as is
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+
+    // If it's a relative path, combine with baseUrl
+    // Remove any duplicate slashes between baseUrl and imagePath
+    String path = imagePath.startsWith('/') ? imagePath : '/$imagePath';
+    return '$baseUrl$path';
+  }
   // Update Product
   // Returns ProductDTO on success (200)
   // Throws Exception on API error (non-200) or network error
@@ -211,7 +276,7 @@ class ProductService {
     String sortBy = 'createdDate',
     String sortDir = 'desc',
     int page = 0,
-    int size = 10,
+    int size = 100,
 }) async {
     final Map<String, dynamic> queryParameters = {
         'page': page.toString(),
@@ -288,8 +353,144 @@ class ProductService {
         throw Exception('An unexpected error occurred: ${e.toString()}');
     }
 }
+ Future<PageResponse<CategoryDTO>> fetchCategoriesPaginated({
+     int page = 0,
+     int size = 10, // Giữ default size theo server nếu muốn
+     // Tham số truyền vào vẫn là property và direction riêng
+     String sortBy = 'createdDate', // Default sort property
+     String sortDir = 'desc',     // Default sort direction
+     DateTime? startDate,
+     DateTime? endDate,
+  }) async {
+     final Map<String, dynamic> queryParameters = {
+        'page': page.toString(),
+        'size': size.toString(),
+        // *** SỬA CÁCH GỬI THAM SỐ SORT TẠI ĐÂY ***
+        // Kết hợp property và direction thành một tham số 'sort' duy nhất
+        // Đây là cách client override default sort của server
+        'sort': '$sortBy,$sortDir',
+    };
+     // Add date parameters if provided, formatted as YYYY-MM-DD strings
+     // (Giữ nguyên logic này nếu server vẫn mong đợi)
+     if (startDate != null) queryParameters['startDate'] = startDate.toIso8601String().split('T')[0];
+     if (endDate != null) queryParameters['endDate'] = endDate.toIso8601String().split('T')[0];
 
 
+    final url = Uri.parse('$baseUrl/api/categories').replace(queryParameters: queryParameters);
+    if (kDebugMode) print('Fetch Categories (Paginated) Request URL: $url'); // Print URL với tham số sort
+
+    try {
+      // Sử dụng _httpClient instance
+      final response = await httpClient.get(
+        url,
+        headers: _getHeaders(includeAuth: false),
+      );
+
+      if (kDebugMode) {
+        print('Fetch Categories (Paginated) Response Status: ${response.statusCode}');
+         if (response.bodyBytes.isNotEmpty) {
+           print('Fetch Categories (Paginated) Response Body: ${utf8.decode(response.bodyBytes)}');
+         } else {
+            print('Fetch Categories (Paginated) Response Body: (Empty or 204)');
+         }
+      }
+
+      switch (response.statusCode) {
+        case 200:
+          final responseBody = jsonDecode(utf8.decode(response.bodyBytes));
+          if (responseBody is Map<String, dynamic>) {
+             // *** SỬA TYPO PageResponsive -> PageResponse ***
+             return PageResponse<CategoryDTO>.fromJson(responseBody, CategoryDTO.fromJson);
+          } else {
+             throw FormatException('Invalid response format for categories: Expected a JSON object (PageResponse), got ${responseBody.runtimeType}.');
+          }
+
+        case 204:
+          // *** SỬA TYPO PageResponsive -> PageResponse ***
+          return PageResponse.empty();
+
+        default:
+          // Xử lý lỗi chung
+          String errorMessage = 'Failed to fetch categories.';
+           try {
+             final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
+             if (errorBody is Map && errorBody.containsKey('message')) {
+                errorMessage = errorBody['message'];
+             } else if (errorBody is String && errorBody.isNotEmpty) {
+                errorMessage = errorBody;
+             }
+           } catch (_) {}
+          throw Exception('Failed to fetch categories: $errorMessage (Status: ${response.statusCode})');
+      }
+    } on SocketException catch (e) {
+       if (kDebugMode) print('SocketException during fetchCategoriesPaginated: $e');
+       throw Exception('Network Error: Could not connect to server. Please check your internet connection.');
+    } on FormatException catch (e) {
+       if (kDebugMode) print('FormatException during fetchCategoriesPaginated: $e');
+       throw Exception('Server response format error. Could not parse category page data.');
+    } catch (e) {
+      if (kDebugMode) print('Unexpected Error during fetchCategoriesPaginated: $e');
+      throw Exception('An unexpected error occurred: ${e.toString()}');
+    }
+  }
+
+  // ... (getAllBrands và dispose methods giữ nguyên)
+   // Giữ nguyên hàm getAllBrands nếu endpoint brands vẫn trả về List
+   Future<List<BrandDTO>> getAllBrands() async {
+      // ... (keep the existing implementation for getAllBrands)
+       final url = Uri.parse('$baseUrl/api/brands');
+       if (kDebugMode) print('Get All Brands Request URL: $url');
+
+       try {
+         final response = await httpClient.get(
+           url,
+           headers: _getHeaders(includeAuth: false),
+         );
+
+         if (kDebugMode) {
+           print('Get All Brands Response Status: ${response.statusCode}');
+            if (response.bodyBytes.isNotEmpty) {
+              print('Get All Brands Response Body: ${utf8.decode(response.bodyBytes)}');
+            } else {
+               print('Get All Brands Response Body: (Empty or 204)');
+            }
+         }
+
+         switch (response.statusCode) {
+           case 200:
+             final responseBody = utf8.decode(response.bodyBytes);
+             final List<dynamic> jsonList = jsonDecode(responseBody);
+             final List<BrandDTO> brands = jsonList
+                 .map((jsonItem) => BrandDTO.fromJson(jsonItem as Map<String, dynamic>))
+                 .toList();
+             return brands;
+
+           case 204:
+             return [];
+
+           default:
+             String errorMessage = 'Failed to fetch brands.';
+             try {
+               final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
+               if (errorBody is Map && errorBody.containsKey('message')) {
+                  errorMessage = errorBody['message'];
+               } else if (errorBody is String && errorBody.isNotEmpty) {
+                  errorMessage = errorBody;
+               }
+             } catch (_) {}
+             throw Exception('Failed to fetch brands: $errorMessage (Status: ${response.statusCode})');
+         }
+       } on SocketException catch (e) {
+          if (kDebugMode) print('SocketException during getAllBrands: $e');
+          throw Exception('Network Error: Could not connect to server. Please check your internet connection.');
+       } on FormatException catch (e) {
+          if (kDebugMode) print('FormatException during getAllBrands: $e');
+          throw Exception('Server response format error. Could not parse brand data.');
+       } catch (e) {
+         if (kDebugMode) print('Unexpected Error during getAllBrands: ${e.toString()}');
+         throw Exception('An unexpected error occurred: ${e.toString()}');
+       }
+    }
   void dispose() {
     httpClient.close();
   }

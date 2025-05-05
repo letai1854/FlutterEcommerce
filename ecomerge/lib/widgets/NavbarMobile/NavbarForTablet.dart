@@ -105,8 +105,7 @@ class _NavbarForTabletState extends State<NavbarForTablet> {
                           ),
                           const SizedBox(width: 10),
                           Text(
-                            UserInfo().currentUser?.fullName ??
-                                'Chưa đăng nhập',
+                            UserInfo().currentUser?.fullName ?? '',
                             style: TextStyle(
                               fontSize: 25,
                               color: Colors.white,

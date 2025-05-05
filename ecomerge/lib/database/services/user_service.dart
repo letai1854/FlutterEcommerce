@@ -1,28 +1,46 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/database_helper.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'dart:io';
-import '../models/user_model.dart'; // Assuming User model is here
-import '/database/database_helper.dart'; // Assuming DatabaseHelper is here
+import 'package:http/io_client.dart';
+import '../models/user_model.dart';
+import '/database/database_helper.dart';
 import '../database_helper.dart' as config;
 
 class UserService {
-  final String baseUrl = baseurl; // TODO: Replace with your actual backend URL
-  String? _authToken; // To store JWT token
 
-  final _httpClient = http.Client(); // Using http.Client for better testability
+ final String baseUrl = baseurl;
+  String? _authToken;
+  late  final http.Client httpClient;
 
-  // Static cache reference (using the public getter from UserInfo)
+  // Constructor - setup SSL-bypassing client for all platforms
+  UserService() {
+    httpClient = _createSecureClient();
+  }
+
+  // Create a client that bypasses SSL certificate verification
+  http.Client _createSecureClient() {
+    if (kIsWeb) {
+      // Web platform doesn't need special handling
+      return http.Client();
+    } else {
+      // For mobile and desktop platforms
+      final HttpClient ioClient = HttpClient()
+        ..badCertificateCallback =
+            ((X509Certificate cert, String host, int port) => true);
+      return IOClient(ioClient);
+    }
+  }
+
+  // Static cache reference
   static Map<String, Uint8List> get avatarCache => UserInfo.avatarCache;
 
-  // Method to set the authentication token after login
   void setAuthToken(String token) {
     _authToken = token;
   }
 
-  // Helper to get headers, including auth token if available
   Map<String, String> _getHeaders({bool includeAuth = false}) {
     final headers = {'Content-Type': 'application/json'};
    final userInfo = UserInfo();
@@ -53,9 +71,6 @@ class UserService {
         }),
       );
 
-      print('Registration response: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
       if (response.statusCode == 201) {
         User.fromMap(jsonDecode(response.body));
         return true;
@@ -85,26 +100,19 @@ class UserService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final responseBody = jsonDecode(response.body);
-        // Store the token and user info in the singleton
         setAuthToken(responseBody['token']);
         UserInfo().updateUserInfo(responseBody);
 
-        // Check if user has avatar and pre-cache it
         String? avatarPath = UserInfo().currentUser?.avatar;
         if (avatarPath != null && avatarPath.isNotEmpty) {
-          // Get full URL if needed
           String fullAvatarUrl = getImageUrl(avatarPath);
           print('Pre-caching avatar from: $fullAvatarUrl');
-
-          // Fetch and cache avatar image
           await _cacheAvatarImage(fullAvatarUrl, avatarPath);
         } else {
           print('User has no avatar to cache');
         }
 
-        // Return true to indicate successful login
-        print(
-            'Login successful---------------------------------------------------: ${UserInfo().authToken}');
+        print('Login successful: ${UserInfo().authToken}');
         return true;
       } else {
         print('Failed to login user: ${response.statusCode}');
@@ -123,7 +131,6 @@ class UserService {
       final response = await httpClient.get(Uri.parse(imageUrl));
 
       if (response.statusCode == 200) {
-        // Store image bytes in cache using the static public getter
         UserInfo.avatarCache[avatarKey] = response.bodyBytes;
         print(
             'Avatar cached successfully, size: ${response.bodyBytes.length} bytes');
@@ -139,12 +146,10 @@ class UserService {
   Future<Uint8List?> getAvatarBytes(String? avatarPath) async {
     if (avatarPath == null || avatarPath.isEmpty) return null;
 
-    // Return from cache if available
     if (UserInfo.avatarCache.containsKey(avatarPath)) {
       return UserInfo.avatarCache[avatarPath];
     }
 
-    // Fetch and cache if not available
     try {
       String fullUrl = getImageUrl(avatarPath);
       final response = await httpClient.get(Uri.parse(fullUrl));
@@ -223,7 +228,7 @@ class UserService {
       );
 
       if (response.statusCode == 200) {
-        return true; // Password changed successfully
+        return true;
       } else {
         print('Failed to change password: ${response.statusCode}');
         print('Response body: ${response.body}');
@@ -238,7 +243,8 @@ class UserService {
  Future<void> forgotPassword(String email) async {
     final url = Uri.parse('$baseUrl/api/users/forgot-password');
     try {
-      final response = await httpClient.post( // Sửa thành _httpClient
+
+      final response = await httpClient.post(
         url,
         headers: _getHeaders(),
         body: jsonEncode({'email': email}),
@@ -253,8 +259,8 @@ class UserService {
 
 
       if (response.statusCode == 200) {
-        // Thành công, backend đã xử lý yêu cầu (không nhất thiết email tồn tại)
-        return; // Return void on success
+
+        return;
       } else {
         // API trả về lỗi (status code != 200)
         String errorMessage = 'Không thể yêu cầu mã xác thực.';
@@ -380,7 +386,7 @@ class UserService {
       );
 
       if (response.statusCode == 200) {
-        return true; // Password reset successfully
+        return true;
       } else {
         print('Failed to reset password: ${response.statusCode}');
         print('Response body: ${response.body}');
@@ -392,13 +398,13 @@ class UserService {
     }
   }
 
-
-  // Method to upload an image file to the server
   Future<String?> uploadImage(List<int> imageBytes, String fileName) async {
     final url = Uri.parse('$baseUrl/api/images/upload');
+    print(
+        "Starting image upload, bytes: ${imageBytes.length}, filename: $fileName");
 
     try {
-      // Create a multipart request for the image upload
+      // Create a multipart request
       final request = http.MultipartRequest('POST', url);
 
       // Add authorization header if user is logged in
@@ -406,7 +412,7 @@ class UserService {
         request.headers['Authorization'] = 'Bearer ${UserInfo().authToken}';
       }
 
-      // Add the file to the request
+      // Add file to the request
       final multipartFile = http.MultipartFile.fromBytes(
         'file',
         imageBytes,
@@ -414,8 +420,17 @@ class UserService {
       );
       request.files.add(multipartFile);
 
-      // Send the request
-      final streamedResponse = await request.send();
+      // Important fix: Instead of using request.send(), which uses the default client,
+      // we'll manually send the request using our SSL-bypassing client
+      final stream = await request.finalize();
+
+      // Create a custom request with the same method, url, headers
+      final httpRequest = http.Request(request.method, request.url);
+      httpRequest.headers.addAll(request.headers);
+      httpRequest.bodyBytes = await stream.toBytes();
+
+      // Send the request using our secure client
+      final streamedResponse = await httpClient.send(httpRequest);
 
       // Convert the response stream to a regular response
       final response = await http.Response.fromStream(streamedResponse);
@@ -454,13 +469,10 @@ class UserService {
   String getImageUrl(String? imagePath) {
     if (imagePath == null) return '';
 
-    // If the path already starts with http/https, return as is
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
       return imagePath;
     }
 
-    // If it's a relative path, combine with baseUrl
-    // Remove any duplicate slashes between baseUrl and imagePath
     String path = imagePath.startsWith('/') ? imagePath : '/$imagePath';
     return '$baseUrl$path';
   }
@@ -468,16 +480,13 @@ class UserService {
   // Method to update user's avatar
   Future<bool> updateUserAvatar(String filePath) async {
     try {
-      // First upload the image
       final imagePath = await uploadImageFile(filePath);
 
       if (imagePath != null) {
-        // Then update the user profile with the new avatar path
         final updatedUser =
             await updateCurrentUserProfile({'avatar': imagePath});
 
         if (updatedUser != null) {
-          // Update the local UserInfo avatar
           UserInfo().currentUser?.avatar = imagePath;
           return true;
         }
@@ -489,7 +498,5 @@ class UserService {
     }
   }
 
-  // TODO: Implement methods for admin endpoints if needed (getAllUsers, getUserById, deleteUser, getUserByEmail)
-  // These would require sending the auth token and potentially checking user role on the client side as well,
-  // although the backend should enforce access control.
+  // TODO: Implement methods for admin endpoints if needed
 }
