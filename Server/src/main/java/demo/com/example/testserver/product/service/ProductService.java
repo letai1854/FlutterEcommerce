@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import demo.com.example.testserver.product.dto.UpdateProductRequestDTO; // Import Update DTO
 
 import java.math.BigDecimal;
+import java.util.Date; // Import Date
 
 public interface ProductService {
 
@@ -35,6 +36,17 @@ public interface ProductService {
             String sortBy,
             String sortDir
     );
+
+    /**
+     * Finds products for admin based on search term, date range, and pagination.
+     *
+     * @param search Optional search keyword (for full-text search).
+     * @param startDate Optional start date filter.
+     * @param endDate Optional end date filter.
+     * @param pageable Page request (page number, size).
+     * @return A page of ProductDTOs matching the criteria.
+     */
+    Page<ProductDTO> findProductsAdmin(String search, Date startDate, Date endDate, Pageable pageable);
 
     /**
      * Creates a new product based on the provided data.
