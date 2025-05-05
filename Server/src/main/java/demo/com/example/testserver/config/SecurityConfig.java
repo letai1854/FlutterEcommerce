@@ -48,20 +48,27 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/users/register").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/users/forgot-password").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/users/reset-password").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/users/verify-otp").permitAll() // Added path
-                .requestMatchers(HttpMethod.POST, "/api/users/set-new-password").permitAll() // Added path
+                .requestMatchers(HttpMethod.POST, "/api/users/verify-otp").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/users/set-new-password").permitAll()
                 // Allow product viewing without login
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
-                // Secure product creation - only ADMIN role at the new path
-                .requestMatchers(HttpMethod.POST, "/api/products/create").hasRole("ADMIN") // Create
-                .requestMatchers(HttpMethod.PUT, "/api/products/{id}").hasRole("ADMIN")    // Update
-                .requestMatchers(HttpMethod.DELETE, "/api/products/{id}").hasRole("ADMIN") // Delete
-                // Allow public access to categories and brands (assuming they exist under /api)
+                // Secure product management - only ADMIN role
+                .requestMatchers(HttpMethod.POST, "/api/products/create").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/products/{id}").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/products/{id}").hasRole("ADMIN")
+                // Allow public access to categories and brands
                 .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/brands/**").permitAll()
-                // --- Image Routes ---
-                .requestMatchers(HttpMethod.GET, "/api/images/**").permitAll() // Allow public viewing of images
-                .requestMatchers(HttpMethod.POST, "/api/images/upload").authenticated() // Require authentication for uploads
+                // Image Routes
+                .requestMatchers(HttpMethod.GET, "/api/images/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/images/upload").authenticated()
+                // Secure User Management for ADMIN
+                .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN") // Get all users
+                .requestMatchers(HttpMethod.GET, "/api/users/search").hasRole("ADMIN") // New search endpoint
+                .requestMatchers(HttpMethod.GET, "/api/users/{id}").hasRole("ADMIN") // Get user by ID (Admin only for now)
+                .requestMatchers(HttpMethod.GET, "/api/users/email/{email}").hasRole("ADMIN") // Get user by email
+                .requestMatchers(HttpMethod.PUT, "/api/users/{id}").hasRole("ADMIN") // Update user by ID
+                .requestMatchers(HttpMethod.DELETE, "/api/users/{id}").hasRole("ADMIN") // Delete user by ID
                 // Secure all other requests
                 .anyRequest().authenticated()
             );

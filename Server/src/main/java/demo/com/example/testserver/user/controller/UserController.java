@@ -1,6 +1,7 @@
 package demo.com.example.testserver.user.controller; // Correct package
 
 import java.math.BigDecimal; // Correct import path
+import java.util.Date; // Import Date
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -10,8 +11,12 @@ import java.util.stream.Collectors; // Import Collectors
 import org.slf4j.Logger; // Import HttpServletRequest
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page; // Import Page
+import org.springframework.data.domain.Pageable; // Import Pageable
+import org.springframework.format.annotation.DateTimeFormat; // Import DateTimeFormat
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize; // Import PreAuthorize
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -28,6 +33,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam; // Import RequestParam
 import org.springframework.web.bind.annotation.RestController;
 
 import demo.com.example.testserver.common.service.EmailService;
@@ -80,7 +86,7 @@ public class UserController {
 
     // Get all active users (Needs @PreAuthorize("hasRole('ADMIN')"))
     @GetMapping
-    // @PreAuthorize("hasRole('ADMIN')") // Example authorization
+    @PreAuthorize("hasRole('ADMIN')") // Secure this endpoint
     public ResponseEntity<List<UserDTO>> getAllUsers() { // Return List<UserDTO>
         try {
             List<User> users = userRepository.findAllActiveUsers();
@@ -95,6 +101,28 @@ public class UserController {
         } catch (Exception e) {
             logger.error("Error retrieving all users", e); // Log error
             return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Search users with pagination and filtering (Admin only)
+    @GetMapping("/search")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Page<UserDTO>> searchUsers(
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Date startDate, // Expect ISO 8601 format (e.g., 2023-10-27T00:00:00Z)
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Date endDate,
+            Pageable pageable) { // Spring automatically creates Pageable from page, size, sort params
+        try {
+            logger.info("Searching users with filters - Email: {}, StartDate: {}, EndDate: {}, Pageable: {}", email, startDate, endDate, pageable);
+            Page<User> userPage = userRepository.findAllWithFilters(email, startDate, endDate, pageable);
+
+            // Convert Page<User> to Page<UserDTO>
+            Page<UserDTO> userDtoPage = userPage.map(UserDTO::new);
+
+            return new ResponseEntity<>(userDtoPage, HttpStatus.OK);
+        } catch (Exception e) {
+            logger.error("Error searching users with filters", e);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -155,7 +183,7 @@ public class UserController {
 
     // Get user by ID (Needs @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id"))
     @GetMapping("/{id}")
-    // @PreAuthorize("hasRole('ADMIN') or #id == principal.id") // Example authorization (assuming principal has 'id')
+    @PreAuthorize("hasRole('ADMIN') or @securityService.isOwner(authentication, #id)") // Example more complex authorization
     public ResponseEntity<UserDTO> getUserById(@PathVariable int id) { // Return UserDTO
         Optional<User> userData = userRepository.findById(id);
         if (userData.isPresent()) {
@@ -230,7 +258,7 @@ public class UserController {
 
     // Update user by ID (Needs @PreAuthorize("hasRole('ADMIN')"))
     @PutMapping("/{id}")
-    // @PreAuthorize("hasRole('ADMIN')") // Example authorization
+    @PreAuthorize("hasRole('ADMIN')") // Secure this endpoint
     public ResponseEntity<UserDTO> updateUser(@PathVariable int id, @RequestBody User userUpdates) { // Return UserDTO
         Optional<User> userData = userRepository.findById(id);
 
@@ -454,7 +482,7 @@ public class UserController {
 
     // Delete user (Needs @PreAuthorize("hasRole('ADMIN')"))
     @DeleteMapping("/{id}")
-    // @PreAuthorize("hasRole('ADMIN')") // Example authorization
+    @PreAuthorize("hasRole('ADMIN')") // Secure this endpoint
     public ResponseEntity<HttpStatus> deleteUser(@PathVariable int id) {
         try {
             if (userRepository.existsById(id)) {
@@ -473,7 +501,7 @@ public class UserController {
 
     // Find user by email (Needs @PreAuthorize("hasRole('ADMIN')"))
     @GetMapping("/email/{email}")
-    // @PreAuthorize("hasRole('ADMIN')") // Example authorization
+    @PreAuthorize("hasRole('ADMIN')") // Secure this endpoint
     public ResponseEntity<UserDTO> getUserByEmail(@PathVariable String email) { // Return UserDTO
         Optional<User> user = userRepository.findByEmail(email);
         if (user.isPresent()) {
