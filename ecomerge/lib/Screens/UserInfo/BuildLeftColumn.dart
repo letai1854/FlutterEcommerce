@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+import 'package:e_commerce_app/database/services/user_service.dart';
 import 'package:e_commerce_app/Screens/UserInfo/UserInfoTypes.dart';
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:flutter/material.dart';
 
 class BuildLeftColumn extends StatefulWidget {
@@ -25,7 +28,30 @@ class BuildLeftColumn extends StatefulWidget {
 
 class _BuildLeftColumnState extends State<BuildLeftColumn> {
   @override
+  void initState() {
+    super.initState();
+    // Listen for UserInfo changes and trigger rebuild
+    UserInfo().addListener(_onUserInfoChanged);
+  }
+
+  @override
+  void dispose() {
+    // Remove listener when disposed
+    UserInfo().removeListener(_onUserInfoChanged);
+    super.dispose();
+  }
+
+  void _onUserInfoChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Get the current user info
+    final currentUser = UserInfo().currentUser;
+    final String? avatarUrl = currentUser?.avatar;
+    final String userName = currentUser?.fullName ?? 'user';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -33,15 +59,50 @@ class _BuildLeftColumnState extends State<BuildLeftColumn> {
         Center(
           child: Column(
             children: [
-              const CircleAvatar(
-                radius: 50,
-                backgroundImage:
-                    NetworkImage('https://via.placeholder.com/150'),
-              ),
+              // Wrap CircleAvatar with FutureBuilder for cached image
+              avatarUrl != null && avatarUrl.isNotEmpty
+                  ? FutureBuilder<Uint8List?>(
+                      future: UserService().getAvatarBytes(avatarUrl),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return CircleAvatar(
+                            radius: 50,
+                            backgroundColor: Colors.grey[200],
+                            child: const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          );
+                        } else if (snapshot.hasData && snapshot.data != null) {
+                          // Use cached image
+                          return CircleAvatar(
+                            radius: 50,
+                            backgroundImage: MemoryImage(snapshot.data!),
+                          );
+                        } else {
+                          // Fall back to network image or default
+                          return CircleAvatar(
+                            radius: 50,
+                            backgroundColor: Colors.grey[200],
+                            backgroundImage: NetworkImage(avatarUrl),
+                            onBackgroundImageError: (_, __) {},
+                          );
+                        }
+                      },
+                    )
+                  : CircleAvatar(
+                      radius: 50,
+                      backgroundColor: Colors.grey[200],
+                      child: const Icon(Icons.person,
+                          size: 50, color: Colors.grey),
+                    ),
               const SizedBox(height: 16),
-              const Text(
-                'Lê Văn Tài',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                userName,
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 30),
             ],

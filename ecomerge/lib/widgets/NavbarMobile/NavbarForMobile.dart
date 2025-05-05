@@ -1,4 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:e_commerce_app/constants.dart';
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
+import 'package:e_commerce_app/database/services/user_service.dart';
 import 'package:e_commerce_app/widgets/BottomNavigation.dart';
 import 'package:e_commerce_app/widgets/navbarHomeMobile.dart';
 import 'package:flutter/material.dart';
@@ -41,28 +45,83 @@ class _NavbarmobileDrawerState extends State<NavbarFormobile> {
             DrawerHeader(
               decoration: const BoxDecoration(color: Colors.red),
               child: GestureDetector(
-                  onTap: () {
+                onTap: () {
                   Navigator.pushNamed(context, '/info');
                 },
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: 30,
-                      backgroundColor: Colors.white,
-                      child: const Icon(Icons.person),
-                    ),
-                    const SizedBox(width: 10),
-                    const Text(
-                      'Le Van Tai',
-                      style: TextStyle(fontSize: 25, color: Colors.white),
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: Row(
+                        children: [
+                          ClipOval(
+                            child: SizedBox(
+                              width: 60,
+                              height: 60,
+                              child: UserInfo().currentUser?.avatar != null
+                                  ? FutureBuilder<Uint8List?>(
+                                      future: UserService().getAvatarBytes(
+                                          UserInfo().currentUser?.avatar),
+                                      builder: (context, snapshot) {
+                                        if (snapshot.connectionState ==
+                                                ConnectionState.waiting &&
+                                            !snapshot.hasData) {
+                                          return const Center(
+                                              child: SizedBox(
+                                                  width: 15,
+                                                  height: 15,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                          strokeWidth: 2)));
+                                        } else if (snapshot.hasData &&
+                                            snapshot.data != null) {
+                                          // Use cached image if available
+                                          return Image.memory(
+                                            snapshot.data!,
+                                            fit: BoxFit.cover,
+                                          );
+                                        } else {
+                                          // Fall back to network image if cache failed
+                                          return Image.network(
+                                            UserInfo().currentUser!.avatar!,
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                              return Container(
+                                                color: Colors.white,
+                                                child: Icon(Icons.person,
+                                                    color: Colors.black,
+                                                    size: 30),
+                                              );
+                                            },
+                                          );
+                                        }
+                                      },
+                                    )
+                                  : CircleAvatar(
+                                      radius: 30,
+                                      backgroundColor: Colors.white,
+                                      child: Icon(Icons.person),
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            UserInfo().currentUser?.fullName ??
+                                'Chưa đăng nhập',
+                            style: TextStyle(
+                              fontSize: 25,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-
-
               ),
             ),
-            
+
             // Conditional ListTiles for Web
             if (!isMobile) ...[
               ListTile(
@@ -80,7 +139,7 @@ class _NavbarmobileDrawerState extends State<NavbarFormobile> {
                 },
               ),
             ],
-            
+
             // Common ListTiles
             ListTile(
               leading: const Icon(Icons.person_add_alt),
