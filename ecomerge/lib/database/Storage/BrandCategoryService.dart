@@ -78,7 +78,7 @@ class AppDataService {
 
 
       // Đánh dấu đã khởi tạo thành công
-      _isInitialized = true;
+      _isInitialized = true;  
       if (kDebugMode) print('AppDataService initialization complete.');
 
     } catch (e) {

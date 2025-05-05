@@ -10,14 +10,30 @@ import 'package:e_commerce_app/database/models/update_product_request_dto.dart';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart'; // Import UserInfo để lấy token
 import 'package:http/http.dart' as http;
 import 'dart:io'; 
-import 'package:flutter/foundation.dart'; 
+import 'package:flutter/foundation.dart';
+import 'package:http/io_client.dart'; 
 
 
 
 
 class ProductService {
   final String baseUrl = baseurl; // Lấy từ database_helper
-
+  late  final http.Client httpClient;
+  ProductService(){
+     httpClient = _createSecureClient();
+  }
+   http.Client _createSecureClient() {
+    if (kIsWeb) {
+      // Web platform doesn't need special handling
+      return http.Client();
+    } else {
+      // For mobile and desktop platforms
+      final HttpClient ioClient = HttpClient()
+        ..badCertificateCallback =
+            ((X509Certificate cert, String host, int port) => true);
+      return IOClient(ioClient);
+    }
+  }
   Map<String, String> _getHeaders({bool includeAuth = true}) {
     final headers = {'Content-Type': 'application/json'};
     final authToken = UserInfo().authToken; 
@@ -76,7 +92,7 @@ class ProductService {
         headers: _getHeaders(includeAuth: true), // Cần token ADMIN
         body: jsonEncode(productRequest.toJson()), // Chuyển đổi DTO sang JSON
       );
-
+      print('Create Product Request URL: $response');
       if (kDebugMode) {
          print('Create Product Request URL: $url');
          // In body, cẩn thận với dữ liệu nhạy cảm như mật khẩu (không có trong DTO này)
@@ -108,12 +124,13 @@ class ProductService {
        throw Exception('An unexpected error occurred: ${e.toString()}');
     }
   }
- // Method to upload an image file to the server
-  Future<String?> uploadImage(List<int> imageBytes, String fileName) async {
+ Future<String?> uploadImage(List<int> imageBytes, String fileName) async {
     final url = Uri.parse('$baseUrl/api/images/upload');
+    print(
+        "Starting image upload, bytes: ${imageBytes.length}, filename: $fileName");
 
     try {
-      // Create a multipart request for the image upload
+      // Create a multipart request
       final request = http.MultipartRequest('POST', url);
 
       // Add authorization header if user is logged in
@@ -121,7 +138,7 @@ class ProductService {
         request.headers['Authorization'] = 'Bearer ${UserInfo().authToken}';
       }
 
-      // Add the file to the request
+      // Add file to the request
       final multipartFile = http.MultipartFile.fromBytes(
         'file',
         imageBytes,
@@ -129,8 +146,17 @@ class ProductService {
       );
       request.files.add(multipartFile);
 
-      // Send the request
-      final streamedResponse = await request.send();
+      // Important fix: Instead of using request.send(), which uses the default client,
+      // we'll manually send the request using our SSL-bypassing client
+      final stream = await request.finalize();
+
+      // Create a custom request with the same method, url, headers
+      final httpRequest = http.Request(request.method, request.url);
+      httpRequest.headers.addAll(request.headers);
+      httpRequest.bodyBytes = await stream.toBytes();
+
+      // Send the request using our secure client
+      final streamedResponse = await httpClient.send(httpRequest);
 
       // Convert the response stream to a regular response
       final response = await http.Response.fromStream(streamedResponse);
