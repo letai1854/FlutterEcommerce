@@ -1,15 +1,13 @@
 import 'package:flutter/foundation.dart';
-enum UserRole {
-  quan_tri,
-  khach_hang
-}
+
+enum UserRole { quan_tri, khach_hang }
 
 // DTO for User responses - excludes sensitive info like password
 class User {
   final int? id;
   final String email;
   final String fullName;
-  final String? avatar;
+  String? avatar; // Remove 'final' to make avatar mutable
   final String role; // 'khach_hang' or 'quan_tri'
   final String status; // 'kich_hoat' or 'khoa'
   final double customerPoints;

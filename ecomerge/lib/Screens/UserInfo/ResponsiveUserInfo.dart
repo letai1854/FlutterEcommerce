@@ -30,14 +30,14 @@ class _ResponsiveUserInfoState extends State<ResponsiveUserInfo>
   int _selectedOrderStatus = 0;
 
   // Form state for PersonalInfoForm - with initial values and saved state
-  String _name = "Lê Văn Tài";
+  String _name = "user  ";
   String _email = "example@gmail.com";
   String _phone = "0123456789";
   String _gender = "male";
   String _birthDate = "01/01/1990";
 
   // Saved state to track last saved values
-  String _savedName = "Lê Văn Tài";
+  String _savedName = "user";
   String _savedEmail = "example@gmail.com";
   String _savedPhone = "0123456789";
   String _savedGender = "male";

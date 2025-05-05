@@ -39,6 +39,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   cached_network_image: ^3.4.1
   image_picker: ^1.0.4 # Add image_picker dependency
+  file_picker: ^6.1.1  # Add file_picker package
   url_strategy: ^0.3.0
   shared_preferences: ^2.2.2
   universal_html: ^2.2.4
