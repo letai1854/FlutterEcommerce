@@ -43,41 +43,50 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
                 // Public endpoints
-                .requestMatchers("/api/users/ping").permitAll()
+                .requestMatchers("/api/users/ping").permitAll() // Keep ping public
+                // --- Authentication Endpoints (under /api/users) ---
                 .requestMatchers(HttpMethod.POST, "/api/users/login").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/users/register").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/users/logout").authenticated() // Require auth for logout
+                // --- Password Reset Endpoints (under /api/users) ---
                 .requestMatchers(HttpMethod.POST, "/api/users/forgot-password").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/users/reset-password").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/users/verify-otp").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/users/set-new-password").permitAll()
-                // Allow product viewing without login
+                // --- Product/Category/Brand Public Access ---
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
-                // Secure product management - only ADMIN role
-                .requestMatchers(HttpMethod.POST, "/api/products").hasRole("ADMIN") // Changed path from /create
-                .requestMatchers(HttpMethod.PUT, "/api/products/{id}").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/products/{id}").hasRole("ADMIN")
-                // Allow public access to categories and brands GET requests
                 .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/brands/**").permitAll()
-                // Secure category and brand management - only ADMIN role
+                // --- Product/Category/Brand Admin Management ---
+                .requestMatchers(HttpMethod.POST, "/api/products").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/products/{id}").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/products/{id}").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/categories").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/categories/{id}").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/categories/{id}").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/brands").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/brands/{id}").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/brands/{id}").hasRole("ADMIN")
-                // Secure Coupon management - only ADMIN role
-                .requestMatchers("/api/coupons/**").hasRole("ADMIN") // Add this line for coupons
-                // Image Routes
+
+                // --- Coupon Management ---
+                .requestMatchers(HttpMethod.POST, "/api/coupons").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/coupons").hasRole("ADMIN") // Admin search
+                .requestMatchers(HttpMethod.GET, "/api/coupons/available").authenticated() // User available
+                // --- Image Routes ---
                 .requestMatchers(HttpMethod.GET, "/api/images/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/images/upload").authenticated()
-                // Secure User Management for ADMIN
+                // --- Admin User Management (under /api/users) ---
                 .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN") // Get all users
-                .requestMatchers(HttpMethod.GET, "/api/users/search").hasRole("ADMIN") // New search endpoint
-                .requestMatchers(HttpMethod.GET, "/api/users/{id}").hasRole("ADMIN") // Get user by ID (Admin only for now)
+                .requestMatchers(HttpMethod.GET, "/api/users/search").hasRole("ADMIN") // Search users
                 .requestMatchers(HttpMethod.GET, "/api/users/email/{email}").hasRole("ADMIN") // Get user by email
+                // Need to be careful with GET /api/users/{id} if non-admins should access their own
+                // .requestMatchers(HttpMethod.GET, "/api/users/{id}").hasRole("ADMIN") // Temporarily restrict all GET by ID to ADMIN
+                // Or use method security in AdminUserController for GET /api/users/{id} if needed later
                 .requestMatchers(HttpMethod.PUT, "/api/users/{id}").hasRole("ADMIN") // Update user by ID
                 .requestMatchers(HttpMethod.DELETE, "/api/users/{id}").hasRole("ADMIN") // Delete user by ID
+                // --- Current User Profile Management (under /api/users/me) ---
+                .requestMatchers("/api/users/me/**").authenticated() // Secure all /me routes (profile, update, change password)
+                // --- Address Management ---
+                .requestMatchers("/api/addresses/me/**").authenticated() // Secure all /me address routes
                 // Secure all other requests
                 .anyRequest().authenticated()
             );
