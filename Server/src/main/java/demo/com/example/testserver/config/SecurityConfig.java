@@ -81,6 +81,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/users/email/{email}").hasRole("ADMIN") // Get user by email
                 .requestMatchers(HttpMethod.PUT, "/api/users/{id}").hasRole("ADMIN") // Update user by ID
                 .requestMatchers(HttpMethod.DELETE, "/api/users/{id}").hasRole("ADMIN") // Delete user by ID
+                // Secure Address Management for Authenticated Users
+                .requestMatchers("/api/addresses/me/**").authenticated() // Secure all /me address routes
                 // Secure all other requests
                 .anyRequest().authenticated()
             );
