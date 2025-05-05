@@ -27,5 +27,6 @@ public interface CouponRepository extends JpaRepository<Coupon, Integer> {
     List<Coupon> findByCodeContainingIgnoreCaseAndCreatedDateBetween(String code, Date startDate, Date endDate);
 
     // Find available coupons (usageCount < maxUsageCount) ordered by discount value descending
-    List<Coupon> findByUsageCountLessThanMaxUsageCountOrderByDiscountValueDesc();
+    @Query("SELECT c FROM Coupon c WHERE c.usageCount < c.maxUsageCount ORDER BY c.discountValue DESC")
+    List<Coupon> findAvailableCouponsOrderByDiscountValueDesc();
 }

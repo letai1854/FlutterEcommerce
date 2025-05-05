@@ -94,15 +94,16 @@ public class AddressServiceImpl implements AddressService {
 
         // Prevent deleting the default address? Or handle reassigning default?
         if (Boolean.TRUE.equals(addressToDelete.getDefault())) {
-            // Option 1: Prevent deletion
-             throw new IllegalArgumentException("Cannot delete the default address. Set another address as default first.");
-            // Option 2: Find another address and set it as default (more complex)
+            throw new IllegalArgumentException("Cannot delete the default address. Set another address as default first.");
         }
 
-        addressRepository.delete(addressToDelete);
-        logger.info("Deleted address with ID {} for user {}", addressId, userEmail);
-    }
+        // Remove the address from the user's collection.
+        // Since orphanRemoval=true, Hibernate will delete the Address entity
+        // when the collection change is persisted (e.g., during transaction commit/flush).
+        user.removeAddress(addressToDelete);
 
+        logger.info("Removed address with ID {} for user {}", addressId, userEmail);
+    }
 
     @Override
     @Transactional

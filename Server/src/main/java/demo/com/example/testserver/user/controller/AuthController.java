@@ -65,7 +65,7 @@ public class AuthController {
             // Create new Address entity
             Address newAddress = new Address();
             newAddress.setRecipientName(request.getFullName()); // Use full name as recipient name
-            newAddress.setPhoneNumber("0"); // Default phone number
+            newAddress.setPhoneNumber("0000000000"); // Default phone number
             newAddress.setSpecificAddress(request.getAddress()); // Set specific address
             newAddress.setDefault(true); // Make this the default address
 
