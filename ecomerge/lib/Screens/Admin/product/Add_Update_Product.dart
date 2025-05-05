@@ -1,10 +1,15 @@
+import 'package:e_commerce_app/database/Storage/BrandCategoryService.dart';
+import 'package:e_commerce_app/database/models/brand.dart';
+import 'package:e_commerce_app/database/models/categories.dart';
+
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io'; // Keep dart:io for File on non-web platforms
-import 'package:flutter/foundation.dart'; // Import for kIsWeb
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 class AddUpdateProductScreen extends StatefulWidget {
-  // Optional product data for editing
+
   final Map<String, dynamic>? product;
 
   const AddUpdateProductScreen({Key? key, this.product}) : super(key: key);
@@ -27,19 +32,19 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
   final List<XFile> _additionalImages = []; // Holds NEWLY picked additional images (XFile)
   final ImagePicker _picker = ImagePicker();
 
-  // State for dropdowns (Main Product - dummy data)
-  String? _selectedBrand;
-  final List<String> _brands = ['Apple', 'Dell','HP','Lenovo', 'Asus','Acer','MSI','Razer','Intel','AMD','NVIDIA','ASRock','Corsair','Crucial','Seagate','Samsung','Kingston','Noctua','DeepCool','NZXT','Corsair','Thermaltake'];
+  // State for dropdowns (Main Product) - Use DTO types
+  BrandDTO? _selectedBrand;
+  // Lấy danh sách từ AppDataService singleton - Sử dụng getter .brands
+  final List<BrandDTO> _brands = AppDataService().brands;
 
-  String? _selectedCategory;
-  final List<String> _categories = ['Máy tính', 'CPU', 'GPU',''];
+  CategoryDTO? _selectedCategory;
+   // Lấy danh sách từ AppDataService singleton - Sử dụng getter .categories
+  final List<CategoryDTO> _categories = AppDataService().categories;
 
   // State for variants
   final List<Variant> _variants = [];
 
   // Variables to hold initial image paths (String) for display in edit mode
-  // These are loaded from existing product data and are NOT XFiles.
-  // They are used for display until a new image is picked for that slot.
   String? _initialDefaultImagePath;
   final List<String> _initialAdditionalImagePaths = [];
 
@@ -52,54 +57,75 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
       // --- Load Main Product Data ---
       _nameController.text = widget.product!['name'] ?? '';
       _descriptionController.text = widget.product!['description'] ?? '';
-      _discountController.text = widget.product!['discount']?.toString() ?? '0';
-      // Set dropdown values if they exist in the product data and are in the dummy lists
-      if (_brands.contains(widget.product!['brand'])) {
-         _selectedBrand = widget.product!['brand'];
+      // Handle discount as potential int or double from JSON
+      final dynamic discountValue = widget.product!['discount'];
+      _discountController.text = discountValue != null ? discountValue.toString() : '0';
+
+      final int? productBrandId = widget.product!['brandId'] as int?;
+      final int? productCategoryId = widget.product!['categoryId'] as int?;
+
+      if (productBrandId != null) {
+         // Find the BrandDTO in the list that matches the product's brandId
+         try {
+            _selectedBrand = _brands.firstWhere(
+               (brand) => brand.id == productBrandId,
+            );
+         } catch (e) {
+            if (kDebugMode) print('Warning: Product brand ID $productBrandId not found in loaded brands.');
+            _selectedBrand = null; // Or handle appropriately
+         }
       }
-      if (_categories.contains(widget.product!['category'])) {
-         _selectedCategory = widget.product!['category'];
-      }
+
+       if (productCategoryId != null) {
+         // Find the CategoryDTO in the list that matches the product's categoryId
+         try {
+            _selectedCategory = _categories.firstWhere(
+               (category) => category.id == productCategoryId,
+            );
+         } catch (e) {
+             if (kDebugMode) print('Warning: Product category ID $productCategoryId not found in loaded categories.');
+             _selectedCategory = null; // Or handle appropriately
+         }
+       }
 
 
       // --- Load Main Product Images Paths for initial display ---
-      // We assume 'images' in product data is a List<String> or List<dynamic> containing paths/URLs
       final List<dynamic> productImages = widget.product!['images'] ?? [];
-      // Ensure paths are strings and filter out nulls
-      final List<String> validInitialImagePaths = productImages.where((img) => img != null && img is String).cast<String>().toList();
+      final List<String> validInitialImagePaths = productImages
+          .where((img) => img != null && img is String && (img.startsWith('http') || img.startsWith('/'))) // Basic check for valid paths/URLs
+          .cast<String>()
+          .toList();
 
       if (validInitialImagePaths.isNotEmpty) {
-        // Assuming the first image in the list is the default one
         _initialDefaultImagePath = validInitialImagePaths.first;
         if (validInitialImagePaths.length > 1) {
           _initialAdditionalImagePaths.addAll(validInitialImagePaths.sublist(1));
         }
       }
-       // Note: _defaultImage and _additionalImages state variables remain null/empty here initially.
-       // They will only be populated if the user picks a *new* image using the picker.
-
 
       // --- Load Variant Data ---
-      // We assume 'variants' in product data is a List<Map<String, dynamic>>
       List<Map<String, dynamic>> existingVariantsData = List<Map<String, dynamic>>.from(widget.product!['variants'] ?? []);
 
-      // Clear any default variants added previously if editing
-      _variants.clear();
+      _variants.clear(); // Clear any default variants
 
       if (existingVariantsData.isNotEmpty) {
         for (var variantData in existingVariantsData) {
            Variant variant = Variant();
            // Populate controllers from existing data
            variant.nameController.text = variantData['name'] ?? '';
-           // Ensure price and quantity are strings before setting controllers
-           variant.priceController.text = variantData['price']?.toString() ?? '';
-           variant.quantityController.text = variantData['quantity']?.toString() ?? '';
+           // Ensure price and quantity are handled correctly (could be int/double)
+           final dynamic priceValue = variantData['price'];
+           variant.priceController.text = priceValue != null ? priceValue.toString() : '';
+           final dynamic quantityValue = variantData['quantity'];
+           variant.quantityController.text = quantityValue != null ? quantityValue.toString() : '';
 
            // Store initial variant image path for display
-           // We assume 'defaultImage' in variantData is a String path/URL
-           variant.initialImagePath = variantData['defaultImage']?.toString(); // Use the new field in Variant, ensure string
+           variant.initialImagePath = variantData['defaultImage']?.toString();
 
-           _variants.add(variant); // Add the populated variant object to the list
+           // If editing, potentially store original variant ID if your backend expects it for updates
+           // variant.originalId = variantData['id'];
+
+           _variants.add(variant);
         }
       } else {
         // If editing a product that happens to have no variants, add 2 empty ones as per requirement
@@ -134,13 +160,11 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
       setState(() {
         if (isDefault) {
           _defaultImage = pickedFile;
-           // When a new default image is picked, clear the initial path
-          _initialDefaultImagePath = null;
+          _initialDefaultImagePath = null; // Clear initial path when a new one is picked
         } else {
-          _additionalImages.add(pickedFile);
-           // Note: This simple logic adds new images. It doesn't remove initial ones
-           // from the _initialAdditionalImagePaths list automatically. The UI remove button
-           // handles removing from both lists.
+          // Add to additional images, handling potential duplicates by path if needed
+          // For simplicity, we just add. A more robust solution might check if a file with the same path already exists in _additionalImages or _initialAdditionalImagePaths.
+           _additionalImages.add(pickedFile);
         }
       });
     }
@@ -154,6 +178,7 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
            } else if (imageSource is String) {
                _initialAdditionalImagePaths.remove(imageSource);
            }
+
        });
    }
 
@@ -182,33 +207,52 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
            ScaffoldMessenger.of(context).showSnackBar(
                const SnackBar(content: Text('Vui lòng thêm ít nhất một biến thể')),
            );
-           return; // Stop submission if no variants
+           return;
        }
 
-       // You might want to add a check here to ensure variant fields (name, price, quantity)
-       // are also valid before submitting the entire form.
-       // e.g., for (var variant in _variants) { if (!variant.isValid()) { ... } }
-       // This requires adding validation logic inside the Variant class or VariantInput.
+        // Optional: Validate variant fields here as well
+       bool areVariantsValid = true;
+       for (var variant in _variants) {
+           // Example validation: Check if name, price, quantity controllers have text
+           if (variant.nameController.text.isEmpty ||
+               variant.priceController.text.isEmpty ||
+               variant.quantityController.text.isEmpty ||
+               double.tryParse(variant.priceController.text) == null || // Check if price is a valid number
+               int.tryParse(variant.quantityController.text) == null // Check if quantity is a valid integer
+              )
+            {
+               areVariantsValid = false;
+               // You might want to show a specific error message here or highlight the invalid variant
+               break; // Stop checking on the first invalid variant
+           }
+       }
+
+       if (!areVariantsValid) {
+            ScaffoldMessenger.of(context).showSnackBar(
+               const SnackBar(content: Text('Vui lòng điền đầy đủ và chính xác thông tin cho tất cả biến thể.')),
+           );
+           return;
+       }
 
 
       // TODO: Process form data (save product)
-      // When saving, you need to determine the final image sources.
-      // For default image: use _defaultImage?.path if picked, otherwise use _initialDefaultImagePath.
-      // For additional images: combine _initialAdditionalImagePaths and paths from _additionalImages.
-
       print('Form submitted');
       print('Product Name: ${_nameController.text}');
       print('Description: ${_descriptionController.text}');
+      // Note: Discount will be converted to double/int when preparing data for backend
       print('Discount: ${_discountController.text}');
-      print('Brand: $_selectedBrand');
-      print('Category: $_selectedCategory');
+      // Print selected Brand/Category names and IDs
+      print('Selected Brand: ${_selectedBrand?.name} (ID: ${_selectedBrand?.id})');
+      print('Selected Category: ${_selectedCategory?.name} (ID: ${_selectedCategory?.id})');
 
-      // Collecting final image paths for saving
-      String? finalDefaultImagePath = _defaultImage?.path ?? _initialDefaultImagePath;
-      // Combine initial paths and newly picked paths for additional images
+
+      // Collecting final image paths for saving (These are paths/URLs, not the actual file data)
+      // You will need to handle uploading new files (_defaultImage, _additionalImages)
+      // and getting their server-side paths/URLs *before* sending the final product DTO.
+      String? finalDefaultImagePath = _defaultImage?.path ?? _initialDefaultImagePath; // Use path of picked XFile or initial String
       List<String> finalAdditionalImagePaths = [
          ..._initialAdditionalImagePaths, // Include initial paths remaining
-         ..._additionalImages.map((img) => img.path).toList(), // Add newly picked images
+         ..._additionalImages.map((img) => img.path).toList(), // Add newly picked images' paths
       ];
 
       print('Default Image Path (Final): $finalDefaultImagePath');
@@ -220,12 +264,11 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
           // For variant image, use the new picked image's path OR the initial path
           String? finalVariantImagePath = v.defaultImage?.path ?? v.initialImagePath;
           return {
-              // Include necessary data for saving (matching backend/data model)
-              // Note: If editing, you might need to include the variant ID to update the correct variant.
+
               'name': v.nameController.text,
-              'price': double.tryParse(v.priceController.text) ?? 0.0, // Save as double
-              'quantity': int.tryParse(v.quantityController.text) ?? 0, // Save as int
-              'defaultImage': finalVariantImagePath, // This will be the path/URL string (of XFile or initial)
+              'price': double.tryParse(v.priceController.text) ?? 0.0, // Convert to double
+              'quantity': int.tryParse(v.quantityController.text) ?? 0, // Convert to int
+              'defaultImage': finalVariantImagePath, // This will be the path/URL string
                // If editing, carry over original SKU, created_date, updated_date if your data model includes them
                // e.g., 'sku': this.originalSku, 'created_date': this.originalCreatedDate, ...
           };
@@ -233,12 +276,30 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
 
       print('Variants Data (Final): $variantsData');
 
-      // In a real application, you would send this collected data
-      // (including final image paths/URLs after uploading images if needed)
-      // to your backend API to save or update the product.
 
-      // Navigate back after saving
-      // This will pop the AddUpdateProductScreen and return to the previous screen (ProductScreen)
+      // Example of how you might structure the data to send to your API (this depends heavily on your backend DTO)
+      // This is a simplified example. You would likely have a CreateProductRequestDTO
+      // or UpdateProductRequestDTO class in Dart that matches your Java DTO structure.
+      Map<String, dynamic> productDataToSend = {
+         // Include product ID if updating
+         // 'id': widget.product?['id'], // Uncomment if needed for update API
+
+         'name': _nameController.text,
+         'description': _descriptionController.text,
+         'discount': double.tryParse(_discountController.text) ?? 0.0, // Send as number
+         'brandId': _selectedBrand?.id, // Send the ID of the selected brand
+         'categoryId': _selectedCategory?.id, // Send the ID of the selected category
+
+         'images': [
+             if (finalDefaultImagePath != null) finalDefaultImagePath, // Include default image path
+             ...finalAdditionalImagePaths, // Include additional image paths
+         ],
+         'variants': variantsData, // Send variant data (already includes variant image paths/URLs)
+      };
+
+       if (kDebugMode) print('Data to Send to API: $productDataToSend');
+
+
       Navigator.pop(context);
     }
   }
@@ -282,7 +343,7 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
 
     // If it's a String (initial path from data or potentially a network URL)
     if (imageSource is String && imageSource.isNotEmpty) {
-         // Check if it's an asset path (simple check)
+         // Check if it's an asset path (simple check) - Less likely for server data
          if (imageSource.startsWith('assets/')) {
             return Image.asset(
                  imageSource,
@@ -294,7 +355,7 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
                   },
             );
          } else if (imageSource.startsWith('http') || imageSource.startsWith('https')) {
-             // Assume it's a network URL
+             // Assume it's a network URL (most common for images from backend)
               return Image.network(
                   imageSource,
                   fit: fit,
@@ -306,9 +367,7 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
               );
          }
          else {
-           // Could be a file path on non-web, or a different web path.
-           // For robustness, might need more sophisticated checks.
-           // Assuming it's a file path on non-web, or a non-http web path that might work with network image.
+           
             if (!kIsWeb) { // Only try File on non-web
                  try {
                    return Image.file(
@@ -343,6 +402,15 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Check if app data is loaded before building
+     if (!AppDataService().isInitialized) {
+         return Scaffold(
+           appBar: AppBar(title: Text('Loading Data')),
+           body: Center(child: CircularProgressIndicator()),
+         );
+     }
+
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.product == null ? 'Thêm Sản phẩm' : 'Cập nhật Sản phẩm'),
@@ -384,15 +452,13 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
                     child: Container(
                       width: 100,
                       height: 100,
-                      // Removed direct color property
-                      clipBehavior: Clip.antiAlias, // Apply border radius if any parent container has it
                        decoration: BoxDecoration(
-                         borderRadius: BorderRadius.circular(8), // Optional: Add rounded corners
-                         color: Colors.grey[200], // Moved color inside BoxDecoration
+                         borderRadius: BorderRadius.circular(8),
+                         color: Colors.grey[200],
                        ),
-                      // Display logic: Use picked image (XFile) if available, otherwise use initial path (String) if available, otherwise placeholder icon
+                      clipBehavior: Clip.antiAlias,
                       child: _buildImageDisplayWidget(
-                           _defaultImage ?? _initialDefaultImagePath, // Pass either XFile or String path
+                           _defaultImage ?? _initialDefaultImagePath,
                            size: 100,
                            iconSize: 40,
                            fit: BoxFit.cover
@@ -414,36 +480,20 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
                      runSpacing: 8,
                      children: [
                        // Display ALL current image sources (initial paths + newly picked XFiles)
-                       // Create a combined list of sources for display
+                       // Combine initial paths and paths from XFiles for display
                        ...( _initialAdditionalImagePaths + _additionalImages.map((x) => x.path).toList() ).map((imagePath) {
-                           // This logic is to find the *original object* (String or XFile) that has this imagePath
-                           dynamic originalSource;
-                           // First, check if this path exists in the initial paths list
-                           try {
-                               originalSource = _initialAdditionalImagePaths.firstWhere((path) => path == imagePath);
-                           } catch (e) {
-                               // If not found in initial paths, check in the list of picked XFiles
-                               try {
-                                   originalSource = _additionalImages.firstWhere((xfile) => xfile.path == imagePath);
-                               } catch (e) {
-                                   // If not found in either, sourceToRemove remains null
-                                    originalSource = null;
-                               }
-                           }
-
 
                            return Stack(
                              children: [
                                Container(
                                  width: 80,
                                  height: 80,
-                                 // Removed direct color property
-                                 decoration: BoxDecoration( // Moved color inside BoxDecoration
+                                 decoration: BoxDecoration(
                                    borderRadius: BorderRadius.circular(8),
-                                   color: Colors.grey[200], // Background if image fails
+                                   color: Colors.grey[200],
                                  ),
                                  clipBehavior: Clip.antiAlias,
-                                 child: _buildImageDisplayWidget(imagePath, size: 80, iconSize: 30), // Use helper to display by path
+                                 child: _buildImageDisplayWidget(imagePath, size: 80, iconSize: 30),
                                ),
                                Positioned(
                                  right: 0,
@@ -451,11 +501,12 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
                                  child: GestureDetector(
                                    onTap: () {
                                      setState(() {
+                                       // Logic to remove the image source based on the path
                                        // Try removing the imagePath string from initial paths first
                                        bool removedFromInitial = _initialAdditionalImagePaths.remove(imagePath);
 
                                        // If it wasn't found in initial paths,
-                                       // try removing the corresponding XFile from picked images
+                                       // try removing the corresponding XFile from picked images by comparing paths
                                        if (!removedFromInitial) {
                                            _additionalImages.removeWhere((xfile) => xfile.path == imagePath);
                                        }
@@ -463,30 +514,28 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
                                      });
                                    },
                                    child: Container(
-                                     // Removed direct color property
                                      padding: const EdgeInsets.all(2),
-                                     decoration: BoxDecoration( // Moved color inside BoxDecoration
-                                        color: Colors.black54, // Semi-transparent background for icon
+                                     decoration: BoxDecoration(
+                                        color: Colors.black54,
                                         borderRadius: BorderRadius.only(
-                                            topRight: Radius.circular(8), // Match container radius
+                                            topRight: Radius.circular(8),
                                             bottomLeft: Radius.circular(8),
                                         )
                                      ),
-                                     child: const Icon(Icons.close, color: Colors.white, size: 14), // Smaller icon
+                                     child: const Icon(Icons.close, color: Colors.white, size: 14),
                                    ),
                                  ),
                                ),
                              ],
                            );
-                       }),
+                       }).toList(), // Remember to call .toList() on the map result
                        // Add button to pick more images
                        GestureDetector(
                          onTap: () => _pickImage(false),
                          child: Container(
                            width: 80,
                            height: 80,
-                           // Removed direct color property
-                           decoration: BoxDecoration( // Moved color inside BoxDecoration
+                           decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(8),
                               color: Colors.grey[200],
                            ),
@@ -500,22 +549,22 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
               const SizedBox(height: 16),
 
               // Brand Dropdown (Main Product)
-              DropdownButtonFormField<String>(
+              DropdownButtonFormField<BrandDTO>( // Type is now BrandDTO
                 value: _selectedBrand,
                 decoration: const InputDecoration(labelText: 'Thương hiệu'),
-                items: _brands.map((brand) {
-                  return DropdownMenuItem(
-                    value: brand,
-                    child: Text(brand),
+                 items: _brands.map((brand) {
+                  return DropdownMenuItem<BrandDTO>( // Item type is BrandDTO
+                    value: brand, // Value is the BrandDTO object
+                    child: Text(brand.name ?? ''), // Display the name
                   );
                 }).toList(),
-                onChanged: (newValue) {
+                onChanged: (BrandDTO? newValue) { // newValue is BrandDTO?
                   setState(() {
                     _selectedBrand = newValue;
                   });
                 },
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
+                  if (value == null) { // Check if value is null
                     return 'Vui lòng chọn thương hiệu';
                   }
                   return null;
@@ -524,22 +573,22 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
               const SizedBox(height: 16),
 
               // Category Dropdown (Main Product)
-              DropdownButtonFormField<String>(
+              DropdownButtonFormField<CategoryDTO>( // Type is now CategoryDTO
                 value: _selectedCategory,
                 decoration: const InputDecoration(labelText: 'Danh mục'),
                 items: _categories.map((category) {
-                  return DropdownMenuItem(
-                    value: category,
-                    child: Text(category),
+                  return DropdownMenuItem<CategoryDTO>( // Item type is CategoryDTO
+                    value: category, // Value is the CategoryDTO object
+                    child: Text(category.name ?? ''), // Display the name
                   );
                 }).toList(),
-                onChanged: (newValue) {
+                onChanged: (CategoryDTO? newValue) { // newValue is CategoryDTO?
                   setState(() {
                     _selectedCategory = newValue;
                   });
                 },
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
+                  if (value == null) { // Check if value is null
                     return 'Vui lòng chọn danh mục';
                   }
                   return null;
@@ -566,7 +615,7 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
               TextFormField(
                 controller: _discountController,
                 decoration: const InputDecoration(labelText: 'Giảm giá (%) (Tối đa 50%)'),
-                keyboardType: TextInputType.number,
+                keyboardType: TextInputType.numberWithOptions(decimal: true), // Allow decimal for discount
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return null; // Discount is optional
@@ -643,9 +692,14 @@ class Variant {
   XFile? defaultImage; // Holds NEWLY picked image (XFile) for this variant
   String? initialImagePath; // Holds path/URL of EXISTING image (String) when editing
 
+  // Optional: Store original variant ID if editing
+  // int? originalId;
+
+
   final ImagePicker _picker = ImagePicker();
 
   // Function to pick the default image for variant
+  // Requires a setState callback from the parent widget to rebuild the UI
   Future<void> pickDefaultImage(Function setStateCallback) async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
@@ -672,11 +726,12 @@ class Variant {
 
     return {
       // Include necessary data for saving (matching backend/data model)
-      // Note: If editing, you might need to include the variant ID to update the correct variant.
+      // Include originalId if editing
+      // if (originalId != null) 'id': originalId,
       'name': nameController.text,
       'price': double.tryParse(priceController.text) ?? 0.0, // Save as double
       'quantity': int.tryParse(quantityController.text) ?? 0, // Save as int
-      'defaultImage': finalImagePath, // This will be the path/URL string (of XFile or initial)
+      'defaultImage': finalImagePath, // This will be the path/URL string
        // If editing, carry over original SKU, created_date, updated_date if your data model includes them
        // e.g., 'sku': this.originalSku, 'created_date': this.originalCreatedDate, ...
     };
@@ -705,7 +760,7 @@ class _VariantInputState extends State<VariantInput> {
   // Dispose controllers is handled by the parent AddUpdateProductScreen
   // when a variant is removed or the screen is disposed.
 
-  // Helper to build image widget from source (Handles Asset, File, Network, XFile based on platform)
+   // Helper to build image widget from source (Handles Asset, File, Network, XFile based on platform)
   // Duplicate from parent, could be refactored into a shared utility widget.
   Widget _buildImageDisplayWidget(dynamic imageSource, {double size = 40, double iconSize = 30, BoxFit fit = BoxFit.cover}) {
       if (imageSource == null) {
@@ -744,7 +799,7 @@ class _VariantInputState extends State<VariantInput> {
 
       // If it's a String (initial path from data or potentially a network URL)
       if (imageSource is String && imageSource.isNotEmpty) {
-           // Check if it's an asset path (simple check)
+           // Check if it's an asset path (simple check) - Less likely for server data
            if (imageSource.startsWith('assets/')) {
               return Image.asset(
                    imageSource,
@@ -756,7 +811,7 @@ class _VariantInputState extends State<VariantInput> {
                     },
               );
            } else if (imageSource.startsWith('http') || imageSource.startsWith('https')) {
-               // Assume it's a network URL
+               // Assume it's a network URL (most common for images from backend)
                 return Image.network(
                     imageSource,
                     fit: fit,
@@ -768,33 +823,34 @@ class _VariantInputState extends State<VariantInput> {
                 );
            }
            else {
-             // Could be a file path on non-web, or a different web path.
-             // For robustness, might need more sophisticated checks.
-             // Assuming it's a file path on non-web, or a non-http web path that might work with network image.
-              if (!kIsWeb) { // Only try File on non-web
-                   try {
-                     return Image.file(
-                         File(imageSource),
-                         fit: fit,
-                          errorBuilder: (context, error, stackTrace) {
-                             print('Error loading file: $imageSource, Error: $error'); // Debugging
-                             return Icon(Icons.broken_image, size: iconSize, color: Colors.red);
-                         },
-                     );
-                   } catch (e) {
-                     print('Exception creating File from path: $imageSource, Exception: $e'); // Debugging
-                     return Icon(Icons.error_outline, size: iconSize, color: Colors.red);
-                   }
-              } else { // On web, if not asset/http, try network as a fallback (might be blob URL etc)
-                   return Image.network(
-                      imageSource,
-                      fit: fit,
-                       errorBuilder: (context, error, stackTrace) {
-                          print('Error loading web path (fallback): $imageSource, Error: $error'); // Debugging
-                          return Icon(Icons.broken_image, size: iconSize, color: Colors.red);
-                      },
-                  );
-              }
+              // Could be a file path on non-web, or a relative server path.
+              // If it's a relative server path, it needs the base URL.
+               // Assuming this is a file path on non-web, or possibly needs ProductService().getImageUrl(...)
+               // For this example, let's assume it's either a network URL or a file path.
+               if (!kIsWeb) { // Only try File on non-web
+                    try {
+                      return Image.file(
+                          File(imageSource),
+                          fit: fit,
+                           errorBuilder: (context, error, stackTrace) {
+                              print('Error loading file: $imageSource, Error: $error'); // Debugging
+                              return Icon(Icons.broken_image, size: iconSize, color: Colors.red);
+                          },
+                      );
+                    } catch (e) {
+                      print('Exception creating File from path: $imageSource, Exception: $e'); // Debugging
+                      return Icon(Icons.error_outline, size: iconSize, color: Colors.red);
+                    }
+               } else { // On web, if not asset/http, try network as a fallback (might be blob URL etc)
+                    return Image.network(
+                       imageSource,
+                       fit: fit,
+                        errorBuilder: (context, error, stackTrace) {
+                           print('Error loading web path (fallback): $imageSource, Error: $error'); // Debugging
+                           return Icon(Icons.broken_image, size: iconSize, color: Colors.red);
+                       },
+                   );
+               }
            }
       }
 
@@ -849,19 +905,18 @@ class _VariantInputState extends State<VariantInput> {
                 const Text('Ảnh mặc định (Biến thể):', style: TextStyle(fontSize: 16)),
                 const SizedBox(height: 8),
                 GestureDetector(
-                  onTap: () => widget.variant.pickDefaultImage(setState), // Use the variant's pick method
+                  onTap: () => widget.variant.pickDefaultImage(setState), // Use the variant's pick method and pass setState
                   child: Container(
                     width: 80,
                     height: 80,
-                    // Removed direct color property
-                     decoration: BoxDecoration( // Moved color inside BoxDecoration
-                         borderRadius: BorderRadius.circular(8), // Optional: Add rounded corners
+                     decoration: BoxDecoration(
+                         borderRadius: BorderRadius.circular(8),
                           color: Colors.grey[200],
                        ),
                       clipBehavior: Clip.antiAlias,
                     // Display logic: Use picked image (XFile) if available, otherwise use initial path (String) if available, otherwise placeholder icon
                     child: _buildImageDisplayWidget(
-                         widget.variant.defaultImage ?? widget.variant.initialImagePath, // Pass either XFile or String path
+                         widget.variant.defaultImage ?? widget.variant.initialImagePath,
                          size: 80,
                          iconSize: 30,
                          fit: BoxFit.cover
@@ -876,15 +931,18 @@ class _VariantInputState extends State<VariantInput> {
             TextFormField(
               controller: widget.variant.priceController,
               decoration: const InputDecoration(labelText: 'Giá bán (VNĐ)'),
-              keyboardType: TextInputType.number,
+              keyboardType: TextInputType.numberWithOptions(decimal: true), // Allow decimal
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Vui lòng nhập giá bán';
                 }
-                 if (double.tryParse(value) == null) {
+                 final price = double.tryParse(value);
+                 if (price == null) {
                     return 'Giá bán phải là số';
                   }
-                // You might want to add a check for price > 0
+                 if (price <= 0) { // Price must be positive
+                    return 'Giá bán phải lớn hơn 0';
+                  }
                 return null;
               },
             ),
@@ -903,7 +961,9 @@ class _VariantInputState extends State<VariantInput> {
                  if (quantity == null) {
                     return 'Số lượng tồn kho phải là số nguyên';
                   }
-                // You might want to add a check for quantity >= 0
+                if (quantity < 0) { // Quantity can be 0 but not negative
+                     return 'Số lượng tồn kho không thể âm';
+                 }
                 return null;
               },
             ),

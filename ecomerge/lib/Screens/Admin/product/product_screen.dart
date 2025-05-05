@@ -127,20 +127,20 @@ class _ProductScreenState extends State<ProductScreen> {
 
   // Method to navigate to Add/Update screen using Navigator
   void _navigateToAddUpdateScreen({Map<String, dynamic>? product}) {
-    // Navigator.push(
-    //   context,
-    //   MaterialPageRoute(
-    //     builder: (context) => AddUpdateProductScreen(key: 1, product: product),
-    //   ),
-    //   // The .then() block is called when the pushed screen (AddUpdateProductScreen)
-    //   // is popped (when Navigator.pop() is called in AddUpdateProductScreen).
-    //   // This is the correct place to refresh the UI if needed after adding/editing.
-    //   // In a real app, you would likely refetch the data here.
-    // ).then((_) {
-    //   print('Returned from Add/Update Screen. Refreshing Product List.');
-    //   // For this sample, just rebuild the UI
-    //   setState(() {});
-    // });
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddUpdateProductScreen( product: product),
+      ),
+      // The .then() block is called when the pushed screen (AddUpdateProductScreen)
+      // is popped (when Navigator.pop() is called in AddUpdateProductScreen).
+      // This is the correct place to refresh the UI if needed after adding/editing.
+      // In a real app, you would likely refetch the data here.
+    ).then((_) {
+      print('Returned from Add/Update Screen. Refreshing Product List.');
+      // For this sample, just rebuild the UI
+      setState(() {});
+    });
   }
 
   // Removed _returnToProductList method

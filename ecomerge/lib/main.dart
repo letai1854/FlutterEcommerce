@@ -12,6 +12,7 @@ import 'package:e_commerce_app/Screens/Search/PageSearch.dart';
 import 'package:e_commerce_app/Screens/SignUp/PageSignup.dart';
 import 'package:e_commerce_app/Screens/SuccessPayment/PageSuccessPayment.dart';
 import 'package:e_commerce_app/Screens/UserInfo/ResponsiveUserInfo.dart';
+import 'package:e_commerce_app/database/Storage/BrandCategoryService.dart';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:flutter/material.dart';
 import 'package:url_strategy/url_strategy.dart';
@@ -29,6 +30,8 @@ Future<void> initApp() async {
   // // Initialize user session
   // final userProvider = UserProvider();
   // await userProvider.loadUserSession();
+  await AppDataService().loadData();
+  print('AppDataService loaded successfully during app init.');
 }
 
 void main() async {
