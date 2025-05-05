@@ -4,8 +4,34 @@ import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/services/user_service.dart';
 import 'package:e_commerce_app/widgets/Points/PointsContent.dart';
 
-class UserInfoHeader extends StatelessWidget {
+class UserInfoHeader extends StatefulWidget {
   const UserInfoHeader({Key? key}) : super(key: key);
+
+  @override
+  State<UserInfoHeader> createState() => _UserInfoHeaderState();
+}
+
+class _UserInfoHeaderState extends State<UserInfoHeader> {
+  final UserService _userService = UserService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Listen for UserInfo changes and trigger rebuild
+    UserInfo().addListener(_onUserInfoChanged);
+  }
+
+  @override
+  void dispose() {
+    // Remove listener when disposed
+    UserInfo().removeListener(_onUserInfoChanged);
+    super.dispose();
+  }
+
+  // Called when UserInfo changes (like avatar or name updates)
+  void _onUserInfoChanged() {
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +60,7 @@ class UserInfoHeader extends StatelessWidget {
               height: 36,
               child: UserInfo().currentUser?.avatar != null
                   ? FutureBuilder<Uint8List?>(
-                      future: UserService()
+                      future: _userService
                           .getAvatarBytes(UserInfo().currentUser?.avatar),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
