@@ -102,6 +102,29 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Transactional // Read-only might be sufficient if no lazy loading issues
+    public ProductDTO findProductById(Long id) {
+        logger.info("Attempting to find product with ID: {}", id);
+        Product product = productRepository.findById(id.intValue()) // Assuming ID is still Integer in repo, cast needed
+                .orElseThrow(() -> {
+                    logger.warn("Product not found with ID: {}", id);
+                    return new EntityNotFoundException("Product not found with ID: " + id);
+                });
+
+        // Eagerly fetch collections if needed and not already configured
+        // Hibernate.initialize(product.getVariants()); // Example if lazy loading issues occur
+        // Hibernate.initialize(product.getImages());
+
+        logger.info("Found product with ID: {}. Mapping to DTO.", id);
+        ProductDTO productDTO = productMapper.mapToProductDTO(product);
+
+        // The mapper should now handle mapping variants to ProductVariantDTO within ProductDTO
+        logger.debug("Mapped ProductDTO: ID={}, Name={}, Variants={}", productDTO.getId(), productDTO.getName(), productDTO.getVariantCount());
+
+        return productDTO;
+    }
+
+    @Override
     @Transactional
     public ProductDTO createProduct(CreateProductRequestDTO requestDTO) {
         logger.info("Attempting to create product with name: {}", requestDTO.getName());

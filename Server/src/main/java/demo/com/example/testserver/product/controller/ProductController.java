@@ -63,6 +63,21 @@ public class ProductController {
         }
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getProductById(@PathVariable Long id) {
+        try {
+            logger.info("Received request to get product by ID: {}", id);
+            ProductDTO productDTO = productService.findProductById(id);
+            return ResponseEntity.ok(productDTO);
+        } catch (EntityNotFoundException e) {
+            logger.warn("Product not found for ID {}: {}", id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error fetching product with ID {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred while fetching the product.");
+        }
+    }
+
     @PostMapping("/create") // Changed from @PostMapping
     @PreAuthorize("hasRole('ADMIN')") // Only allow users with ADMIN role
     public ResponseEntity<?> createProduct(@Valid @RequestBody CreateProductRequestDTO requestDTO) {

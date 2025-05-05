@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import demo.com.example.testserver.product.model.ProductImage;
 import demo.com.example.testserver.product.model.ProductVariant;
 import demo.com.example.testserver.product.dto.CreateProductVariantDTO;
+import demo.com.example.testserver.product.dto.ProductVariantDTO; // Import ProductVariantDTO
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -22,11 +23,21 @@ public class ProductMapper {
         if (product == null) {
             return null;
         }
-        ProductDTO dto = new ProductDTO(product); // Assuming ProductDTO constructor handles basic mapping
+        ProductDTO dto = new ProductDTO(product); // Constructor handles basic mapping + variants now
         // Set denormalized fields directly from the entity
         dto.setAverageRating(product.getAverageRating());
         dto.setMinPrice(product.getMinPrice());
         dto.setMaxPrice(product.getMaxPrice());
+        // Explicitly set variant count (redundant if constructor does it, but safe)
+        dto.setVariantCount(product.getVariants() != null ? product.getVariants().size() : 0);
+        // Map variants explicitly if needed (constructor might already do this)
+        if (product.getVariants() != null) {
+             dto.setVariants(product.getVariants().stream()
+                                   .map(this::mapToProductVariantDTO) // Use helper method
+                                   .collect(Collectors.toList()));
+        } else {
+            dto.setVariants(new ArrayList<>());
+        }
         // Add any other complex mapping logic here if needed
         return dto;
     }
@@ -75,6 +86,19 @@ public class ProductMapper {
         }
 
         return product;
+    }
+
+    // Helper method to map ProductVariant entity to ProductVariantDTO
+    private ProductVariantDTO mapToProductVariantDTO(ProductVariant variant) {
+        ProductVariantDTO variantDto = new ProductVariantDTO();
+        variantDto.setId(variant.getId());
+        variantDto.setName(variant.getName());
+        variantDto.setSku(variant.getSku());
+        variantDto.setPrice(variant.getPrice());
+        variantDto.setStockQuantity(variant.getStockQuantity());
+        variantDto.setVariantImageUrl(variant.getVariantImageUrl());
+        // Avoid mapping back the product to prevent circular references in JSON
+        return variantDto;
     }
 
     // Helper method to map CreateProductVariantDTO to ProductVariant entity

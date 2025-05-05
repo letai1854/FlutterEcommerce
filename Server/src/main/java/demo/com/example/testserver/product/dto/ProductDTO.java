@@ -2,8 +2,11 @@ package demo.com.example.testserver.product.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List; // Import List
+import java.util.stream.Collectors; // Import Collectors
 
 import demo.com.example.testserver.product.model.Product;
+import demo.com.example.testserver.product.model.ProductVariant; // Import ProductVariant
 
 public class ProductDTO {
     private Long id; // Changed from Integer to Long
@@ -18,6 +21,8 @@ public class ProductDTO {
     private Double averageRating; // Calculated field
     private BigDecimal minPrice; // Calculated min price from variants
     private BigDecimal maxPrice; // Calculated max price from variants
+    private Integer variantCount; // Added: Number of variants
+    private List<ProductVariantDTO> variants; // Added: List of variants
 
     // Explicit No-Argument Constructor
     public ProductDTO() {}
@@ -25,7 +30,6 @@ public class ProductDTO {
     // Constructor to map from Product entity (basic example)
     // You might need a more sophisticated mapping logic, potentially in the service layer
     public ProductDTO(Product product) {
-        // Assuming product.getId() returns Long
         this.id = product.getId();
         this.name = product.getName();
         this.description = product.getDescription();
@@ -38,10 +42,17 @@ public class ProductDTO {
         this.updatedDate = product.getUpdatedDate() != null ?
                 new java.sql.Timestamp(product.getUpdatedDate().getTime()).toLocalDateTime() : null;
         // Note: Denormalized fields (averageRating, minPrice, maxPrice) are set in the Mapper
+        this.variantCount = product.getVariants() != null ? product.getVariants().size() : 0; // Calculate variant count
+        // Map variants to DTOs if needed for detail view
+        if (product.getVariants() != null) {
+            this.variants = product.getVariants().stream()
+                                  .map(ProductVariantDTO::new) // Assuming ProductVariantDTO has a constructor accepting ProductVariant
+                                  .collect(Collectors.toList());
+        }
     }
 
     // All-Args Constructor (manually added to replace Lombok's @AllArgsConstructor)
-    public ProductDTO(Long id, String name, String description, String categoryName, String brandName, String mainImageUrl, BigDecimal discountPercentage, LocalDateTime createdDate, LocalDateTime updatedDate, Double averageRating, BigDecimal minPrice, BigDecimal maxPrice) {
+    public ProductDTO(Long id, String name, String description, String categoryName, String brandName, String mainImageUrl, BigDecimal discountPercentage, LocalDateTime createdDate, LocalDateTime updatedDate, Double averageRating, BigDecimal minPrice, BigDecimal maxPrice, Integer variantCount, List<ProductVariantDTO> variants) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -54,6 +65,8 @@ public class ProductDTO {
         this.averageRating = averageRating;
         this.minPrice = minPrice;
         this.maxPrice = maxPrice;
+        this.variantCount = variantCount; // Set variantCount
+        this.variants = variants; // Set variants
     }
 
     // --- Getters ---
@@ -69,6 +82,8 @@ public class ProductDTO {
     public Double getAverageRating() { return averageRating; }
     public BigDecimal getMinPrice() { return minPrice; }
     public BigDecimal getMaxPrice() { return maxPrice; }
+    public Integer getVariantCount() { return variantCount; } // Getter for variantCount
+    public List<ProductVariantDTO> getVariants() { return variants; } // Getter for variants
 
     // --- Setters ---
     public void setId(Long id) { this.id = id; }
@@ -83,4 +98,6 @@ public class ProductDTO {
     public void setAverageRating(Double averageRating) { this.averageRating = averageRating; }
     public void setMinPrice(BigDecimal minPrice) { this.minPrice = minPrice; }
     public void setMaxPrice(BigDecimal maxPrice) { this.maxPrice = maxPrice; }
+    public void setVariantCount(Integer variantCount) { this.variantCount = variantCount; } // Setter for variantCount
+    public void setVariants(List<ProductVariantDTO> variants) { this.variants = variants; } // Setter for variants
 }

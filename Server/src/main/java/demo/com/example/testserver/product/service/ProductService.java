@@ -43,5 +43,15 @@ public interface ProductService {
      */
     ProductDTO createProduct(CreateProductRequestDTO requestDTO);
 
-    // Add other methods as needed, e.g., findProductById
+    /**
+     * Finds a single product by its ID.
+     * Includes detailed information like variants.
+     *
+     * @param id The ID of the product to find.
+     * @return The ProductDTO containing detailed product information.
+     * @throws jakarta.persistence.EntityNotFoundException if the product with the given ID is not found.
+     */
+    ProductDTO findProductById(Long id);
+
+    // Add other methods as needed
 }
