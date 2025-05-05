@@ -167,19 +167,73 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
               children: [
                 Stack(
                   children: [
-                    // Avatar display with preview logic
-                    CircleAvatar(
-                      radius: 60,
-                      backgroundColor: Colors.grey[200],
-                      // First check for local selected image
-                      backgroundImage: _getAvatarImage(avatarUrl),
-                      child: (_webImageBytes == null &&
-                              _selectedImageFile == null &&
-                              (avatarUrl == null || avatarUrl.isEmpty))
-                          ? const Icon(Icons.person,
-                              size: 60, color: Colors.grey)
-                          : null,
-                    ),
+                    // Avatar display with improved preview logic
+                    Builder(builder: (context) {
+                      // Determine which image to display based on priority:
+                      // 1. Recently selected image (_webImageBytes or _selectedImageFile)
+                      // 2. User's current avatar (from server)
+                      // 3. Default person icon if nothing else is available
+
+                      if (_webImageBytes != null) {
+                        // Web-selected image
+                        return CircleAvatar(
+                          radius: 60,
+                          backgroundColor: Colors.grey[200],
+                          backgroundImage: MemoryImage(_webImageBytes!),
+                        );
+                      } else if (_selectedImageFile != null) {
+                        // Native-selected image
+                        return CircleAvatar(
+                          radius: 60,
+                          backgroundColor: Colors.grey[200],
+                          backgroundImage: FileImage(_selectedImageFile!),
+                        );
+                      } else if (avatarUrl != null && avatarUrl.isNotEmpty) {
+                        // Server image
+                        return FutureBuilder<Uint8List?>(
+                          future: UserService().getAvatarBytes(avatarUrl),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return CircleAvatar(
+                                radius: 60,
+                                backgroundColor: Colors.grey[200],
+                                child: const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              );
+                            } else if (snapshot.hasData &&
+                                snapshot.data != null) {
+                              return CircleAvatar(
+                                radius: 60,
+                                backgroundColor: Colors.grey[200],
+                                backgroundImage: MemoryImage(snapshot.data!),
+                              );
+                            } else {
+                              return CircleAvatar(
+                                radius: 60,
+                                backgroundColor: Colors.grey[200],
+                                backgroundImage: NetworkImage(avatarUrl),
+                                onBackgroundImageError: (e, stack) {
+                                  print("Error loading avatar: $e");
+                                },
+                              );
+                            }
+                          },
+                        );
+                      } else {
+                        // Default person icon
+                        return CircleAvatar(
+                          radius: 60,
+                          backgroundColor: Colors.grey[200],
+                          child: const Icon(Icons.person,
+                              size: 60, color: Colors.grey),
+                        );
+                      }
+                    }),
                     if (_isUploading)
                       Positioned.fill(
                         child: Container(
