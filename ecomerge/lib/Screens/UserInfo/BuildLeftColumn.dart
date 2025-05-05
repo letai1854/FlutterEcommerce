@@ -136,7 +136,7 @@ class _BuildLeftColumnState extends State<BuildLeftColumn> {
           Column(
             children: [
               _buildProfileSubItem(
-                'Sửa thông tin cá ',
+                'Sửa thông tin cá nhân',
                 ProfileSection.personalInfo,
                 Icons.edit,
               ),

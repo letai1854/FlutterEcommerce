@@ -28,6 +28,9 @@ class UserInfo extends ChangeNotifier {
   // Public getter for the avatar cache
   static Map<String, Uint8List> get avatarCache => _avatarCache;
 
+  // Static getter to check if the user is logged in
+  static bool get isLoggedIn => _instance._currentUser != null;
+
   // Method to update user info after login
   void updateUserInfo(Map<String, dynamic> loginResponse) {
     if (loginResponse['token'] != null) {
