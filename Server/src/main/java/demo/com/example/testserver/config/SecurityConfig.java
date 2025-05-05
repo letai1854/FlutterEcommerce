@@ -66,8 +66,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/brands").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/brands/{id}").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/brands/{id}").hasRole("ADMIN")
-                // Secure Coupon management - only ADMIN role
-                .requestMatchers("/api/coupons/**").hasRole("ADMIN") // Add this line for coupons
+                // Secure Coupon management - ADMIN for create/search/manage
+                .requestMatchers(HttpMethod.POST, "/api/coupons").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/coupons").hasRole("ADMIN") // Admin search endpoint
+                // Allow authenticated users to view available coupons
+                .requestMatchers(HttpMethod.GET, "/api/coupons/available").authenticated()
                 // Image Routes
                 .requestMatchers(HttpMethod.GET, "/api/images/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/images/upload").authenticated()

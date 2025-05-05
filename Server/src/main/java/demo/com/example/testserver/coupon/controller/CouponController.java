@@ -41,4 +41,13 @@ public class CouponController {
         }
         return ResponseEntity.ok(coupons);
     }
+
+    @GetMapping("/available")
+    public ResponseEntity<List<CouponResponseDTO>> getAvailableCoupons() {
+        List<CouponResponseDTO> coupons = couponService.getAvailableCouponsSortedByDiscount();
+        if (coupons.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(coupons);
+    }
 }

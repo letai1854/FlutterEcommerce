@@ -57,6 +57,14 @@ public class CouponService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<CouponResponseDTO> getAvailableCouponsSortedByDiscount() {
+        List<Coupon> availableCoupons = couponRepository.findByUsageCountLessThanMaxUsageCountOrderByDiscountValueDesc();
+        return availableCoupons.stream()
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
     private CouponResponseDTO mapToResponseDTO(Coupon coupon) {
         return new CouponResponseDTO(
                 coupon.getId(),
