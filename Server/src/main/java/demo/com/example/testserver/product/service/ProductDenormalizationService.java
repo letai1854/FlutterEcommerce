@@ -4,6 +4,7 @@ import demo.com.example.testserver.product.model.Product;
 import demo.com.example.testserver.product.model.ProductReview;
 import demo.com.example.testserver.product.model.ProductVariant;
 import demo.com.example.testserver.product.repository.ProductRepository;
+import jakarta.persistence.EntityNotFoundException; // Import EntityNotFoundException
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,10 +25,10 @@ public class ProductDenormalizationService {
     private ProductRepository productRepository;
 
     @Transactional // Ensure this method runs in a transaction
-    public void updateDenormalizedFields(Integer productId) {
+    public void updateDenormalizedFields(Long productId) { // Changed parameter type to Long
         logger.debug("Updating denormalized fields for product ID: {}", productId);
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found with ID: " + productId)); // Or a custom exception
+        Product product = productRepository.findById(productId) // Use Long ID
+                .orElseThrow(() -> new EntityNotFoundException("Product not found with ID: " + productId)); // Use EntityNotFoundException
 
         // Calculate min and max price from variants
         BigDecimal minPrice = null;

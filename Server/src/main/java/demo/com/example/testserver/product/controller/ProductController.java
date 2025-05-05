@@ -2,6 +2,7 @@ package demo.com.example.testserver.product.controller;
 
 import demo.com.example.testserver.product.dto.CreateProductRequestDTO; // Import new DTO
 import demo.com.example.testserver.product.dto.ProductDTO;
+import demo.com.example.testserver.product.dto.UpdateProductRequestDTO; // Import Update DTO
 import demo.com.example.testserver.product.service.ProductService;
 import jakarta.persistence.EntityNotFoundException; // Import
 import jakarta.validation.Valid; // Import for validation
@@ -100,12 +101,42 @@ public class ProductController {
         }
     }
 
-    // Add other endpoints like getProductById, updateProduct, deleteProduct as needed
-    // Example:
-    /*
-    @GetMapping("/{id}")
-    public ResponseEntity<ProductDTO> getProductById(@PathVariable Integer id) {
-        // Implementation using productService.findProductById(id)
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> updateProduct(@PathVariable Long id, @Valid @RequestBody UpdateProductRequestDTO requestDTO) {
+        try {
+            logger.info("Received request to update product with ID: {}", id);
+            ProductDTO updatedProduct = productService.updateProduct(id, requestDTO);
+            return ResponseEntity.ok(updatedProduct);
+        } catch (EntityNotFoundException e) {
+            logger.warn("Failed to update product. Reason: {}", e.getMessage());
+            // Return 404 if product/category/brand not found, 400 for other validation?
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+             logger.warn("Invalid request data for updating product {}: {}", id, e.getMessage());
+             return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error updating product with ID {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred while updating the product.");
+        }
     }
-    */
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> deleteProduct(@PathVariable Long id) {
+        try {
+            logger.info("Received request to delete product with ID: {}", id);
+            productService.deleteProduct(id);
+            return ResponseEntity.noContent().build(); // Standard response for successful DELETE
+        } catch (EntityNotFoundException e) {
+            logger.warn("Failed to delete product. Reason: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            // Consider catching DataIntegrityViolationException if deletion is blocked by constraints
+            logger.error("Error deleting product with ID {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred while deleting the product.");
+        }
+    }
+
+    // Add other endpoints like getProductById, updateProduct, deleteProduct as needed
 }

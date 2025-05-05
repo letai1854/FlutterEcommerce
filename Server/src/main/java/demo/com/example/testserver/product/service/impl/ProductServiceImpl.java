@@ -2,6 +2,7 @@ package demo.com.example.testserver.product.service.impl;
 
 import demo.com.example.testserver.product.dto.CreateProductRequestDTO;
 import demo.com.example.testserver.product.dto.ProductDTO;
+import demo.com.example.testserver.product.dto.UpdateProductRequestDTO;
 import demo.com.example.testserver.product.model.Brand;
 import demo.com.example.testserver.product.model.Category;
 import demo.com.example.testserver.product.model.Product;
@@ -102,23 +103,18 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    @Transactional // Read-only might be sufficient if no lazy loading issues
+    @Transactional
     public ProductDTO findProductById(Long id) {
         logger.info("Attempting to find product with ID: {}", id);
-        Product product = productRepository.findById(id.intValue()) // Assuming ID is still Integer in repo, cast needed
+        Product product = productRepository.findById(id)
                 .orElseThrow(() -> {
                     logger.warn("Product not found with ID: {}", id);
                     return new EntityNotFoundException("Product not found with ID: " + id);
                 });
 
-        // Eagerly fetch collections if needed and not already configured
-        // Hibernate.initialize(product.getVariants()); // Example if lazy loading issues occur
-        // Hibernate.initialize(product.getImages());
-
         logger.info("Found product with ID: {}. Mapping to DTO.", id);
         ProductDTO productDTO = productMapper.mapToProductDTO(product);
 
-        // The mapper should now handle mapping variants to ProductVariantDTO within ProductDTO
         logger.debug("Mapped ProductDTO: ID={}, Name={}, Variants={}", productDTO.getId(), productDTO.getName(), productDTO.getVariantCount());
 
         return productDTO;
@@ -129,7 +125,7 @@ public class ProductServiceImpl implements ProductService {
     public ProductDTO createProduct(CreateProductRequestDTO requestDTO) {
         logger.info("Attempting to create product with name: {}", requestDTO.getName());
 
-        Category category = categoryRepository.findById(requestDTO.getCategoryId())
+        Category category = categoryRepository.findById(requestDTO.getCategoryId().longValue())
                 .orElseThrow(() -> new EntityNotFoundException("Category not found with ID: " + requestDTO.getCategoryId()));
         Brand brand = brandRepository.findById(requestDTO.getBrandId())
                 .orElseThrow(() -> new EntityNotFoundException("Brand not found with ID: " + requestDTO.getBrandId()));
@@ -151,7 +147,7 @@ public class ProductServiceImpl implements ProductService {
 
         if (productDenormalizationService != null) {
             try {
-                productDenormalizationService.updateDenormalizedFields(savedProduct.getId().intValue());
+                productDenormalizationService.updateDenormalizedFields(savedProduct.getId());
                 logger.info("Triggered denormalization for new product ID: {}", savedProduct.getId());
             } catch (Exception e) {
                 logger.error("Error during post-creation denormalization for product ID {}: {}", savedProduct.getId(), e.getMessage(), e);
@@ -160,7 +156,53 @@ public class ProductServiceImpl implements ProductService {
             logger.warn("ProductDenormalizationService not available. Skipping denormalization for product ID: {}", savedProduct.getId());
         }
 
-        Product finalProduct = productRepository.findById(savedProduct.getId().intValue()).orElse(savedProduct);
+        Product finalProduct = productRepository.findById(savedProduct.getId()).orElse(savedProduct);
         return productMapper.mapToProductDTO(finalProduct);
+    }
+
+    @Override
+    @Transactional
+    public ProductDTO updateProduct(Long productId, UpdateProductRequestDTO requestDTO) {
+        logger.info("Attempting to update product with ID: {}", productId);
+
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found with ID: " + productId));
+
+        Category category = categoryRepository.findById(requestDTO.getCategoryId().longValue())
+                .orElseThrow(() -> new EntityNotFoundException("Category not found with ID: " + requestDTO.getCategoryId()));
+        Brand brand = brandRepository.findById(requestDTO.getBrandId().longValue())
+                .orElseThrow(() -> new EntityNotFoundException("Brand not found with ID: " + requestDTO.getBrandId()));
+
+        productMapper.updateProductFromDTO(product, requestDTO, category, brand);
+
+        Product updatedProduct = productRepository.save(product);
+        logger.info("Product updated successfully with ID: {}", updatedProduct.getId());
+
+        if (productDenormalizationService != null) {
+            try {
+                productDenormalizationService.updateDenormalizedFields(updatedProduct.getId());
+                logger.info("Triggered denormalization for updated product ID: {}", updatedProduct.getId());
+            } catch (Exception e) {
+                logger.error("Error during post-update denormalization for product ID {}: {}", updatedProduct.getId(), e.getMessage(), e);
+            }
+        } else {
+            logger.warn("ProductDenormalizationService not available. Skipping denormalization for product ID: {}", updatedProduct.getId());
+        }
+
+        Product finalProduct = productRepository.findById(updatedProduct.getId()).orElse(updatedProduct);
+        return productMapper.mapToProductDTO(finalProduct);
+    }
+
+    @Override
+    @Transactional
+    public void deleteProduct(Long productId) {
+        logger.info("Attempting to delete product with ID: {}", productId);
+
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found with ID: " + productId));
+
+        productRepository.delete(product);
+
+        logger.info("Product deleted successfully with ID: {}", productId);
     }
 }

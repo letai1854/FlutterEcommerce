@@ -3,10 +3,11 @@ package demo.com.example.testserver.product.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import demo.com.example.testserver.product.dto.CreateProductRequestDTO;
 import demo.com.example.testserver.product.dto.CreateProductVariantDTO;
+import demo.com.example.testserver.product.dto.UpdateProductRequestDTO;
+import demo.com.example.testserver.product.dto.UpdateProductVariantDTO;
 import demo.com.example.testserver.product.model.Brand;
 import demo.com.example.testserver.product.model.Category;
 import demo.com.example.testserver.product.model.Product;
-import demo.com.example.testserver.product.model.ProductImage;
 import demo.com.example.testserver.product.model.ProductVariant;
 import demo.com.example.testserver.product.repository.BrandRepository;
 import demo.com.example.testserver.product.repository.CategoryRepository;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -26,14 +28,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -125,6 +127,29 @@ class ProductControllerIntegrationTest {
         requestDTO.setDiscountPercentage(new BigDecimal("10.00"));
         requestDTO.setVariants(Arrays.asList(variant1, variant2));
         return requestDTO;
+    }
+
+    private Product createAndSaveProduct(String name, Category category, Brand brand, int variantCount) {
+        Product product = new Product();
+        product.setName(name);
+        product.setDescription("Initial Description");
+        product.setCategory(category);
+        product.setBrand(brand);
+        product.setMainImageUrl("main.jpg");
+
+        List<ProductVariant> variants = new ArrayList<>();
+        for (int i = 1; i <= variantCount; i++) {
+            ProductVariant variant = new ProductVariant();
+            variant.setName(name + " Variant " + i);
+            variant.setSku(name.toUpperCase() + "-V" + i);
+            variant.setPrice(new BigDecimal("10.00").add(BigDecimal.valueOf(i)));
+            variant.setStockQuantity(10 + i);
+            variant.setProduct(product);
+            variants.add(variant);
+        }
+        product.setVariants(variants);
+
+        return productRepository.save(product);
     }
 
     @Test
@@ -241,5 +266,131 @@ class ProductControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDTO)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void updateProduct_Success() throws Exception {
+        Product existingProduct = createAndSaveProduct("UpdateMe", testCategory, testBrand, 2);
+        Long productId = existingProduct.getId();
+        Integer variant1Id = existingProduct.getVariants().get(0).getId();
+
+        UpdateProductRequestDTO updateDTO = new UpdateProductRequestDTO();
+        updateDTO.setName("Updated Product Name");
+        updateDTO.setDescription("Updated Description");
+        updateDTO.setCategoryId(testCategory.getId());
+        updateDTO.setBrandId(testBrand.getId());
+        updateDTO.setMainImageUrl("updated_main.jpg");
+        updateDTO.setDiscountPercentage(new BigDecimal("15.00"));
+        updateDTO.setImageUrls(Arrays.asList("updated_img1.jpg", "updated_img2.jpg"));
+
+        UpdateProductVariantDTO variantUpdate1 = new UpdateProductVariantDTO();
+        variantUpdate1.setId(variant1Id);
+        variantUpdate1.setName("Updated Variant 1");
+        variantUpdate1.setPrice(new BigDecimal("99.99"));
+        variantUpdate1.setStockQuantity(5);
+        variantUpdate1.setSku("UPD-V1");
+
+        UpdateProductVariantDTO variantNew3 = new UpdateProductVariantDTO();
+        variantNew3.setName("New Variant 3");
+        variantNew3.setPrice(new BigDecimal("149.50"));
+        variantNew3.setStockQuantity(20);
+        variantNew3.setSku("NEW-V3");
+
+        updateDTO.setVariants(Arrays.asList(variantUpdate1, variantNew3));
+
+        mockMvc.perform(put("/api/products/{id}", productId)
+                        .with(SecurityMockMvcRequestPostProcessors.user(adminUser.getEmail()).roles("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateDTO)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is(productId.intValue())))
+                .andExpect(jsonPath("$.name", is("Updated Product Name")))
+                .andExpect(jsonPath("$.description", is("Updated Description")))
+                .andExpect(jsonPath("$.mainImageUrl", is("updated_main.jpg")))
+                .andExpect(jsonPath("$.discountPercentage", comparesEqualTo(15.00)))
+                .andExpect(jsonPath("$.variants", hasSize(2)))
+                .andExpect(jsonPath("$.variants[0].id", is(variant1Id)))
+                .andExpect(jsonPath("$.variants[0].name", is("Updated Variant 1")))
+                .andExpect(jsonPath("$.variants[0].price", comparesEqualTo(99.99)))
+                .andExpect(jsonPath("$.variants[1].name", is("New Variant 3")))
+                .andExpect(jsonPath("$.variants[1].id", notNullValue()));
+
+        Product updatedProduct = productRepository.findById(productId).orElseThrow();
+        assertEquals("Updated Product Name", updatedProduct.getName());
+        assertEquals(2, updatedProduct.getVariants().size());
+        assertTrue(updatedProduct.getVariants().stream().anyMatch(v -> "Updated Variant 1".equals(v.getName())));
+        assertTrue(updatedProduct.getVariants().stream().anyMatch(v -> "New Variant 3".equals(v.getName())));
+    }
+
+    @Test
+    void updateProduct_NotFound() throws Exception {
+        UpdateProductRequestDTO updateDTO = new UpdateProductRequestDTO();
+        updateDTO.setName("Doesn't Matter");
+        updateDTO.setDescription("Desc");
+        updateDTO.setCategoryId(testCategory.getId());
+        updateDTO.setBrandId(testBrand.getId());
+        UpdateProductVariantDTO variant = new UpdateProductVariantDTO();
+        variant.setName("V1");
+        variant.setPrice(BigDecimal.ONE);
+        variant.setStockQuantity(1);
+        updateDTO.setVariants(List.of(variant));
+
+        mockMvc.perform(put("/api/products/{id}", 9999L)
+                        .with(SecurityMockMvcRequestPostProcessors.user(adminUser.getEmail()).roles("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateDTO)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void updateProduct_Unauthorized() throws Exception {
+        Product existingProduct = createAndSaveProduct("AuthTest", testCategory, testBrand, 1);
+        UpdateProductRequestDTO updateDTO = new UpdateProductRequestDTO();
+        updateDTO.setName("Updated AuthTest");
+        updateDTO.setDescription("Desc");
+        updateDTO.setCategoryId(testCategory.getId());
+        updateDTO.setBrandId(testBrand.getId());
+        UpdateProductVariantDTO variant = new UpdateProductVariantDTO();
+        variant.setId(existingProduct.getVariants().get(0).getId());
+        variant.setName("V1 Updated");
+        variant.setPrice(BigDecimal.TEN);
+        variant.setStockQuantity(1);
+        updateDTO.setVariants(List.of(variant));
+
+        mockMvc.perform(put("/api/products/{id}", existingProduct.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateDTO)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void deleteProduct_Success() throws Exception {
+        Product productToDelete = createAndSaveProduct("DeleteMe", testCategory, testBrand, 1);
+        Long productId = productToDelete.getId();
+        assertTrue(productRepository.existsById(productId));
+
+        mockMvc.perform(delete("/api/products/{id}", productId)
+                        .with(SecurityMockMvcRequestPostProcessors.user(adminUser.getEmail()).roles("ADMIN")))
+                .andExpect(status().isNoContent());
+
+        assertFalse(productRepository.existsById(productId));
+    }
+
+    @Test
+    void deleteProduct_NotFound() throws Exception {
+        mockMvc.perform(delete("/api/products/{id}", 9999L)
+                        .with(SecurityMockMvcRequestPostProcessors.user(adminUser.getEmail()).roles("ADMIN")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteProduct_Unauthorized() throws Exception {
+        Product productToDelete = createAndSaveProduct("DeleteAuthTest", testCategory, testBrand, 1);
+        Long productId = productToDelete.getId();
+
+        mockMvc.perform(delete("/api/products/{id}", productId))
+                .andExpect(status().isUnauthorized());
+
+        assertTrue(productRepository.existsById(productId));
     }
 }

@@ -53,7 +53,9 @@ public class SecurityConfig {
                 // Allow product viewing without login
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                 // Secure product creation - only ADMIN role at the new path
-                .requestMatchers(HttpMethod.POST, "/api/products/create").hasRole("ADMIN") // Updated path
+                .requestMatchers(HttpMethod.POST, "/api/products/create").hasRole("ADMIN") // Create
+                .requestMatchers(HttpMethod.PUT, "/api/products/{id}").hasRole("ADMIN")    // Update
+                .requestMatchers(HttpMethod.DELETE, "/api/products/{id}").hasRole("ADMIN") // Delete
                 // Allow public access to categories and brands (assuming they exist under /api)
                 .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/brands/**").permitAll()
