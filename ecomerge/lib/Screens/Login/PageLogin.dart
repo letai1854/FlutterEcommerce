@@ -83,12 +83,16 @@ class _PageloginState extends State<Pagelogin> {
 
   // Signup handler (uses local state, calls API, updates state, navigates)
   // Hàm này giờ không nhận provider nữa, nó dùng state/controllers/service của chính _PageloginState
+// lib/pages/page_login.dart
+// ... (các import và state variables như trước)
+
   Future<void> _handleLogin() async {
     // Validate fields (using local controllers)
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       setState(() {
         _errorMessage = 'Vui lòng điền đầy đủ thông tin';
       });
+      _emailFocusNode.requestFocus(); // Focus vào trường đầu tiên bị trống
       return;
     }
 
@@ -97,62 +101,59 @@ class _PageloginState extends State<Pagelogin> {
       _errorMessage = null; // Clear previous error on new attempt
     });
 
-    bool? success; // Biến để lưu kết quả bool? từ UserService
+    // Biến để lưu kết quả bool từ UserService
+    bool loginSuccess = false; // Giả định ban đầu là thất bại
 
     try {
-      // Call login method using UserService
-      // Your UserService.loginUser returns Future<bool> in the snippet you provided earlier
-      // If it returns bool, you should check its value.
-      // If it throws exceptions for errors (network/API), you catch them below.
-      // Let's assume it *might* return false for API errors and throw for network errors.
-      // Based on the provided loginUser snippet earlier which returned false in catch:
-      // You might need to check if the result is true or false.
-      // However, the MOST ROBUST way is for UserService to throw exceptions for ALL errors.
-      // Let's use a try-catch block to handle potential exceptions from UserService.
-      // Assume UserService.loginUser will THROW AN EXCEPTION on failure (API or Network).
-
-       // If your UserService.loginUser truly returns Future<bool>, modify it
-       // to throw exceptions on failure instead of returning false.
-       // Example change in UserService.loginUser:
-       // if (response.statusCode != 200) {
-       //    throw Exception('Login failed: Server returned ${response.statusCode}'); // Or extract message from body
-       // }
-       // ... return true on success ...
-
-       // Assuming UserService.loginUser THROWS Exception on failure:
-       await _userService.loginUser(
+      // Call login method. UserService.loginUser trả về true khi thành công (status 200),
+      // và false khi thất bại (status khác 200 hoặc lỗi mạng).
+      loginSuccess = await _userService.loginUser(
         _emailController.text,
         _passwordController.text,
       );
 
-      // If no exception was thrown, login was successful
+      // Check mounted trước khi tương tác với context sau await
       if (mounted) {
-        // UserInfo singleton already updated in UserService on success
-        // provider.setScreenResize(false); // This line was related to Provider state
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/home',
-          (route) => false,
-        );
-      }
-    } on Exception catch (e) {
-      // Catch any Exception thrown by UserService (API error message or network error message)
-      if (mounted) {
-        String errorMsg = 'Đã xảy ra lỗi khi đăng nhập: ${e.toString()}';
-        // Extract message from Exception string if it starts with 'Exception: '
-        if (e.toString().contains('Exception: ')) {
-            errorMsg = e.toString().replaceAll('Exception: ', '');
-        }
-        setState(() {
-          _errorMessage = errorMsg; // Display the error message
-        });
-        // Optionally focus a field based on the error message content
-        if (errorMsg.toLowerCase().contains('email') || errorMsg.toLowerCase().contains('mật khẩu')) {
-            _emailFocusNode.requestFocus(); // Focus email or password field
+        if (loginSuccess) {
+          // Đăng nhập thành công (UserService trả về true)
+          // UserInfo singleton đã được cập nhật trong UserService
+          // Điều hướng đến trang home và xóa các route trước đó
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/home',
+            (route) => false,
+          );
+        } else {
+          // Đăng nhập thất bại (UserService trả về false)
+          // Điều này có thể do lỗi API (email/mật khẩu sai, tài khoản chưa kích hoạt...)
+          // hoặc lỗi mạng (tùy cách UserService xử lý catch).
+          // Với UserService trả về false cho mọi thất bại, chỉ hiển thị thông báo chung.
+          setState(() {
+             // Hiển thị thông báo lỗi chung
+            _errorMessage = 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin hoặc kết nối mạng.';
+          });
+          // Focus vào trường email hoặc mật khẩu khi thất bại
+          _emailFocusNode.requestFocus(); // Hoặc _passwordFocusNode.requestFocus();
         }
       }
-    } finally {
-      // Always set loading state back to false
+    }
+     // Bắt các Exception khác mà UserService có thể ném ra (nếu có logic khác)
+     // Tuy nhiên, với code UserService bạn cung cấp, catch block này có thể ít khi được chạy
+     // vì UserService đã bắt lỗi trong hàm của nó và trả về false.
+    on Exception catch (e) {
+      if (mounted) {
+         String errorMsg = 'Đã xảy ra lỗi không xác định: ${e.toString()}';
+          if (e.toString().contains('Exception: ')) {
+              errorMsg = e.toString().replaceAll('Exception: ', '');
+          }
+         setState(() {
+           _errorMessage = 'Lỗi: $errorMsg'; // Hiển thị thông báo lỗi từ exception
+         });
+          _emailFocusNode.requestFocus(); // Focus vào trường email hoặc mật khẩu khi có lỗi
+      }
+    }
+    finally {
+      // Luôn đặt trạng thái loading về false
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -160,6 +161,9 @@ class _PageloginState extends State<Pagelogin> {
       }
     }
   }
+
+
+
 
 
   // === Build Method ===

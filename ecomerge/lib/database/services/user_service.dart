@@ -20,10 +20,11 @@ class UserService {
   // Helper to get headers, including auth token if available
   Map<String, String> _getHeaders({bool includeAuth = false}) {
     final headers = {'Content-Type': 'application/json'};
-    if (includeAuth && UserInfo().authToken != null) {
-      _authToken = UserInfo().authToken;
-      headers['Authorization'] = 'Bearer $_authToken';
+   final userInfo = UserInfo();
+    if (includeAuth && userInfo.authToken != null) {
+      headers['Authorization'] = 'Bearer ${userInfo.authToken}';
     }
+
     return headers;
   }
 
@@ -148,7 +149,7 @@ class UserService {
       String oldPassword, String newPassword) async {
     final url = Uri.parse('$baseUrl/api/users/me/change-password');
     try {
-      final response = await _httpClient.post(
+      final response = await httpClient.post(
         url,
         headers: _getHeaders(includeAuth: true),
         body: jsonEncode(
@@ -168,27 +169,138 @@ class UserService {
     }
   }
 
-  // Method to request password reset (Forgot Password)
-  Future<bool> forgotPassword(String email) async {
+ Future<void> forgotPassword(String email) async {
     final url = Uri.parse('$baseUrl/api/users/forgot-password');
     try {
-      final response = await _httpClient.post(
+      final response = await httpClient.post( // Sửa thành _httpClient
         url,
         headers: _getHeaders(),
         body: jsonEncode({'email': email}),
       );
 
+      if (kDebugMode) {
+          print('Forgot Password request URL: $url');
+          print('Forgot Password request Body: ${jsonEncode({'email': email})}');
+          print('Forgot Password response status: ${response.statusCode}');
+          print('Forgot Password response body: ${response.body}');
+      }
+
+
       if (response.statusCode == 200) {
-        return true; // Request successful (backend sends email if user exists)
+        // Thành công, backend đã xử lý yêu cầu (không nhất thiết email tồn tại)
+        return; // Return void on success
       } else {
-        print('Failed to request password reset: ${response.statusCode}');
-        print('Response body: ${response.body}');
-        return false;
+        // API trả về lỗi (status code != 200)
+        String errorMessage = 'Không thể yêu cầu mã xác thực.';
+        try {
+            final errorBody = jsonDecode(response.body);
+            if (errorBody is Map && errorBody.containsKey('message')) {
+               errorMessage = errorBody['message'];
+            } else if (errorBody is String && errorBody.isNotEmpty) {
+               errorMessage = errorBody;
+            }
+        } catch(_) {} // Ignore parsing error, use default message
+
+        if (kDebugMode) {
+            print('API Error during forgot password request: ${response.statusCode}, Message: $errorMessage');
+        }
+        throw Exception(errorMessage); // Ném Exception với thông báo lỗi từ backend
       }
     } catch (e) {
-      print('Error requesting password reset: $e');
-      return false;
-    }
+       // Lỗi mạng
+       if (kDebugMode) print('SocketException during forgot password request: $e');
+       throw Exception('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.'); // Ném Exception mạng
+    } 
+  }
+
+  // Bước 2: Xác thực mã OTP
+  // Ném Exception nếu API trả về lỗi (status code != 200) hoặc lỗi mạng
+  Future<void> verifyOtp(String email, String otp) async {
+      final url = Uri.parse('$baseUrl/api/users/verify-otp');
+      try {
+          final response = await httpClient.post( // Sửa thành _httpClient
+              url,
+              headers: _getHeaders(),
+              body: jsonEncode({'email': email, 'otp': otp}),
+          );
+
+          if (kDebugMode) {
+              print('Verify OTP request URL: $url');
+              print('Verify OTP request Body: ${jsonEncode({'email': email, 'otp': otp})}');
+              print('Verify OTP response status: ${response.statusCode}');
+              print('Verify OTP response body: ${response.body}');
+          }
+
+
+          if (response.statusCode == 200) {
+              // Thành công
+              return; // Return void on success
+          } else {
+              // API trả về lỗi (status code != 200)
+              String errorMessage = 'Mã xác thực không hợp lệ hoặc đã hết hạn.';
+              try {
+                  final errorBody = jsonDecode(response.body);
+                  if (errorBody is Map && errorBody.containsKey('message')) {
+                     errorMessage = errorBody['message'];
+                  } else if (errorBody is String && errorBody.isNotEmpty) {
+                     errorMessage = errorBody;
+                  }
+              } catch(_) {}
+
+              if (kDebugMode) {
+                  print('API Error during OTP verification: ${response.statusCode}, Message: $errorMessage');
+              }
+              throw Exception(errorMessage); // Ném Exception
+          }
+      }catch (e) {
+          if (kDebugMode) print('SocketException during OTP verification: $e');
+          throw Exception('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.'); // Ném Exception mạng
+      }
+  }
+
+  // Bước 3: Đặt mật khẩu mới
+  // Ném Exception nếu API trả về lỗi (status code != 200) hoặc lỗi mạng
+  Future<void> setNewPassword(String email, String otp, String newPassword) async {
+      final url = Uri.parse('$baseUrl/api/users/set-new-password');
+      try {
+          final response = await httpClient.post( // Sửa thành _httpClient
+              url,
+              headers: _getHeaders(),
+              body: jsonEncode({'email': email, 'otp': otp, 'newPassword': newPassword}),
+          );
+
+           if (kDebugMode) {
+              print('Set New Password request URL: $url');
+              // Không in mật khẩu mới
+              print('Set New Password request Body (partial): ${jsonEncode({'email': email, 'otp': otp, 'newPassword': '...'})}');
+              print('Set New Password response status: ${response.statusCode}');
+              print('Set New Password response body: ${response.body}');
+          }
+
+          if (response.statusCode == 200) {
+              // Thành công
+              return; // Return void on success
+          } else {
+              // API trả về lỗi (status code != 200)
+              String errorMessage = 'Không thể đặt mật khẩu mới.';
+              try {
+                  final errorBody = jsonDecode(response.body);
+                  if (errorBody is Map && errorBody.containsKey('message')) {
+                     errorMessage = errorBody['message'];
+                  } else if (errorBody is String && errorBody.isNotEmpty) {
+                     errorMessage = errorBody;
+                  }
+              } catch(_) {}
+
+               if (kDebugMode) {
+                  print('API Error during set new password: ${response.statusCode}, Message: $errorMessage');
+              }
+              throw Exception(errorMessage); // Ném Exception
+          }
+      }catch (e) {
+           if (kDebugMode) print('SocketException during set new password: $e');
+          throw Exception('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.'); // Ném Exception mạng
+      } 
   }
 
   // Method to reset password using token

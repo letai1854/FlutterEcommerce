@@ -14,7 +14,7 @@ class UserInfo {
 
   // Properties to store user data and token
   User? _currentUser;
-  String? _authToken;
+  String? _authToken="";
 
   // Getters for the stored data
   User? get currentUser => _currentUser;
