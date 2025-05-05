@@ -1,0 +1,527 @@
+2025-05-05 12:08:29.775 [main] INFO  d.c.e.t.p.c.ProductControllerTest - Starting ProductControllerTest using Java 17.0.12 with PID 161688 (started by Minh in E:\Flutter\Ecommerce\FlutterEcommerce\Server)
+2025-05-05 12:08:29.777 [main] INFO  d.c.e.t.p.c.ProductControllerTest - The following 1 profile is active: "dev"
+2025-05-05 12:08:31.304 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-05-05 12:08:31.459 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 142 ms. Found 5 JPA repository interfaces.
+2025-05-05 12:08:34.918 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2025-05-05 12:08:35.361 [main] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@35536760
+2025-05-05 12:08:35.368 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2025-05-05 12:08:35.464 [main] INFO  o.h.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-05-05 12:08:35.586 [main] INFO  org.hibernate.Version - HHH000412: Hibernate ORM core version 6.5.2.Final
+2025-05-05 12:08:35.704 [main] INFO  o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2025-05-05 12:08:36.025 [main] INFO  o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-05-05 12:08:36.206 [main] WARN  org.hibernate.dialect.Dialect - HHH000511: The 5.5.5 version for [org.hibernate.dialect.MySQLDialect] is no longer supported, hence certain features may not work properly. The minimum supported version is 8.0.0. Check the community dialects project for available legacy versions.
+2025-05-05 12:08:39.540 [main] INFO  o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-05-05 12:08:39.560 [main] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-05-05 12:08:39.654 [main] INFO  d.c.e.t.c.s.ImageStorageService - Image storage directory created/initialized at: E:\Flutter\Ecommerce\FlutterEcommerce\Server\uploads\images
+2025-05-05 12:08:39.678 [main] INFO  d.c.e.t.u.security.JwtTokenProvider - Successfully decoded JWT secret from Base64.
+2025-05-05 12:08:39.685 [main] INFO  d.c.e.t.u.security.JwtTokenProvider - JWT Secret Key initialized successfully.
+2025-05-05 12:08:40.595 [main] INFO  o.s.d.j.r.query.QueryEnhancerFactory - Hibernate is in classpath; If applicable, HQL parser will be used.
+2025-05-05 12:08:42.131 [main] INFO  o.s.s.c.a.a.c.InitializeUserDetailsBeanManagerConfigurer$InitializeUserDetailsManagerConfigurer - Global AuthenticationManager configured with UserDetailsService bean with name userDetailsServiceImpl
+2025-05-05 12:08:42.744 [main] WARN  o.s.b.a.o.j.JpaBaseConfiguration$JpaWebConfiguration - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-05-05 12:08:43.669 [main] INFO  o.s.s.web.DefaultSecurityFilterChain - Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@6859080d, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@3bcebb8f, org.springframework.security.web.context.SecurityContextHolderFilter@27af14bd, org.springframework.security.web.header.HeaderWriterFilter@1e1c1634, org.springframework.web.filter.CorsFilter@1a9ce44, org.springframework.security.web.authentication.logout.LogoutFilter@2a080ba3, demo.com.example.testserver.user.security.JwtAuthenticationFilter@3443732a, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@21e5feb, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@2da16d31, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@2220780d, org.springframework.security.web.session.SessionManagementFilter@b729651, org.springframework.security.web.access.ExceptionTranslationFilter@5b1b5daf, org.springframework.security.web.access.intercept.AuthorizationFilter@4cd3e2f3]
+2025-05-05 12:08:44.376 [main] INFO  o.s.b.t.m.w.SpringBootMockServletContext - Initializing Spring TestDispatcherServlet ''
+2025-05-05 12:08:44.377 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Initializing Servlet ''
+2025-05-05 12:08:44.379 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Completed initialization in 2 ms
+2025-05-05 12:08:44.429 [main] INFO  d.c.e.t.p.c.ProductControllerTest - Started ProductControllerTest in 15.298 seconds (process running for 17.638)
+2025-05-05 12:08:44.987 [main] WARN  o.s.d.w.c.SpringDataJacksonConfiguration$PageModule$PlainPageSerializationWarning - Serializing PageImpl instances as-is is not supported, meaning that there is no guarantee about the stability of the resulting JSON structure!
+	For a stable JSON structure, please use Spring Data's PagedModel (globally via @EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO))
+	or Spring HATEOAS and Spring Data's PagedResourcesAssembler as documented in https://docs.spring.io/spring-data/commons/reference/repositories/core-extensions.html#core.web.pageables.
+
+2025-05-05 12:08:45.133 [main] INFO  d.c.e.t.p.c.ProductController - Received request to get product by ID: 1
+2025-05-05 12:08:45.176 [main] WARN  d.c.e.t.p.c.ProductController - Invalid request parameter: Invalid parameter value
+2025-05-05 12:08:45.244 [main] INFO  d.c.e.t.p.c.ProductController - Received request to get product by ID: 999
+2025-05-05 12:08:45.246 [main] WARN  d.c.e.t.p.c.ProductController - Product not found for ID 999: Product not found with ID: 999
+2025-05-05 12:08:45.363 [main] ERROR d.c.e.t.p.c.ProductController - Error fetching products
+java.lang.RuntimeException: Database connection failed
+	at demo.com.example.testserver.product.controller.ProductController.getProducts(ProductController.java:48)
+	at jdk.internal.reflect.GeneratedMethodAccessor47.invoke(Unknown Source)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:354)
+	at org.springframework.aop.framework.CglibAopProxy$DynamicAdvisedInterceptor.intercept(CglibAopProxy.java:716)
+	at demo.com.example.testserver.product.controller.ProductController$$SpringCGLIB$$0.getProducts(<generated>)
+	at jdk.internal.reflect.GeneratedMethodAccessor47.invoke(Unknown Source)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:255)
+	at org.springframework.web.method.support.InvocableHandlerMethod.invokeForRequest(InvocableHandlerMethod.java:188)
+	at org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:118)
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.invokeHandlerMethod(RequestMappingHandlerAdapter.java:926)
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.handleInternal(RequestMappingHandlerAdapter.java:831)
+	at org.springframework.web.servlet.mvc.method.AbstractHandlerMethodAdapter.handle(AbstractHandlerMethodAdapter.java:87)
+	at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:1089)
+	at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:979)
+	at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1014)
+	at org.springframework.web.servlet.FrameworkServlet.doGet(FrameworkServlet.java:903)
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:564)
+	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:885)
+	at org.springframework.test.web.servlet.TestDispatcherServlet.service(TestDispatcherServlet.java:72)
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:658)
+	at org.springframework.mock.web.MockFilterChain$ServletFilterProxy.doFilter(MockFilterChain.java:165)
+	at org.springframework.mock.web.MockFilterChain.doFilter(MockFilterChain.java:132)
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:110)
+	at org.springframework.test.web.servlet.setup.MockMvcFilterDecorator.doFilter(MockMvcFilterDecorator.java:151)
+	at org.springframework.mock.web.MockFilterChain.doFilter(MockFilterChain.java:132)
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:108)
+	at org.springframework.security.web.FilterChainProxy.lambda$doFilterInternal$3(FilterChainProxy.java:231)
+	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:365)
+	at org.springframework.security.web.access.intercept.AuthorizationFilter.doFilter(AuthorizationFilter.java:100)
+	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374)
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:126)
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:120)
+	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374)
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:131)
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:85)
+	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374)
+	at org.springframework.security.web.authentication.AnonymousAuthenticationFilter.doFilter(AnonymousAuthenticationFilter.java:100)
+	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374)
+	at org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter.doFilter(SecurityContextHolderAwareRequestFilter.java:179)
+	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374)
+	at org.springframework.security.web.savedrequest.RequestCacheAwareFilter.doFilter(RequestCacheAwareFilter.java:63)
+	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374)
+	at demo.com.example.testserver.user.security.JwtAuthenticationFilter.doFilterInternal(JwtAuthenticationFilter.java:53)
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
+	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374)
+	at org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:107)
+	at org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:93)
+	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374)
+	at org.springframework.web.filter.CorsFilter.doFilterInternal(CorsFilter.java:91)
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
+	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374)
+	at org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:90)
+	at org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:75)
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
+	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374)
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82)
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69)
+	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374)
+	at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62)
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
+	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374)
+	at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42)
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
+	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374)
+	at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:233)
+	at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:191)
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113)
+	at org.springframework.web.servlet.handler.HandlerMappingIntrospector.lambda$createCacheFilter$3(HandlerMappingIntrospector.java:195)
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113)
+	at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74)
+	at org.springframework.security.config.annotation.web.configuration.WebMvcSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebMvcSecurityConfiguration.java:230)
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:352)
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:268)
+	at org.springframework.test.web.servlet.setup.MockMvcFilterDecorator.doFilter(MockMvcFilterDecorator.java:151)
+	at org.springframework.mock.web.MockFilterChain.doFilter(MockFilterChain.java:132)
+	at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100)
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
+	at org.springframework.test.web.servlet.setup.MockMvcFilterDecorator.doFilter(MockMvcFilterDecorator.java:151)
+	at org.springframework.mock.web.MockFilterChain.doFilter(MockFilterChain.java:132)
+	at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93)
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
+	at org.springframework.test.web.servlet.setup.MockMvcFilterDecorator.doFilter(MockMvcFilterDecorator.java:151)
+	at org.springframework.mock.web.MockFilterChain.doFilter(MockFilterChain.java:132)
+	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:201)
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
+	at org.springframework.test.web.servlet.setup.MockMvcFilterDecorator.doFilter(MockMvcFilterDecorator.java:151)
+	at org.springframework.mock.web.MockFilterChain.doFilter(MockFilterChain.java:132)
+	at org.springframework.test.web.servlet.MockMvc.perform(MockMvc.java:201)
+	at demo.com.example.testserver.product.controller.ProductControllerTest.getProducts_serviceThrowsGenericException_shouldReturnInternalServerError(ProductControllerTest.java:376)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:728)
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:60)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:131)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:156)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:147)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:86)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(InterceptingExecutableInvoker.java:103)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.lambda$invoke$0(InterceptingExecutableInvoker.java:93)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:106)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:64)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:45)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:37)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:92)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:86)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$7(TestMethodTestDescriptor.java:218)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:214)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:139)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:69)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:151)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:155)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:155)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:35)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:57)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:54)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:198)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:169)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:93)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:58)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:141)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:57)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:103)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:85)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:47)
+	at org.apache.maven.surefire.junitplatform.LazyLauncher.execute(LazyLauncher.java:56)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.execute(JUnitPlatformProvider.java:184)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invokeAllTests(JUnitPlatformProvider.java:148)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invoke(JUnitPlatformProvider.java:122)
+	at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:385)
+	at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162)
+	at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507)
+	at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495)
+2025-05-05 12:08:45.947 [SpringApplicationShutdownHook] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+2025-05-05 12:08:45.952 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2025-05-05 12:08:45.965 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
+2025-05-05 12:27:36.329 [main] INFO  d.c.e.t.p.c.ProductControllerIntegrationTest - Starting ProductControllerIntegrationTest using Java 17.0.12 with PID 132044 (started by Minh in E:\Flutter\Ecommerce\FlutterEcommerce\Server)
+2025-05-05 12:27:36.336 [main] INFO  d.c.e.t.p.c.ProductControllerIntegrationTest - The following 1 profile is active: "dev"
+2025-05-05 12:27:38.436 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-05-05 12:27:38.706 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 246 ms. Found 5 JPA repository interfaces.
+2025-05-05 12:27:40.233 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2025-05-05 12:27:40.800 [main] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@1cd2ff5b
+2025-05-05 12:27:40.805 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2025-05-05 12:27:40.955 [main] INFO  o.h.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-05-05 12:27:41.088 [main] INFO  org.hibernate.Version - HHH000412: Hibernate ORM core version 6.5.2.Final
+2025-05-05 12:27:41.158 [main] INFO  o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2025-05-05 12:27:42.111 [main] INFO  o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-05-05 12:27:42.247 [main] WARN  org.hibernate.dialect.Dialect - HHH000511: The 5.5.5 version for [org.hibernate.dialect.MySQLDialect] is no longer supported, hence certain features may not work properly. The minimum supported version is 8.0.0. Check the community dialects project for available legacy versions.
+2025-05-05 12:27:44.407 [main] INFO  o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-05-05 12:27:44.414 [main] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-05-05 12:27:44.451 [main] INFO  d.c.e.t.c.s.ImageStorageService - Image storage directory created/initialized at: E:\Flutter\Ecommerce\FlutterEcommerce\Server\uploads\images
+2025-05-05 12:27:44.476 [main] INFO  d.c.e.t.u.security.JwtTokenProvider - Successfully decoded JWT secret from Base64.
+2025-05-05 12:27:44.481 [main] INFO  d.c.e.t.u.security.JwtTokenProvider - JWT Secret Key initialized successfully.
+2025-05-05 12:27:45.758 [main] INFO  o.s.d.j.r.query.QueryEnhancerFactory - Hibernate is in classpath; If applicable, HQL parser will be used.
+2025-05-05 12:27:47.266 [main] INFO  o.s.s.c.a.a.c.InitializeUserDetailsBeanManagerConfigurer$InitializeUserDetailsManagerConfigurer - Global AuthenticationManager configured with UserDetailsService bean with name userDetailsServiceImpl
+2025-05-05 12:27:48.114 [main] WARN  o.s.b.a.o.j.JpaBaseConfiguration$JpaWebConfiguration - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-05-05 12:27:49.307 [main] INFO  o.s.s.web.DefaultSecurityFilterChain - Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@6dbc3756, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@26a2106e, org.springframework.security.web.context.SecurityContextHolderFilter@71e740c6, org.springframework.security.web.header.HeaderWriterFilter@30d4d6fb, org.springframework.web.filter.CorsFilter@2c75b0c8, org.springframework.security.web.authentication.logout.LogoutFilter@1def2d16, demo.com.example.testserver.user.security.JwtAuthenticationFilter@1b0709e7, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@1a26eecb, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@5a41183b, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@23c95292, org.springframework.security.web.session.SessionManagementFilter@6fb9dab6, org.springframework.security.web.access.ExceptionTranslationFilter@d2eddc2, org.springframework.security.web.access.intercept.AuthorizationFilter@382e7f70]
+2025-05-05 12:27:50.181 [main] INFO  o.s.b.t.m.w.SpringBootMockServletContext - Initializing Spring TestDispatcherServlet ''
+2025-05-05 12:27:50.181 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Initializing Servlet ''
+2025-05-05 12:27:50.184 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Completed initialization in 1 ms
+2025-05-05 12:27:50.247 [main] INFO  d.c.e.t.p.c.ProductControllerIntegrationTest - Started ProductControllerIntegrationTest in 14.602 seconds (process running for 16.966)
+2025-05-05 12:27:51.888 [main] DEBUG org.hibernate.SQL - select p1_0.id,p1_0.average_rating,p1_0.thuong_hieu_id,p1_0.danh_muc_id,p1_0.ngay_tao,p1_0.mo_ta,p1_0.phan_tram_giam_gia,p1_0.anh_chinh_url,p1_0.max_price,p1_0.min_price,p1_0.ten_san_pham,p1_0.ngay_cap_nhat from san_pham p1_0
+2025-05-05 12:27:51.964 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 12:27:52.011 [main] DEBUG org.hibernate.SQL - select c1_0.id,c1_0.ngay_tao,c1_0.hinh_anh,c1_0.ten_danh_muc,c1_0.ngay_cap_nhat from danh_muc c1_0
+2025-05-05 12:27:52.023 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 12:27:52.077 [main] DEBUG org.hibernate.SQL - insert into danh_muc (ngay_tao,hinh_anh,ten_danh_muc,ngay_cap_nhat) values (?,?,?,?)
+2025-05-05 12:27:52.152 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 12:27:52.397 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:52.581 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:53.087 [main] WARN  o.s.w.s.m.s.DefaultHandlerExceptionResolver - Resolved [org.springframework.web.bind.MethodArgumentNotValidException: Validation failed for argument [0] in public org.springframework.http.ResponseEntity<?> demo.com.example.testserver.product.controller.ProductController.createProduct(demo.com.example.testserver.product.dto.CreateProductRequestDTO): [Field error in object 'createProductRequestDTO' on field 'variants[0].price': rejected value [-5.00]; codes [Positive.createProductRequestDTO.variants[0].price,Positive.createProductRequestDTO.variants.price,Positive.variants[0].price,Positive.variants.price,Positive.price,Positive.java.math.BigDecimal,Positive]; arguments [org.springframework.context.support.DefaultMessageSourceResolvable: codes [createProductRequestDTO.variants[0].price,variants[0].price]; arguments []; default message [variants[0].price]]; default message [Variant price must be positive]] ]
+2025-05-05 12:27:53.195 [main] DEBUG org.hibernate.SQL - select p1_0.id,p1_0.average_rating,p1_0.thuong_hieu_id,p1_0.danh_muc_id,p1_0.ngay_tao,p1_0.mo_ta,p1_0.phan_tram_giam_gia,p1_0.anh_chinh_url,p1_0.max_price,p1_0.min_price,p1_0.ten_san_pham,p1_0.ngay_cap_nhat from san_pham p1_0
+2025-05-05 12:27:53.213 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 12:27:53.220 [main] DEBUG org.hibernate.SQL - select c1_0.id,c1_0.ngay_tao,c1_0.hinh_anh,c1_0.ten_danh_muc,c1_0.ngay_cap_nhat from danh_muc c1_0
+2025-05-05 12:27:53.232 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 12:27:53.237 [main] DEBUG org.hibernate.SQL - insert into danh_muc (ngay_tao,hinh_anh,ten_danh_muc,ngay_cap_nhat) values (?,?,?,?)
+2025-05-05 12:27:53.251 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 12:27:53.446 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:53.605 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:53.700 [main] INFO  d.c.e.t.p.c.ProductController - Received request to create product: Test Product
+2025-05-05 12:27:53.701 [main] INFO  d.c.e.t.p.s.impl.ProductServiceImpl - Attempting to create product with name: Test Product
+2025-05-05 12:27:53.717 [main] DEBUG org.hibernate.SQL - select c1_0.id,c1_0.ngay_tao,c1_0.hinh_anh,c1_0.ten_danh_muc,c1_0.ngay_cap_nhat from danh_muc c1_0 where c1_0.id=?
+2025-05-05 12:27:53.720 [main] WARN  d.c.e.t.p.c.ProductController - Failed to create product. Reason: Category not found with ID: 9999
+2025-05-05 12:27:53.771 [main] DEBUG org.hibernate.SQL - select p1_0.id,p1_0.average_rating,p1_0.thuong_hieu_id,p1_0.danh_muc_id,p1_0.ngay_tao,p1_0.mo_ta,p1_0.phan_tram_giam_gia,p1_0.anh_chinh_url,p1_0.max_price,p1_0.min_price,p1_0.ten_san_pham,p1_0.ngay_cap_nhat from san_pham p1_0
+2025-05-05 12:27:53.779 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 12:27:53.782 [main] DEBUG org.hibernate.SQL - select c1_0.id,c1_0.ngay_tao,c1_0.hinh_anh,c1_0.ten_danh_muc,c1_0.ngay_cap_nhat from danh_muc c1_0
+2025-05-05 12:27:53.785 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 12:27:53.788 [main] DEBUG org.hibernate.SQL - insert into danh_muc (ngay_tao,hinh_anh,ten_danh_muc,ngay_cap_nhat) values (?,?,?,?)
+2025-05-05 12:27:53.798 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 12:27:53.971 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:54.120 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:54.192 [main] DEBUG org.hibernate.SQL - select p1_0.id,p1_0.average_rating,p1_0.thuong_hieu_id,p1_0.danh_muc_id,p1_0.ngay_tao,p1_0.mo_ta,p1_0.phan_tram_giam_gia,p1_0.anh_chinh_url,p1_0.max_price,p1_0.min_price,p1_0.ten_san_pham,p1_0.ngay_cap_nhat from san_pham p1_0
+2025-05-05 12:27:54.202 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 12:27:54.205 [main] DEBUG org.hibernate.SQL - select c1_0.id,c1_0.ngay_tao,c1_0.hinh_anh,c1_0.ten_danh_muc,c1_0.ngay_cap_nhat from danh_muc c1_0
+2025-05-05 12:27:54.216 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 12:27:54.217 [main] DEBUG org.hibernate.SQL - insert into danh_muc (ngay_tao,hinh_anh,ten_danh_muc,ngay_cap_nhat) values (?,?,?,?)
+2025-05-05 12:27:54.220 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 12:27:54.372 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:54.531 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:54.535 [main] DEBUG org.hibernate.SQL - insert into san_pham (average_rating,thuong_hieu_id,danh_muc_id,ngay_tao,mo_ta,phan_tram_giam_gia,anh_chinh_url,max_price,min_price,ten_san_pham,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:54.544 [main] DEBUG org.hibernate.SQL - insert into bien_the_san_pham (ngay_tao,ten_bien_the,gia,san_pham_id,sku,so_luong_ton_kho,ngay_cap_nhat,hinh_anh_bien_the_url) values (?,?,?,?,?,?,?,?)
+2025-05-05 12:27:54.574 [main] DEBUG org.hibernate.SQL - select p1_0.id,p1_0.average_rating,p1_0.thuong_hieu_id,p1_0.danh_muc_id,p1_0.ngay_tao,p1_0.mo_ta,p1_0.phan_tram_giam_gia,p1_0.anh_chinh_url,p1_0.max_price,p1_0.min_price,p1_0.ten_san_pham,p1_0.ngay_cap_nhat from san_pham p1_0
+2025-05-05 12:27:54.588 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 12:27:54.604 [main] DEBUG org.hibernate.SQL - select c1_0.id,c1_0.ngay_tao,c1_0.hinh_anh,c1_0.ten_danh_muc,c1_0.ngay_cap_nhat from danh_muc c1_0
+2025-05-05 12:27:54.609 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 12:27:54.612 [main] DEBUG org.hibernate.SQL - insert into danh_muc (ngay_tao,hinh_anh,ten_danh_muc,ngay_cap_nhat) values (?,?,?,?)
+2025-05-05 12:27:54.658 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 12:27:54.802 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:55.014 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:55.018 [main] DEBUG org.hibernate.SQL - insert into san_pham (average_rating,thuong_hieu_id,danh_muc_id,ngay_tao,mo_ta,phan_tram_giam_gia,anh_chinh_url,max_price,min_price,ten_san_pham,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:55.021 [main] DEBUG org.hibernate.SQL - insert into bien_the_san_pham (ngay_tao,ten_bien_the,gia,san_pham_id,sku,so_luong_ton_kho,ngay_cap_nhat,hinh_anh_bien_the_url) values (?,?,?,?,?,?,?,?)
+2025-05-05 12:27:55.033 [main] DEBUG org.hibernate.SQL - insert into bien_the_san_pham (ngay_tao,ten_bien_the,gia,san_pham_id,sku,so_luong_ton_kho,ngay_cap_nhat,hinh_anh_bien_the_url) values (?,?,?,?,?,?,?,?)
+2025-05-05 12:27:55.067 [main] INFO  d.c.e.t.p.c.ProductController - Received request to update product with ID: 3
+2025-05-05 12:27:55.068 [main] INFO  d.c.e.t.p.s.impl.ProductServiceImpl - Attempting to update product with ID: 3
+2025-05-05 12:27:55.085 [main] DEBUG org.hibernate.SQL - insert into hinh_anh_san_pham (ngay_tao,url_hinh_anh,san_pham_id) values (?,?,?)
+2025-05-05 12:27:55.095 [main] DEBUG org.hibernate.SQL - insert into hinh_anh_san_pham (ngay_tao,url_hinh_anh,san_pham_id) values (?,?,?)
+2025-05-05 12:27:55.229 [main] DEBUG org.hibernate.SQL - insert into bien_the_san_pham (ngay_tao,ten_bien_the,gia,san_pham_id,sku,so_luong_ton_kho,ngay_cap_nhat,hinh_anh_bien_the_url) values (?,?,?,?,?,?,?,?)
+2025-05-05 12:27:55.259 [main] INFO  d.c.e.t.p.s.impl.ProductServiceImpl - Product updated successfully with ID: 3
+2025-05-05 12:27:55.263 [main] INFO  d.c.e.t.p.s.ProductDenormalizationService - Denormalized fields updated successfully for product ID: 3
+2025-05-05 12:27:55.263 [main] INFO  d.c.e.t.p.s.impl.ProductServiceImpl - Triggered denormalization for updated product ID: 3
+2025-05-05 12:27:55.410 [main] DEBUG org.hibernate.SQL - select p1_0.id,p1_0.average_rating,p1_0.thuong_hieu_id,p1_0.danh_muc_id,p1_0.ngay_tao,p1_0.mo_ta,p1_0.phan_tram_giam_gia,p1_0.anh_chinh_url,p1_0.max_price,p1_0.min_price,p1_0.ten_san_pham,p1_0.ngay_cap_nhat from san_pham p1_0
+2025-05-05 12:27:55.416 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 12:27:55.421 [main] DEBUG org.hibernate.SQL - select c1_0.id,c1_0.ngay_tao,c1_0.hinh_anh,c1_0.ten_danh_muc,c1_0.ngay_cap_nhat from danh_muc c1_0
+2025-05-05 12:27:55.426 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 12:27:55.432 [main] DEBUG org.hibernate.SQL - insert into danh_muc (ngay_tao,hinh_anh,ten_danh_muc,ngay_cap_nhat) values (?,?,?,?)
+2025-05-05 12:27:55.439 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 12:27:55.596 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:55.747 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:55.753 [main] WARN  o.s.w.s.m.s.DefaultHandlerExceptionResolver - Resolved [org.springframework.web.bind.MethodArgumentNotValidException: Validation failed for argument [0] in public org.springframework.http.ResponseEntity<?> demo.com.example.testserver.product.controller.ProductController.createProduct(demo.com.example.testserver.product.dto.CreateProductRequestDTO): [Field error in object 'createProductRequestDTO' on field 'name': rejected value [null]; codes [NotBlank.createProductRequestDTO.name,NotBlank.name,NotBlank.java.lang.String,NotBlank]; arguments [org.springframework.context.support.DefaultMessageSourceResolvable: codes [createProductRequestDTO.name,name]; arguments []; default message [name]]; default message [Product name cannot be blank]] ]
+2025-05-05 12:27:55.769 [main] DEBUG org.hibernate.SQL - select p1_0.id,p1_0.average_rating,p1_0.thuong_hieu_id,p1_0.danh_muc_id,p1_0.ngay_tao,p1_0.mo_ta,p1_0.phan_tram_giam_gia,p1_0.anh_chinh_url,p1_0.max_price,p1_0.min_price,p1_0.ten_san_pham,p1_0.ngay_cap_nhat from san_pham p1_0
+2025-05-05 12:27:55.771 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 12:27:55.772 [main] DEBUG org.hibernate.SQL - select c1_0.id,c1_0.ngay_tao,c1_0.hinh_anh,c1_0.ten_danh_muc,c1_0.ngay_cap_nhat from danh_muc c1_0
+2025-05-05 12:27:55.779 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 12:27:55.784 [main] DEBUG org.hibernate.SQL - insert into danh_muc (ngay_tao,hinh_anh,ten_danh_muc,ngay_cap_nhat) values (?,?,?,?)
+2025-05-05 12:27:55.786 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 12:27:55.936 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:56.081 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:56.085 [main] WARN  o.s.w.s.m.s.DefaultHandlerExceptionResolver - Resolved [org.springframework.web.bind.MethodArgumentNotValidException: Validation failed for argument [0] in public org.springframework.http.ResponseEntity<?> demo.com.example.testserver.product.controller.ProductController.createProduct(demo.com.example.testserver.product.dto.CreateProductRequestDTO): [Field error in object 'createProductRequestDTO' on field 'variants': rejected value [null]; codes [NotEmpty.createProductRequestDTO.variants,NotEmpty.variants,NotEmpty.java.util.List,NotEmpty]; arguments [org.springframework.context.support.DefaultMessageSourceResolvable: codes [createProductRequestDTO.variants,variants]; arguments []; default message [variants]]; default message [Product must have at least one variant]] ]
+2025-05-05 12:27:56.102 [main] DEBUG org.hibernate.SQL - select p1_0.id,p1_0.average_rating,p1_0.thuong_hieu_id,p1_0.danh_muc_id,p1_0.ngay_tao,p1_0.mo_ta,p1_0.phan_tram_giam_gia,p1_0.anh_chinh_url,p1_0.max_price,p1_0.min_price,p1_0.ten_san_pham,p1_0.ngay_cap_nhat from san_pham p1_0
+2025-05-05 12:27:56.105 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 12:27:56.108 [main] DEBUG org.hibernate.SQL - select c1_0.id,c1_0.ngay_tao,c1_0.hinh_anh,c1_0.ten_danh_muc,c1_0.ngay_cap_nhat from danh_muc c1_0
+2025-05-05 12:27:56.112 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 12:27:56.117 [main] DEBUG org.hibernate.SQL - insert into danh_muc (ngay_tao,hinh_anh,ten_danh_muc,ngay_cap_nhat) values (?,?,?,?)
+2025-05-05 12:27:56.120 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 12:27:56.297 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:56.517 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:56.522 [main] DEBUG org.hibernate.SQL - insert into san_pham (average_rating,thuong_hieu_id,danh_muc_id,ngay_tao,mo_ta,phan_tram_giam_gia,anh_chinh_url,max_price,min_price,ten_san_pham,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:56.526 [main] DEBUG org.hibernate.SQL - insert into bien_the_san_pham (ngay_tao,ten_bien_the,gia,san_pham_id,sku,so_luong_ton_kho,ngay_cap_nhat,hinh_anh_bien_the_url) values (?,?,?,?,?,?,?,?)
+2025-05-05 12:27:56.555 [main] DEBUG org.hibernate.SQL - select p1_0.id,p1_0.average_rating,p1_0.thuong_hieu_id,p1_0.danh_muc_id,p1_0.ngay_tao,p1_0.mo_ta,p1_0.phan_tram_giam_gia,p1_0.anh_chinh_url,p1_0.max_price,p1_0.min_price,p1_0.ten_san_pham,p1_0.ngay_cap_nhat from san_pham p1_0
+2025-05-05 12:27:56.609 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 12:27:56.633 [main] DEBUG org.hibernate.SQL - select c1_0.id,c1_0.ngay_tao,c1_0.hinh_anh,c1_0.ten_danh_muc,c1_0.ngay_cap_nhat from danh_muc c1_0
+2025-05-05 12:27:56.639 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 12:27:56.651 [main] DEBUG org.hibernate.SQL - insert into danh_muc (ngay_tao,hinh_anh,ten_danh_muc,ngay_cap_nhat) values (?,?,?,?)
+2025-05-05 12:27:56.686 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 12:27:56.855 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:57.016 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:57.021 [main] INFO  d.c.e.t.p.c.ProductController - Received request to delete product with ID: 9999
+2025-05-05 12:27:57.021 [main] INFO  d.c.e.t.p.s.impl.ProductServiceImpl - Attempting to delete product with ID: 9999
+2025-05-05 12:27:57.021 [main] DEBUG org.hibernate.SQL - select p1_0.id,p1_0.average_rating,p1_0.thuong_hieu_id,p1_0.danh_muc_id,p1_0.ngay_tao,p1_0.mo_ta,p1_0.phan_tram_giam_gia,p1_0.anh_chinh_url,p1_0.max_price,p1_0.min_price,p1_0.ten_san_pham,p1_0.ngay_cap_nhat from san_pham p1_0 where p1_0.id=?
+2025-05-05 12:27:57.023 [main] WARN  d.c.e.t.p.c.ProductController - Failed to delete product. Reason: Product not found with ID: 9999
+2025-05-05 12:27:57.048 [main] DEBUG org.hibernate.SQL - select p1_0.id,p1_0.average_rating,p1_0.thuong_hieu_id,p1_0.danh_muc_id,p1_0.ngay_tao,p1_0.mo_ta,p1_0.phan_tram_giam_gia,p1_0.anh_chinh_url,p1_0.max_price,p1_0.min_price,p1_0.ten_san_pham,p1_0.ngay_cap_nhat from san_pham p1_0
+2025-05-05 12:27:57.052 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 12:27:57.056 [main] DEBUG org.hibernate.SQL - select c1_0.id,c1_0.ngay_tao,c1_0.hinh_anh,c1_0.ten_danh_muc,c1_0.ngay_cap_nhat from danh_muc c1_0
+2025-05-05 12:27:57.067 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 12:27:57.069 [main] DEBUG org.hibernate.SQL - insert into danh_muc (ngay_tao,hinh_anh,ten_danh_muc,ngay_cap_nhat) values (?,?,?,?)
+2025-05-05 12:27:57.073 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 12:27:57.234 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:57.370 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:57.380 [main] INFO  d.c.e.t.p.c.ProductController - Received request to update product with ID: 9999
+2025-05-05 12:27:57.380 [main] INFO  d.c.e.t.p.s.impl.ProductServiceImpl - Attempting to update product with ID: 9999
+2025-05-05 12:27:57.381 [main] DEBUG org.hibernate.SQL - select p1_0.id,p1_0.average_rating,p1_0.thuong_hieu_id,p1_0.danh_muc_id,p1_0.ngay_tao,p1_0.mo_ta,p1_0.phan_tram_giam_gia,p1_0.anh_chinh_url,p1_0.max_price,p1_0.min_price,p1_0.ten_san_pham,p1_0.ngay_cap_nhat from san_pham p1_0 where p1_0.id=?
+2025-05-05 12:27:57.383 [main] WARN  d.c.e.t.p.c.ProductController - Failed to update product. Reason: Product not found with ID: 9999
+2025-05-05 12:27:57.399 [main] DEBUG org.hibernate.SQL - select p1_0.id,p1_0.average_rating,p1_0.thuong_hieu_id,p1_0.danh_muc_id,p1_0.ngay_tao,p1_0.mo_ta,p1_0.phan_tram_giam_gia,p1_0.anh_chinh_url,p1_0.max_price,p1_0.min_price,p1_0.ten_san_pham,p1_0.ngay_cap_nhat from san_pham p1_0
+2025-05-05 12:27:57.402 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 12:27:57.406 [main] DEBUG org.hibernate.SQL - select c1_0.id,c1_0.ngay_tao,c1_0.hinh_anh,c1_0.ten_danh_muc,c1_0.ngay_cap_nhat from danh_muc c1_0
+2025-05-05 12:27:57.417 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 12:27:57.418 [main] DEBUG org.hibernate.SQL - insert into danh_muc (ngay_tao,hinh_anh,ten_danh_muc,ngay_cap_nhat) values (?,?,?,?)
+2025-05-05 12:27:57.420 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 12:27:57.567 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:57.701 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:57.721 [main] DEBUG org.hibernate.SQL - select p1_0.id,p1_0.average_rating,p1_0.thuong_hieu_id,p1_0.danh_muc_id,p1_0.ngay_tao,p1_0.mo_ta,p1_0.phan_tram_giam_gia,p1_0.anh_chinh_url,p1_0.max_price,p1_0.min_price,p1_0.ten_san_pham,p1_0.ngay_cap_nhat from san_pham p1_0
+2025-05-05 12:27:57.723 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 12:27:57.729 [main] DEBUG org.hibernate.SQL - select c1_0.id,c1_0.ngay_tao,c1_0.hinh_anh,c1_0.ten_danh_muc,c1_0.ngay_cap_nhat from danh_muc c1_0
+2025-05-05 12:27:57.734 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 12:27:57.736 [main] DEBUG org.hibernate.SQL - insert into danh_muc (ngay_tao,hinh_anh,ten_danh_muc,ngay_cap_nhat) values (?,?,?,?)
+2025-05-05 12:27:57.738 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 12:27:57.882 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:58.052 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:58.054 [main] DEBUG org.hibernate.SQL - insert into san_pham (average_rating,thuong_hieu_id,danh_muc_id,ngay_tao,mo_ta,phan_tram_giam_gia,anh_chinh_url,max_price,min_price,ten_san_pham,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:58.056 [main] DEBUG org.hibernate.SQL - insert into bien_the_san_pham (ngay_tao,ten_bien_the,gia,san_pham_id,sku,so_luong_ton_kho,ngay_cap_nhat,hinh_anh_bien_the_url) values (?,?,?,?,?,?,?,?)
+2025-05-05 12:27:58.172 [main] DEBUG org.hibernate.SQL - select count(*) from san_pham p1_0 where p1_0.id=?
+2025-05-05 12:27:58.179 [main] INFO  d.c.e.t.p.c.ProductController - Received request to delete product with ID: 5
+2025-05-05 12:27:58.179 [main] INFO  d.c.e.t.p.s.impl.ProductServiceImpl - Attempting to delete product with ID: 5
+2025-05-05 12:27:58.186 [main] INFO  d.c.e.t.p.s.impl.ProductServiceImpl - Product deleted successfully with ID: 5
+2025-05-05 12:27:58.212 [main] DEBUG org.hibernate.SQL - delete from bien_the_san_pham where id=?
+2025-05-05 12:27:58.263 [main] DEBUG org.hibernate.SQL - delete from san_pham where id=?
+2025-05-05 12:27:58.271 [main] DEBUG org.hibernate.SQL - select count(*) from san_pham p1_0 where p1_0.id=?
+2025-05-05 12:27:58.313 [main] DEBUG org.hibernate.SQL - select p1_0.id,p1_0.average_rating,p1_0.thuong_hieu_id,p1_0.danh_muc_id,p1_0.ngay_tao,p1_0.mo_ta,p1_0.phan_tram_giam_gia,p1_0.anh_chinh_url,p1_0.max_price,p1_0.min_price,p1_0.ten_san_pham,p1_0.ngay_cap_nhat from san_pham p1_0
+2025-05-05 12:27:58.316 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 12:27:58.319 [main] DEBUG org.hibernate.SQL - select c1_0.id,c1_0.ngay_tao,c1_0.hinh_anh,c1_0.ten_danh_muc,c1_0.ngay_cap_nhat from danh_muc c1_0
+2025-05-05 12:27:58.322 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 12:27:58.325 [main] DEBUG org.hibernate.SQL - insert into danh_muc (ngay_tao,hinh_anh,ten_danh_muc,ngay_cap_nhat) values (?,?,?,?)
+2025-05-05 12:27:58.330 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 12:27:58.629 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:58.802 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:58.809 [main] INFO  d.c.e.t.p.c.ProductController - Received request to create product: Test Product
+2025-05-05 12:27:58.810 [main] INFO  d.c.e.t.p.s.impl.ProductServiceImpl - Attempting to create product with name: Test Product
+2025-05-05 12:27:58.813 [main] DEBUG org.hibernate.SQL - insert into san_pham (average_rating,thuong_hieu_id,danh_muc_id,ngay_tao,mo_ta,phan_tram_giam_gia,anh_chinh_url,max_price,min_price,ten_san_pham,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 12:27:58.819 [main] DEBUG org.hibernate.SQL - insert into hinh_anh_san_pham (ngay_tao,url_hinh_anh,san_pham_id) values (?,?,?)
+2025-05-05 12:27:58.822 [main] DEBUG org.hibernate.SQL - insert into hinh_anh_san_pham (ngay_tao,url_hinh_anh,san_pham_id) values (?,?,?)
+2025-05-05 12:27:58.824 [main] DEBUG org.hibernate.SQL - insert into bien_the_san_pham (ngay_tao,ten_bien_the,gia,san_pham_id,sku,so_luong_ton_kho,ngay_cap_nhat,hinh_anh_bien_the_url) values (?,?,?,?,?,?,?,?)
+2025-05-05 12:27:58.833 [main] DEBUG org.hibernate.SQL - insert into bien_the_san_pham (ngay_tao,ten_bien_the,gia,san_pham_id,sku,so_luong_ton_kho,ngay_cap_nhat,hinh_anh_bien_the_url) values (?,?,?,?,?,?,?,?)
+2025-05-05 12:27:58.836 [main] INFO  d.c.e.t.p.s.impl.ProductServiceImpl - Product created successfully with ID: 6. Associated variants and images saved via cascade.
+2025-05-05 12:27:58.837 [main] INFO  d.c.e.t.p.s.ProductDenormalizationService - Denormalized fields updated successfully for product ID: 6
+2025-05-05 12:27:58.838 [main] INFO  d.c.e.t.p.s.impl.ProductServiceImpl - Triggered denormalization for new product ID: 6
+2025-05-05 12:27:58.857 [main] DEBUG org.hibernate.SQL - update san_pham set average_rating=?,thuong_hieu_id=?,danh_muc_id=?,mo_ta=?,phan_tram_giam_gia=?,anh_chinh_url=?,max_price=?,min_price=?,ten_san_pham=?,ngay_cap_nhat=? where id=?
+2025-05-05 12:27:58.957 [main] DEBUG org.hibernate.SQL - select p1_0.id,p1_0.average_rating,p1_0.thuong_hieu_id,p1_0.danh_muc_id,p1_0.ngay_tao,p1_0.mo_ta,p1_0.phan_tram_giam_gia,p1_0.anh_chinh_url,p1_0.max_price,p1_0.min_price,p1_0.ten_san_pham,p1_0.ngay_cap_nhat from san_pham p1_0
+2025-05-05 12:27:59.144 [SpringApplicationShutdownHook] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+2025-05-05 12:27:59.147 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2025-05-05 12:27:59.171 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
+2025-05-05 17:27:43.058 [main] INFO  d.c.e.t.p.c.BrandControllerIntegrationTest - Starting BrandControllerIntegrationTest using Java 17.0.12 with PID 115716 (started by Minh in E:\Flutter\Ecommerce\FlutterEcommerce\Server)
+2025-05-05 17:27:43.063 [main] INFO  d.c.e.t.p.c.BrandControllerIntegrationTest - The following 1 profile is active: "dev"
+2025-05-05 17:27:45.406 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-05-05 17:27:45.714 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 286 ms. Found 5 JPA repository interfaces.
+2025-05-05 17:27:47.134 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2025-05-05 17:27:47.738 [main] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@41aebbb4
+2025-05-05 17:27:47.742 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2025-05-05 17:27:47.897 [main] INFO  o.h.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-05-05 17:27:48.139 [main] INFO  org.hibernate.Version - HHH000412: Hibernate ORM core version 6.5.2.Final
+2025-05-05 17:27:48.234 [main] INFO  o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2025-05-05 17:27:49.513 [main] INFO  o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-05-05 17:27:49.756 [main] WARN  org.hibernate.dialect.Dialect - HHH000511: The 5.5.5 version for [org.hibernate.dialect.MySQLDialect] is no longer supported, hence certain features may not work properly. The minimum supported version is 8.0.0. Check the community dialects project for available legacy versions.
+2025-05-05 17:27:52.522 [main] INFO  o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-05-05 17:27:52.530 [main] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-05-05 17:27:52.586 [main] INFO  d.c.e.t.c.s.ImageStorageService - Image storage directory created/initialized at: E:\Flutter\Ecommerce\FlutterEcommerce\Server\uploads\images
+2025-05-05 17:27:52.656 [main] INFO  d.c.e.t.u.security.JwtTokenProvider - Successfully decoded JWT secret from Base64.
+2025-05-05 17:27:52.660 [main] INFO  d.c.e.t.u.security.JwtTokenProvider - JWT Secret Key initialized successfully.
+2025-05-05 17:27:54.307 [main] INFO  o.s.d.j.r.query.QueryEnhancerFactory - Hibernate is in classpath; If applicable, HQL parser will be used.
+2025-05-05 17:27:56.429 [main] INFO  o.s.s.c.a.a.c.InitializeUserDetailsBeanManagerConfigurer$InitializeUserDetailsManagerConfigurer - Global AuthenticationManager configured with UserDetailsService bean with name userDetailsServiceImpl
+2025-05-05 17:27:57.028 [main] WARN  o.s.b.a.o.j.JpaBaseConfiguration$JpaWebConfiguration - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-05-05 17:27:58.007 [main] INFO  o.s.s.web.DefaultSecurityFilterChain - Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@280cc940, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@6a478680, org.springframework.security.web.context.SecurityContextHolderFilter@7e775ef3, org.springframework.security.web.header.HeaderWriterFilter@2908fc20, org.springframework.web.filter.CorsFilter@7eecb648, org.springframework.security.web.authentication.logout.LogoutFilter@6dafdb99, demo.com.example.testserver.user.security.JwtAuthenticationFilter@5543800c, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@1053b20d, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@6304ff53, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@52599443, org.springframework.security.web.session.SessionManagementFilter@27a9fe9e, org.springframework.security.web.access.ExceptionTranslationFilter@21ec86e6, org.springframework.security.web.access.intercept.AuthorizationFilter@68955382]
+2025-05-05 17:27:58.681 [main] INFO  o.s.b.t.m.w.SpringBootMockServletContext - Initializing Spring TestDispatcherServlet ''
+2025-05-05 17:27:58.682 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Initializing Servlet ''
+2025-05-05 17:27:58.688 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Completed initialization in 3 ms
+2025-05-05 17:27:58.724 [main] INFO  d.c.e.t.p.c.BrandControllerIntegrationTest - Started BrandControllerIntegrationTest in 16.341 seconds (process running for 18.853)
+2025-05-05 17:27:59.876 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 17:27:59.898 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 17:28:00.214 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:00.476 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:00.503 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 17:28:00.900 [main] INFO  d.c.e.t.p.controller.BrandController - Received request to update brand with ID: 26
+2025-05-05 17:28:00.901 [main] INFO  d.c.e.t.p.service.BrandServiceImpl - Attempting to update brand with ID: 26
+2025-05-05 17:28:00.965 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0 where b1_0.ten_thuong_hieu=?
+2025-05-05 17:28:00.974 [main] INFO  d.c.e.t.p.service.BrandServiceImpl - Successfully updated brand with ID: 26
+2025-05-05 17:28:01.195 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 17:28:01.210 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 17:28:01.428 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:01.666 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:01.679 [main] INFO  d.c.e.t.p.service.BrandServiceImpl - Fetching all brands
+2025-05-05 17:28:01.681 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 17:28:01.708 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 17:28:01.711 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 17:28:01.877 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:02.045 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:02.070 [main] WARN  o.s.w.s.m.s.DefaultHandlerExceptionResolver - Resolved [org.springframework.web.bind.MethodArgumentNotValidException: Validation failed for argument [0] in public org.springframework.http.ResponseEntity<?> demo.com.example.testserver.product.controller.BrandController.createBrand(demo.com.example.testserver.product.dto.CreateBrandRequestDTO): [Field error in object 'createBrandRequestDTO' on field 'name': rejected value []; codes [NotBlank.createBrandRequestDTO.name,NotBlank.name,NotBlank.java.lang.String,NotBlank]; arguments [org.springframework.context.support.DefaultMessageSourceResolvable: codes [createBrandRequestDTO.name,name]; arguments []; default message [name]]; default message [Brand name cannot be blank]] ]
+2025-05-05 17:28:02.095 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 17:28:02.106 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 17:28:02.254 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:02.380 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:02.382 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 17:28:02.448 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 17:28:02.454 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 17:28:02.611 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:02.804 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:02.810 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 17:28:02.813 [main] INFO  d.c.e.t.p.controller.BrandController - Received request to get brand by ID: 28
+2025-05-05 17:28:02.813 [main] INFO  d.c.e.t.p.service.BrandServiceImpl - Fetching brand by ID: 28
+2025-05-05 17:28:02.830 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 17:28:02.835 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 17:28:03.032 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:03.233 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:03.283 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 17:28:03.299 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 17:28:03.526 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:03.726 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:03.747 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 17:28:03.753 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 17:28:03.940 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:04.127 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:04.132 [main] INFO  d.c.e.t.p.controller.BrandController - Received request to create brand: New Brand
+2025-05-05 17:28:04.133 [main] INFO  d.c.e.t.p.service.BrandServiceImpl - Attempting to create brand with name: New Brand
+2025-05-05 17:28:04.140 [main] DEBUG org.hibernate.SQL - select b1_0.id from thuong_hieu b1_0 where b1_0.ten_thuong_hieu=? limit ?
+2025-05-05 17:28:04.143 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 17:28:04.145 [main] INFO  d.c.e.t.p.service.BrandServiceImpl - Successfully created brand with ID: 29
+2025-05-05 17:28:04.149 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 17:28:04.173 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 17:28:04.184 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 17:28:04.376 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:04.630 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:04.637 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 17:28:04.708 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 17:28:04.713 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 17:28:04.913 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:05.097 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:05.100 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 17:28:05.108 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 17:28:05.113 [main] INFO  d.c.e.t.p.service.BrandServiceImpl - Fetching all brands
+2025-05-05 17:28:05.114 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 17:28:05.145 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 17:28:05.148 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 17:28:05.312 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:05.508 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:05.526 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 17:28:05.577 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 17:28:05.581 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 17:28:05.758 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:05.930 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:05.935 [main] INFO  d.c.e.t.p.controller.BrandController - Received request to get brand by ID: 9999
+2025-05-05 17:28:05.936 [main] INFO  d.c.e.t.p.service.BrandServiceImpl - Fetching brand by ID: 9999
+2025-05-05 17:28:05.939 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0 where b1_0.id=?
+2025-05-05 17:28:05.942 [main] WARN  d.c.e.t.p.controller.BrandController - Brand not found for ID 9999: Brand not found with ID: 9999
+2025-05-05 17:28:05.967 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 17:28:05.972 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 17:28:06.150 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:06.323 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:06.328 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 17:28:06.332 [main] INFO  d.c.e.t.p.controller.BrandController - Received request to delete brand with ID: 34
+2025-05-05 17:28:06.332 [main] INFO  d.c.e.t.p.service.BrandServiceImpl - Attempting to delete brand with ID: 34
+2025-05-05 17:28:06.346 [main] DEBUG org.hibernate.SQL - select count(*) from thuong_hieu b1_0 where b1_0.id=?
+2025-05-05 17:28:06.351 [main] INFO  d.c.e.t.p.service.BrandServiceImpl - Successfully deleted brand with ID: 34
+2025-05-05 17:28:06.376 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 17:28:06.381 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 17:28:06.534 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:06.697 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:06.703 [main] INFO  d.c.e.t.p.controller.BrandController - Received request to update brand with ID: 9999
+2025-05-05 17:28:06.704 [main] INFO  d.c.e.t.p.service.BrandServiceImpl - Attempting to update brand with ID: 9999
+2025-05-05 17:28:06.705 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0 where b1_0.id=?
+2025-05-05 17:28:06.707 [main] WARN  d.c.e.t.p.service.BrandServiceImpl - Brand update failed: Not found with ID: 9999
+2025-05-05 17:28:06.708 [main] WARN  d.c.e.t.p.controller.BrandController - Failed to update brand. Reason: Brand not found with ID: 9999
+2025-05-05 17:28:06.727 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 17:28:06.731 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 17:28:06.908 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:07.099 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:07.104 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 17:28:07.116 [main] WARN  o.s.w.s.m.s.DefaultHandlerExceptionResolver - Resolved [org.springframework.web.bind.MethodArgumentNotValidException: Validation failed for argument [1] in public org.springframework.http.ResponseEntity<?> demo.com.example.testserver.product.controller.BrandController.updateBrand(java.lang.Integer,demo.com.example.testserver.product.dto.UpdateBrandRequestDTO): [Field error in object 'updateBrandRequestDTO' on field 'name': rejected value [ ]; codes [NotBlank.updateBrandRequestDTO.name,NotBlank.name,NotBlank.java.lang.String,NotBlank]; arguments [org.springframework.context.support.DefaultMessageSourceResolvable: codes [updateBrandRequestDTO.name,name]; arguments []; default message [name]]; default message [Brand name cannot be blank]] ]
+2025-05-05 17:28:07.144 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 17:28:07.148 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 17:28:07.325 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:07.500 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:07.506 [main] INFO  d.c.e.t.p.controller.BrandController - Received request to delete brand with ID: 9999
+2025-05-05 17:28:07.507 [main] INFO  d.c.e.t.p.service.BrandServiceImpl - Attempting to delete brand with ID: 9999
+2025-05-05 17:28:07.509 [main] DEBUG org.hibernate.SQL - select count(*) from thuong_hieu b1_0 where b1_0.id=?
+2025-05-05 17:28:07.511 [main] WARN  d.c.e.t.p.service.BrandServiceImpl - Brand deletion failed: Not found with ID: 9999
+2025-05-05 17:28:07.512 [main] WARN  d.c.e.t.p.controller.BrandController - Failed to delete brand. Reason: Brand not found with ID: 9999
+2025-05-05 17:28:07.526 [main] DEBUG org.hibernate.SQL - select b1_0.id,b1_0.ngay_tao,b1_0.ten_thuong_hieu,b1_0.ngay_cap_nhat from thuong_hieu b1_0
+2025-05-05 17:28:07.529 [main] DEBUG org.hibernate.SQL - select u1_0.id,u1_0.avatar_url,u1_0.ngay_tao,u1_0.diem_khach_hang_than_thiet,u1_0.email,u1_0.ho_ten,u1_0.mat_khau,u1_0.password_reset_token,u1_0.password_reset_token_expiry,u1_0.vai_tro,u1_0.trang_thai,u1_0.ngay_cap_nhat from nguoi_dung u1_0
+2025-05-05 17:28:07.680 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:07.831 [main] DEBUG org.hibernate.SQL - insert into nguoi_dung (avatar_url,ngay_tao,diem_khach_hang_than_thiet,email,ho_ten,mat_khau,password_reset_token,password_reset_token_expiry,vai_tro,trang_thai,ngay_cap_nhat) values (?,?,?,?,?,?,?,?,?,?,?)
+2025-05-05 17:28:07.834 [main] DEBUG org.hibernate.SQL - insert into thuong_hieu (ngay_tao,ten_thuong_hieu,ngay_cap_nhat) values (?,?,?)
+2025-05-05 17:28:08.013 [SpringApplicationShutdownHook] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+2025-05-05 17:28:08.020 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2025-05-05 17:28:08.041 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.

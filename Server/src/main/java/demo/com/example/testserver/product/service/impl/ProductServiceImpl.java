@@ -125,9 +125,9 @@ public class ProductServiceImpl implements ProductService {
     public ProductDTO createProduct(CreateProductRequestDTO requestDTO) {
         logger.info("Attempting to create product with name: {}", requestDTO.getName());
 
-        Category category = categoryRepository.findById(requestDTO.getCategoryId().longValue())
+        Category category = categoryRepository.findById(requestDTO.getCategoryId().intValue())
                 .orElseThrow(() -> new EntityNotFoundException("Category not found with ID: " + requestDTO.getCategoryId()));
-        Brand brand = brandRepository.findById(requestDTO.getBrandId())
+        Brand brand = brandRepository.findById(requestDTO.getBrandId().intValue())
                 .orElseThrow(() -> new EntityNotFoundException("Brand not found with ID: " + requestDTO.getBrandId()));
 
         Product product = productMapper.mapToProductEntity(requestDTO, category, brand);
@@ -168,9 +168,9 @@ public class ProductServiceImpl implements ProductService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found with ID: " + productId));
 
-        Category category = categoryRepository.findById(requestDTO.getCategoryId().longValue())
+        Category category = categoryRepository.findById(requestDTO.getCategoryId().intValue())
                 .orElseThrow(() -> new EntityNotFoundException("Category not found with ID: " + requestDTO.getCategoryId()));
-        Brand brand = brandRepository.findById(requestDTO.getBrandId().longValue())
+        Brand brand = brandRepository.findById(requestDTO.getBrandId().intValue())
                 .orElseThrow(() -> new EntityNotFoundException("Brand not found with ID: " + requestDTO.getBrandId()));
 
         productMapper.updateProductFromDTO(product, requestDTO, category, brand);
