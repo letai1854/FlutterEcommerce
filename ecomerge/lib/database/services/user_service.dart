@@ -10,7 +10,6 @@ import '../database_helper.dart' as config;
 class UserService {
   final String baseUrl = baseurl; // TODO: Replace with your actual backend URL
   String? _authToken; // To store JWT token
-  final _httpClient = http.Client(); // Using http.Client for better testability
   // Method to set the authentication token after login
   void setAuthToken(String token) {
     _authToken = token;
@@ -103,7 +102,7 @@ class UserService {
   Future<User?> getCurrentUserProfile() async {
     final url = Uri.parse('$baseUrl/api/users/me');
     try {
-      final response = await _httpClient.get(
+      final response = await httpClient.get(
         url,
         headers: _getHeaders(includeAuth: true),
       );
@@ -125,7 +124,7 @@ class UserService {
   Future<User?> updateCurrentUserProfile(Map<String, dynamic> updates) async {
     final url = Uri.parse('$baseUrl/api/users/me/update');
     try {
-      final response = await _httpClient.put(
+      final response = await httpClient.put(
         url,
         headers: _getHeaders(includeAuth: true),
         body: jsonEncode(updates),
@@ -307,7 +306,7 @@ class UserService {
   Future<bool> resetPassword(String token, String newPassword) async {
     final url = Uri.parse('$baseUrl/api/users/reset-password');
     try {
-      final response = await _httpClient.post(
+      final response = await httpClient.post(
         url,
         headers: _getHeaders(),
         body: jsonEncode({'token': token, 'newPassword': newPassword}),
@@ -325,7 +324,7 @@ class UserService {
       return false;
     }
   }
-
+  
   // TODO: Implement methods for admin endpoints if needed (getAllUsers, getUserById, deleteUser, getUserByEmail)
   // These would require sending the auth token and potentially checking user role on the client side as well,
   // although the backend should enforce access control.

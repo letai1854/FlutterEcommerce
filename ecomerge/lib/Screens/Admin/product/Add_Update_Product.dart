@@ -29,10 +29,10 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
 
   // State for dropdowns (Main Product - dummy data)
   String? _selectedBrand;
-  final List<String> _brands = ['Thương hiệu A', 'Thương hiệu B', 'Thương hiệu C'];
+  final List<String> _brands = ['Apple', 'Dell','HP','Lenovo', 'Asus','Acer','MSI','Razer','Intel','AMD','NVIDIA','ASRock','Corsair','Crucial','Seagate','Samsung','Kingston','Noctua','DeepCool','NZXT','Corsair','Thermaltake'];
 
   String? _selectedCategory;
-  final List<String> _categories = ['Danh mục X', 'Danh mục Y', 'Danh mục Z'];
+  final List<String> _categories = ['Máy tính', 'CPU', 'GPU',''];
 
   // State for variants
   final List<Variant> _variants = [];
