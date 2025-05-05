@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:e_commerce_app/Constants/productTest.dart';
 import 'package:e_commerce_app/constants.dart';
 import 'package:e_commerce_app/widgets/Product/CategoriesSection.dart';
@@ -14,6 +15,8 @@ import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:e_commerce_app/widgets/Home/bodyHomeMobile.dart';
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
+import 'package:e_commerce_app/database/services/user_service.dart';
 
 class ResponsiveHome extends StatefulWidget {
   const ResponsiveHome({super.key});
@@ -179,7 +182,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
               ),
             ),
           );
-          drawer = _buildDrawer(context);
+          drawer = _buildDrawer(context, screenWidth);
           isMobileView = true;
         } else if (screenWidth < 1100) {
           // Tablet layout
@@ -191,7 +194,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
               flexibleSpace: NavbarhomeTablet(context),
             ),
           );
-          drawer = _buildDrawer(context);
+          drawer = _buildDrawer(context, screenWidth);
         } else {
           // Desktop layout
           appBar = PreferredSize(
@@ -646,7 +649,9 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
     );
   }
 
-  Widget _buildDrawer(BuildContext context) {
+  Widget _buildDrawer(BuildContext context, double screenWidth) {
+    final bool isMobileView = screenWidth < 600;
+
     return Drawer(
       child: ListView(
         children: [
@@ -662,14 +667,60 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                     cursor: SystemMouseCursors.click,
                     child: Row(
                       children: [
-                        CircleAvatar(
-                          radius: 30,
-                          backgroundColor: Colors.white,
-                          child: Icon(Icons.person),
+                        ClipOval(
+                          child: SizedBox(
+                            width: 60,
+                            height: 60,
+                            child: UserInfo().currentUser?.avatar != null
+                                ? FutureBuilder<Uint8List?>(
+                                    future: UserService().getAvatarBytes(
+                                        UserInfo().currentUser?.avatar),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState ==
+                                              ConnectionState.waiting &&
+                                          !snapshot.hasData) {
+                                        return const Center(
+                                            child: SizedBox(
+                                                width: 15,
+                                                height: 15,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                        strokeWidth: 2)));
+                                      } else if (snapshot.hasData &&
+                                          snapshot.data != null) {
+                                        // Use cached image if available
+                                        return Image.memory(
+                                          snapshot.data!,
+                                          fit: BoxFit.cover,
+                                        );
+                                      } else {
+                                        // Fall back to network image if cache failed
+                                        return Image.network(
+                                          UserInfo().currentUser!.avatar!,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                            return Container(
+                                              color: Colors.white,
+                                              child: Icon(Icons.person,
+                                                  color: Colors.black,
+                                                  size: 30),
+                                            );
+                                          },
+                                        );
+                                      }
+                                    },
+                                  )
+                                : CircleAvatar(
+                                    radius: 30,
+                                    backgroundColor: Colors.white,
+                                    child: Icon(Icons.person),
+                                  ),
+                          ),
                         ),
                         const SizedBox(width: 10),
                         Text(
-                          'Le Van Tai',
+                          UserInfo().currentUser?.fullName ?? 'Chưa đăng nhập',
                           style: TextStyle(
                             fontSize: 25,
                             color: Colors.white,
@@ -682,20 +733,24 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
               ),
             ),
           ),
-          ListTile(
-            leading: const Icon(Icons.home),
-            title: const Text('Trang chủ'),
-            onTap: () {
-              Navigator.pushNamed(context, '/');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.list_alt),
-            title: const Text('Danh sách sản phẩm'),
-            onTap: () {
-              Navigator.pushNamed(context, '/catalog_product');
-            },
-          ),
+          // Only show Home and Product List items on mobile view (width < 600)
+          if (isMobileView) ...[
+            ListTile(
+              leading: const Icon(Icons.home),
+              title: const Text('Trang chủ'),
+              onTap: () {
+                Navigator.pushNamed(context, '/');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.list_alt),
+              title: const Text('Danh sách sản phẩm'),
+              onTap: () {
+                Navigator.pushNamed(context, '/catalog_product');
+              },
+            ),
+          ],
+          // Rest of the menu items that appear on all screen sizes
           ListTile(
             leading: const Icon(Icons.person_add_alt),
             title: const Text('Đăng ký'),
