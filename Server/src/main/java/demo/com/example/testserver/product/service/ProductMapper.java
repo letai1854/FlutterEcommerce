@@ -35,6 +35,16 @@ public class ProductMapper {
         dto.setMaxPrice(product.getMaxPrice());
         // Explicitly set variant count (redundant if constructor does it, but safe)
         dto.setVariantCount(product.getVariants() != null ? product.getVariants().size() : 0);
+
+        // Map additional images explicitly (constructor might already do this, but being explicit is safer)
+        if (product.getImages() != null) {
+            dto.setImageUrls(product.getImages().stream()
+                                    .map(ProductImage::getImageUrl)
+                                    .collect(Collectors.toList()));
+        } else {
+            dto.setImageUrls(new ArrayList<>());
+        }
+
         // Map variants explicitly if needed (constructor might already do this)
         if (product.getVariants() != null) {
              dto.setVariants(product.getVariants().stream()

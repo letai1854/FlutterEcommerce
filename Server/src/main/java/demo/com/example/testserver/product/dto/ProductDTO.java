@@ -4,8 +4,10 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List; // Import List
 import java.util.stream.Collectors; // Import Collectors
+import java.util.ArrayList; // Import ArrayList
 
 import demo.com.example.testserver.product.model.Product;
+import demo.com.example.testserver.product.model.ProductImage; // Import ProductImage
 import demo.com.example.testserver.product.model.ProductVariant; // Import ProductVariant
 
 public class ProductDTO {
@@ -15,6 +17,7 @@ public class ProductDTO {
     private String categoryName; // Flattened from Category entity
     private String brandName;    // Flattened from Brand entity
     private String mainImageUrl;
+    private List<String> imageUrls; // Added: List of additional image URLs
     private BigDecimal discountPercentage;
     private LocalDateTime createdDate; // Changed from Date to LocalDateTime
     private LocalDateTime updatedDate; // Added field
@@ -36,6 +39,14 @@ public class ProductDTO {
         this.categoryName = product.getCategory() != null ? product.getCategory().getName() : null;
         this.brandName = product.getBrand() != null ? product.getBrand().getName() : null;
         this.mainImageUrl = product.getMainImageUrl();
+        // Map additional images
+        if (product.getImages() != null) {
+            this.imageUrls = product.getImages().stream()
+                                    .map(ProductImage::getImageUrl)
+                                    .collect(Collectors.toList());
+        } else {
+            this.imageUrls = new ArrayList<>();
+        }
         this.discountPercentage = product.getDiscountPercentage();
         this.createdDate = product.getCreatedDate() != null ?
                 new java.sql.Timestamp(product.getCreatedDate().getTime()).toLocalDateTime() : null;
@@ -52,13 +63,14 @@ public class ProductDTO {
     }
 
     // All-Args Constructor (manually added to replace Lombok's @AllArgsConstructor)
-    public ProductDTO(Long id, String name, String description, String categoryName, String brandName, String mainImageUrl, BigDecimal discountPercentage, LocalDateTime createdDate, LocalDateTime updatedDate, Double averageRating, BigDecimal minPrice, BigDecimal maxPrice, Integer variantCount, List<ProductVariantDTO> variants) {
+    public ProductDTO(Long id, String name, String description, String categoryName, String brandName, String mainImageUrl, List<String> imageUrls, BigDecimal discountPercentage, LocalDateTime createdDate, LocalDateTime updatedDate, Double averageRating, BigDecimal minPrice, BigDecimal maxPrice, Integer variantCount, List<ProductVariantDTO> variants) {
         this.id = id;
         this.name = name;
         this.description = description;
         this.categoryName = categoryName;
         this.brandName = brandName;
         this.mainImageUrl = mainImageUrl;
+        this.imageUrls = imageUrls; // Set imageUrls
         this.discountPercentage = discountPercentage;
         this.createdDate = createdDate;
         this.updatedDate = updatedDate;
@@ -76,6 +88,7 @@ public class ProductDTO {
     public String getCategoryName() { return categoryName; }
     public String getBrandName() { return brandName; }
     public String getMainImageUrl() { return mainImageUrl; }
+    public List<String> getImageUrls() { return imageUrls; } // Getter for imageUrls
     public BigDecimal getDiscountPercentage() { return discountPercentage; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public LocalDateTime getUpdatedDate() { return updatedDate; }
@@ -92,6 +105,7 @@ public class ProductDTO {
     public void setCategoryName(String categoryName) { this.categoryName = categoryName; }
     public void setBrandName(String brandName) { this.brandName = brandName; }
     public void setMainImageUrl(String mainImageUrl) { this.mainImageUrl = mainImageUrl; }
+    public void setImageUrls(List<String> imageUrls) { this.imageUrls = imageUrls; } // Setter for imageUrls
     public void setDiscountPercentage(BigDecimal discountPercentage) { this.discountPercentage = discountPercentage; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
     public void setUpdatedDate(LocalDateTime updatedDate) { this.updatedDate = updatedDate; }

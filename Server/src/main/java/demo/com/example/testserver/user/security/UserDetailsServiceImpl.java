@@ -1,6 +1,7 @@
 package demo.com.example.testserver.user.security;
 
 import demo.com.example.testserver.user.model.User;
+import demo.com.example.testserver.user.model.User.UserRole;
 import demo.com.example.testserver.user.repository.UserRepository; // Correct import path
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
@@ -33,10 +34,16 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
         // Create authorities (roles)
         // Prefix roles with "ROLE_" as per Spring Security convention
+        String roleName;
+        if (user.getRole() == UserRole.quan_tri) {
+            roleName = "ADMIN";
+        } else {
+            // For other roles, use their enum name directly (e.g., KHACH_HANG)
+            roleName = user.getRole().name().toUpperCase();
+        }
+
         Collection<? extends GrantedAuthority> authorities =
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name().toUpperCase()));
-
-
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + roleName));
         // Return Spring Security's User object
         return new org.springframework.security.core.userdetails.User(
                 user.getEmail(),

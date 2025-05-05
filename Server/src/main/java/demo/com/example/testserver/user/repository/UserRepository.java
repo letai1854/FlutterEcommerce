@@ -1,8 +1,11 @@
 package demo.com.example.testserver.user.repository;
 
+import java.util.Date; // Import Date
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page; // Import Page
+import org.springframework.data.domain.Pageable; // Import Pageable
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -34,9 +37,17 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     @Query("SELECT u FROM User u WHERE u.status = demo.com.example.testserver.user.model.User.UserStatus.kich_hoat")
     List<User> findAllActiveUsers();
 
-    // Standard findById is provided by JpaRepository, but this explicit query works too.
-    // @Query("SELECT u FROM User u WHERE u.id = :id")
-    // Optional<User> findById(@Param("id") Integer id);
+    // Find users with pagination and filtering by email and creation date range
+    @Query("SELECT u FROM User u WHERE " +
+           "(:email IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :email, '%'))) AND " +
+           "(:startDate IS NULL OR u.createdDate >= :startDate) AND " +
+           "(:endDate IS NULL OR u.createdDate <= :endDate)")
+    Page<User> findAllWithFilters(
+        @Param("email") String email,
+        @Param("startDate") Date startDate,
+        @Param("endDate") Date endDate,
+        Pageable pageable
+    );
 
     // Potential future methods for password reset tokens:
     Optional<User> findByPasswordResetToken(String token);
