@@ -1,6 +1,7 @@
 package demo.com.example.testserver.product.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank; // Import NotBlank
 import java.util.Date;
 import java.util.List;
 
@@ -13,9 +14,11 @@ public class Category {
     private Integer id;
 
     @Column(name = "ten_danh_muc", nullable = false, unique = true)
+    @NotBlank(message = "Category name cannot be blank") // Add validation
     private String name;
 
     @Column(name = "hinh_anh")
+    @NotBlank(message = "Category image URL cannot be blank") // Add validation
     private String imageUrl;
 
     @Column(name = "ngay_tao", updatable = false)

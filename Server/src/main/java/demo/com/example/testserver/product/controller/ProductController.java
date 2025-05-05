@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +20,7 @@ import org.springframework.security.access.prepost.PreAuthorize; // Import PreAu
 
 import java.math.BigDecimal;
 import java.net.URI; // Import for location header
+import java.util.Date; // Import Date
 
 @RestController
 @RequestMapping("/api/products")
@@ -64,6 +66,36 @@ public class ProductController {
         }
     }
 
+    // New endpoint for Admin search by date range and optional search term
+    @GetMapping("/admin/search")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Page<ProductDTO>> searchProductsAdmin(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Date startDate, // Expect ISO 8601 format
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Date endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        try {
+            Pageable pageable = PageRequest.of(page, size); // Basic pagination
+            logger.info("Admin searching products - Search: {}, StartDate: {}, EndDate: {}, Pageable: {}", search, startDate, endDate, pageable);
+
+            Page<ProductDTO> productPage = productService.findProductsAdmin(search, startDate, endDate, pageable);
+
+            if (productPage.isEmpty()) {
+                return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+            }
+            return ResponseEntity.ok(productPage);
+
+        } catch (IllegalArgumentException e) {
+             logger.warn("Invalid request parameter for admin search: {}", e.getMessage());
+             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        } catch (Exception e) {
+            logger.error("Error during admin product search", e);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    
     @GetMapping("/{id}")
     public ResponseEntity<?> getProductById(@PathVariable Long id) {
         try {

@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -89,7 +90,9 @@ public class ProductServiceImpl implements ProductService {
             }
         }
 
-        Specification<Product> spec = productSpecificationBuilder.build(search, categoryId, brandId, minPrice, maxPrice, minRating, productIdsFromSearch);
+        Specification<Product> spec = productSpecificationBuilder.build(
+            search, categoryId, brandId, minPrice, maxPrice, minRating, productIdsFromSearch, null, null // Pass null for dates
+        );
 
         logger.debug("Executing database query with filters and pagination.");
         Page<Product> productPage = productRepository.findAll(spec, pageRequest);
@@ -99,6 +102,30 @@ public class ProductServiceImpl implements ProductService {
                 .collect(Collectors.toList());
 
         logger.info("Found {} products matching criteria.", productPage.getTotalElements());
+        return new PageImpl<>(dtos, pageRequest, productPage.getTotalElements());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ProductDTO> findProductsAdmin(String search, Date startDate, Date endDate, Pageable pageable) {
+        logger.info("Admin finding products with criteria - Search: '{}', StartDate: {}, EndDate: {}, Page: {}",
+                search, startDate, endDate, pageable);
+
+        Sort sort = pageable.getSort().isSorted() ? pageable.getSort() : Sort.by(Sort.Direction.DESC, "createdDate");
+        Pageable pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+
+        Specification<Product> spec = productSpecificationBuilder.build(
+            search, null, null, null, null, null, null, startDate, endDate // Pass null for category, brand, price, rating, ES IDs
+        );
+
+        logger.debug("Executing admin database query with filters and pagination.");
+        Page<Product> productPage = productRepository.findAll(spec, pageRequest);
+
+        List<ProductDTO> dtos = productPage.getContent().stream()
+                .map(productMapper::mapToProductDTO)
+                .collect(Collectors.toList());
+
+        logger.info("Admin search found {} products matching criteria.", productPage.getTotalElements());
         return new PageImpl<>(dtos, pageRequest, productPage.getTotalElements());
     }
 
@@ -125,9 +152,9 @@ public class ProductServiceImpl implements ProductService {
     public ProductDTO createProduct(CreateProductRequestDTO requestDTO) {
         logger.info("Attempting to create product with name: {}", requestDTO.getName());
 
-        Category category = categoryRepository.findById(requestDTO.getCategoryId().longValue())
+        Category category = categoryRepository.findById(requestDTO.getCategoryId().intValue())
                 .orElseThrow(() -> new EntityNotFoundException("Category not found with ID: " + requestDTO.getCategoryId()));
-        Brand brand = brandRepository.findById(requestDTO.getBrandId())
+        Brand brand = brandRepository.findById(requestDTO.getBrandId().intValue())
                 .orElseThrow(() -> new EntityNotFoundException("Brand not found with ID: " + requestDTO.getBrandId()));
 
         Product product = productMapper.mapToProductEntity(requestDTO, category, brand);
@@ -168,9 +195,9 @@ public class ProductServiceImpl implements ProductService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found with ID: " + productId));
 
-        Category category = categoryRepository.findById(requestDTO.getCategoryId().longValue())
+        Category category = categoryRepository.findById(requestDTO.getCategoryId().intValue())
                 .orElseThrow(() -> new EntityNotFoundException("Category not found with ID: " + requestDTO.getCategoryId()));
-        Brand brand = brandRepository.findById(requestDTO.getBrandId().longValue())
+        Brand brand = brandRepository.findById(requestDTO.getBrandId().intValue())
                 .orElseThrow(() -> new EntityNotFoundException("Brand not found with ID: " + requestDTO.getBrandId()));
 
         productMapper.updateProductFromDTO(product, requestDTO, category, brand);

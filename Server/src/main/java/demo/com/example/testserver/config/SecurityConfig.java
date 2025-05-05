@@ -53,12 +53,24 @@ public class SecurityConfig {
                 // Allow product viewing without login
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                 // Secure product management - only ADMIN role
-                .requestMatchers(HttpMethod.POST, "/api/products/create").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/products").hasRole("ADMIN") // Changed path from /create
                 .requestMatchers(HttpMethod.PUT, "/api/products/{id}").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/products/{id}").hasRole("ADMIN")
-                // Allow public access to categories and brands
+                // Allow public access to categories and brands GET requests
                 .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/brands/**").permitAll()
+                // Secure category and brand management - only ADMIN role
+                .requestMatchers(HttpMethod.POST, "/api/categories").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/categories/{id}").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/categories/{id}").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/brands").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/brands/{id}").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/brands/{id}").hasRole("ADMIN")
+                // Secure Coupon management - ADMIN for create/search/manage
+                .requestMatchers(HttpMethod.POST, "/api/coupons").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/coupons").hasRole("ADMIN") // Admin search endpoint
+                // Allow authenticated users to view available coupons
+                .requestMatchers(HttpMethod.GET, "/api/coupons/available").authenticated()
                 // Image Routes
                 .requestMatchers(HttpMethod.GET, "/api/images/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/images/upload").authenticated()

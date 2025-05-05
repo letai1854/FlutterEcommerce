@@ -1,6 +1,7 @@
 package demo.com.example.testserver.product.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank; // Import NotBlank
 import java.util.Date;
 import java.util.List;
 
@@ -13,6 +14,7 @@ public class Brand {
     private Integer id;
 
     @Column(name = "ten_thuong_hieu", nullable = false, unique = true)
+    @NotBlank(message = "Brand name cannot be blank") // Add validation
     private String name;
 
     @Column(name = "ngay_tao", updatable = false)

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Date; // Import Date
 import java.util.List;
 
 @Component
@@ -16,15 +17,17 @@ public class ProductSpecificationBuilder {
 
     private static final Logger logger = LoggerFactory.getLogger(ProductSpecificationBuilder.class);
 
+    // Modified build method to include date parameters
     public Specification<Product> build(
-            String search, // Keep search term for potential DB fallback LIKE search if needed
+            String search,
             Integer categoryId,
             Integer brandId,
             BigDecimal minPrice,
             BigDecimal maxPrice,
             Double minRating,
-            List<Integer> productIdsFromSearch // Keep as Integer for now, adjust if ES service changes
-            // List<Long> productIdsFromSearch // Use Long if ES returns Long IDs
+            List<Integer> productIdsFromSearch,
+            Date startDate, // New parameter
+            Date endDate    // New parameter
     ) {
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -32,19 +35,14 @@ public class ProductSpecificationBuilder {
             // Filter by IDs from Elasticsearch if available
             if (productIdsFromSearch != null && !productIdsFromSearch.isEmpty()) {
                 logger.debug("Adding ID filter from Elasticsearch results ({} IDs)", productIdsFromSearch.size());
-                // Ensure the 'in' clause uses the correct type (Long for Product.id)
-                predicates.add(root.get("id").in(productIdsFromSearch.stream().map(Long::valueOf).toList())); // Convert Integer IDs to Long
-                // If productIdsFromSearch is already List<Long>, use:
-                // predicates.add(root.get("id").in(productIdsFromSearch));
+                predicates.add(root.get("id").in(productIdsFromSearch.stream().map(Long::valueOf).toList()));
             } else if (productIdsFromSearch == null && search != null && !search.trim().isEmpty()) {
-                // Fallback: If ES search failed (returned null) but search term exists,
-                // consider adding a basic LIKE predicate. Be cautious about performance.
+                // Fallback: Nếu tìm kiếm ES thất bại hoặc không có, dùng LIKE search trong DB
                 logger.warn("Elasticsearch search failed or unavailable for term '{}'. Adding DB LIKE search fallback.", search);
-                predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), "%" + search.toLowerCase() + "%"));
-                // Could also search description:
-                // Predicate nameLike = criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), "%" + search.toLowerCase() + "%");
-                // Predicate descriptionLike = criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), "%" + search.toLowerCase() + "%");
-                // predicates.add(criteriaBuilder.or(nameLike, descriptionLike));
+                // Tìm trong tên HOẶC mô tả sản phẩm (không phân biệt hoa thường)
+                 Predicate nameLike = criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), "%" + search.toLowerCase() + "%");
+                 Predicate descriptionLike = criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), "%" + search.toLowerCase() + "%");
+                 predicates.add(criteriaBuilder.or(nameLike, descriptionLike)); // Thêm điều kiện OR vào câu truy vấn
             }
 
             // Filter by Category
@@ -62,27 +60,35 @@ public class ProductSpecificationBuilder {
             // Filter by Price Range using denormalized fields
             if (minPrice != null) {
                 logger.debug("Adding filter for minPrice: {}", minPrice);
+                // Assuming minPrice in DB represents the lowest price of any variant
                 predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("minPrice"), minPrice));
             }
             if (maxPrice != null) {
-                // Ensure maxPrice filter includes products where maxPrice is exactly the filter value
                 logger.debug("Adding filter for maxPrice: {}", maxPrice);
-                 // Check if product's minPrice <= maxPriceFilter AND product's maxPrice >= minPriceFilter
-                 // A simpler approach using denormalized fields: filter products whose price range overlaps the query range.
-                 // However, the current logic filters products whose *entire* range falls *within* the query range.
-                 // Let's stick to the simpler: Product.maxPrice <= maxPriceFilter
-                 // And Product.minPrice >= minPriceFilter (already handled above)
-                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("maxPrice"), maxPrice));
-                 // Consider if the logic should be: find products where *any* variant price is within the range.
-                 // This would require a subquery or join, making it more complex. Denormalized fields are simpler.
+                 // Assuming maxPrice in DB represents the highest price of any variant
+                 // Find products where *some* variant might be <= maxPrice.
+                 // A simple filter on minPrice might be sufficient depending on desired behavior:
+                 // If a product's lowest variant price is above maxPrice, exclude it.
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("minPrice"), maxPrice)); // Changed from maxPrice field
             }
-
 
             // Filter by Minimum Rating using denormalized field
             if (minRating != null && minRating > 0) {
                 logger.debug("Adding filter for minRating: {}", minRating);
                 predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("averageRating"), minRating));
             }
+
+            // Filter by Creation Date Range
+            if (startDate != null) {
+                logger.debug("Adding filter for startDate: {}", startDate);
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdDate"), startDate));
+            }
+            if (endDate != null) {
+                logger.debug("Adding filter for endDate: {}", endDate);
+                // To include the whole day, consider setting time to 23:59:59 or using LocalDate comparison if applicable
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdDate"), endDate));
+            }
+
 
             // Combine predicates
             if (predicates.isEmpty()) {
