@@ -279,17 +279,24 @@ class UserService {
     }
   }
 
-  // Method to upload an image file to the server
+  // Improved image upload method with better debugging
   Future<String?> uploadImage(List<int> imageBytes, String fileName) async {
     final url = Uri.parse('$baseUrl/api/images/upload');
 
     try {
+      print(
+          "Starting image upload, bytes: ${imageBytes.length}, filename: $fileName");
+      print("Auth token available: ${UserInfo().authToken != null}");
+
       // Create a multipart request for the image upload
       final request = http.MultipartRequest('POST', url);
 
       // Add authorization header if user is logged in
       if (UserInfo().authToken != null) {
         request.headers['Authorization'] = 'Bearer ${UserInfo().authToken}';
+        print("Added auth token to request");
+      } else {
+        print("WARNING: No auth token available for image upload");
       }
 
       // Add the file to the request
@@ -299,19 +306,28 @@ class UserService {
         filename: fileName,
       );
       request.files.add(multipartFile);
+      print("Added file to request");
 
       // Send the request
+      print("Sending upload request to $url");
       final streamedResponse = await request.send();
+      print("Got response with status: ${streamedResponse.statusCode}");
 
       // Convert the response stream to a regular response
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 201) {
         // Parse the response to get the image path
-        final responseData = jsonDecode(response.body);
-        final imagePath = responseData['imagePath'];
-        print('Image uploaded successfully: $imagePath');
-        return imagePath;
+        try {
+          final responseData = jsonDecode(response.body);
+          final imagePath = responseData['imagePath'];
+          print('Image uploaded successfully: $imagePath');
+          return imagePath;
+        } catch (e) {
+          print('Error parsing response JSON: $e');
+          print('Raw response body: ${response.body}');
+          return null;
+        }
       } else {
         print('Failed to upload image: ${response.statusCode}');
         print('Response body: ${response.body}');

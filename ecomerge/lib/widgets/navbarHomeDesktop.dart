@@ -233,7 +233,7 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        UserInfo().currentUser?.fullName ?? 'Chưa đăng nhập',
+                        UserInfo().currentUser?.fullName ?? '',
                         style: TextStyle(color: Colors.white, fontSize: 13),
                       ),
                     ],

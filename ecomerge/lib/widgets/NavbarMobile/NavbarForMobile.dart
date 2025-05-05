@@ -107,8 +107,7 @@ class _NavbarmobileDrawerState extends State<NavbarFormobile> {
                           ),
                           const SizedBox(width: 10),
                           Text(
-                            UserInfo().currentUser?.fullName ??
-                                'Chưa đăng nhập',
+                            UserInfo().currentUser?.fullName ?? '',
                             style: TextStyle(
                               fontSize: 25,
                               color: Colors.white,
