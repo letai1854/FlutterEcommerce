@@ -1,51 +1,46 @@
-import 'package:e_commerce_app/Screens/Admin/product/ConnectVariant.dart';
-import 'package:e_commerce_app/database/Storage/BrandCategoryService.dart';
-import 'package:e_commerce_app/database/models/brand.dart';
-import 'package:e_commerce_app/database/models/categories.dart';
-
+import 'dart:io'; // Required for File class (implicitly used by XFile)
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io'; // Required for File class (implicitly used by XFile)
 import 'package:flutter/foundation.dart'; // Required for kIsWeb
 import 'package:flutter/services.dart'; // Required for Uint8List
 import 'package:flutter/scheduler.dart'; // Required for SchedulerBinding
+import 'package:collection/collection.dart'; // Import for firstWhereOrNull
 
-// Import ProductService. Assumed to be in this path.
-// Ensure ProductService.dart exists and contains the *uploadImage(List<int> imageBytes, String fileName)*,
-// createProduct, and dispose methods.
-import 'package:e_commerce_app/database/services/product_service.dart'; // Make sure ProductService exposes baseUrl
-
-// Import necessary DTOs for preparing data for the API call (CREATE and UPDATE).
-// Ensure these DTO files exist in your project.
+// Import your ProductService and DTOs
+import 'package:e_commerce_app/database/services/product_service.dart';
+import 'package:e_commerce_app/database/models/brand.dart'; // Assuming BrandDTO is here
+import 'package:e_commerce_app/database/models/categories.dart'; // Assuming CategoryDTO is here
 import 'package:e_commerce_app/database/models/create_product_request_dto.dart';
-import 'package:e_commerce_app/database/models/update_product_request_dto.dart'; // Needed for update data structure concept
+import 'package:e_commerce_app/database/models/update_product_request_dto.dart';
 import 'package:e_commerce_app/database/models/create_product_variant_dto.dart';
-import 'package:e_commerce_app/database/models/update_product_variant_dto.dart'; // Needed for update data structure concept
-// import 'package:e_commerce_app/database/models/product_dto.dart'; // Might be needed if product data format matches DTO
+import 'package:e_commerce_app/database/models/update_product_variant_dto.dart';
+import 'package:e_commerce_app/database/models/product_dto.dart'; // Import ProductDTO to work with fetched data
+import 'package:e_commerce_app/database/models/product_variant_dto.dart'; // Import ProductVariantDTO
+import 'package:e_commerce_app/database/Storage/BrandCategoryService.dart'; // Assuming AppDataService is here
+
 
 // Helper class to hold locally picked image data temporarily before upload
+// (Defining it here as per your provided code structure, assuming it's not in ConnectVariant.dart)
 class PickedImage {
   final Uint8List bytes;
   final String fileName;
-  // Add a flag to indicate if upload is in progress
   bool isUploading;
 
   PickedImage({required this.bytes, required this.fileName, this.isUploading = false});
 
-   // Optional: Add toString for easier debugging
    @override
    String toString() {
      return 'PickedImage(fileName: $fileName, bytesLength: ${bytes.length}, isUploading: $isUploading)';
    }
 }
 
-// Modified Variant class to hold both server URL and locally picked image data
+// Modified Variant class to hold server URL, locally picked image data, and controllers
+// (Defining it here as per your provided code structure, assuming it's the single source of truth for Variant state)
 class Variant {
-  // Original ID from server, null for new variants
+  // Original ID from server, null for new variants added during edit
   int? originalId;
-  // Server URL after successful upload - **This will now store the FULL URL or RELATIVE Path depending on your desired state storage**
-  // Let's keep it as FULL URL in the state as per the last successful display logic.
-  String? defaultImageUrl;
+  // Server path after successful upload - **Stores the RELATIVE Path from the server**
+  String? defaultImageUrl; // Storing the server's relative path here (e.g., "/uploads/...")
   // Locally picked image data before upload
   PickedImage? pickedImage;
 
@@ -54,18 +49,186 @@ class Variant {
   final TextEditingController priceController = TextEditingController();
   final TextEditingController quantityController = TextEditingController();
 
-  Variant({this.originalId, this.defaultImageUrl}); // Constructor to initialize from existing data
+  // Constructor to initialize with original ID and initial Image URL (relative path from API)
+  Variant({this.originalId, String? initialImageUrl}) {
+      this.defaultImageUrl = initialImageUrl; // Store the initialImageUrl (relative path from DTO)
+  }
 
+  // Factory method to create Variant object from ProductVariantDTO (for edit mode)
+  factory Variant.fromProductVariantDTO(ProductVariantDTO dto) {
+      final variant = Variant(
+          originalId: dto.id, // Use ID from DTO for originalId
+          initialImageUrl: dto.variantImageUrl, // Use variantImageUrl from DTO (relative path)
+      );
+      variant.nameController.text = dto.name ?? ''; // Use name from DTO
+      // Ensure parsing handles potential nulls or non-numeric data safely
+      variant.priceController.text = (dto.price ?? 0.0).toString(); // Use price from DTO
+      variant.quantityController.text = (dto.stockQuantity ?? 0).toString(); // Use stockQuantity from DTO
+      // No pickedImage initially when loading existing data
+      return variant;
+  }
+
+  // Method to dispose controllers
   void disposeControllers() {
     nameController.dispose();
     priceController.dispose();
     quantityController.dispose();
+  }
+
+   // Helper to check if this variant has a valid image source (either picked or uploaded)
+  bool hasImage() {
+      return pickedImage != null || (defaultImageUrl != null && defaultImageUrl!.isNotEmpty);
+  }
+}
+
+// Widget for Variant Input - Used within AddUpdateProductScreen
+// (Defining it here as per your provided code structure)
+class VariantInput extends StatelessWidget {
+  final Variant variant; // Pass the Variant object directly
+  final VoidCallback onPickImage;
+  final VoidCallback onRemove;
+  final bool isRemovable;
+  final bool isProcessing; // Receive processing state from parent
+  // Receive the builder function for image display from parent
+  final Widget Function(dynamic source, {double size, double iconSize, BoxFit fit}) imageDisplayBuilder;
+
+  const VariantInput({
+    Key? key, // Use Key for proper list item management
+    required this.variant,
+    required this.onPickImage,
+    required this.onRemove,
+    required this.isRemovable,
+    required this.isProcessing, // Add to constructor
+    required this.imageDisplayBuilder, // Add to constructor
+  }) : super(key: key); // Pass key to super
+
+  @override
+  Widget build(BuildContext context) {
+
+    // Determine the source for this variant's image display (prioritize PickedImage for review)
+    final dynamic variantImageSource = variant.pickedImage ?? variant.defaultImageUrl;
+
+     if (kDebugMode) {
+         // print('[VariantInput] Building image for variant ${variant.nameController.text}. Source: $variantImageSource (Type: ${variantImageSource?.runtimeType})');
+     }
+
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16.0),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Biến thể', style: TextStyle(fontWeight: FontWeight.bold)), // Added const
+                if (isRemovable) // Only show remove button if there's more than 1 variant
+                  IconButton(
+                    // Disable remove if processing OR if this variant's image is currently uploading
+                    onPressed: (isProcessing || (variant.pickedImage != null && variant.pickedImage!.isUploading)) ? null : onRemove,
+                    icon: const Icon(Icons.remove_circle_outline, color: Colors.red), // Added const
+                    tooltip: 'Xóa biến thể',
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8), // Added const
+
+            Column(
+               crossAxisAlignment: CrossAxisAlignment.start,
+               children: [
+                  const Text('Ảnh biến thể:', style: TextStyle(fontSize: 14)), // Added const
+                  const SizedBox(height: 4), // Added const
+                   Stack( // Use Stack for potential remove button/indicator
+                      children: [
+                         GestureDetector(
+                            // Disable tap if processing OR if this variant's image is currently uploading
+                            onTap: (isProcessing || (variant.pickedImage != null && variant.pickedImage!.isUploading)) ? null : onPickImage,
+                            child: Container(
+                               width: 80,
+                               height: 80,
+                               decoration: BoxDecoration(
+                                 borderRadius: BorderRadius.circular(8),
+                                 color: Colors.grey[200],
+                                  // Indicate missing image visually if needed for validation clarity
+                                  border: !variant.hasImage() ? Border.all(color: Colors.red, width: 1) : null,
+                               ),
+                               clipBehavior: Clip.antiAlias,
+                               // Use the provided imageDisplayBuilder to display the source
+                               child: imageDisplayBuilder(variantImageSource, size: 80, iconSize: 30),
+                            ),
+                         ),
+                         // Show remove button for variant image only if a source exists and not processing globaly
+                         // Note: Removing variant removes the image with it, this is for clearing the image on the variant.
+                         // Decided to NOT add a remove image button per variant for simplicity unless explicitly requested.
+                         // If you need a remove button for variant images, similar logic to main images is needed.
+                      ]
+                   ),
+               ],
+            ),
+             const SizedBox(height: 16), // Added const
+
+
+            TextFormField(
+              controller: variant.nameController,
+              decoration: const InputDecoration(labelText: 'Tên biến thể (ví dụ: Xanh, Đỏ, S/M/L)'), // Added const
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Vui lòng nhập tên biến thể';
+                }
+                return null;
+              },
+               enabled: !isProcessing, // Disable when processing
+            ),
+            const SizedBox(height: 16), // Added const
+
+            TextFormField(
+              controller: variant.priceController,
+              decoration: const InputDecoration(labelText: 'Giá'), // Added const
+              keyboardType: const TextInputType.numberWithOptions(decimal: true), // Added const
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Vui lòng nhập giá';
+                }
+                final price = double.tryParse(value.trim());
+                if (price == null || price < 0) {
+                  return 'Giá phải là số hợp lệ (>= 0)';
+                }
+                return null;
+              },
+               enabled: !isProcessing, // Disable when processing
+            ),
+            const SizedBox(height: 16), // Added const
+
+            TextFormField(
+              controller: variant.quantityController,
+              decoration: const InputDecoration(labelText: 'Số lượng tồn kho'), // Added const
+              keyboardType: TextInputType.number,
+              validator: (value) {
+                 if (value == null || value.trim().isEmpty) {
+                  return 'Vui lòng nhập số lượng';
+                }
+                 final quantity = int.tryParse(value.trim());
+                 if (quantity == null || quantity < 0) {
+                  return 'Số lượng phải là số nguyên hợp lệ (>= 0)';
+                }
+                return null;
+              },
+               enabled: !isProcessing, // Disable when processing
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
 
 class AddUpdateProductScreen extends StatefulWidget {
   // If product is not null, we are in update mode (data format is Map<String, dynamic>)
+  // We expect this Map to contain AT LEAST the product 'id'.
+  // Using ProductDTO here would be cleaner, but sticking to Map for now as per existing usage.
   final Map<String, dynamic>? product;
 
   const AddUpdateProductScreen({Key? key, this.product}) : super(key: key);
@@ -83,12 +246,12 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
   final TextEditingController _discountController = TextEditingController();
 
   // State for image selection (Main Product)
-  // Holds the FINAL server URL for default image (either initial or uploaded) - **This will now store the FULL URL**
-  String? _defaultImageUrl;
+  // Holds the FINAL server RELATIVE path for default image (either initial or uploaded)
+  String? _defaultImageUrl; // Stores the relative path from server response (e.g., "/uploads/...")
   // Holds the LOCALLY PICKED image data for default image (while uploading)
   PickedImage? _defaultPickedImage;
 
-  // This list will now hold a mix of String (server URLs - FULL URL) and PickedImage (local data pending upload)
+  // This list will hold a mix of String (server RELATIVE Paths) and PickedImage (local data pending upload)
   final List<dynamic> _additionalImages = [];
 
   final ImagePicker _picker = ImagePicker();
@@ -101,120 +264,50 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
   final List<BrandDTO> _brands = AppDataService().brands;
 
   CategoryDTO? _selectedCategory;
-   // Lấy danh sách từ AppDataService singleton - Sử dụng getter .categories
   final List<CategoryDTO> _categories = AppDataService().categories;
 
   // State for variants
   final List<Variant> _variants = [];
 
-  // Processing state for modal and disabling UI
-  bool _isProcessing = false;
+  // Processing states
+  bool _isProcessing = false; // General processing (e.g., saving/updating)
+  bool _isLoadingInitialData = true; // Loading product data in edit mode
+  String? _errorLoadingInitialData; // Error message if initial load fails
+
 
   // Instance of ProductService
-  // We initialize it here, and it should be disposed.
   final ProductService _productService = ProductService();
 
 
   @override
   void initState() {
     super.initState();
-    // Ensure AppDataService is initialized if it's not guaranteed before this screen
-    // In a real app, you might show a loading screen until AppDataService().isInitialized is true
-    if (!AppDataService().isInitialized) {
-       // For this example, we'll rely on the check in the build method,
-       // but a more robust solution might fetch data here if it's missing.
-       if (kDebugMode) print("AppDataService not initialized in AddUpdateProductScreen initState.");
-       // Potentially add a listener or future builder here if data loading isn't handled globally
-    }
 
-    // Populate fields if editing an existing product
-    if (widget.product != null) {
-      // --- Load Main Product Data ---
-      _nameController.text = widget.product!['name'] ?? '';
-      _descriptionController.text = widget.product!['description'] ?? '';
-      final dynamic discountValue = widget.product!['discount'];
-      _discountController.text = discountValue != null ? discountValue.toString() : '0';
+    // Check if AppDataService is initialized. If not, we might need to wait or show a different loading state.
+    // For now, we'll show a basic loading screen in build if not initialized.
 
-      final int? productBrandId = widget.product!['brandId'] as int?;
-      final int? productCategoryId = widget.product!['categoryId'] as int?;
-
-      // Find and set selected brand/category based on loaded data
-      if (productBrandId != null) {
-         try {
-            _selectedBrand = _brands.firstWhere(
-               (brand) => brand.id == productBrandId,
-            );
-         } catch (e) {
-            if (kDebugMode) print('Warning: Product brand ID $productBrandId not found in loaded brands.');
-            _selectedBrand = null;
-         }
-      }
-
-       if (productCategoryId != null) {
-         try {
-            _selectedCategory = _categories.firstWhere(
-               (category) => category.id == productCategoryId,
-            );
-         } catch (e) {
-             if (kDebugMode) print('Warning: Product category ID $productCategoryId not found in loaded categories.');
-             _selectedCategory = null;
-         }
+    // Load product data if in update mode
+    // Check if widget.product is provided AND has an 'id' field
+    if (widget.product != null && widget.product!.containsKey('id') && widget.product!['id'] != null) {
+       // Safely attempt to cast the id to int
+       final dynamic productIdDynamic = widget.product!['id'];
+       if (productIdDynamic is int) {
+           final int productId = productIdDynamic;
+           if (kDebugMode) print('Edit mode: Initializing load for product ID $productId');
+           _loadProductDataForEdit(productId); // Call async load function
+       } else {
+           // Handle case where ID is provided but not an int (shouldn't happen if data is correct)
+           _isLoadingInitialData = false; // Not loading initial data, but can't edit
+           _errorLoadingInitialData = 'Lỗi: ID sản phẩm không hợp lệ.';
+           if (kDebugMode) print('Error: Provided product ID is not an integer: $productIdDynamic');
        }
-
-      // --- Load Main Product Images URLs for initial display and saving ---
-      // Assuming server returns paths relative to base URL like "/api/images/..."
-      // Store these RELATIVE paths initially. Convert to FULL URL only for display.
-      final List<dynamic> productImages = widget.product!['images'] ?? [];
-       final List<String> initialImagePaths = productImages
-          .where((img) => img != null && img is String) // Basic check
-          .cast<String>()
-           // Store relative paths as they are received from the server,
-           // assuming server product data provides relative paths.
-          .toList();
-
-
-      if (initialImagePaths.isNotEmpty) {
-        // Store the initial RELATIVE paths in the current state variables
-        _defaultImageUrl = initialImagePaths.first; // Store relative path initially
-        if (initialImagePaths.length > 1) {
-          // Add remaining RELATIVE paths to the additional images list
-          _additionalImages.addAll(initialImagePaths.sublist(1));
-        }
-      }
-
-      // --- Load Variant Data ---
-      List<Map<String, dynamic>> existingVariantsData = List<Map<String, dynamic>>.from(widget.product!['variants'] ?? []);
-
-      _variants.clear(); // Clear any default variants
-
-      if (existingVariantsData.isNotEmpty) {
-        for (var variantData in existingVariantsData) {
-           // Create Variant object and populate controllers, originalId, and image URL
-            String? variantImagePath = variantData['defaultImage']?.toString();
-            // Store relative variant image path as received
-           Variant variant = Variant(
-             originalId: variantData['id'] as int?,
-             defaultImageUrl: variantImagePath, // Store initial RELATIVE path
-           );
-           variant.nameController.text = variantData['name'] ?? '';
-           final dynamic priceValue = variantData['price'];
-           variant.priceController.text = priceValue != null ? priceValue.toString() : '';
-           final dynamic quantityValue = variantData['quantity'];
-           variant.quantityController.text = quantityValue != null ? quantityValue.toString() : '';
-
-           _variants.add(variant);
-        }
-      } else {
-        // If editing a product that happens to have no variants, add 2 empty ones as per requirement
-        _addVariant();
-        _addVariant();
-      }
-
     } else {
-      // --- New Product ---
-      // Add initial variants for new product (exactly 2 as requested)
-      _addVariant();
-      _addVariant();
+       // Not in edit mode (new product) or no ID provided for edit
+       _isLoadingInitialData = false; // Not loading initial data, ready to build form
+       if (kDebugMode) print('Add mode: Initializing with default empty state.');
+       // Add initial variants for new product (exactly 2 as requested)
+       _addVariant();
+       _addVariant();
     }
   }
 
@@ -227,10 +320,119 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
     for (var variant in _variants) {
       variant.disposeControllers();
     }
-    // Dispose ProductService httpClient (Assuming ProductService has a dispose method)
+    // Dispose ProductService httpClient
     _productService.dispose();
     super.dispose();
   }
+
+  // --- Function to load product data for editing ---
+  Future<void> _loadProductDataForEdit(int productId) async {
+      if (!mounted) return; // Ensure widget is still mounted before setting state
+
+      setState(() {
+         _isLoadingInitialData = true; // Start loading state
+         _errorLoadingInitialData = null; // Clear previous errors
+      });
+
+      try {
+         // Call API to get full product details by ID
+         final ProductDTO fetchedProduct = await _productService.getProductById(productId);
+         if (kDebugMode) print('Product data fetched successfully for ID $productId');
+
+         if (!mounted) return; // Ensure widget is still mounted after async call
+
+
+         // --- Populate UI state with fetched data ---
+         _nameController.text = fetchedProduct.name;
+         _descriptionController.text = fetchedProduct.description;
+         // Ensure discount is treated as double, default to 0.0 if null from API
+         _discountController.text = (fetchedProduct.discountPercentage ?? 0.0).toString();
+
+
+         // Set Brand dropdown
+         // Find the BrandDTO in the pre-loaded list by matching ID
+         if (_brands.isNotEmpty && fetchedProduct.brandName != null) { // Match by ID
+              _selectedBrand = _brands.firstWhereOrNull(
+                 (brand) => brand.name== fetchedProduct.brandName,
+              );
+               if (kDebugMode) {
+                 print('Attempting to set selected brand. Fetched brandId: ${fetchedProduct.brandName}. Found brand: ${_selectedBrand?.name} (ID: ${_selectedBrand?.id})');
+               }
+         } else {
+              _selectedBrand = null;
+              if (kDebugMode) print('Brands list is empty or no brandId in fetched data. Cannot set selected brand.');
+         }
+
+
+         // Set Category dropdown
+         // Find the CategoryDTO in the pre-loaded list by matching ID
+         if (_categories.isNotEmpty && fetchedProduct.categoryName != null) { // Match by ID
+             _selectedCategory = _categories.firstWhereOrNull(
+                (category) => category.name == fetchedProduct.categoryName,
+             );
+             if (kDebugMode) {
+                print('Attempting to set selected category. Fetched categoryId: ${fetchedProduct.categoryName}. Found category: ${_selectedCategory?.name} (ID: ${_selectedCategory?.id})');
+             }
+         } else {
+             _selectedCategory = null;
+             if (kDebugMode) print('Categories list is empty or no categoryId in fetched data. Cannot set selected category.');
+         }
+
+
+         // Set initial images (assuming API returns RELATIVE paths like "/api/images/...")
+         // Store these RELATIVE paths. Conversion to FULL URL is for DISPLAY ONLY in _buildImageDisplayWidget.
+         _defaultImageUrl = fetchedProduct.mainImageUrl; // Store relative path from DTO
+         _additionalImages.clear(); // Clear any default empty list added initially
+         if (fetchedProduct.imageUrls != null && fetchedProduct.imageUrls!.isNotEmpty) {
+              // Add additional image RELATIVE paths from DTO
+             _additionalImages.addAll(fetchedProduct.imageUrls!);
+         }
+         if (kDebugMode) print('Initial images loaded. Default: $_defaultImageUrl, Additional: ${_additionalImages.length}');
+
+
+         // Set initial variants from fetched data (assuming API provides List<ProductVariantDTO>)
+         _variants.clear(); // Clear any default variants added initially
+         if (fetchedProduct.variants != null && fetchedProduct.variants!.isNotEmpty) {
+            // Convert ProductVariantDTOs to Variant objects for the form state
+            _variants.addAll(fetchedProduct.variants!.map((dto) => Variant.fromProductVariantDTO(dto)).toList());
+             if (kDebugMode) print('Loaded ${_variants.length} variants from fetched data.');
+         } else {
+             // If no variants returned by API, add default ones for editing (as per requirement)
+             _addVariant();
+             _addVariant();
+              if (kDebugMode) print('No variants in fetched data. Added 2 default empty variants.');
+         }
+
+         // Call setState to update the UI with loaded data
+         if(mounted) {
+             setState(() {
+                 _isLoadingInitialData = false; // Loading finished successfully
+             });
+         }
+
+
+      } catch (e) {
+         if (kDebugMode) print('Error loading product data for ID $productId: $e');
+         // Handle error during fetch
+         if(mounted) {
+             setState(() {
+                 _errorLoadingInitialData = 'Không thể tải thông tin sản phẩm: ${e.toString()}';
+                 _isLoadingInitialData = false; // Loading finished (with error)
+             });
+              // Show error message using Snackbar (optional, as error screen is shown)
+             ScaffoldMessenger.of(context).showSnackBar(
+                 SnackBar(
+                     content: Text(_errorLoadingInitialData!),
+                     backgroundColor: Colors.red,
+                     duration: const Duration(seconds: 5), // Show error longer
+                 ),
+             );
+         }
+          // Optionally navigate back if loading fails severely
+          // if(mounted) Navigator.pop(context, false); // Indicate failure
+      }
+  }
+
 
   // Function to pick, read bytes, and initiate upload for main product images
   Future<void> _pickAndUploadImage(bool isDefault) async {
@@ -239,120 +441,116 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
 
      // Check if an image is already pending or uploading for this spot
      if (isDefault) {
-       if (_defaultPickedImage != null) {
-         ScaffoldMessenger.of(context).showSnackBar(
-             const SnackBar(content: Text('Vui lòng chờ ảnh mặc định tải lên xong.')),
-         );
-         return;
+       if (_defaultPickedImage != null && _defaultPickedImage!.isUploading) {
+         if (kDebugMode) print('Default image upload already in progress.'); return;
        }
      } else {
         // Check if any additional image is already pending/uploading
         if (_additionalImages.any((item) => item is PickedImage && item.isUploading)) {
-             ScaffoldMessenger.of(context).showSnackBar(
-                 const SnackBar(content: Text('Vui lòng chờ các ảnh khác tải lên xong.')),
-             );
-             return;
+             if (kDebugMode) print('Additional image upload already in progress.'); return;
          }
      }
 
 
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
-       // Declare 'picked' variable outside the try block
-       PickedImage? picked;
+       PickedImage? picked; // Declare variable outside try
 
        try {
-          // *** READ BYTES AND GET FILE NAME HERE ***
           final imageBytes = await pickedFile.readAsBytes();
-          final fileName = pickedFile.name; // Use the file name from XFile
+          final fileName = pickedFile.name;
 
-          if (kDebugMode) print('Picked image: ${fileName}, bytes length: ${imageBytes.length}'); // Log byte length
+          if (kDebugMode) print('Picked image: ${fileName}, bytes length: ${imageBytes.length}');
+          if (imageBytes.isEmpty) throw Exception('Không đọc được dữ liệu ảnh.');
 
-          if (imageBytes.isEmpty) {
-             if (kDebugMode) print('Error: Picked image bytes are empty.');
-             throw Exception('Không đọc được dữ liệu ảnh.');
-          }
-
-          // *** CREATE LOCAL PickedImage OBJECT AND UPDATE STATE FOR REVIEW ***
-          // Set isUploading to true immediately to show indicator
+          // Create PickedImage object and mark it as uploading
           picked = PickedImage(bytes: imageBytes, fileName: fileName, isUploading: true);
 
-          // Use addPostFrameCallback to schedule the setState AFTER the current frame builds
-          // This updates the UI to show the local image review
+          // Use addPostFrameCallback to update the UI AFTER the current build frame finishes
+          // This prevents calling setState while the build method is still running.
           SchedulerBinding.instance.addPostFrameCallback((_) {
-            if (mounted) { // Check if the widget is still mounted before calling setState
+            if (mounted) { // Check if the widget is still in the widget tree
                setState(() {
                    if (isDefault) {
-                       _defaultPickedImage = picked; // Store local data for immediate display
-                       _defaultImageUrl = null; // Clear previous server URL for the default image slot
+                       _defaultPickedImage = picked; // Show the local image preview and indicator
+                       _defaultImageUrl = null; // Temporarily clear the previous server URL
                    } else {
-                       _additionalImages.add(picked); // Add local data for immediate display
-                       // For additional images, we don't clear the previous URL, we just add the new one.
+                       _additionalImages.add(picked); // Add the local image preview and indicator to the list
                    }
                });
+               // Show a transient Snackbar indicating upload started
+               ScaffoldMessenger.of(context).showSnackBar(
+                   SnackBar(content: Text('Đang tải ảnh lên: ${picked!.fileName}'), duration: const Duration(seconds: 2)),
+               );
             }
           });
 
-
-          // *** CALL ProductService().uploadImage WITH BYTES AND FILENAME ***
-          if (kDebugMode) print('Starting upload for: ${picked.fileName}');
-          // This returns the RELATIVE path from the server
+          // *** CALL UPLOAD API ***
+          // Await the upload Future. This is where the UI thread is blocked if not using async/await properly,
+          // but because this function is `async`, the framework handles the blocking.
           final String? imageRelativePath = await _productService.uploadImage(picked.bytes, picked.fileName);
           if (kDebugMode) print('Image RELATIVE path returned from upload: $imageRelativePath');
 
-          // --- Update State AFTER Upload ---
-          // We now store the RELATIVE path returned by the server directly in the state.
-          // The conversion to FULL URL for display happens only in _buildImageDisplayWidget.
+          // Hide the "Uploading" Snackbar
+          if(mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
-          // Use addPostFrameCallback again to schedule the next setState
-          // This updates the UI to show the image from the server URL or handle failure
+          // Use another addPostFrameCallback to update the UI state based on the upload result
           SchedulerBinding.instance.addPostFrameCallback((_) {
              if (mounted) {
                  setState(() {
-                     if (imageRelativePath != null && imageRelativePath.isNotEmpty) {
-                        if (isDefault) {
-                            _defaultImageUrl = imageRelativePath; // Update state with RELATIVE path
-                            _defaultPickedImage = null; // Clear local data as upload is done
-                        } else {
-                            // Find the PickedImage object in the list and replace it with the RELATIVE path
-                            final index = _additionalImages.indexWhere((item) => item == picked); // Find by reference
-                            if (index != -1) {
-                                _additionalImages[index] = imageRelativePath; // Replace with RELATIVE path
-                            } else {
-                                // Fallback - should not be reached if state management is correct
-                                if (kDebugMode) print('Error: Could not find PickedImage object to replace with URL after upload.');
-                                _additionalImages.add(imageRelativePath); // Just add the path if not found
-                            }
-                        }
-                        if (kDebugMode) print('Upload successful. State updated with RELATIVE path.');
-                         ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Tải ảnh lên thành công'),
-                              backgroundColor: Colors.green,
-                            ),
-                         );
+                     // Find the *current* PickedImage object in the state that corresponds to the 'picked' one
+                     // (State might have changed since the first setState)
+                     PickedImage? currentPickedState;
+                     if (isDefault) {
+                        currentPickedState = _defaultPickedImage;
                      } else {
-                         // If uploadImage returns null or empty relative path
-                         if (kDebugMode) print('Upload failed: Server returned empty relative path.');
-                         // Revert state on failure: clear local image
-                         if (isDefault) {
-                              // Only clear if the picked image is still the one being displayed
-                             if (_defaultPickedImage == picked) {
-                               _defaultPickedImage = null;
-                             }
+                        // Find the specific PickedImage instance in the additional images list
+                        // Use .firstWhereOrNull from collection package
+                        currentPickedState = _additionalImages.firstWhereOrNull((item) => item == picked && item is PickedImage) as PickedImage?;
+                     }
+
+                     // Ensure we are updating the state for the image that was just picked/uploaded
+                     if (currentPickedState != null) {
+                          currentPickedState.isUploading = false; // Mark this specific image as no longer uploading
+
+                         if (imageRelativePath != null && imageRelativePath.isNotEmpty) {
+                            // UPLOAD SUCCESS:
+                            // Replace the local PickedImage object in the state with the server path string
+                            if (isDefault) {
+                                _defaultImageUrl = imageRelativePath; // <-- Store the returned RELATIVE path here
+                                _defaultPickedImage = null; // Clear the local data
+                            } else {
+                                // Find the index of the specific PickedImage object
+                                final index = _additionalImages.indexOf(currentPickedState); // Find by reference
+                                if (index != -1) {
+                                   _additionalImages[index] = imageRelativePath; // <-- Replace it with the RELATIVE path String
+                                } else {
+                                    // Fallback - should not happen with correct state management
+                                    if (kDebugMode) print('Error: Could not find PickedImage object to replace with URL after upload.');
+                                    _additionalImages.add(imageRelativePath); // Just add the path if not found
+                                }
+                            }
+                            if (kDebugMode) print('Upload successful. State updated with RELATIVE path.');
+                             ScaffoldMessenger.of(context).showSnackBar(
+                                // Added const
+                               const SnackBar(content: Text('Tải ảnh lên thành công'), backgroundColor: Colors.green),
+                            );
                          } else {
-                              // Find and remove the PickedImage object from the list
-                               final index = _additionalImages.indexWhere((item) => item == picked);
-                               if (index != -1) {
-                                 _additionalImages.removeAt(index);
-                               }
+                             // UPLOAD FAILURE (Server didn't return a path or returned empty):
+                             if (kDebugMode) print('Upload failed: Server returned empty path for .');
+                             // Just clear the local PickedImage object (it's already marked isUploading=false)
+                             if (isDefault) { if (_defaultPickedImage == currentPickedState) _defaultPickedImage = null; } // Check if it's still the active default image
+                             else _additionalImages.remove(currentPickedState); // Remove local image
+                             ScaffoldMessenger.of(context).showSnackBar(
+                               // Added const
+                               const SnackBar(content: Text('Tải ảnh lên thất bại: Server không trả về đường dẫn ảnh.'), backgroundColor: Colors.red),
+                             );
                          }
-                         ScaffoldMessenger.of(context).showSnackBar(
-                           const SnackBar(
-                             content: Text('Tải ảnh lên thất bại: Server không trả về đường dẫn ảnh.'),
-                             backgroundColor: Colors.red,
-                           ),
-                         );
+                     } else {
+                         // This case happens if the PickedImage object was removed from state *while* the upload was in progress
+                         // (e.g., user pressed remove button very fast).
+                         if (kDebugMode) print('Upload finished but PickedImage object ${picked?.fileName} was already removed from state.');
+                         // No state update needed here as the state was already handled by the remove action.
                      }
                  });
              }
@@ -360,35 +558,36 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
 
 
        } catch (e) {
-          // Handle any exceptions thrown during reading bytes or upload
-          if (kDebugMode) print('Upload failed: $e');
+          // Handle any exceptions during picking, reading, or uploading
+          if (kDebugMode) print('Upload failed due to exception: $e');
 
-           // --- Revert State on Failure ---
-           // Schedule state update for failure as well
+           // Use addPostFrameCallback to update the UI state on failure
            SchedulerBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
                  setState(() {
-                     if (picked != null) { // Check if 'picked' was successfully created in the try block
+                     if (picked != null) { // Ensure picked object was created in the try block
+                        // Find the PickedImage object corresponding to the failed upload
+                        PickedImage? currentPickedState;
                         if (isDefault) {
-                            // Only clear if the picked image is still the one being displayed
-                           if (_defaultPickedImage == picked) {
-                             _defaultPickedImage = null; // Clear local data on failure
-                           }
+                           currentPickedState = _defaultPickedImage;
                         } else {
-                            // Find and remove the PickedImage object from the list
-                            final index = _additionalImages.indexWhere((item) => item == picked);
-                            if (index != -1) {
-                               _additionalImages.removeAt(index); // Remove by reference
-                            }
+                           currentPickedState = _additionalImages.firstWhereOrNull((item) => item == picked && item is PickedImage) as PickedImage?;
+                        }
+
+                        if (currentPickedState != null) {
+                           currentPickedState.isUploading = false; // Mark as not uploading
+                           // Clear the local PickedImage object from the state on failure
+                           if (isDefault) { if (_defaultPickedImage == currentPickedState) _defaultPickedImage = null; } // Check if it's still the active default
+                           else _additionalImages.remove(currentPickedState); // Remove from list by reference
+                        } else {
+                             if (kDebugMode) print('Upload failed due to exception, but PickedImage object ${picked?.fileName} was already removed from state.');
                         }
                      }
-                     if (kDebugMode) print('Upload failed. State reverted.');
                  });
+                 // Hide the "Uploading" Snackbar if it's still showing
+                 if(mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
                  ScaffoldMessenger.of(context).showSnackBar(
-                   SnackBar(
-                     content: Text('Tải ảnh lên thất bại: ${e.toString()}'),
-                     backgroundColor: Colors.red,
-                   ),
+                   SnackBar(content: Text('Tải ảnh lên thất bại: ${e.toString()}'), backgroundColor: Colors.red),
                  );
               }
            });
@@ -398,101 +597,99 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
 
   // Function to pick, read bytes, and initiate upload for a variant image
   Future<void> _pickAndUploadVariantImage(Variant variant) async {
-     // Prevent picking if already processing globally or if this variant already has a pending/uploading image
-    if (_isProcessing || (variant.pickedImage != null && variant.pickedImage!.isUploading)) return;
+    if (_isProcessing) return;
+    if (variant.pickedImage != null && variant.pickedImage!.isUploading) {
+        if (kDebugMode) print('Variant image upload already in progress.'); return;
+    }
 
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
-       // Declare 'picked' variable outside the try block
-       PickedImage? picked;
+       PickedImage? picked; // Declare variable outside try
 
        try {
-           // *** READ BYTES AND GET FILE NAME HERE ***
            final imageBytes = await pickedFile.readAsBytes();
-           final fileName = pickedFile.name; // Use the file name from XFile
+           final fileName = pickedFile.name;
 
-           if (kDebugMode) print('Picked variant image: ${fileName}, bytes length: ${imageBytes.length}'); // Log byte length
+           if (kDebugMode) print('Picked variant image: ${fileName}, bytes length: ${imageBytes.length}');
+           if (imageBytes.isEmpty) throw Exception('Không đọc được dữ liệu ảnh biến thể.');
 
-            if (imageBytes.isEmpty) {
-             if (kDebugMode) print('Error: Picked variant image bytes are empty.');
-             throw Exception('Không đọc được dữ liệu ảnh biến thể.');
-           }
-
-
-           // *** CREATE LOCAL PickedImage OBJECT AND UPDATE STATE FOR REVIEW ***
-           // Set isUploading to true immediately to show indicator
            picked = PickedImage(bytes: imageBytes, fileName: fileName, isUploading: true);
 
-            // Use addPostFrameCallback to schedule the setState AFTER the current frame builds
            SchedulerBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
                   setState(() {
-                      variant.pickedImage = picked; // Store local data for immediate display
+                      variant.pickedImage = picked; // Show local preview and indicator for this variant
                       variant.defaultImageUrl = null; // Clear previous server URL for this variant
                   });
+                   ScaffoldMessenger.of(context).showSnackBar(
+                       SnackBar(content: Text('Đang tải ảnh biến thể lên: ${picked!.fileName}'), duration: const Duration(seconds: 2)),
+                   );
               }
            });
 
-
-           // *** CALL ProductService().uploadImage WITH BYTES AND FILENAME ***
-           if (kDebugMode) print('Starting variant upload for: ${picked.fileName}');
-           // This returns the RELATIVE path from the server
+           // *** CALL UPLOAD API ***
            final String? imageRelativePath = await _productService.uploadImage(picked.bytes, picked.fileName);
            if (kDebugMode) print('Variant Image RELATIVE path returned from upload: $imageRelativePath');
 
-           // --- Update State AFTER Upload ---
-            // Store the RELATIVE path returned by the server directly in the state.
+           if(mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar(); // Hide "Uploading" Snackbar
 
-           // Use addPostFrameCallback again to schedule the next setState
            SchedulerBinding.instance.addPostFrameCallback((_) {
              if (mounted) {
-                 setState(() {
-                     if (imageRelativePath != null && imageRelativePath.isNotEmpty) {
-                         variant.defaultImageUrl = imageRelativePath; // Update state with RELATIVE path
-                         variant.pickedImage = null; // Clear local data as upload is done
-                         if (kDebugMode) print('Variant upload successful. State updated with RELATIVE path.');
-                         ScaffoldMessenger.of(context).showSnackBar(
-                           const SnackBar(
-                             content: Text('Tải ảnh biến thể lên thành công'),
-                             backgroundColor: Colors.green,
-                           ),
+                 // Find the variant again in case the list changed. Check if the picked image is still associated with it.
+                 final currentVariantState = _variants.firstWhereOrNull((v) => v == variant); // Find by reference
+                 if (currentVariantState != null && currentVariantState.pickedImage == picked) {
+                      currentVariantState.pickedImage!.isUploading = false; // Mark as not uploading
+
+
+                      if (imageRelativePath != null && imageRelativePath.isNotEmpty) {
+                         // SUCCESS: Replace PickedImage with the server path string for this variant
+                         currentVariantState.defaultImageUrl = imageRelativePath; // <-- Store the RELATIVE path here
+                         currentVariantState.pickedImage = null; // Clear local data
+                          if (kDebugMode) print('Variant upload successful. State updated with RELATIVE path.');
+                           ScaffoldMessenger.of(context).showSnackBar(
+                             // Added const
+                           const SnackBar(content: Text('Tải ảnh biến thể lên thành công'), backgroundColor: Colors.green),
                          );
                      } else {
-                          if (kDebugMode) print('Variant upload failed: Server returned empty relative path.');
-                          // Revert state on failure: clear local image
-                           if (variant.pickedImage == picked) { // Check if picked is still the current image
-                              variant.pickedImage = null;
-                           }
+                          // FAILURE: Server returned empty path
+                           if (kDebugMode) print('Variant upload failed: Server returned empty path for.');
+                          // Clear the local PickedImage object for this variant
+                          currentVariantState.pickedImage = null;
                            ScaffoldMessenger.of(context).showSnackBar(
-                             const SnackBar(
-                               content: Text('Tải ảnh biến thể lên thất bại: Server không trả về đường dẫn ảnh.'),
-                               backgroundColor: Colors.red,
-                             ),
+                             // Added const
+                             const SnackBar(content: Text('Tải ảnh biến thể lên thất bại: Server không trả về đường dẫn ảnh.'), backgroundColor: Colors.red),
                            );
                      }
-                 });
+                      // Trigger rebuild after state change for this variant
+                     setState(() {});
+                 } else { // Variant state changed (e.g., variant removed), handle PickedImage cleanup if needed
+                     if (picked != null && !picked.isUploading) { // If the specific picked image object is still around and not marked uploading
+                          // Log that an upload completed but the state changed, nothing to do with UI
+                         if (kDebugMode) print('Variant upload finished for ${picked.fileName} but variant state changed or variant was removed.');
+                     }
+                 }
              }
            });
 
        } catch (e) {
-            // Handle any exceptions thrown during reading bytes or upload
-            if (kDebugMode) print('Variant upload failed: $e');
-            // --- Revert State on Failure ---
-            // Schedule state update for failure as well
+            if (kDebugMode) print('Variant upload failed due to exception: $e');
             SchedulerBinding.instance.addPostFrameCallback((_) {
                if (mounted) {
-                   setState(() {
-                        // Check if 'picked' was created and is still the active one for this variant
-                       if (picked != null && variant.pickedImage == picked) {
-                          variant.pickedImage = null; // Clear local data on failure
-                       }
-                        if (kDebugMode) print('Variant upload failed. State reverted.');
-                   });
+                    // Find the variant again and check if the picked image is still associated
+                    final currentVariantState = _variants.firstWhereOrNull((v) => v == variant);
+                    if (currentVariantState != null && currentVariantState.pickedImage == picked) {
+                        if (picked != null) picked.isUploading = false; // Mark as not uploading
+                        currentVariantState.pickedImage = null; // Clear local data on failure
+                        // Trigger rebuild
+                        setState(() {});
+                    } else {
+                        if (picked != null && !picked.isUploading) {
+                            if (kDebugMode) print('Variant upload failed due to exception for ${picked.fileName}, but variant state changed or variant was removed.');
+                        }
+                    }
+                   if(mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
                    ScaffoldMessenger.of(context).showSnackBar(
-                     SnackBar(
-                       content: Text('Tải ảnh biến thể lên thất bại: ${e.toString()}'),
-                       backgroundColor: Colors.red,
-                     ),
+                     SnackBar(content: Text('Tải ảnh biến thể lên thất bại: ${e.toString()}'), backgroundColor: Colors.red),
                    );
                }
             });
@@ -504,87 +701,115 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
   // Function to remove an additional image (handles both URL String and PickedImage)
   void _removeAdditionalImage(dynamic imageSource) {
     // Prevent removal if processing or if this specific image is uploading
-    if (_isProcessing || (imageSource is PickedImage && imageSource.isUploading)) return;
+    if (_isProcessing || (imageSource is PickedImage && imageSource.isUploading)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('Không thể xóa ảnh đang tải lên.')), // Added const
+       );
+       return;
+    }
     setState(() {
        if (kDebugMode) print('Removing additional image source: $imageSource');
-      _additionalImages.remove(imageSource); // Remove by object reference
+       // Remove by object reference (for PickedImage) or value equality (for String)
+      _additionalImages.remove(imageSource);
     });
   }
 
    // Function to remove the default image (handles both URL String and PickedImage)
   void _removeDefaultImage() {
-     // Prevent removal if processing or if the default image is uploading
-    if (_isProcessing || (_defaultPickedImage != null && _defaultPickedImage!.isUploading)) return;
+    // Prevent removal if processing or if the default image is uploading
+    if (_isProcessing || (_defaultPickedImage != null && _defaultPickedImage!.isUploading)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('Không thể xóa ảnh đang tải lên.')), // Added const
+       );
+       return;
+    }
      setState(() {
         if (kDebugMode) print('Removing default image. Current source: ${_defaultPickedImage ?? _defaultImageUrl}');
-        _defaultImageUrl = null;
-        _defaultPickedImage = null;
+        _defaultImageUrl = null; // Clear the server path state
+        _defaultPickedImage = null; // Clear the local PickedImage state
      });
   }
 
 
   // Function to add a new variant
   void _addVariant() {
-    // Prevent adding if processing
     if (_isProcessing) return;
+    // Prevent adding variant if any variant image is still uploading
+    if (_variants.any((v) => v.pickedImage != null && v.pickedImage!.isUploading)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('Vui lòng chờ các ảnh biến thể khác tải lên xong.')), // Added const
+       );
+       return;
+    }
     setState(() {
       // Create a new Variant object, initially with no image URL and no originalId
       _variants.add(Variant());
     });
+     // Optional: Scroll to the newly added variant for better UX
+     SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _formKey.currentContext != null) {
+            Scrollable.ensureVisible(
+               _formKey.currentContext!, // Use the form's context
+               alignment: 1.0, // Scroll to the bottom edge of the target
+               duration: const Duration(milliseconds: 300),
+               curve: Curves.easeOutCubic,
+            );
+        }
+     });
   }
 
   // Function to remove a variant
   void _removeVariant(int index) {
-    // Prevent removal if processing or if this variant's image is uploading
+     // Prevent removal if processing or if this specific variant's image is uploading
      if (_isProcessing || (_variants[index].pickedImage != null && _variants[index].pickedImage!.isUploading)) {
         ScaffoldMessenger.of(context).showSnackBar(
-           const SnackBar(content: Text('Không thể xóa biến thể khi ảnh đang tải lên.')),
+           const SnackBar(content: Text('Không thể xóa biến thể khi ảnh đang tải lên.')), // Added const
        );
        return;
      }
-    // Dispose variant controllers before removing
-    _variants[index].disposeControllers();
+    _variants[index].disposeControllers(); // Dispose controllers
     setState(() {
       if (kDebugMode) print('Removing variant at index $index');
       _variants.removeAt(index);
     });
   }
 
-  // Function to handle form submission (ONLY calls createProduct or SIMULATES updateProduct)
+  // Function to handle form submission (Calls createProduct or updateProduct API)
   void _submitForm() async {
-    // Prevent multiple submissions if already processing
+    // Prevent multiple submissions if already processing globaly
     if (_isProcessing) return;
 
     // --- Pre-Check: Ensure all images are uploaded ---
-    // Check if any PickedImage object still exists in state (indicating pending upload)
-    if (_defaultPickedImage != null || _additionalImages.any((item) => item is PickedImage) || _variants.any((v) => v.pickedImage != null)) {
+    // Check if any PickedImage object still exists anywhere in the state
+    final bool anyImageUploading = (_defaultPickedImage != null && _defaultPickedImage!.isUploading) ||
+                                    _additionalImages.any((item) => item is PickedImage && item.isUploading) ||
+                                    _variants.any((v) => v.pickedImage != null && v.pickedImage!.isUploading);
+
+    if (anyImageUploading) {
          ScaffoldMessenger.of(context).showSnackBar(
-           const SnackBar(content: Text('Vui lòng chờ tất cả ảnh tải lên xong trước khi gửi.')),
+           const SnackBar(content: Text('Vui lòng chờ tất cả ảnh tải lên xong trước khi gửi.')), // Added const
        );
-       // Optionally, you could iterate and show a more specific message if needed
-       // for (var variant in _variants) { if (variant.pickedImage != null) { /* show variant-specific message */ break; } }
+       if (kDebugMode) print('Submission blocked: Images still uploading.');
        return;
     }
 
-
     // --- Step 1: Validate main form fields (TextFormFields and Dropdowns) ---
-    // This triggers the validator functions on the TextFormFields and DropdownButtonFormFields
-    // for product name, description, discount, brand, and category.
-    // The validators in the TextFormFields of VariantInput should also be triggered if
-    // they are correctly set up and included in the form's subtree.
+    // This triggers the validator functions on the TextFormFields and DropdownButtonFormFields.
+    // Validators in VariantInput are also checked via this form validation.
     if (!_formKey.currentState!.validate()) {
-      // If form validation fails, errors will be shown next to the fields.
-      // No need for an extra Snackbar here, as field errors are visible.
+      // Validation messages will appear next to the fields
       if (kDebugMode) print('Main form validation failed.');
       return;
     }
 
     // --- Step 2: Validate items not covered by _formKey (Images and Variants existence) ---
 
-    // Basic validation for main image URL existence (now stores relative path, check if it exists)
+    // Basic validation for main image URL existence (now stores relative path)
+    // This check is redundant if the Default Image GestureDetector has a red border validator logic
+    // but keeping it here for final submission check safety.
     if (_defaultImageUrl == null || _defaultImageUrl!.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Vui lòng chọn ảnh mặc định cho sản phẩm chính.')),
+            const SnackBar(content: Text('Vui lòng chọn ảnh mặc định cho sản phẩm chính.')), // Added const
         );
          if (kDebugMode) print('Validation failed: Default image missing.');
         return;
@@ -593,49 +818,65 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
     // Basic validation for at least one variant
      if (_variants.isEmpty) {
          ScaffoldMessenger.of(context).showSnackBar(
-             const SnackBar(content: Text('Vui lòng thêm ít nhất một biến thể')),
+             const SnackBar(content: Text('Vui lòng thêm ít nhất một biến thể')), // Added const
          );
          if (kDebugMode) print('Validation failed: No variants added.');
          return;
      }
 
       // --- Step 3: Validate individual variant details (including images) ---
+      // This repeats validation already in VariantInput's validator, but ensures
+      // the *current* state is checked one last time before sending to API.
      bool areVariantsCompletelyValid = true;
      String variantValidationMessage = '';
 
-     for (var variant in _variants) {
+     for (int i = 0; i < _variants.length; i++) {
+         final variant = _variants[i];
          // Check TextFormFields value explicitly, including trimming for 'blank' check
          if (variant.nameController.text.trim().isEmpty) {
              areVariantsCompletelyValid = false;
-             variantValidationMessage = 'Vui lòng nhập tên cho tất cả biến thể.';
-             break; // Stop checking variants once one invalid is found
+             variantValidationMessage = 'Biến thể ${i + 1}: Vui lòng nhập tên.';
+             break;
          }
-         final price = double.tryParse(variant.priceController.text.trim());
-         final quantity = int.tryParse(variant.quantityController.text.trim());
+         final priceText = variant.priceController.text.trim();
+         final quantityText = variant.quantityController.text.trim();
 
+         if (priceText.isEmpty) {
+             areVariantsCompletelyValid = false;
+             variantValidationMessage = 'Biến thể ${i + 1}: Vui lòng nhập giá.';
+             break;
+         }
+          final price = double.tryParse(priceText);
          if (price == null || price < 0) {
              areVariantsCompletelyValid = false;
-             variantValidationMessage = 'Vui lòng nhập giá hợp lệ (số >= 0) cho tất cả biến thể.';
+             variantValidationMessage = 'Biến thể ${i + 1}: Giá phải là số hợp lệ (>= 0).';
              break;
          }
+
+         if (quantityText.isEmpty) {
+            areVariantsCompletelyValid = false;
+             variantValidationMessage = 'Biến thể ${i + 1}: Vui lòng nhập số lượng tồn kho.';
+             break;
+         }
+         final quantity = int.tryParse(quantityText);
           if (quantity == null || quantity < 0) {
              areVariantsCompletelyValid = false;
-             variantValidationMessage = 'Vui lòng nhập số lượng tồn kho hợp lệ (số nguyên >= 0) cho tất cả biến thể.';
+             variantValidationMessage = 'Biến thể ${i + 1}: Số lượng phải là số nguyên hợp lệ (>= 0).';
              break;
          }
 
-
           // Validate variant image paths (must be a non-empty string after upload)
+          // It's guaranteed to be a String (RELATIVE path) if upload was successful and no PickedImage remains.
          if (variant.defaultImageUrl == null || variant.defaultImageUrl!.isEmpty) {
              areVariantsCompletelyValid = false;
-             variantValidationMessage = 'Vui lòng chọn ảnh cho tất cả biến thể.';
-             break; // Stop checking variants once one invalid is found
+             variantValidationMessage = 'Biến thể ${i + 1}: Vui lòng chọn ảnh.';
+             break;
          }
      }
 
      if (!areVariantsCompletelyValid) {
           ScaffoldMessenger.of(context).showSnackBar(
-             SnackBar(content: Text(variantValidationMessage)), // Show combined message
+             SnackBar(content: Text(variantValidationMessage)),
          );
          if (kDebugMode) print('Validation failed: Variant details missing or invalid.');
          return;
@@ -644,23 +885,21 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
 
     // --- If all validation passes, proceed with processing ---
     if (kDebugMode) print('All validation passed. Proceeding to submission.');
-    // --- Show Processing Modal ---
     setState(() {
       _isProcessing = true; // Set state to show loading and block interaction
     });
-    // Show a dialog that blocks user interaction
     showDialog(
       context: context,
-      barrierDismissible: false, // Prevent dismissing by tapping outside
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return Dialog(
           child: Padding(
-            padding: const EdgeInsets.all(20.0),
+            padding: const EdgeInsets.all(20.0), // Added const
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(),
-                SizedBox(width: 20),
+                const CircularProgressIndicator(), // Added const
+                const SizedBox(width: 20), // Added const
                 Text(widget.product == null ? "Đang tạo sản phẩm..." : "Đang cập nhật sản phẩm..."),
               ],
             ),
@@ -670,114 +909,109 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
     );
 
     try {
-      // --- Prepare Data for API Call (using stored RELATIVE Paths) ---
-      // This part prepares the data structure that would be sent to your API.
+      // Collect all additional image paths (filter out any lingering PickedImage objects, though pre-check should handle this)
+      final List<String> additionalImagePaths = _additionalImages.whereType<String>().toList();
+
 
       if (widget.product == null) {
           // --- Create Product ---
-          // Prepare list of CreateProductVariantDTOs using the stored RELATIVE paths
           List<CreateProductVariantDTO> createVariantDTOs = _variants.map((variant) {
+              // defaultImageUrl is guaranteed non-null by validation above
               return CreateProductVariantDTO(
-                  name: variant.nameController.text.trim(), // Apply trim() here for API data
-                  // sku: variant.skuController.text, // if you had sku input
-                  price: double.tryParse(variant.priceController.text.trim()) ?? 0.0, // Apply trim() here for API data
-                  stockQuantity: int.tryParse(variant.quantityController.text.trim()) ?? 0, // Apply trim() here for API data
-                  variantImageUrl: variant.defaultImageUrl, // Use the stored RELATIVE path
+                  name: variant.nameController.text.trim(),
+                  price: double.parse(variant.priceController.text.trim()), // Parse after trimming
+                  stockQuantity: int.parse(variant.quantityController.text.trim()), // Parse after trimming
+                  variantImageUrl: variant.defaultImageUrl!, // RELATIVE path (validated non-null/empty)
               );
           }).toList();
 
-          // Construct the CreateProductRequestDTO using the stored RELATIVE paths
           CreateProductRequestDTO productRequest = CreateProductRequestDTO(
-             name: _nameController.text.trim(), // Apply trim() here for API data
-             description: _descriptionController.text.trim(), // Apply trim() here for API data
-             // Ensure these are not null based on dropdown validation (_formKey handles this)
-             categoryId: _selectedCategory!.id!,
-             brandId: _selectedBrand!.id!,
-             mainImageUrl: _defaultImageUrl, // Use the stored RELATIVE path
-             // Filter _additionalImages to get only Strings (the RELATIVE paths)
-             imageUrls: _additionalImages.whereType<String>().toList(),
-             discountPercentage: double.tryParse(_discountController.text.trim()), // Apply trim() here for API data
-             variants: createVariantDTOs, // Pass the list of variant DTOs
+             name: _nameController.text.trim(),
+             description: _descriptionController.text.trim(),
+             categoryId: _selectedCategory!.id!, // Guaranteed non-null by _formKey validation
+             brandId: _selectedBrand!.id!,     // Guaranteed non-null by _formKey validation
+             mainImageUrl: _defaultImageUrl!, // RELATIVE path, guaranteed non-null by manual validation
+             imageUrls: additionalImagePaths, // List of RELATIVE paths
+             discountPercentage: double.tryParse(_discountController.text.trim()),
+             variants: createVariantDTOs,
           );
 
            if (kDebugMode) print('Calling createProduct with data: ${productRequest.toJson()}');
-
-           // *** CALL THE ACTUAL CREATE API ***
-           await _productService.createProduct(productRequest);
+           await _productService.createProduct(productRequest); // Call the actual API
 
        } else {
           // --- Update Product ---
-          // User requested to NOT implement updateProduct API call yet.
-          // Only simulate the process after collecting data.
+          final dynamic productIdDynamic = widget.product!['id'];
+          final int? productId = productIdDynamic is int ? productIdDynamic : null;
 
-          // Combine main and additional image paths for logging (or for a potential update DTO)
-          // Ensure these are RELATIVE paths
-          List<String> allImagePathsForLogging = [];
-          if (_defaultImageUrl != null) {
-             allImagePathsForLogging.add(_defaultImageUrl!); // Already RELATIVE path
+          if (productId == null) {
+               if(mounted) Navigator.of(context).pop(); // Dismiss loading dialog
+               throw Exception('Product ID is missing or invalid for update.');
           }
-          // Add only the String RELATIVE paths from the mixed additionalImages list
-          allImagePathsForLogging.addAll(_additionalImages.whereType<String>());
 
+          List<UpdateProductVariantDTO> updateVariantDTOs = _variants.map((variant) {
+               // defaultImageUrl is guaranteed non-null by validation above
+               return UpdateProductVariantDTO(
+                  id: variant.originalId, // Include original ID (null for newly added variants during edit)
+                  name: variant.nameController.text.trim(),
+                  price: double.parse(variant.priceController.text.trim()), // Parse after trimming
+                  stockQuantity: int.parse(variant.quantityController.text.trim()), // Parse after trimming
+                  variantImageUrl: variant.defaultImageUrl!, // RELATIVE path (validated non-null/empty)
+               );
+          }).toList();
 
-           Map<String, dynamic> productDataForLogging = {
-               'id': widget.product!['id'], // Product ID
-               'name': _nameController.text.trim(), // Apply trim() here for API data
-               'description': _descriptionController.text.trim(), // Apply trim() here for API data
-               'categoryId': _selectedCategory?.id,
-               'brandId': _selectedBrand?.id,
-               'images': allImagePathsForLogging, // Use final RELATIVE paths
-               'discountPercentage': double.tryParse(_discountController.text.trim()), // Apply trim() here for API data
-               'variants': _variants.map((v) => {
-                   'id': v.originalId, // Include original ID if exists
-                   'name': v.nameController.text.trim(), // Apply trim() here for API data
-                   'price': double.tryParse(v.priceController.text.trim()), // Apply trim() here for API data
-                   'quantity': int.tryParse(v.quantityController.text.trim()), // Apply trim() here for API data
-                   'variantImageUrl': v.defaultImageUrl, // Use final RELATIVE path
-               }).toList(),
-            };
+          // Use the id from the selected DTO objects for brand/category (guaranteed non-null by _formKey validator)
+          UpdateProductRequestDTO productRequest = UpdateProductRequestDTO(
+             name: _nameController.text.trim(),
+             description: _descriptionController.text.trim(),
+             categoryId: _selectedCategory!.id!,
+             brandId: _selectedBrand!.id!,
+             mainImageUrl: _defaultImageUrl!, // RELATIVE path (validated non-null/empty)
+             imageUrls: additionalImagePaths, // List of RELATIVE paths
+             discountPercentage: double.tryParse(_discountController.text.trim()),
+             variants: updateVariantDTOs,
+          );
 
-          if (kDebugMode) print('Simulating updateProduct call for ID: ${widget.product!['id']} with data: ${productDataForLogging}');
-
-          // *** SIMULATE THE API CALL ***
-          await Future.delayed(const Duration(seconds: 3)); // Simulate network delay
+          if (kDebugMode) print('Calling updateProduct for ID $productId with data: ${productRequest.toJson()}');
+          await _productService.updateProduct(productId, productRequest); // Call the actual API
        }
 
-
       // --- Handle Success ---
-      // Dismiss the loading dialog FIRST
-      Navigator.of(context).pop();
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(widget.product == null ? 'Tạo sản phẩm thành công!' : 'Cập nhật sản phẩm thành công!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if(mounted) Navigator.of(context).pop(); // Dismiss loading dialog
+      if(mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(widget.product == null ? 'Tạo sản phẩm thành công!' : 'Cập nhật sản phẩm thành công!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+      }
+       // Navigate back, indicating success to the previous screen (ProductScreen)
+       if(mounted) Navigator.pop(context, true);
 
-      // Optionally navigate back after success
-       Navigator.pop(context, true); // Pass true to indicate success
 
     } catch (e) {
       // --- Handle Error ---
-      // Dismiss the loading dialog FIRST
-      Navigator.of(context).pop();
-      // Handle any exceptions thrown during API calls (createProduct or simulation)
+      if(mounted) Navigator.of(context).pop(); // Dismiss loading dialog
       if (kDebugMode) print('Error during product submission: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Có lỗi xảy ra: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+       if(mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+             SnackBar(
+               content: Text('Có lỗi xảy ra: ${e.toString()}'),
+               backgroundColor: Colors.red,
+             ),
+           );
+       }
     } finally {
-      // --- Reset Processing State ---
-      // This will happen after the dialog is popped in the try/catch blocks
-      setState(() {
-        _isProcessing = false;
-      });
-       // Also clear any isUploading flags just in case (though they should be null by now after success/failure handling)
-       // This part is defensive; the nulling logic in try/catch is the primary mechanism.
+       // Reset Processing State regardless of success/failure
+       if(mounted) {
+            setState(() {
+              _isProcessing = false;
+            });
+       }
+       // Ensure any isUploading flags on PickedImage objects are reset in case
+       // the state update logic somehow missed one or hit an exception *before*
+       // the state could be fully updated. This is a defensive cleanup.
        if (_defaultPickedImage != null) _defaultPickedImage!.isUploading = false;
        for (var item in List.from(_additionalImages.whereType<PickedImage>())) { // Iterate over a copy
           item.isUploading = false;
@@ -788,182 +1022,206 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
     }
   }
 
-  // Helper to build image widget from source (Handles PickedImage, Network URLs, or Placeholder)
-  // Helper to build image widget from source (Handles PickedImage, Network URLs, or Placeholder)
-Widget _buildImageDisplayWidget(dynamic source, {double size = 40, double iconSize = 40, BoxFit fit = BoxFit.cover}) {
-  // Source can be PickedImage (local data) or String (server path/URL)
-
-  if (kDebugMode) {
-     // Log what source is received for display
-     print('[_buildImageDisplayWidget] Received source: $source (Type: ${source?.runtimeType})');
-     if (source is PickedImage) {
-       print('[_buildImageDisplayWidget] PickedImage bytes length: ${source.bytes.length}');
-     } else if (source is String) {
-        print('[_buildImageDisplayWidget] String source (path/URL): $source');
-     }
-  }
-
-
-  if (source == null || (source is String && source.isEmpty)) {
-    // Display placeholder icon if source is null or empty string
-    return Icon(Icons.camera_alt, size: iconSize, color: Colors.grey);
-  }
-
-  if (source is PickedImage) {
-    // Display locally picked image bytes
-    return Stack(
-       fit: StackFit.expand,
-       children: [
-          Image.memory(
-             source.bytes,
-             fit: fit,
-             // Add errorBuilder to log issues with Image.memory
-             errorBuilder: (context, error, stackTrace) {
-                if (kDebugMode) print('[_buildImageDisplayWidget] Image.memory failed for ${source.fileName}: $error');
-                // Returning a simple colored box or container can help distinguish
-                // between a failed memory load and a network load error.
-                return Container(color: Colors.orangeAccent.withOpacity(0.5), child: Icon(Icons.warning_amber, size: iconSize * 0.8, color: Colors.deepOrange));
-             },
-          ),
-           // Optional: Add an upload indicator overlay
-          if (source.isUploading) // Assuming PickedImage has an isUploading flag
-             Container(
-                color: Colors.black54,
-                child: Center(
-                   child: CircularProgressIndicator(color: Colors.white),
-                ),
-             ),
-       ],
-    );
-  } else if (source is String) { // Now we know it's a non-empty String (a server path or potentially a full URL)
-     // Use the helper function from ProductService to get the guaranteed FULL URL
-     final fullImageUrl = _productService.getImageUrl(source);
-
-     if (kDebugMode) {
-        print('[_buildImageDisplayWidget] Using FULL URL for Image.network: $fullImageUrl');
-     }
-
-     // Basic validation *after* constructing full URL
-     // We expect getImageUrl to always return a full URL if the input is non-empty,
-     // but this check is defensive.
-     if (!fullImageUrl.startsWith('http://') && !fullImageUrl.startsWith('https://')) {
-        if (kDebugMode) print('[_buildImageDisplayWidget] Invalid constructed URL format (missing http/https): $fullImageUrl');
-        // Don't return error icon immediately, let Image.network try. Its errorBuilder handles it.
-         // Instead, perhaps check if _productService.getImageUrl returned something unexpected.
-         // This check might be redundant if getImageUrl is guaranteed to return a valid format string.
-         // Let's rely on Image.network's errorBuilder for network issues.
-     }
-
-     // Display network image from FULL URL
-    return Image.network(
-  fullImageUrl,
-  fit: fit,
-  loadingBuilder: (context, child, loadingProgress) {
-    if (loadingProgress == null) return child;
-    return Center(
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: CircularProgressIndicator(
-          value: loadingProgress.expectedTotalBytes != null
-              ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-              : null,
-        ),
-      ),
-    );
-  },
-  errorBuilder: (context, error, stackTrace) {
-    if (kDebugMode) {
-      print('[_buildImageDisplayWidget] Image.network failed for $fullImageUrl: $error');
+  // Helper to build image widget from source (Handles PickedImage, server RELATIVE path String, or Placeholder)
+  // This function is passed down to VariantInput as imageDisplayBuilder
+  // This function is defined once in the _AddUpdateProductScreenState class.
+  Widget _buildImageDisplayWidget(dynamic source, {double size = 40, double iconSize = 40, BoxFit fit = BoxFit.cover}) {
+    // Check if ProductService instance is available before calling getImageUrl
+    // This check is mainly defensive, _productService should be initialized in initState
+    if (_productService == null) {
+        if (kDebugMode) print('[_buildImageDisplayWidget] Error: ProductService is null.');
+        return const Icon(Icons.error, size: 40, color: Colors.purple); // Added const
     }
-    return Icon(Icons.broken_image, size: iconSize, color: Colors.red);
-  },
-);
 
-  } else {
-      // Fallback - should not be reached with current logic, but safe to have
-      if (kDebugMode) print('[_buildImageDisplayWidget] Unexpected source type: ${source?.runtimeType}');
-       return Icon(Icons.error, size: iconSize, color: Colors.purple); // Indicate an unexpected situation
+    if (kDebugMode) {
+       // print('[_buildImageDisplayWidget] Received source: $source (Type: ${source?.runtimeType})');
+    }
+
+    if (source == null || (source is String && source.isEmpty)) {
+      return Icon(Icons.camera_alt, size: iconSize, color: Colors.grey); // Placeholder
+    }
+
+    if (source is PickedImage) {
+      // Display locally picked image bytes with potential upload indicator
+      return Stack(
+         fit: StackFit.expand,
+         children: [
+            Image.memory(
+               source.bytes,
+               fit: fit,
+               // Add errorBuilder to log issues with Image.memory
+               errorBuilder: (context, error, stackTrace) {
+                  if (kDebugMode) print('[_buildImageDisplayWidget] Image.memory failed for ${source.fileName}: $error');
+                  return Container(color: Colors.orangeAccent.withOpacity(0.5), child: Icon(Icons.warning_amber, size: iconSize * 0.8, color: Colors.deepOrange));
+               },
+            ),
+            // Show circular progress indicator centered over the image while uploading
+            if (source.isUploading)
+               Positioned.fill( // Make the overlay fill the entire image area
+                   child: Container(
+                      color: Colors.black54, // Semi-transparent overlay
+                      child: Center( // Center the indicator
+                         child: SizedBox( // Give the indicator a fixed size
+                            width: size * 0.5, // Make indicator size relative to image size
+                            height: size * 0.5,
+                            child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 2), // Added const
+                         ),
+                      ),
+                   ),
+               ),
+         ],
+      );
+    } else if (source is String) { // It's a server relative path (e.g., "/uploads/...")
+       // Use the helper function from ProductService to get the guaranteed FULL URL for network loading
+       final fullImageUrl = _productService.getImageUrl(source);
+
+       if (kDebugMode) {
+         // print('[_buildImageDisplayWidget] Using FULL URL for Image.network: $fullImageUrl (Original relative path: $source)');
+       }
+
+      return Image.network(
+        fullImageUrl,
+        fit: fit,
+        // Add loading builder for network images
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Center(
+            child: SizedBox( // Use SizedBox to prevent layout changes during loading
+              width: size * 0.5, // Make indicator size relative to image size
+              height: size * 0.5,
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                    : null,
+                strokeWidth: 2, // Thinner stroke for smaller indicator
+              ),
+            ),
+          );
+        },
+        // Add error builder for network images
+        errorBuilder: (context, error, stackTrace) {
+          if (kDebugMode) {
+            print('[_buildImageDisplayWidget] Image.network failed for $fullImageUrl (Original: $source): $error');
+          }
+          // Show broken image icon if network image fails
+          return Icon(Icons.broken_image, size: iconSize, color: Colors.red);
+        },
+      );
+
+    } else {
+        // Fallback for unexpected types
+        if (kDebugMode) print('[_buildImageDisplayWidget] Unexpected source type: ${source?.runtimeType}');
+         return const Icon(Icons.error, size: 40, color: Colors.purple); // Added const
+    }
   }
-}
 
 
+  // --- State.build method ---
   @override
   Widget build(BuildContext context) {
-    // Check if app data (brands, categories) is loaded before building complex UI that needs it
+    // Check if AppDataService (containing brands/categories) is initialized
      if (!AppDataService().isInitialized) {
          // Show a simple loading indicator while data loads
          return Scaffold(
-           appBar: AppBar(title: const Text('Loading Data')),
-           body: const Center(child: CircularProgressIndicator()),
+           appBar: AppBar(title: const Text('Đang tải dữ liệu...')), // Added const
+           body: const Center(child: CircularProgressIndicator()), // Added const
          );
      }
+
+    // If we are in edit mode and still loading product data, show loading indicator
+    // Or if there was an error loading initial data
+    if (widget.product != null && (_isLoadingInitialData || _errorLoadingInitialData != null)) {
+       return Scaffold(
+           appBar: AppBar(title: Text(widget.product == null ? 'Thêm Sản phẩm' : 'Cập nhật Sản phẩm')),
+           body: Center(
+               child: Padding(
+                   padding: const EdgeInsets.all(16.0), // Added const
+                   child: Column(
+                       mainAxisAlignment: MainAxisAlignment.center,
+                       children: [
+                           if (_isLoadingInitialData) const CircularProgressIndicator(), // Added const
+                           if (_isLoadingInitialData) const SizedBox(height: 16), // Added const
+                           // Show error message if available during loading
+                           Text(_errorLoadingInitialData ?? 'Vui lòng chờ...'),
+                            if (_errorLoadingInitialData != null) const SizedBox(height: 16), // Added const
+                           if (_errorLoadingInitialData != null)
+                              ElevatedButton(
+                                onPressed: () {
+                                  // Optionally add a retry mechanism, or just navigate back
+                                  Navigator.pop(context, false); // Indicate failure/cancel
+                                },
+                                child: const Text('Quay lại'), // Added const
+                              ),
+                       ],
+                   ),
+               )
+           ),
+       );
+    }
 
     // Determine the source for the default image display (prioritize PickedImage for review)
     final dynamic defaultImageSource = _defaultPickedImage ?? _defaultImageUrl;
 
-    // Main UI is built only after data is initialized
+
+    // Main UI is built only after data is initialized and product data is loaded (if in edit mode)
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.product == null ? 'Thêm Sản phẩm' : 'Cập nhật Sản phẩm'),
       ),
-      // Use AbsorbPointer to block interaction when processing
+      // Use AbsorbPointer to block interaction when processing (saving/updating)
       body: AbsorbPointer(
         absorbing: _isProcessing, // Absorb events when _isProcessing is true
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16.0), // Added const
           child: Form(
             key: _formKey,
             child: ListView(
               children: [
                 // Main Product Info Title
-                Text(
+                const Text(
                   'Thông tin Sản phẩm chính:',
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 16), // Added const
 
                 // Product Name
                 TextFormField(
                   controller: _nameController,
-                  decoration: const InputDecoration(labelText: 'Tên sản phẩm'),
+                  decoration: const InputDecoration(labelText: 'Tên sản phẩm'), // Added const
                   validator: (value) {
-                    // Add validation check, including trimming
                     if (value == null || value.trim().isEmpty) {
                       return 'Vui lòng nhập tên sản phẩm';
                     }
                     return null;
                   },
-                   // Disable input visually when processing
-                   enabled: !_isProcessing,
+                   enabled: !_isProcessing, // Disable when processing
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 16), // Added const
 
                 // Default Image (Main Product)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Ảnh mặc định (Sản phẩm chính):', style: TextStyle(fontSize: 16)),
-                    const SizedBox(height: 8),
-                    Stack( // Use Stack to potentially place a remove button or indicator
+                    const Text('Ảnh mặc định (Sản phẩm chính):', style: TextStyle(fontSize: 16)), // Added const
+                    const SizedBox(height: 8), // Added const
+                    Stack( // Use Stack for potential remove button/indicator
                        children: [
                          GestureDetector(
                             // Disable tap if processing or if an image is already picked/uploading for this slot
-                            onTap: (_isProcessing || (_defaultPickedImage != null && _defaultPickedImage!.isUploading)) ? null : () => _pickAndUploadImage(true),
+                            onTap: (_isProcessing || (defaultImageSource is PickedImage && defaultImageSource.isUploading)) ? null : () => _pickAndUploadImage(true),
                             child: Container(
                               width: 100,
                               height: 100,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(8),
                                 color: Colors.grey[200],
-                                // Optional: add border if image is missing/error
-                                // Check if both _defaultPickedImage and _defaultImageUrl are null/empty
-                                border: (_defaultPickedImage == null && (_defaultImageUrl == null || _defaultImageUrl!.isEmpty))
-                                    ? Border.all(color: Colors.red, width: 1) // Indicate required field missing
+                                // Add red border if default image is required and missing
+                                border: (!_isProcessing && (defaultImageSource == null)) // No source means missing
+                                    ? Border.all(color: Colors.red, width: 1)
                                     : null,
                               ),
                               clipBehavior: Clip.antiAlias,
-                              // Display the stored local or server image source
+                              // Display the stored local or server image source using the helper
                               child: _buildImageDisplayWidget(
                                   defaultImageSource, // Pass the combined source
                                   size: 100,
@@ -972,39 +1230,49 @@ Widget _buildImageDisplayWidget(dynamic source, {double size = 40, double iconSi
                                 ),
                             ),
                          ),
-                         // Show remove button only if an image source exists and not processing AND not currently uploading
-                         // Check if there is *any* source to remove
+                         // Show remove button only if an image source exists and not processing globaly AND not currently uploading
                          if (!_isProcessing && defaultImageSource != null && !(defaultImageSource is PickedImage && defaultImageSource.isUploading))
                             Positioned(
                               right: 0,
                               top: 0,
                               child: GestureDetector(
-                                onTap: _removeDefaultImage,
+                                onTap: _removeDefaultImage, // Call the remove function
                                 child: Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: BoxDecoration(
+                                  padding: const EdgeInsets.all(2), // Added const
+                                  decoration: const BoxDecoration( // Added const
                                       color: Colors.black54,
                                       borderRadius: BorderRadius.only(
                                           topRight: Radius.circular(8),
                                           bottomLeft: Radius.circular(8),
                                       )
                                   ),
-                                  child: const Icon(Icons.close, color: Colors.white, size: 14),
+                                  child: const Icon(Icons.close, color: Colors.white, size: 14), // Added const
                                 ),
                               ),
                             ),
                        ],
                     ),
+                     // Display validation error if default image is missing (triggered by _submitForm validator)
+                    // Need to check form state *after* validate call for this to work reliably outside build
+                    // For simplicity, relying on the snackbar from _submitForm validator might be sufficient UX
+                    // if (_formKey.currentState != null && !_formKey.currentState!.validate() && (defaultImageSource == null))
+                    //   const Padding( // Added const
+                    //     padding: EdgeInsets.only(top: 4.0), // Added const
+                    //     child: Text(
+                    //       'Vui lòng chọn ảnh mặc định',
+                    //       style: TextStyle(color: Colors.red, fontSize: 12), // Added const
+                    //     ),
+                    //   ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 16), // Added const
 
                 // Additional Images (Main Product) - Mix of URLs and PickedImages
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Ảnh góc minh họa (Sản phẩm chính, có thể chọn nhiều):', style: TextStyle(fontSize: 16)),
-                    const SizedBox(height: 8),
+                    const Text('Ảnh góc minh họa (Sản phẩm chính, có thể chọn nhiều):', style: TextStyle(fontSize: 16)), // Added const
+                    const SizedBox(height: 8), // Added const
                      Wrap(
                        spacing: 8,
                        runSpacing: 8,
@@ -1012,6 +1280,9 @@ Widget _buildImageDisplayWidget(dynamic source, {double size = 40, double iconSi
                          // Display stored images (mix of String RELATIVE Paths and PickedImage objects)
                          ..._additionalImages.map((imageSource) {
                              return Stack(
+                                // Use a unique key for each item in the list to help Flutter manage state
+                                // This is useful when adding/removing items dynamically
+                                key: imageSource is PickedImage ? ValueKey(imageSource) : ValueKey(imageSource.toString()),
                                children: [
                                  Container(
                                    width: 80,
@@ -1019,30 +1290,29 @@ Widget _buildImageDisplayWidget(dynamic source, {double size = 40, double iconSi
                                    decoration: BoxDecoration(
                                      borderRadius: BorderRadius.circular(8),
                                      color: Colors.grey[200],
-                                      // Optional: add border if needed
                                    ),
                                    clipBehavior: Clip.antiAlias,
-                                   // Display the stored source (RELATIVE Path or PickedImage)
+                                   // Display the stored source (RELATIVE Path or PickedImage) using the helper
                                    child: _buildImageDisplayWidget(imageSource, size: 80, iconSize: 30),
                                  ),
-                                 // Only show remove button if not processing AND not currently uploading
+                                 // Only show remove button if not processing globally AND this specific image is NOT uploading
                                  if (!_isProcessing && !(imageSource is PickedImage && imageSource.isUploading))
                                    Positioned(
                                      right: 0,
                                      top: 0,
                                      child: GestureDetector(
-                                       // Pass the image source object to remove
+                                       // Pass the image source object (String or PickedImage) to remove
                                        onTap: () => _removeAdditionalImage(imageSource),
                                        child: Container(
-                                         padding: const EdgeInsets.all(2),
-                                         decoration: BoxDecoration(
+                                         padding: const EdgeInsets.all(2), // Added const
+                                         decoration: const BoxDecoration( // Added const
                                             color: Colors.black54,
                                             borderRadius: BorderRadius.only(
                                                 topRight: Radius.circular(8),
                                                 bottomLeft: Radius.circular(8),
                                             )
                                          ),
-                                         child: const Icon(Icons.close, color: Colors.white, size: 14),
+                                         child: const Icon(Icons.close, color: Colors.white, size: 14), // Added const
                                        ),
                                      ),
                                    ),
@@ -1051,7 +1321,7 @@ Widget _buildImageDisplayWidget(dynamic source, {double size = 40, double iconSi
                          }).toList(),
                          // Add button to pick more images
                          GestureDetector(
-                           // Disable tap when processing or if any additional image is already uploading
+                           // Disable tap when processing globally or if ANY additional image is currently uploading
                            onTap: (_isProcessing || _additionalImages.any((item) => item is PickedImage && item.isUploading)) ? null : () => _pickAndUploadImage(false),
                            child: Container(
                              width: 80,
@@ -1063,7 +1333,7 @@ Widget _buildImageDisplayWidget(dynamic source, {double size = 40, double iconSi
                              child: Icon(
                                 Icons.add,
                                 size: 40,
-                                // Grey out icon if disabled (processing or upload in progress)
+                                // Grey out icon if disabled
                                 color: (_isProcessing || _additionalImages.any((item) => item is PickedImage && item.isUploading)) ? Colors.grey[400] : Colors.grey,
                               ),
                            ),
@@ -1072,19 +1342,18 @@ Widget _buildImageDisplayWidget(dynamic source, {double size = 40, double iconSi
                      ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 16), // Added const
 
                 // Brand Dropdown (Main Product)
                 DropdownButtonFormField<BrandDTO>(
                   value: _selectedBrand,
-                  decoration: const InputDecoration(labelText: 'Thương hiệu'),
+                  decoration: const InputDecoration(labelText: 'Thương hiệu'), // Added const
                    items: _brands.map((brand) {
                     return DropdownMenuItem<BrandDTO>(
                       value: brand,
                       child: Text(brand.name ?? ''),
                     );
                   }).toList(),
-                  // Disable interaction when processing
                   onChanged: _isProcessing ? null : (BrandDTO? newValue) {
                     setState(() {
                       _selectedBrand = newValue;
@@ -1096,23 +1365,19 @@ Widget _buildImageDisplayWidget(dynamic source, {double size = 40, double iconSi
                     }
                     return null;
                   },
-                   // Set enabled state for visual feedback
-                   // Note: enabled property on DropdownButtonFormField affects the whole widget,
-                   // including the text field part. onTap: null on the parent handles the dropdown opening.
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 16), // Added const
 
                 // Category Dropdown (Main Product)
                 DropdownButtonFormField<CategoryDTO>(
                   value: _selectedCategory,
-                  decoration: const InputDecoration(labelText: 'Danh mục'),
+                  decoration: const InputDecoration(labelText: 'Danh mục'), // Added const
                   items: _categories.map((category) {
                     return DropdownMenuItem<CategoryDTO>(
                       value: category,
                       child: Text(category.name ?? ''),
                     );
                   }).toList(),
-                  // Disable interaction when processing
                   onChanged: _isProcessing ? null : (CategoryDTO? newValue) {
                     setState(() {
                       _selectedCategory = newValue;
@@ -1124,38 +1389,35 @@ Widget _buildImageDisplayWidget(dynamic source, {double size = 40, double iconSi
                     }
                     return null;
                   },
-                  // isEnabled: !_isProcessing, // Handled by AbsorbPointer and onTap: null
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 16), // Added const
 
                 // Description (Main Product)
                 TextFormField(
                   controller: _descriptionController,
-                  decoration: const InputDecoration(labelText: 'Mô tả'),
+                  decoration: const InputDecoration(labelText: 'Mô tả'), // Added const
                   maxLines: 5,
                   minLines: 5,
                   validator: (value) {
-                    // Add validation check, including trimming
                     if (value == null || value.trim().isEmpty) {
                       return 'Vui lòng nhập mô tả';
                     }
                     return null;
                   },
-                   // Disable input visually when processing
                    enabled: !_isProcessing,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 16), // Added const
 
                 // Discount (Main Product)
                 TextFormField(
                   controller: _discountController,
-                  decoration: const InputDecoration(labelText: 'Giảm giá (%) (Tối đa 50%)'),
-                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(labelText: 'Giảm giá (%) (Tối đa 50%)'), // Added const
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true), // Added const
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return null; // Discount is optional
                     }
-                    final discount = double.tryParse(value.trim()); // Apply trim()
+                    final discount = double.tryParse(value.trim());
                      if (discount == null) {
                       return 'Giảm giá phải là số';
                     }
@@ -1164,63 +1426,55 @@ Widget _buildImageDisplayWidget(dynamic source, {double size = 40, double iconSi
                     }
                     return null;
                   },
-                   // Disable input visually when processing
                    enabled: !_isProcessing,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 24), // Added const
 
                 // Variants Section Title
-                Text(
+                const Text( // Added const
                   'Biến thể sản phẩm:',
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 16), // Added const
 
                 ListView.builder(
                   shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
+                  physics: const NeverScrollableScrollPhysics(), // Added const
                   itemCount: _variants.length,
                   itemBuilder: (context, index) {
                     final variant = _variants[index];
-                    // Pass the variant object and the processing state down
-                    // VariantInput uses its own internal validation logic for text fields
                     return VariantInput(
                       key: ValueKey(variant), // Use ValueKey for proper state management
                       variant: variant, // Pass the actual variant object
-                      // Pass the upload function specific to this variant
                       onPickImage: () => _pickAndUploadVariantImage(variant),
-                       // Pass the remove function specific to this variant index
                       onRemove: () => _removeVariant(index),
                       isRemovable: _variants.length > 1,
-                       // Explicitly pass the processing state down
-                       isProcessing: _isProcessing,
-                       // Pass the image display builder down to VariantInput
-                       // This way VariantInput uses the screen's logic for display
-                       imageDisplayBuilder: _buildImageDisplayWidget,
+                       isProcessing: _isProcessing, // Pass global processing state
+                       imageDisplayBuilder: _buildImageDisplayWidget, // Pass the screen's builder
                     );
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 16), // Added const
 
                 // Add Variant Button
                 Align(
                   alignment: Alignment.centerLeft,
                   child: ElevatedButton.icon(
-                    // Disable button when processing
-                    onPressed: _isProcessing ? null : _addVariant,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Thêm biến thể'),
+                    // Disable button when processing globaly OR if any variant image is currently uploading
+                    onPressed: (_isProcessing || _variants.any((v) => v.pickedImage != null && v.pickedImage!.isUploading)) ? null : _addVariant,
+                    icon: const Icon(Icons.add), // Added const
+                    label: const Text('Thêm biến thể'), // Added const
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 24), // Added const
 
                 // Submit Button
                 ElevatedButton(
-                  // Disable button when processing
-                  onPressed: _isProcessing ? null : _submitForm,
+                  // Disable button when processing globaly OR if any image (main or variant) is currently uploading
+                  onPressed: (_isProcessing || (_defaultPickedImage != null && _defaultPickedImage!.isUploading) || _additionalImages.any((item) => item is PickedImage && item.isUploading) || _variants.any((v) => v.pickedImage != null && v.pickedImage!.isUploading)) ? null : _submitForm,
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    textStyle: const TextStyle(fontSize: 18),
+                    padding: const EdgeInsets.symmetric(vertical: 16), // Added const
+                    textStyle: const TextStyle(fontSize: 18), // Added const
                   ),
                   child: Text(widget.product == null ? 'Thêm Sản phẩm' : 'Cập nhật Sản phẩm'),
                 ),
@@ -1228,151 +1482,6 @@ Widget _buildImageDisplayWidget(dynamic source, {double size = 40, double iconSi
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-
-class VariantInput extends StatelessWidget {
-  final Variant variant;
-  final VoidCallback onPickImage;
-  final VoidCallback onRemove;
-  final bool isRemovable;
-  final bool isProcessing; // Receive processing state from parent
-  // Receive the builder function
-  final Widget Function(dynamic source, {double size, double iconSize, BoxFit fit}) imageDisplayBuilder;
-
-  const VariantInput({
-    Key? key,
-    required this.variant,
-    required this.onPickImage,
-    required this.onRemove,
-    required this.isRemovable,
-    required this.isProcessing, // Add to constructor
-    required this.imageDisplayBuilder, // Add to constructor
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-
-    final dynamic variantImageSource = variant.pickedImage ?? variant.defaultImageUrl;
-
-     if (kDebugMode) {
-         print('[VariantInput] Building image for variant ${variant.nameController.text}. Source: $variantImageSource (Type: ${variantImageSource?.runtimeType})');
-         if (variantImageSource is PickedImage) {
-            print('[VariantInput] PickedImage bytes length: ${variantImageSource.bytes.length}');
-         } else if (variantImageSource is String) {
-            print('[VariantInput] String source (URL): $variantImageSource');
-         }
-     }
-
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16.0),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Biến thể', style: TextStyle(fontWeight: FontWeight.bold)),
-                if (isRemovable)
-                  IconButton(
-                    onPressed: (isProcessing || (variant.pickedImage != null && variant.pickedImage!.isUploading)) ? null : onRemove,
-                    icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-                    tooltip: 'Xóa biến thể',
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            Column(
-               crossAxisAlignment: CrossAxisAlignment.start,
-               children: [
-                  const Text('Ảnh biến thể:', style: TextStyle(fontSize: 14)),
-                  const SizedBox(height: 4),
-                   Stack( // Use Stack for potential remove button/indicator
-                      children: [
-                         GestureDetector(
-                            onTap: (isProcessing || (variant.pickedImage != null && variant.pickedImage!.isUploading)) ? null : onPickImage,
-                            child: Container(
-                               width: 80,
-                               height: 80,
-                               decoration: BoxDecoration(
-                                 borderRadius: BorderRadius.circular(8),
-                                 color: Colors.grey[200],
-                                  // Check if both pickedImage and defaultImageUrl are null/empty
-                                  border: (variant.pickedImage == null && (variant.defaultImageUrl == null || variant.defaultImageUrl!.isEmpty))
-                                    ? Border.all(color: Colors.red, width: 1) // Indicate required field missing
-                                    : null,
-                               ),
-                               clipBehavior: Clip.antiAlias,
-                               child: imageDisplayBuilder(variantImageSource, size: 80, iconSize: 30),
-                            ),
-                         ),
-
-                      ]
-                   ),
-               ],
-            ),
-             const SizedBox(height: 16),
-
-
-            TextFormField(
-              controller: variant.nameController,
-              decoration: const InputDecoration(labelText: 'Tên biến thể (ví dụ: Xanh, Đỏ, S/M/L)'),
-              validator: (value) {
-                // Add validation check, including trimming
-                if (value == null || value.trim().isEmpty) {
-                  return 'Vui lòng nhập tên biến thể';
-                }
-                return null;
-              },
-               enabled: !isProcessing,
-            ),
-            const SizedBox(height: 16),
-
-            TextFormField(
-              controller: variant.priceController,
-              decoration: const InputDecoration(labelText: 'Giá'),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              validator: (value) {
-                // Add validation check, including trimming and number parsing
-                if (value == null || value.trim().isEmpty) {
-                  return 'Vui lòng nhập giá';
-                }
-                final price = double.tryParse(value.trim());
-                if (price == null || price < 0) {
-                  return 'Giá phải là số hợp lệ (>= 0)';
-                }
-                return null;
-              },
-               enabled: !isProcessing,
-            ),
-            const SizedBox(height: 16),
-
-            TextFormField(
-              controller: variant.quantityController,
-              decoration: const InputDecoration(labelText: 'Số lượng tồn kho'),
-              keyboardType: TextInputType.number,
-              validator: (value) {
-                 // Add validation check, including trimming and integer parsing
-                if (value == null || value.trim().isEmpty) {
-                  return 'Vui lòng nhập số lượng';
-                }
-                 final quantity = int.tryParse(value.trim());
-                 if (quantity == null || quantity < 0) {
-                  return 'Số lượng phải là số nguyên hợp lệ (>= 0)';
-                }
-                return null;
-              },
-               enabled: !isProcessing,
-            ),
-          ],
         ),
       ),
     );
