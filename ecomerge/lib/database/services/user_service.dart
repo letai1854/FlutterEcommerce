@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/database_helper.dart';
+import 'package:e_commerce_app/database/services/address_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
@@ -124,10 +125,35 @@ class UserService {
         }
 
         // Log in the user automatically
-        await loginUser(email, password);
+        final loginSuccess = await loginUser(email, password);
 
-        print('Guest user registered and logged in successfully: $fullName');
-        return true;
+        if (loginSuccess) {
+          print('Guest user registered and logged in successfully: $fullName');
+
+          // Now we can delete the "null" address since we have authentication token
+          // try {
+          //   // Get address service instance
+          //   final addressService = AddressService();
+
+          //   // Get all user addresses
+          //   final addresses = await addressService.getUserAddresses();
+
+          //   // Find and delete any null addresses
+          //   for (final address in addresses) {
+          //     if (address.address == "null" && address.id != null) {
+          //       print("Deleting auto-generated null address: ${address.id}");
+          //       await addressService.deleteAddress(address.id!);
+          //     }
+          //   }
+
+          //   print("Completed cleanup of null addresses");
+          // } catch (e) {
+          //   // Just log the error but don't fail the registration
+          //   print("Error cleaning up null addresses: $e");
+          // }
+
+          return true;
+        }
       }
 
       return false;
@@ -449,67 +475,6 @@ class UserService {
       return false;
     }
   }
-  // Modified to update stored credentials when passwords are changed
-  // Future<bool> changeCurrentUserPassword(
-  //   String currentPassword,
-  //   String newPassword,
-  // ) async {
-  //   final url = Uri.parse('$baseUrl/api/users/me/update-password');
-  //   try {
-  //     // Add additional debugging info(
-  //     print('Starting password change request');
-  //     print(
-  //         'Current user token: ${UserInfo().authToken?.length ?? 0} characters');
-
-  //     // Ensure headers are correct
-  //     final headers = _getHeaders(includeAuth: true);
-  //     print('Request headers: $headers');
-
-  //     // Create request body
-  //     final requestBody = jsonEncode({
-  //       'currentPassword': currentPassword,
-  //       'newPassword': newPassword,
-  //     });
-  //     print('Request body: $requestBody');
-
-  //     // Send request
-  //     final response = await httpClient.post(
-  //       url,
-  //       headers: headers,
-  //       body: requestBody,
-  //     );
-
-  //     // Log entire response for debugging
-  //     print('Response status code: ${response.statusCode}');
-  //     print('Response headers: ${response.headers}');
-  //     print('Response body: ${response.body}');
-
-  //     if (response.statusCode == 200) {
-  //       print('Password changed successfully');
-
-  //       // For non-web platforms, update stored credentials with new password
-  //       if (!kIsWeb) {
-  //         final userEmail = UserInfo().currentUser?.email;
-  //         if (userEmail != null) {
-  //           // Always update credentials with the new password
-  //           await _saveCredentials(userEmail, newPassword);
-  //           print('Updated stored credentials with new password');
-  //         }
-  //       }
-
-  //       return true;
-  //     } else {
-  //       print('Failed to change password: ${response.statusCode}');
-  //       print('Response body: ${response.body}');
-  //       return false;
-  //     }
-  //   } catch (e, stackTrace) {
-  //     // Log both error and stack trace for better debugging
-  //     print('Error changing password: $e');
-  //     print('Stack trace: $stackTrace');
-  //     return false;
-  //   }
-  // }
 
   Future<void> forgotPassword(String email) async {
     final url = Uri.parse('$baseUrl/api/users/forgot-password');

@@ -31,11 +31,30 @@ class _AddressManagementState extends State<AddressManagement> {
     });
 
     try {
+      // Get all addresses from the server
       final List<Address> addresses = await _addressService.getUserAddresses();
+
+      // Check for and delete addresses with "null" specificAddress
+      bool deletedNullAddresses = false;
+      for (final address in List<Address>.from(addresses)) {
+        if (address.specificAddress == "null" && address.id != null) {
+          print("Found address with 'null' value. Deleting ID: ${address.id}");
+          await _addressService.deleteAddress(address.id!);
+          deletedNullAddresses = true;
+        }
+      }
+
+      // If any null addresses were deleted, refresh the list
+      if (deletedNullAddresses) {
+        print("Refreshing address list after deleting null addresses");
+        final updatedAddresses = await _addressService.getUserAddresses();
+        addresses.clear();
+        addresses.addAll(updatedAddresses);
+      }
 
       setState(() {
         // Convert server Address model to AddressData for UI display
-        // And filter out any address that has "null" as the specific address
+        // And filter out any address that has "null" as the specific address (as backup)
         _addresses = addresses
             .where((address) =>
                 address.specificAddress != "null" &&

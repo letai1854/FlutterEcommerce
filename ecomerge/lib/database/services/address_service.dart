@@ -146,24 +146,11 @@ class AddressService {
     }
   }
 
-  // Set an address as default with special handling for null addresses
+  // Set an address as default
   Future<bool> setDefaultAddress(int addressId) async {
+    final url = Uri.parse('$baseUrl/api/addresses/me/$addressId/default');
+
     try {
-      // First, check for any "null" default addresses
-      final addresses = await getUserAddresses();
-      final nullDefaultAddress = addresses.firstWhere(
-        (address) => address.specificAddress == "null" && address.isDefault,
-        orElse: () => null as Address,
-      );
-
-      // If found, remove the null default address
-      if (nullDefaultAddress != null && nullDefaultAddress.id != null) {
-        await deleteAddress(nullDefaultAddress.id!);
-        print('Removed "null" default address before setting new default');
-      }
-
-      // Now set the new default address
-      final url = Uri.parse('$baseUrl/api/addresses/me/$addressId/default');
       final response = await httpClient.patch(
         url,
         headers: _getHeaders(),
