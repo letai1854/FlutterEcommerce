@@ -89,6 +89,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/users/me/**").authenticated() // Secure all /me routes (profile, update, change password)
                 // --- Address Management ---
                 .requestMatchers("/api/addresses/me/**").authenticated() // Secure all /me address routes
+                // --- Order Management ---
+                .requestMatchers("/api/orders/**").authenticated() // Secure all order routes
+                .requestMatchers(HttpMethod.PATCH, "/api/orders/{orderId}/status").hasRole("ADMIN") // Admin update order status
                 // Secure all other requests
                 .anyRequest().authenticated()
             );
