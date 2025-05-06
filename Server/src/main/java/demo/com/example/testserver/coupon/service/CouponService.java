@@ -57,6 +57,7 @@ public class CouponService {
                 .collect(Collectors.toList());
     }
 
+
     @Transactional(readOnly = true)
     public List<CouponResponseDTO> getAvailableCouponsSortedByDiscount() {
         List<Coupon> availableCoupons = couponRepository.findAvailableCouponsOrderByDiscountValueDesc();

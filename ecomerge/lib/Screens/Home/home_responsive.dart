@@ -651,6 +651,8 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
 
   Widget _buildDrawer(BuildContext context, double screenWidth) {
     final bool isMobileView = screenWidth < 600;
+    // Check if user is logged in
+    final bool isLoggedIn = UserInfo().currentUser != null;
 
     return Drawer(
       child: ListView(
@@ -782,19 +784,25 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
               },
             ),
           ],
-          // Rest of the menu items that appear on all screen sizes
+          // Only show Register button if not logged in
+          if (!isLoggedIn)
+            ListTile(
+              leading: const Icon(Icons.person_add_alt),
+              title: const Text('Đăng ký'),
+              onTap: () {
+                Navigator.pushNamed(context, '/signup');
+              },
+            ),
+          // Login/Logout button
           ListTile(
-            leading: const Icon(Icons.person_add_alt),
-            title: const Text('Đăng ký'),
+            leading: Icon(isLoggedIn ? Icons.logout : Icons.person_3_rounded),
+            title: Text(isLoggedIn ? 'Đăng xuất' : 'Đăng nhập'),
             onTap: () {
-              Navigator.pushNamed(context, '/signup');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.person_3_rounded),
-            title: const Text('Đăng nhập'),
-            onTap: () {
-              Navigator.pushNamed(context, '/login');
+              if (isLoggedIn) {
+                UserInfo().logout(context);
+              } else {
+                Navigator.pushNamed(context, '/login');
+              }
             },
           ),
           ListTile(

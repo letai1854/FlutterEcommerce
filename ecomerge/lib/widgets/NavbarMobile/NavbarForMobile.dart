@@ -37,6 +37,9 @@ class _NavbarmobileDrawerState extends State<NavbarFormobile> {
 
   @override
   Widget build(BuildContext context) {
+    // Check if user is logged in
+    final bool isLoggedIn = UserInfo().currentUser != null;
+
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -64,7 +67,13 @@ class _NavbarmobileDrawerState extends State<NavbarFormobile> {
               decoration: const BoxDecoration(color: Colors.red),
               child: GestureDetector(
                 onTap: () {
-                  Navigator.pushNamed(context, '/info');
+                  // If not logged in, redirect to login page on web platforms
+                  if (isWeb && !isLoggedIn) {
+                    Navigator.pushNamed(context, '/login');
+                  } else {
+                    // Otherwise go to user info page
+                    Navigator.pushNamed(context, '/info');
+                  }
                 },
                 child: Row(
                   children: [
@@ -157,21 +166,31 @@ class _NavbarmobileDrawerState extends State<NavbarFormobile> {
               ),
             ],
 
-            // Common ListTiles
+            // Only show Register button if not logged in
+            if (!isLoggedIn)
+              ListTile(
+                leading: const Icon(Icons.person_add_alt),
+                title: const Text('Đăng ký'),
+                onTap: () {
+                  Navigator.pushNamed(context, '/signup');
+                },
+              ),
+
+            // Login/Logout button (changes based on login status)
             ListTile(
-              leading: const Icon(Icons.person_add_alt),
-              title: const Text('Đăng ký'),
+              leading: Icon(isLoggedIn ? Icons.logout : Icons.person_3_rounded),
+              title: Text(isLoggedIn ? 'Đăng xuất' : 'Đăng nhập'),
               onTap: () {
-                Navigator.pushNamed(context, '/signup');
+                if (isLoggedIn) {
+                  // Call logout function from UserInfo
+                  UserInfo().logout(context);
+                } else {
+                  // Navigate to login page
+                  Navigator.pushNamed(context, '/login');
+                }
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.person_3_rounded),
-              title: const Text('Đăng nhập'),
-              onTap: () {
-                Navigator.pushNamed(context, '/login');
-              },
-            ),
+
             ListTile(
               leading: const Icon(Icons.chat),
               title: const Text('Nhắn tin'),

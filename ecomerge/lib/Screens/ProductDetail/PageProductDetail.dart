@@ -234,29 +234,15 @@ Thời lượng pin ấn tượng, kèm hộp sạc tiện lợi cho nhiều l�
 
         // --- Responsive Scaffold/Navbar logic ---
         if (screenWidth < 768) {
-           // Cần đảm bảo NavbarFixmobile trả về một widget phù hợp (ví dụ: AppBar)
            return NavbarFormobile(
              body: body,
            );
-          //  return Scaffold(
-          //    appBar: PreferredSize(
-          //       preferredSize: Size.fromHeight(kToolbarHeight), // Hoặc kích thước phù hợp của Navbar
-          //       child: NavbarFormobile(),
-          //    ),
-          //    body: body,
-          //  );
+
         } else if (screenWidth < 1100) {
           return NavbarForTablet(
             body: body,
           );
-          //  // Cần đảm bảo NavbarFixTablet trả về một widget phù hợp
-          //   return Scaffold(
-          //    appBar: PreferredSize(
-          //      preferredSize: Size.fromHeight(kToolbarHeight), // Hoặc kích thước phù hợp của Navbar
-          //      child: NavbarForTablet(),
-          //    ),
-          //    body: body,
-          //  );
+
         } else {
           // Desktop
           return Scaffold(

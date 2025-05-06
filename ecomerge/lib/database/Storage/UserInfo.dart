@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import '../../database/models/user_model.dart';
+import '../services/user_service.dart'; // Add import for UserService
 
 class UserInfo extends ChangeNotifier {
   // Singleton instance
@@ -19,7 +21,7 @@ class UserInfo extends ChangeNotifier {
 
   // Properties to store user data and token
   User? _currentUser;
-  String? _authToken;
+  String? _authToken = "";
 
   // Getters for the stored data
   User? get currentUser => _currentUser;
@@ -69,6 +71,24 @@ class UserInfo extends ChangeNotifier {
     _currentUser = null;
     _authToken = null;
     notifyListeners(); // Notify listeners about the change
+  }
+
+  // Global logout method that can be called from anywhere
+  void logout(BuildContext context) {
+    clearUserInfo();
+
+    // Also clear stored credentials from local storage for non-web platforms
+    if (!kIsWeb) {
+      UserService().clearStoredCredentials();
+      print('Local stored credentials cleared during logout');
+    }
+
+    // Navigate to home page and clear navigation stack
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      '/',
+      (route) => false,
+    );
   }
 
   // Method to get user avatar URL

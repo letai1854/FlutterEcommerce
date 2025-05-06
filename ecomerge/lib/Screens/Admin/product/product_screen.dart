@@ -130,7 +130,7 @@ class _ProductScreenState extends State<ProductScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AddUpdateProductScreen(product: product),
+        builder: (context) => AddUpdateProductScreen( product: product),
       ),
       // The .then() block is called when the pushed screen (AddUpdateProductScreen)
       // is popped (when Navigator.pop() is called in AddUpdateProductScreen).
@@ -161,6 +161,7 @@ class _ProductScreenState extends State<ProductScreen> {
   @override
   void initState() {
     super.initState();
+    
   }
 
   @override
