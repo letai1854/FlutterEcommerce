@@ -6,7 +6,6 @@ import demo.com.example.testserver.order.model.Order;
 import demo.com.example.testserver.order.service.OrderService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -56,16 +55,31 @@ class OrderControllerTest {
 
     @BeforeEach
     void setUp() {
-        orderDetailDTO = new OrderDetailDTO(1, "Test Product", "Variant A", "image.jpg", 2, new BigDecimal("50.00"), BigDecimal.ZERO, new BigDecimal("100.00"));
+        orderDetailDTO = new OrderDetailDTO();
+        orderDetailDTO.setProductVariantId(1);
+        orderDetailDTO.setProductName("Test Product");
+        orderDetailDTO.setVariantName("Variant A");
+        orderDetailDTO.setImageUrl("image.jpg");
+        orderDetailDTO.setQuantity(2);
+        orderDetailDTO.setPriceAtPurchase(new BigDecimal("50.00"));
+        orderDetailDTO.setProductDiscountPercentage(BigDecimal.ZERO);
+        orderDetailDTO.setLineTotal(new BigDecimal("100.00"));
 
         orderDTO = new OrderDTO();
         orderDTO.setId(1);
         orderDTO.setOrderDate(new Date());
-        orderDTO.setTotalAmount(new BigDecimal("100.00"));
+        orderDTO.setSubtotal(new BigDecimal("100.00"));
+        orderDTO.setCouponDiscount(new BigDecimal("10.00"));
+        orderDTO.setPointsDiscount(new BigDecimal("5.00"));
+        orderDTO.setShippingFee(new BigDecimal("5.00"));
+        orderDTO.setTax(new BigDecimal("2.00"));
+        orderDTO.setTotalAmount(new BigDecimal("92.00"));
+        orderDTO.setPointsEarned(new BigDecimal("1"));
         orderDTO.setOrderStatus(Order.OrderStatus.cho_xu_ly.name());
         orderDTO.setOrderDetails(List.of(orderDetailDTO));
         orderDTO.setRecipientName("Test User");
         orderDTO.setShippingAddress("123 Test St");
+        orderDTO.setCouponCode("SUMMER10");
 
         OrderDetailRequestDTO orderDetailRequestDTO = new OrderDetailRequestDTO();
         orderDetailRequestDTO.setProductVariantId(1);
@@ -75,6 +89,10 @@ class OrderControllerTest {
         createOrderRequestDTO.setAddressId(1);
         createOrderRequestDTO.setPaymentMethod("COD");
         createOrderRequestDTO.setOrderDetails(List.of(orderDetailRequestDTO));
+        createOrderRequestDTO.setCouponCode("SUMMER10");
+        createOrderRequestDTO.setPointsToUse(new BigDecimal("5.00"));
+        createOrderRequestDTO.setShippingFee(new BigDecimal("5.00"));
+        createOrderRequestDTO.setTax(new BigDecimal("2.00"));
 
         orderStatusHistoryDTO = new OrderStatusHistoryDTO(Order.OrderStatus.cho_xu_ly.name(), "Order created", new Date());
 
@@ -93,7 +111,14 @@ class OrderControllerTest {
                         .content(objectMapper.writeValueAsString(createOrderRequestDTO)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id", is(orderDTO.getId())))
+                .andExpect(jsonPath("$.subtotal", is(orderDTO.getSubtotal().doubleValue())))
+                .andExpect(jsonPath("$.couponDiscount", is(orderDTO.getCouponDiscount().doubleValue())))
+                .andExpect(jsonPath("$.pointsDiscount", is(orderDTO.getPointsDiscount().doubleValue())))
+                .andExpect(jsonPath("$.shippingFee", is(orderDTO.getShippingFee().doubleValue())))
+                .andExpect(jsonPath("$.tax", is(orderDTO.getTax().doubleValue())))
                 .andExpect(jsonPath("$.totalAmount", is(orderDTO.getTotalAmount().doubleValue())))
+                .andExpect(jsonPath("$.pointsEarned", is(orderDTO.getPointsEarned().intValue())))
+                .andExpect(jsonPath("$.couponCode", is(orderDTO.getCouponCode())))
                 .andExpect(jsonPath("$.orderStatus", is(Order.OrderStatus.cho_xu_ly.name())));
     }
 
@@ -176,7 +201,17 @@ class OrderControllerTest {
         updatedOrderDTO.setId(orderDTO.getId());
         updatedOrderDTO.setOrderStatus(Order.OrderStatus.dang_giao.name());
         updatedOrderDTO.setTotalAmount(orderDTO.getTotalAmount());
-        // Populate other fields as necessary for the response
+        updatedOrderDTO.setSubtotal(orderDTO.getSubtotal());
+        updatedOrderDTO.setCouponDiscount(orderDTO.getCouponDiscount());
+        updatedOrderDTO.setPointsDiscount(orderDTO.getPointsDiscount());
+        updatedOrderDTO.setPointsEarned(orderDTO.getPointsEarned());
+        updatedOrderDTO.setCouponCode(orderDTO.getCouponCode());
+        updatedOrderDTO.setRecipientName(orderDTO.getRecipientName());
+        updatedOrderDTO.setShippingAddress(orderDTO.getShippingAddress());
+        updatedOrderDTO.setOrderDetails(orderDTO.getOrderDetails());
+        updatedOrderDTO.setOrderDate(orderDTO.getOrderDate());
+        updatedOrderDTO.setShippingFee(orderDTO.getShippingFee());
+        updatedOrderDTO.setTax(orderDTO.getTax());
 
         when(orderService.updateOrderStatusByAdmin(
                 eq(orderDTO.getId()),
@@ -190,5 +225,55 @@ class OrderControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(orderDTO.getId())))
                 .andExpect(jsonPath("$.orderStatus", is(Order.OrderStatus.dang_giao.name())));
+    }
+
+    @Test
+    @WithMockUser(username = TEST_USER_EMAIL)
+    void cancelOrderForCurrentUser_validRequest_shouldCancelOrder() throws Exception {
+        OrderDTO cancelledOrderDTO = new OrderDTO();
+        cancelledOrderDTO.setId(orderDTO.getId());
+        cancelledOrderDTO.setOrderStatus(Order.OrderStatus.da_huy.name());
+        cancelledOrderDTO.setTotalAmount(orderDTO.getTotalAmount());
+        cancelledOrderDTO.setSubtotal(orderDTO.getSubtotal());
+        cancelledOrderDTO.setCouponDiscount(orderDTO.getCouponDiscount());
+        cancelledOrderDTO.setPointsDiscount(orderDTO.getPointsDiscount());
+        cancelledOrderDTO.setPointsEarned(orderDTO.getPointsEarned());
+        cancelledOrderDTO.setCouponCode(orderDTO.getCouponCode());
+
+        when(orderService.cancelOrderForCurrentUser(eq(TEST_USER_EMAIL), eq(orderDTO.getId())))
+                .thenReturn(cancelledOrderDTO);
+
+        mockMvc.perform(MockMvcRequestBuilders.patch("/api/orders/me/{orderId}/cancel", orderDTO.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is(orderDTO.getId())))
+                .andExpect(jsonPath("$.orderStatus", is(Order.OrderStatus.da_huy.name())));
+    }
+
+    @Test
+    @WithMockUser(username = TEST_USER_EMAIL)
+    void cancelOrderForCurrentUser_orderNotFound_shouldReturnBadRequest() throws Exception {
+        when(orderService.cancelOrderForCurrentUser(eq(TEST_USER_EMAIL), eq(orderDTO.getId())))
+                .thenThrow(new IllegalArgumentException("Order not found"));
+
+        mockMvc.perform(MockMvcRequestBuilders.patch("/api/orders/me/{orderId}/cancel", orderDTO.getId()))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Order not found"));
+    }
+
+    @Test
+    @WithMockUser(username = TEST_USER_EMAIL)
+    void cancelOrderForCurrentUser_orderNotCancellable_shouldReturnBadRequest() throws Exception {
+        when(orderService.cancelOrderForCurrentUser(eq(TEST_USER_EMAIL), eq(orderDTO.getId())))
+                .thenThrow(new IllegalArgumentException("Order cannot be cancelled. Current status: da_giao"));
+
+        mockMvc.perform(MockMvcRequestBuilders.patch("/api/orders/me/{orderId}/cancel", orderDTO.getId()))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Order cannot be cancelled. Current status: da_giao"));
+    }
+
+    @Test
+    void cancelOrderForCurrentUser_unauthenticated_shouldReturnUnauthorized() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.patch("/api/orders/me/{orderId}/cancel", orderDTO.getId()))
+                .andExpect(status().isUnauthorized());
     }
 }

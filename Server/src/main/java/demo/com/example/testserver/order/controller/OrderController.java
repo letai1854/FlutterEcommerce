@@ -121,6 +121,27 @@ public class OrderController {
         }
     }
 
+    @PatchMapping("/me/{orderId}/cancel")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> cancelOrderForCurrentUser(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Integer orderId) {
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated.");
+        }
+        try {
+            OrderDTO cancelledOrder = orderService.cancelOrderForCurrentUser(userDetails.getUsername(), orderId);
+            logger.info("User {} cancelled order ID {}", userDetails.getUsername(), orderId);
+            return ResponseEntity.ok(cancelledOrder);
+        } catch (IllegalArgumentException e) {
+            logger.warn("Failed to cancel order ID {} for user {}: {}", orderId, userDetails.getUsername(), e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error cancelling order ID {} for user {}: {}", orderId, userDetails.getUsername(), e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred while cancelling the order.");
+        }
+    }
+
     @PatchMapping("/{orderId}/status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateOrderStatusByAdmin(

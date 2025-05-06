@@ -90,8 +90,11 @@ public class SecurityConfig {
                 // --- Address Management ---
                 .requestMatchers("/api/addresses/me/**").authenticated() // Secure all /me address routes
                 // --- Order Management ---
-                .requestMatchers("/api/orders/**").authenticated() // Secure all order routes
-                .requestMatchers(HttpMethod.PATCH, "/api/orders/{orderId}/status").hasRole("ADMIN") // Admin update order status
+                // General access to order endpoints requires authentication.
+                // Service layer ensures users can only access/modify their own orders for /me endpoints.
+                .requestMatchers("/api/orders/**").authenticated() 
+                // Specific endpoint for admin to update order status.
+                .requestMatchers(HttpMethod.PATCH, "/api/orders/{orderId}/status").hasRole("ADMIN") 
                 // Secure all other requests
                 .anyRequest().authenticated()
             );
