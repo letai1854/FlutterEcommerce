@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/database_helper.dart';
 import 'package:flutter/foundation.dart';
@@ -8,12 +9,21 @@ import 'package:http/io_client.dart';
 import '../models/user_model.dart';
 import '/database/database_helper.dart';
 import '../database_helper.dart' as config;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:crypto/crypto.dart';
+import 'package:encrypt/encrypt.dart' as encrypt;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class UserService {
 
  final String baseUrl = baseurl;
   String? _authToken;
   late  final http.Client httpClient;
+
+  // Constants for secure storage
+  static const String _CREDENTIALS_KEY = 'encrypted_credentials';
+  static const String _ENCRYPTION_KEY =
+      'shopii_secret_key_12345678901234567890123456789012'; // 32-char key
 
   // Constructor - setup SSL-bypassing client for all platforms
   UserService() {
@@ -85,6 +95,183 @@ class UserService {
         print(e);
       }
       return false;
+    }
+  }
+
+  // Method to register a guest user with random credentials
+  Future<bool> registerGuestUser(String email) async {
+    try {
+      // Generate random username: "user" + 4 random digits
+      final random = Random();
+      final randomDigits = List.generate(4, (_) => random.nextInt(10)).join();
+      final fullName = 'user$randomDigits';
+
+      // Generate random 6-digit password
+      final password = List.generate(6, (_) => random.nextInt(10)).join();
+
+      // Register the user with a default address instead of empty string
+      final registrationSuccess = await registerUser(
+        email: email,
+        fullName: fullName,
+        password: password,
+        address: 'Default_Address', // Add a non-empty default address here
+      );
+
+      if (registrationSuccess ?? false) {
+        // Save credentials locally (encrypted)
+        await _saveCredentials(email, password);
+
+        // Log in the user automatically
+        await loginUser(email, password);
+
+        print('Guest user registered and logged in successfully: $fullName');
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      print('Error registering guest user: $e');
+      return false;
+    }
+  }
+
+  // Save credentials only if they don't exist already
+  Future<void> _saveCredentials(String email, String password) async {
+    try {
+      // Skip on web platforms
+      if (kIsWeb) {
+        print('Credentials saving skipped on web platform');
+        return;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      // Check if credentials already exist
+      if (prefs.getString(_CREDENTIALS_KEY) != null) {
+        print('Credentials already exist, not saving again');
+        return;
+      }
+
+      // Create credential map
+      final credentials = {
+        'email': email,
+        'password': password,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      };
+
+      // Convert to JSON
+      final credentialsJson = jsonEncode(credentials);
+
+      // Encrypt the credentials
+      final encryptedCredentials = _encryptData(credentialsJson);
+
+      // Save to SharedPreferences
+      await prefs.setString(_CREDENTIALS_KEY, encryptedCredentials);
+
+      print('Credentials saved securely for the first time');
+    } catch (e) {
+      print('Error saving credentials: $e');
+    }
+  }
+
+  // Encrypt data using AES encryption
+  String _encryptData(String data) {
+    try {
+      // Use key from bytes to ensure exact length
+      final key = encrypt.Key.fromUtf8(_ENCRYPTION_KEY);
+      final iv = encrypt.IV.fromLength(16); // Generate a random IV
+      final encrypter = encrypt.Encrypter(encrypt.AES(key));
+
+      final encrypted = encrypter.encrypt(data, iv: iv);
+      return '${encrypted.base64}|${iv.base64}'; // Store both encrypted data and IV
+    } catch (e) {
+      print('Encryption error: $e');
+      // Fallback to a simpler storage method if encryption fails
+      return base64.encode(utf8.encode(data));
+    }
+  }
+
+  // Decrypt data using AES encryption
+  String? _decryptData(String encryptedData) {
+    try {
+      if (!encryptedData.contains('|')) {
+        // Handle legacy or fallback format
+        return utf8.decode(base64.decode(encryptedData));
+      }
+
+      final parts = encryptedData.split('|');
+      if (parts.length != 2) return null;
+
+      final encryptedText = parts[0];
+      final ivText = parts[1];
+
+      final key = encrypt.Key.fromUtf8(_ENCRYPTION_KEY);
+      final iv = encrypt.IV.fromBase64(ivText);
+      final encrypter = encrypt.Encrypter(encrypt.AES(key));
+
+      final decrypted = encrypter.decrypt(
+        encrypt.Encrypted.fromBase64(encryptedText),
+        iv: iv,
+      );
+
+      return decrypted;
+    } catch (e) {
+      print('Error decrypting data: $e');
+      return null;
+    }
+  }
+
+  // Check for stored credentials and auto-login
+  Future<bool> attemptAutoLogin() async {
+    try {
+      // Skip on web platforms
+      if (kIsWeb) {
+        print('Auto-login skipped on web platform');
+        return false;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      final encryptedCredentials = prefs.getString(_CREDENTIALS_KEY);
+
+      if (encryptedCredentials == null) {
+        print('No stored credentials found');
+        return false;
+      }
+
+      // Decrypt the credentials
+      final decryptedJson = _decryptData(encryptedCredentials);
+      if (decryptedJson == null) {
+        print('Failed to decrypt credentials');
+        return false;
+      }
+
+      // Parse JSON
+      final credentials = jsonDecode(decryptedJson);
+      final email = credentials['email'];
+      final password = credentials['password'];
+
+      // Check if credentials exist
+      if (email == null || password == null) {
+        print('Invalid credentials format');
+        return false;
+      }
+
+      print('Attempting auto-login with stored credentials');
+      // Attempt login
+      return await loginUser(email, password);
+    } catch (e) {
+      print('Error during auto-login: $e');
+      return false;
+    }
+  }
+
+  // Clear stored credentials (e.g., on manual logout)
+  Future<void> clearStoredCredentials() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_CREDENTIALS_KEY);
+      print('Stored credentials cleared');
+    } catch (e) {
+      print('Error clearing credentials: $e');
     }
   }
 

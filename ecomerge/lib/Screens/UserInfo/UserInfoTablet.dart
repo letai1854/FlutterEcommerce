@@ -2,6 +2,8 @@ import 'package:e_commerce_app/Screens/UserInfo/BuildLeftColumn.dart';
 import 'package:e_commerce_app/Screens/UserInfo/RightColumnContent.dart';
 import 'package:e_commerce_app/Screens/UserInfo/UserInfoTypes.dart';
 import 'package:e_commerce_app/constants.dart';
+import 'package:e_commerce_app/database/Storage/UserInfo.dart'; // Add UserInfo import
+import 'package:e_commerce_app/database/services/user_service.dart';
 import 'package:e_commerce_app/widgets/BottomNavigation.dart';
 import 'package:e_commerce_app/widgets/footer.dart';
 import 'package:e_commerce_app/widgets/navbarHomeTablet.dart';
@@ -59,6 +61,24 @@ class _UserInfoTabletState extends State<UserInfoTablet> {
   final GlobalKey _footerKey = GlobalKey();
 
   @override
+  void initState() {
+    super.initState();
+    // Listen for UserInfo changes and trigger rebuild
+    UserInfo().addListener(_onUserInfoChanged);
+  }
+
+  @override
+  void dispose() {
+    // Remove listener when disposed
+    UserInfo().removeListener(_onUserInfoChanged);
+    super.dispose();
+  }
+
+  void _onUserInfoChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
@@ -74,6 +94,11 @@ class _UserInfoTabletState extends State<UserInfoTablet> {
   }
 
   Widget _buildDrawer() {
+    // Get current user info
+    final currentUser = UserInfo().currentUser;
+    final String? avatarUrl = currentUser?.avatar;
+    final String userName = currentUser?.fullName ?? 'User';
+
     return Drawer(
       child: ListView(
         children: [
@@ -88,18 +113,60 @@ class _UserInfoTabletState extends State<UserInfoTablet> {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: Row(
-                      children: const [
-                        CircleAvatar(
-                          radius: 30,
-                          backgroundColor: Colors.white,
-                          child: Icon(
-                            Icons.person,
-                          ),
-                        ),
-                        SizedBox(width: 10),
+                      children: [
+                        // User avatar - using FutureBuilder with caching
+                        avatarUrl != null && avatarUrl.isNotEmpty
+                            ? FutureBuilder<Uint8List?>(
+                                future: UserService().getAvatarBytes(avatarUrl),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return const CircleAvatar(
+                                      radius: 30,
+                                      backgroundColor: Colors.white,
+                                      child: SizedBox(
+                                        width: 15,
+                                        height: 15,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2),
+                                      ),
+                                    );
+                                  } else if (snapshot.hasData &&
+                                      snapshot.data != null) {
+                                    return CircleAvatar(
+                                      radius: 30,
+                                      backgroundImage:
+                                          MemoryImage(snapshot.data!),
+                                    );
+                                  } else {
+                                    return CircleAvatar(
+                                      radius: 30,
+                                      backgroundColor: Colors.white,
+                                      backgroundImage: NetworkImage(avatarUrl),
+                                      onBackgroundImageError: (_, __) =>
+                                          const Icon(
+                                        Icons.person,
+                                        size: 30,
+                                        color: Colors.grey,
+                                      ),
+                                    );
+                                  }
+                                },
+                              )
+                            : const CircleAvatar(
+                                radius: 30,
+                                backgroundColor: Colors.white,
+                                child: Icon(
+                                  Icons.person,
+                                  size: 30,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                        const SizedBox(width: 10),
+                        // User name - from UserInfo
                         Text(
-                          'Le Van Tai',
-                          style: TextStyle(
+                          userName,
+                          style: const TextStyle(
                             fontSize: 25,
                             color: Colors.white,
                           ),
