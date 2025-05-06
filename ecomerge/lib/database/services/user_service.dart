@@ -326,7 +326,7 @@ class UserService {
           }
       }catch (e) {
           if (kDebugMode) print('SocketException during OTP verification: $e');
-          throw Exception('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.'); // Ném Exception mạng
+          throw Exception('Mã xác thực không hợp lệ hoặc đã hết hạn.'); // Ném Exception mạng
       }
   }
 
