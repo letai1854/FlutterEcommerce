@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 class SortingBar extends StatelessWidget {
   final double width;
   final Function(String)? onSortChanged;
-
+  
   const SortingBar({
     Key? key,
     required this.width,
     this.onSortChanged,
+
   }) : super(key: key);
 
   @override

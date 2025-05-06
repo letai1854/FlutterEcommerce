@@ -1,819 +1,819 @@
-import 'dart:typed_data';
-import 'package:e_commerce_app/Constants/productTest.dart';
-import 'package:e_commerce_app/constants.dart';
-import 'package:e_commerce_app/widgets/Product/CategoriesSection.dart';
-import 'package:e_commerce_app/widgets/Product/PaginatedProductGrid.dart';
-import 'package:e_commerce_app/widgets/Product/ProductItem.dart'
-    as product_item;
-import 'package:e_commerce_app/widgets/carousel/carouselDesktop.dart';
-import 'package:e_commerce_app/widgets/carousel/carouselTablet.dart';
-import 'package:e_commerce_app/widgets/footer.dart';
-import 'package:e_commerce_app/widgets/headingbar/HeadingFeturePromotion.dart';
-import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
-import 'package:e_commerce_app/widgets/navbarHomeTablet.dart';
-import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:e_commerce_app/widgets/Home/bodyHomeMobile.dart';
-import 'package:e_commerce_app/database/Storage/UserInfo.dart';
-import 'package:e_commerce_app/database/services/user_service.dart';
+// import 'dart:typed_data';
+// import 'package:e_commerce_app/Constants/productTest.dart';
+// import 'package:e_commerce_app/constants.dart';
+// import 'package:e_commerce_app/widgets/Product/CategoriesSection.dart';
+// import 'package:e_commerce_app/widgets/Product/PaginatedProductGrid.dart';
+// import 'package:e_commerce_app/widgets/Product/ProductItem.dart'
+//     as product_item;
+// import 'package:e_commerce_app/widgets/carousel/carouselDesktop.dart';
+// import 'package:e_commerce_app/widgets/carousel/carouselTablet.dart';
+// import 'package:e_commerce_app/widgets/footer.dart';
+// import 'package:e_commerce_app/widgets/headingbar/HeadingFeturePromotion.dart';
+// import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
+// import 'package:e_commerce_app/widgets/navbarHomeTablet.dart';
+// import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
+// import 'package:flutter/foundation.dart';
+// import 'package:flutter/material.dart';
+// import 'package:e_commerce_app/widgets/Home/bodyHomeMobile.dart';
+// import 'package:e_commerce_app/database/Storage/UserInfo.dart';
+// import 'package:e_commerce_app/database/services/user_service.dart';
 
-class ResponsiveHome extends StatefulWidget {
-  const ResponsiveHome({super.key});
+// class ResponsiveHome extends StatefulWidget {
+//   const ResponsiveHome({super.key});
 
-  @override
-  State<ResponsiveHome> createState() => _ResponsiveHomeState();
-}
+//   @override
+//   State<ResponsiveHome> createState() => _ResponsiveHomeState();
+// }
 
-class _ResponsiveHomeState extends State<ResponsiveHome> {
-  final ScrollController _scrollController = ScrollController();
-  final GlobalKey _categoriesSectionKey = GlobalKey();
-  final GlobalKey _paginatedGridKey = GlobalKey();
-  final GlobalKey _footerKey = GlobalKey();
-  final GlobalKey _newProductsKey = GlobalKey(debugLabel: 'newProducts');
-  final GlobalKey _promoProductsKey = GlobalKey(debugLabel: 'promoProducts');
-  final GlobalKey _bestSellerKey = GlobalKey(debugLabel: 'bestSeller');
-  bool _showFloatingCategories = false;
-  bool _isPanelExpanded = false; // For mobile panel expansion
-  int? _selectedCategory;
-  List<Map<String, dynamic>> productData = Productest.productData;
+// class _ResponsiveHomeState extends State<ResponsiveHome> {
+//   final ScrollController _scrollController = ScrollController();
+//   final GlobalKey _categoriesSectionKey = GlobalKey();
+//   final GlobalKey _paginatedGridKey = GlobalKey();
+//   final GlobalKey _footerKey = GlobalKey();
+//   final GlobalKey _newProductsKey = GlobalKey(debugLabel: 'newProducts');
+//   final GlobalKey _promoProductsKey = GlobalKey(debugLabel: 'promoProducts');
+//   final GlobalKey _bestSellerKey = GlobalKey(debugLabel: 'bestSeller');
+//   bool _showFloatingCategories = false;
+//   bool _isPanelExpanded = false; // For mobile panel expansion
+//   int? _selectedCategory;
+//   List<Map<String, dynamic>> productData = Productest.productData;
 
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_onScroll);
-  }
+//   @override
+//   void initState() {
+//     super.initState();
+//     _scrollController.addListener(_onScroll);
+//   }
 
-  @override
-  void dispose() {
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
-    super.dispose();
-  }
+//   @override
+//   void dispose() {
+//     _scrollController.removeListener(_onScroll);
+//     _scrollController.dispose();
+//     super.dispose();
+//   }
 
-  void _onScroll() {
-    final RenderObject? categoryRenderObject =
-        _categoriesSectionKey.currentContext?.findRenderObject();
-    final RenderObject? gridRenderObject =
-        _paginatedGridKey.currentContext?.findRenderObject();
-    final RenderObject? footerRenderObject =
-        _footerKey.currentContext?.findRenderObject();
+//   void _onScroll() {
+//     final RenderObject? categoryRenderObject =
+//         _categoriesSectionKey.currentContext?.findRenderObject();
+//     final RenderObject? gridRenderObject =
+//         _paginatedGridKey.currentContext?.findRenderObject();
+//     final RenderObject? footerRenderObject =
+//         _footerKey.currentContext?.findRenderObject();
 
-    if (categoryRenderObject is RenderBox && gridRenderObject is RenderBox) {
-      final RenderBox categoryBox = categoryRenderObject;
-      final RenderBox gridBox = gridRenderObject;
+//     if (categoryRenderObject is RenderBox && gridRenderObject is RenderBox) {
+//       final RenderBox categoryBox = categoryRenderObject;
+//       final RenderBox gridBox = gridRenderObject;
 
-      final categoryPosition = categoryBox.localToGlobal(Offset.zero);
-      final gridPosition = gridBox.localToGlobal(Offset.zero);
-      final viewportHeight = MediaQuery.of(context).size.height;
+//       final categoryPosition = categoryBox.localToGlobal(Offset.zero);
+//       final gridPosition = gridBox.localToGlobal(Offset.zero);
+//       final viewportHeight = MediaQuery.of(context).size.height;
 
-      final isCategoryVisible =
-          categoryPosition.dy + categoryBox.size.height > 0 &&
-              categoryPosition.dy < viewportHeight;
-      final isGridVisible = gridPosition.dy < viewportHeight &&
-          gridPosition.dy + gridBox.size.height > 0;
+//       final isCategoryVisible =
+//           categoryPosition.dy + categoryBox.size.height > 0 &&
+//               categoryPosition.dy < viewportHeight;
+//       final isGridVisible = gridPosition.dy < viewportHeight &&
+//           gridPosition.dy + gridBox.size.height > 0;
 
-      bool isOverlappingFooter = false;
-      if (footerRenderObject is RenderBox) {
-        final footerBox = footerRenderObject;
-        final footerPosition = footerBox.localToGlobal(Offset.zero);
-        final floatingMenuBottom = 150 + 200;
+//       bool isOverlappingFooter = false;
+//       if (footerRenderObject is RenderBox) {
+//         final footerBox = footerRenderObject;
+//         final footerPosition = footerBox.localToGlobal(Offset.zero);
+//         final floatingMenuBottom = 150 + 200;
 
-        if (footerPosition.dy < viewportHeight &&
-            footerPosition.dy < floatingMenuBottom) {
-          isOverlappingFooter = true;
-        }
-      }
+//         if (footerPosition.dy < viewportHeight &&
+//             footerPosition.dy < floatingMenuBottom) {
+//           isOverlappingFooter = true;
+//         }
+//       }
 
-      final shouldShowFloating =
-          !isCategoryVisible && isGridVisible && !isOverlappingFooter;
+//       final shouldShowFloating =
+//           !isCategoryVisible && isGridVisible && !isOverlappingFooter;
 
-      if (_showFloatingCategories != shouldShowFloating) {
-        setState(() {
-          _showFloatingCategories = shouldShowFloating;
-        });
-      }
-    }
-  }
+//       if (_showFloatingCategories != shouldShowFloating) {
+//         setState(() {
+//           _showFloatingCategories = shouldShowFloating;
+//         });
+//       }
+//     }
+//   }
 
-  void _handleCategorySelected(int index) {
-    setState(() {
-      _selectedCategory = index;
-      _isPanelExpanded = false; // Close mobile panel when category is selected
-    });
+//   void _handleCategorySelected(int index) {
+//     setState(() {
+//       _selectedCategory = index;
+//       _isPanelExpanded = false; // Close mobile panel when category is selected
+//     });
 
-    if (_showFloatingCategories) {
-      final BuildContext? categoriesContext =
-          _categoriesSectionKey.currentContext;
-      if (categoriesContext != null) {
-        Scrollable.ensureVisible(
-          categoriesContext,
-          duration: Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
-          alignment: 0.0,
-        );
-      }
-    }
-  }
+//     if (_showFloatingCategories) {
+//       final BuildContext? categoriesContext =
+//           _categoriesSectionKey.currentContext;
+//       if (categoriesContext != null) {
+//         Scrollable.ensureVisible(
+//           categoriesContext,
+//           duration: Duration(milliseconds: 500),
+//           curve: Curves.easeInOut,
+//           alignment: 0.0,
+//         );
+//       }
+//     }
+//   }
 
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final screenWidth = constraints.maxWidth;
+//   @override
+//   Widget build(BuildContext context) {
+//     return LayoutBuilder(
+//       builder: (context, constraints) {
+//         final screenWidth = constraints.maxWidth;
 
-        Widget appBar;
-        Widget? drawer;
-        bool isMobileView = false;
+//         Widget appBar;
+//         Widget? drawer;
+//         bool isMobileView = false;
 
-        if (screenWidth < 600) {
-          if (isMobile) {
-            return Scaffold(
-              body: NavbarFormobile(
-                body: bodyHomeMobile(),
-              ),
-            );
-          }
+//         if (screenWidth < 600) {
+//           if (isMobile) {
+//             return Scaffold(
+//               body: NavbarFormobile(
+//                 body: bodyHomeMobile(),
+//               ),
+//             );
+//           }
 
-          // Web mobile-style layout
-          appBar = PreferredSize(
-            preferredSize: Size.fromHeight(90),
-            child: Container(
-              color: const Color.fromARGB(255, 234, 29, 7),
-              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-              child: SafeArea(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: TextField(
-                              decoration: InputDecoration(
-                                hintText: 'Thanh tìm kiếm',
-                                border: InputBorder.none,
-                                contentPadding:
-                                    EdgeInsets.symmetric(horizontal: 15),
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 10),
-                        IconButton(
-                          icon: Icon(Icons.shopping_cart, color: Colors.white),
-                          onPressed: () =>
-                              Navigator.pushNamed(context, '/cart'),
-                        ),
-                        Builder(
-                          builder: (context) => IconButton(
-                            icon: Icon(Icons.menu, color: Colors.white),
-                            onPressed: () => Scaffold.of(context).openDrawer(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-          drawer = _buildDrawer(context, screenWidth);
-          isMobileView = true;
-        } else if (screenWidth < 1100) {
-          // Tablet layout
-          appBar = PreferredSize(
-            preferredSize: Size.fromHeight(130),
-            child: AppBar(
-              automaticallyImplyLeading: false,
-              toolbarHeight: 130,
-              flexibleSpace: NavbarhomeTablet(context),
-            ),
-          );
-          drawer = _buildDrawer(context, screenWidth);
-        } else {
-          // Desktop layout
-          appBar = PreferredSize(
-            preferredSize: Size.fromHeight(130),
-            child: Navbarhomedesktop(),
-          );
-        }
+//           // Web mobile-style layout
+//           appBar = PreferredSize(
+//             preferredSize: Size.fromHeight(90),
+//             child: Container(
+//               color: const Color.fromARGB(255, 234, 29, 7),
+//               padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+//               child: SafeArea(
+//                 child: Column(
+//                   mainAxisAlignment: MainAxisAlignment.center,
+//                   children: [
+//                     Row(
+//                       children: [
+//                         Expanded(
+//                           child: Container(
+//                             decoration: BoxDecoration(
+//                               color: Colors.white,
+//                               borderRadius: BorderRadius.circular(8),
+//                             ),
+//                             child: TextField(
+//                               decoration: InputDecoration(
+//                                 hintText: 'Thanh tìm kiếm',
+//                                 border: InputBorder.none,
+//                                 contentPadding:
+//                                     EdgeInsets.symmetric(horizontal: 15),
+//                               ),
+//                             ),
+//                           ),
+//                         ),
+//                         SizedBox(width: 10),
+//                         IconButton(
+//                           icon: Icon(Icons.shopping_cart, color: Colors.white),
+//                           onPressed: () =>
+//                               Navigator.pushNamed(context, '/cart'),
+//                         ),
+//                         Builder(
+//                           builder: (context) => IconButton(
+//                             icon: Icon(Icons.menu, color: Colors.white),
+//                             onPressed: () => Scaffold.of(context).openDrawer(),
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//             ),
+//           );
+//           drawer = _buildDrawer(context, screenWidth);
+//           isMobileView = true;
+//         } else if (screenWidth < 1100) {
+//           // Tablet layout
+//           appBar = PreferredSize(
+//             preferredSize: Size.fromHeight(130),
+//             child: AppBar(
+//               automaticallyImplyLeading: false,
+//               toolbarHeight: 130,
+//               flexibleSpace: NavbarhomeTablet(context),
+//             ),
+//           );
+//           drawer = _buildDrawer(context, screenWidth);
+//         } else {
+//           // Desktop layout
+//           appBar = PreferredSize(
+//             preferredSize: Size.fromHeight(130),
+//             child: Navbarhomedesktop(),
+//           );
+//         }
 
-        return Scaffold(
-          appBar: appBar as PreferredSize,
-          drawer: drawer,
-          body: _buildHomeContent(
-            screenWidth,
-            isMobile: isMobileView,
-            isTablet: screenWidth < 1100 && screenWidth >= 600,
-            isDesktop: screenWidth >= 1100,
-          ),
-        );
-      },
-    );
-  }
+//         return Scaffold(
+//           appBar: appBar as PreferredSize,
+//           drawer: drawer,
+//           body: _buildHomeContent(
+//             screenWidth,
+//             isMobile: isMobileView,
+//             isTablet: screenWidth < 1100 && screenWidth >= 600,
+//             isDesktop: screenWidth >= 1100,
+//           ),
+//         );
+//       },
+//     );
+//   }
 
-  Widget _buildHomeContent(double screenWidth,
-      {bool isMobile = false, bool isTablet = false, bool isDesktop = false}) {
-    return Stack(
-      children: [
-        Container(
-          decoration: BoxDecoration(),
-          child: SingleChildScrollView(
-            controller: _scrollController,
-            child: Column(
-              children: [
-                if (isDesktop)
-                  Carouseldesktop(screenWidth)
-                else
-                  CarouselTablet(screenWidth),
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isDesktop ? 140 : (isTablet ? 1 : 0),
-                    vertical: 0,
-                  ),
-                  child: Column(
-                    children: [
-                      if (kIsWeb && isMobile)
-                        Heading(Icons.bolt, Colors.yellowAccent,
-                            'Sản phẩm khuyến mãi'),
-                      SizedBox(height: 10),
-                      Container(
-                        height: 320,
-                        child: product_item.ProductList(
-                          productListKey: _promoProductsKey,
-                          scroll: Axis.horizontal,
-                          productData: productData,
-                          itemsPerPage: isMobile ? 6 : 7,
-                          gridHeight: isMobile ? 250 : 320,
-                          gridWidth: screenWidth,
-                          childAspectRatio: isMobile ? 0.8 : 1.59,
-                          crossAxisCount: 1,
-                          mainSpace: isMobile ? 10 : 9,
-                          crossSpace: isMobile ? 10 : 8.0,
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      Heading(Icons.new_releases, Colors.yellowAccent,
-                          'Sản phẩm mới nhất'),
-                      SizedBox(height: 10),
-                      if (isDesktop)
-                        Container(
-                          height: 600,
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: screenWidth * 0.27,
-                                height: 600,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    image: DecorationImage(
-                                      image:
-                                          AssetImage('assets/bannerMain.jpg'),
-                                      fit: BoxFit.cover,
-                                      alignment: Alignment.center,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 10),
-                              Expanded(
-                                child: product_item.ProductList(
-                                  productListKey: _newProductsKey,
-                                  scroll: Axis.horizontal,
-                                  productData: productData,
-                                  itemsPerPage: 8,
-                                  gridHeight: 600,
-                                  gridWidth: screenWidth * 0.72,
-                                  childAspectRatio: 1.47,
-                                  crossAxisCount: 2,
-                                  mainSpace: 9.7,
-                                  crossSpace: 10,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      else
-                        Container(
-                          height: isMobile ? 320 : 600,
-                          child: product_item.ProductList(
-                            productListKey: _newProductsKey,
-                            scroll: Axis.horizontal,
-                            productData: productData,
-                            itemsPerPage: !isMobile ? 12 : 10,
-                            gridHeight: isMobile ? 250 : 600,
-                            gridWidth: screenWidth,
-                            childAspectRatio: isMobile ? 0.8 : 1.47,
-                            crossAxisCount: isMobile ? 1 : 2,
-                            mainSpace: isMobile ? 10 : 9.7,
-                            crossSpace: isMobile ? 10 : 8,
-                          ),
-                        ),
-                      SizedBox(height: 10),
-                      Heading(Icons.local_fire_department, Colors.yellowAccent,
-                          'Sản phẩm bán chạy nhất'),
-                      SizedBox(height: 10),
-                      Container(
-                        height: isMobile ? 320 : 600,
-                        child: product_item.ProductList(
-                          productListKey: _bestSellerKey,
-                          scroll: Axis.horizontal,
-                          productData: productData,
-                          itemsPerPage: 12,
-                          gridHeight: isMobile ? 250 : 600,
-                          gridWidth: screenWidth,
-                          childAspectRatio: isMobile ? 0.8 : 1.47,
-                          crossAxisCount: isMobile ? 1 : 2,
-                          mainSpace: isMobile ? 10 : 9.7,
-                          crossSpace: isMobile ? 10 : 8,
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      CategoriesSection(
-                        key: _categoriesSectionKey,
-                        selectedIndex: _selectedCategory,
-                        onCategorySelected: _handleCategorySelected,
-                      ),
-                      SizedBox(height: 10),
-                      Column(
-                        key: _paginatedGridKey,
-                        children: [
-                          SizedBox(
-                            width:
-                                isDesktop ? screenWidth - 280 : screenWidth - 2,
-                            child: PaginatedProductGrid(
-                              productData: productData,
-                              itemsPerPage: _getItemsPerPage(screenWidth),
-                              gridWidth: isDesktop
-                                  ? screenWidth - 280
-                                  : screenWidth - 2,
-                              childAspectRatio: 0.7,
-                              crossAxisCount: _getCrossAxisCount(screenWidth),
-                              mainSpace: 10,
-                              crossSpace: 8.0,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 50),
-                    ],
-                  ),
-                ),
-                if (kIsWeb) Footer(key: _footerKey),
-              ],
-            ),
-          ),
-        ),
-        if (_showFloatingCategories)
-          (isMobile || isTablet)
-              ? _buildMobileFloatingCategories(isTablet: isTablet)
-              : _buildFloatingCategories(),
-      ],
-    );
-  }
+//   Widget _buildHomeContent(double screenWidth,
+//       {bool isMobile = false, bool isTablet = false, bool isDesktop = false}) {
+//     return Stack(
+//       children: [
+//         Container(
+//           decoration: BoxDecoration(),
+//           child: SingleChildScrollView(
+//             controller: _scrollController,
+//             child: Column(
+//               children: [
+//                 if (isDesktop)
+//                   Carouseldesktop(screenWidth)
+//                 else
+//                   CarouselTablet(screenWidth),
+//                 Padding(
+//                   padding: EdgeInsets.symmetric(
+//                     horizontal: isDesktop ? 140 : (isTablet ? 1 : 0),
+//                     vertical: 0,
+//                   ),
+//                   child: Column(
+//                     children: [
+//                       if (kIsWeb && isMobile)
+//                         Heading(Icons.bolt, Colors.yellowAccent,
+//                             'Sản phẩm khuyến mãi'),
+//                       SizedBox(height: 10),
+//                       Container(
+//                         height: 320,
+//                         child: product_item.ProductList(
+//                           productListKey: _promoProductsKey,
+//                           scroll: Axis.horizontal,
+//                           productData: productData,
+//                           itemsPerPage: isMobile ? 6 : 7,
+//                           gridHeight: isMobile ? 250 : 320,
+//                           gridWidth: screenWidth,
+//                           childAspectRatio: isMobile ? 0.8 : 1.59,
+//                           crossAxisCount: 1,
+//                           mainSpace: isMobile ? 10 : 9,
+//                           crossSpace: isMobile ? 10 : 8.0,
+//                         ),
+//                       ),
+//                       SizedBox(height: 10),
+//                       Heading(Icons.new_releases, Colors.yellowAccent,
+//                           'Sản phẩm mới nhất'),
+//                       SizedBox(height: 10),
+//                       if (isDesktop)
+//                         Container(
+//                           height: 600,
+//                           child: Row(
+//                             children: [
+//                               SizedBox(
+//                                 width: screenWidth * 0.27,
+//                                 height: 600,
+//                                 child: Container(
+//                                   decoration: BoxDecoration(
+//                                     image: DecorationImage(
+//                                       image:
+//                                           AssetImage('assets/bannerMain.jpg'),
+//                                       fit: BoxFit.cover,
+//                                       alignment: Alignment.center,
+//                                     ),
+//                                   ),
+//                                 ),
+//                               ),
+//                               SizedBox(width: 10),
+//                               Expanded(
+//                                 child: product_item.ProductList(
+//                                   productListKey: _newProductsKey,
+//                                   scroll: Axis.horizontal,
+//                                   productData: productData,
+//                                   itemsPerPage: 8,
+//                                   gridHeight: 600,
+//                                   gridWidth: screenWidth * 0.72,
+//                                   childAspectRatio: 1.47,
+//                                   crossAxisCount: 2,
+//                                   mainSpace: 9.7,
+//                                   crossSpace: 10,
+//                                 ),
+//                               ),
+//                             ],
+//                           ),
+//                         )
+//                       else
+//                         Container(
+//                           height: isMobile ? 320 : 600,
+//                           child: product_item.ProductList(
+//                             productListKey: _newProductsKey,
+//                             scroll: Axis.horizontal,
+//                             productData: productData,
+//                             itemsPerPage: !isMobile ? 12 : 10,
+//                             gridHeight: isMobile ? 250 : 600,
+//                             gridWidth: screenWidth,
+//                             childAspectRatio: isMobile ? 0.8 : 1.47,
+//                             crossAxisCount: isMobile ? 1 : 2,
+//                             mainSpace: isMobile ? 10 : 9.7,
+//                             crossSpace: isMobile ? 10 : 8,
+//                           ),
+//                         ),
+//                       SizedBox(height: 10),
+//                       Heading(Icons.local_fire_department, Colors.yellowAccent,
+//                           'Sản phẩm bán chạy nhất'),
+//                       SizedBox(height: 10),
+//                       Container(
+//                         height: isMobile ? 320 : 600,
+//                         child: product_item.ProductList(
+//                           productListKey: _bestSellerKey,
+//                           scroll: Axis.horizontal,
+//                           productData: productData,
+//                           itemsPerPage: 12,
+//                           gridHeight: isMobile ? 250 : 600,
+//                           gridWidth: screenWidth,
+//                           childAspectRatio: isMobile ? 0.8 : 1.47,
+//                           crossAxisCount: isMobile ? 1 : 2,
+//                           mainSpace: isMobile ? 10 : 9.7,
+//                           crossSpace: isMobile ? 10 : 8,
+//                         ),
+//                       ),
+//                       SizedBox(height: 10),
+//                       CategoriesSection(
+//                         key: _categoriesSectionKey,
+//                         selectedIndex: _selectedCategory,
+//                         onCategorySelected: _handleCategorySelected,
+//                       ),
+//                       SizedBox(height: 10),
+//                       Column(
+//                         key: _paginatedGridKey,
+//                         children: [
+//                           SizedBox(
+//                             width:
+//                                 isDesktop ? screenWidth - 280 : screenWidth - 2,
+//                             child: PaginatedProductGrid(
+//                               productData: productData,
+//                               itemsPerPage: _getItemsPerPage(screenWidth),
+//                               gridWidth: isDesktop
+//                                   ? screenWidth - 280
+//                                   : screenWidth - 2,
+//                               childAspectRatio: 0.7,
+//                               crossAxisCount: _getCrossAxisCount(screenWidth),
+//                               mainSpace: 10,
+//                               crossSpace: 8.0,
+//                             ),
+//                           ),
+//                         ],
+//                       ),
+//                       SizedBox(height: 50),
+//                     ],
+//                   ),
+//                 ),
+//                 if (kIsWeb) Footer(key: _footerKey),
+//               ],
+//             ),
+//           ),
+//         ),
+//         if (_showFloatingCategories)
+//           (isMobile || isTablet)
+//               ? _buildMobileFloatingCategories(isTablet: isTablet)
+//               : _buildFloatingCategories(),
+//       ],
+//     );
+//   }
 
-  int _getItemsPerPage(double screenWidth) {
-    if (screenWidth < 600) return 6;
-    if (screenWidth < 800) return 6;
-    if (screenWidth < 1300) return 8;
-    if (screenWidth < 1470) return 10;
-    return 12;
-  }
+//   int _getItemsPerPage(double screenWidth) {
+//     if (screenWidth < 600) return 6;
+//     if (screenWidth < 800) return 6;
+//     if (screenWidth < 1300) return 8;
+//     if (screenWidth < 1470) return 10;
+//     return 12;
+//   }
 
-  int _getCrossAxisCount(double screenWidth) {
-    if (screenWidth < 600) return 2;
-    if (screenWidth < 800) return 3;
-    if (screenWidth < 1300) return 4;
-    if (screenWidth < 1470) return 5;
-    return 6;
-  }
+//   int _getCrossAxisCount(double screenWidth) {
+//     if (screenWidth < 600) return 2;
+//     if (screenWidth < 800) return 3;
+//     if (screenWidth < 1300) return 4;
+//     if (screenWidth < 1470) return 5;
+//     return 6;
+//   }
 
-  Widget _buildMobileFloatingCategories({bool isTablet = false}) {
-    return Positioned(
-      right: 0,
-      top: isTablet
-          ? 100 // Higher position for tablets
-          : MediaQuery.of(context).size.height / 2 - 50,
-      child: AnimatedOpacity(
-        opacity: _showFloatingCategories ? 1.0 : 0.0,
-        duration: Duration(milliseconds: 100),
-        child: Row(
-          children: [
-            AnimatedContainer(
-              duration: Duration(milliseconds: 300),
-              width: _isPanelExpanded ? (isTablet ? 200 : 150) : 0,
-              curve: Curves.easeInOut,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(10),
-                  bottomLeft: Radius.circular(10),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.5),
-                    spreadRadius: 1,
-                    blurRadius: 3,
-                    offset: Offset(-2, 0),
-                  ),
-                ],
-              ),
-              child: _isPanelExpanded
-                  ? Padding(
-                      padding: EdgeInsets.all(isTablet ? 12.0 : 8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: Text(
-                              'Danh mục',
-                              style: TextStyle(
-                                fontSize: isTablet ? 18 : 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            height: isTablet ? 300 : 200,
-                            child: ListView(
-                              shrinkWrap: true,
-                              children: [
-                                _buildVerticalCategoryItem(
-                                    'Laptop', 'assets/banner6.jpg', 0),
-                                _buildVerticalCategoryItem(
-                                    'Ram', 'assets/banner6.jpg', 1),
-                                _buildVerticalCategoryItem(
-                                    'Card đồ họa', 'assets/banner6.jpg', 2),
-                                _buildVerticalCategoryItem(
-                                    'Màn hình', 'assets/banner6.jpg', 3),
-                                _buildVerticalCategoryItem(
-                                    'Ổ cứng', 'assets/banner6.jpg', 4),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : SizedBox(),
-            ),
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _isPanelExpanded = !_isPanelExpanded;
-                });
-              },
-              child: Container(
-                width: isTablet ? 30 : 25,
-                height: isTablet ? 60 : 50,
-                decoration: BoxDecoration(
-                  color: Colors.grey[400],
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(isTablet ? 60 : 50),
-                    bottomLeft: Radius.circular(isTablet ? 60 : 50),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.5),
-                      spreadRadius: 1,
-                      blurRadius: 3,
-                      offset: Offset(-1, 0),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Icon(
-                    _isPanelExpanded
-                        ? Icons.arrow_forward_ios
-                        : Icons.arrow_back_ios,
-                    color: Colors.white,
-                    size: isTablet ? 24 : 20,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+//   Widget _buildMobileFloatingCategories({bool isTablet = false}) {
+//     return Positioned(
+//       right: 0,
+//       top: isTablet
+//           ? 100 // Higher position for tablets
+//           : MediaQuery.of(context).size.height / 2 - 50,
+//       child: AnimatedOpacity(
+//         opacity: _showFloatingCategories ? 1.0 : 0.0,
+//         duration: Duration(milliseconds: 100),
+//         child: Row(
+//           children: [
+//             AnimatedContainer(
+//               duration: Duration(milliseconds: 300),
+//               width: _isPanelExpanded ? (isTablet ? 200 : 150) : 0,
+//               curve: Curves.easeInOut,
+//               decoration: BoxDecoration(
+//                 color: Colors.white,
+//                 borderRadius: BorderRadius.only(
+//                   topLeft: Radius.circular(10),
+//                   bottomLeft: Radius.circular(10),
+//                 ),
+//                 boxShadow: [
+//                   BoxShadow(
+//                     color: Colors.grey.withOpacity(0.5),
+//                     spreadRadius: 1,
+//                     blurRadius: 3,
+//                     offset: Offset(-2, 0),
+//                   ),
+//                 ],
+//               ),
+//               child: _isPanelExpanded
+//                   ? Padding(
+//                       padding: EdgeInsets.all(isTablet ? 12.0 : 8.0),
+//                       child: Column(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         mainAxisSize: MainAxisSize.min,
+//                         children: [
+//                           Padding(
+//                             padding: const EdgeInsets.symmetric(vertical: 8.0),
+//                             child: Text(
+//                               'Danh mục',
+//                               style: TextStyle(
+//                                 fontSize: isTablet ? 18 : 16,
+//                                 fontWeight: FontWeight.bold,
+//                               ),
+//                             ),
+//                           ),
+//                           Container(
+//                             height: isTablet ? 300 : 200,
+//                             child: ListView(
+//                               shrinkWrap: true,
+//                               children: [
+//                                 _buildVerticalCategoryItem(
+//                                     'Laptop', 'assets/banner6.jpg', 0),
+//                                 _buildVerticalCategoryItem(
+//                                     'Ram', 'assets/banner6.jpg', 1),
+//                                 _buildVerticalCategoryItem(
+//                                     'Card đồ họa', 'assets/banner6.jpg', 2),
+//                                 _buildVerticalCategoryItem(
+//                                     'Màn hình', 'assets/banner6.jpg', 3),
+//                                 _buildVerticalCategoryItem(
+//                                     'Ổ cứng', 'assets/banner6.jpg', 4),
+//                               ],
+//                             ),
+//                           ),
+//                         ],
+//                       ),
+//                     )
+//                   : SizedBox(),
+//             ),
+//             GestureDetector(
+//               onTap: () {
+//                 setState(() {
+//                   _isPanelExpanded = !_isPanelExpanded;
+//                 });
+//               },
+//               child: Container(
+//                 width: isTablet ? 30 : 25,
+//                 height: isTablet ? 60 : 50,
+//                 decoration: BoxDecoration(
+//                   color: Colors.grey[400],
+//                   borderRadius: BorderRadius.only(
+//                     topLeft: Radius.circular(isTablet ? 60 : 50),
+//                     bottomLeft: Radius.circular(isTablet ? 60 : 50),
+//                   ),
+//                   boxShadow: [
+//                     BoxShadow(
+//                       color: Colors.grey.withOpacity(0.5),
+//                       spreadRadius: 1,
+//                       blurRadius: 3,
+//                       offset: Offset(-1, 0),
+//                     ),
+//                   ],
+//                 ),
+//                 child: Center(
+//                   child: Icon(
+//                     _isPanelExpanded
+//                         ? Icons.arrow_forward_ios
+//                         : Icons.arrow_back_ios,
+//                     color: Colors.white,
+//                     size: isTablet ? 24 : 20,
+//                   ),
+//                 ),
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
 
-  Widget _buildFloatingCategories() {
-    return Positioned(
-      right: 0,
-      top: 150,
-      child: AnimatedOpacity(
-        opacity: _showFloatingCategories ? 1.0 : 0.0,
-        duration: Duration(milliseconds: 100),
-        child: Container(
-          width: 139,
-          padding: EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.5),
-                spreadRadius: 1,
-                blurRadius: 3,
-                offset: Offset(0, 2),
-              ),
-            ],
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(8),
-              bottomLeft: Radius.circular(8),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Row(
-                  children: [
-                    Icon(Icons.list, size: 24.0),
-                    SizedBox(width: 8),
-                    Text(
-                      'Danh mục',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ),
-              _buildVerticalCategoryItem('Laptop', 'assets/banner6.jpg', 0),
-              _buildVerticalCategoryItem('Ram', 'assets/banner6.jpg', 1),
-              _buildVerticalCategoryItem(
-                  'Card đồ họa', 'assets/banner6.jpg', 2),
-              _buildVerticalCategoryItem('Màn hình', 'assets/banner6.jpg', 3),
-              _buildVerticalCategoryItem('Ổ cứng', 'assets/banner6.jpg', 4),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+//   Widget _buildFloatingCategories() {
+//     return Positioned(
+//       right: 0,
+//       top: 150,
+//       child: AnimatedOpacity(
+//         opacity: _showFloatingCategories ? 1.0 : 0.0,
+//         duration: Duration(milliseconds: 100),
+//         child: Container(
+//           width: 139,
+//           padding: EdgeInsets.all(10),
+//           decoration: BoxDecoration(
+//             color: Colors.white,
+//             boxShadow: [
+//               BoxShadow(
+//                 color: Colors.grey.withOpacity(0.5),
+//                 spreadRadius: 1,
+//                 blurRadius: 3,
+//                 offset: Offset(0, 2),
+//               ),
+//             ],
+//             borderRadius: BorderRadius.only(
+//               topLeft: Radius.circular(8),
+//               bottomLeft: Radius.circular(8),
+//             ),
+//           ),
+//           child: Column(
+//             crossAxisAlignment: CrossAxisAlignment.start,
+//             mainAxisSize: MainAxisSize.min,
+//             children: [
+//               Padding(
+//                 padding: const EdgeInsets.symmetric(vertical: 8.0),
+//                 child: Row(
+//                   children: [
+//                     Icon(Icons.list, size: 24.0),
+//                     SizedBox(width: 8),
+//                     Text(
+//                       'Danh mục',
+//                       style:
+//                           TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//               _buildVerticalCategoryItem('Laptop', 'assets/banner6.jpg', 0),
+//               _buildVerticalCategoryItem('Ram', 'assets/banner6.jpg', 1),
+//               _buildVerticalCategoryItem(
+//                   'Card đồ họa', 'assets/banner6.jpg', 2),
+//               _buildVerticalCategoryItem('Màn hình', 'assets/banner6.jpg', 3),
+//               _buildVerticalCategoryItem('Ổ cứng', 'assets/banner6.jpg', 4),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
 
-  Widget _buildVerticalCategoryItem(String title, String imageUrl, int index) {
-    bool isSelected = _selectedCategory == index;
+//   Widget _buildVerticalCategoryItem(String title, String imageUrl, int index) {
+//     bool isSelected = _selectedCategory == index;
 
-    return GestureDetector(
-      onTap: () {
-        _handleCategorySelected(index);
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 8.0),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.white,
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Row(
-          children: [
-            Container(
-              height: 30,
-              width: 30,
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage(imageUrl),
-                  fit: BoxFit.cover,
-                ),
-                borderRadius: BorderRadius.circular(15),
-              ),
-            ),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+//     return GestureDetector(
+//       onTap: () {
+//         _handleCategorySelected(index);
+//       },
+//       child: Container(
+//         padding: EdgeInsets.symmetric(vertical: 8.0),
+//         decoration: BoxDecoration(
+//           color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.white,
+//           borderRadius: BorderRadius.circular(4),
+//         ),
+//         child: Row(
+//           children: [
+//             Container(
+//               height: 30,
+//               width: 30,
+//               decoration: BoxDecoration(
+//                 image: DecorationImage(
+//                   image: AssetImage(imageUrl),
+//                   fit: BoxFit.cover,
+//                 ),
+//                 borderRadius: BorderRadius.circular(15),
+//               ),
+//             ),
+//             SizedBox(width: 8),
+//             Expanded(
+//               child: Text(
+//                 title,
+//                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
 
-  Widget _buildHorizontalCategoryItem(
-      String title, String imageUrl, int index) {
-    bool isSelected = _selectedCategory == index;
+//   Widget _buildHorizontalCategoryItem(
+//       String title, String imageUrl, int index) {
+//     bool isSelected = _selectedCategory == index;
 
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 5),
-      child: InkWell(
-        onTap: () {
-          _handleCategorySelected(index);
-        },
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isSelected ? Colors.blue : Colors.grey[300]!,
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                height: 25,
-                width: 25,
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage(imageUrl),
-                    fit: BoxFit.cover,
-                  ),
-                  borderRadius: BorderRadius.circular(12.5),
-                ),
-              ),
-              SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 14,
-                  color: isSelected ? Colors.blue : Colors.black87,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+//     return Container(
+//       margin: EdgeInsets.symmetric(horizontal: 5),
+//       child: InkWell(
+//         onTap: () {
+//           _handleCategorySelected(index);
+//         },
+//         child: Container(
+//           padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+//           decoration: BoxDecoration(
+//             color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.white,
+//             borderRadius: BorderRadius.circular(20),
+//             border: Border.all(
+//               color: isSelected ? Colors.blue : Colors.grey[300]!,
+//               width: 1,
+//             ),
+//           ),
+//           child: Row(
+//             mainAxisSize: MainAxisSize.min,
+//             children: [
+//               Container(
+//                 height: 25,
+//                 width: 25,
+//                 decoration: BoxDecoration(
+//                   image: DecorationImage(
+//                     image: AssetImage(imageUrl),
+//                     fit: BoxFit.cover,
+//                   ),
+//                   borderRadius: BorderRadius.circular(12.5),
+//                 ),
+//               ),
+//               SizedBox(width: 8),
+//               Text(
+//                 title,
+//                 style: TextStyle(
+//                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+//                   fontSize: 14,
+//                   color: isSelected ? Colors.blue : Colors.black87,
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
 
-  Widget _buildDrawer(BuildContext context, double screenWidth) {
-    final bool isMobileView = screenWidth < 600;
-    // Check if user is logged in
-    final bool isLoggedIn = UserInfo().currentUser != null;
+//   Widget _buildDrawer(BuildContext context, double screenWidth) {
+//     final bool isMobileView = screenWidth < 600;
+//     // Check if user is logged in
+//     final bool isLoggedIn = UserInfo().currentUser != null;
 
-    return Drawer(
-      child: ListView(
-        children: [
-          DrawerHeader(
-            decoration: const BoxDecoration(color: Colors.red),
-            child: GestureDetector(
-              onTap: () {
-                if (isWeb) {
-                  // For web platform, check login status
-                  if (UserInfo().currentUser == null) {
-                    Navigator.pushNamed(context, '/login');
-                  } else {
-                    Navigator.pushNamed(context, '/info');
-                  }
-                } else {
-                  // For non-web platforms (mobile/desktop)
-                  Navigator.pushNamed(context, '/info');
-                }
-              },
-              child: Row(
-                children: [
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: Row(
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                            color: Colors.white,
-                          ),
-                          child: ClipOval(
-                            child: SizedBox(
-                              width: 60,
-                              height: 60,
-                              child: UserInfo().currentUser?.avatar != null
-                                  ? FutureBuilder<Uint8List?>(
-                                      future: UserService().getAvatarBytes(
-                                          UserInfo().currentUser?.avatar),
-                                      builder: (context, snapshot) {
-                                        if (snapshot.connectionState ==
-                                                ConnectionState.waiting &&
-                                            !snapshot.hasData) {
-                                          return Container(
-                                            color: Colors.white,
-                                            child: const Center(
-                                              child: SizedBox(
-                                                width: 15,
-                                                height: 15,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                  color: Colors.red,
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        } else if (snapshot.hasData &&
-                                            snapshot.data != null) {
-                                          // Use cached image if available
-                                          return Image.memory(
-                                            snapshot.data!,
-                                            fit: BoxFit.cover,
-                                            width: 60,
-                                            height: 60,
-                                          );
-                                        } else {
-                                          // Fall back to network image if cache failed
-                                          return Container(
-                                            color: Colors.white,
-                                            child: Image.network(
-                                              UserInfo().currentUser!.avatar!,
-                                              fit: BoxFit.cover,
-                                              width: 60,
-                                              height: 60,
-                                              errorBuilder:
-                                                  (context, error, stackTrace) {
-                                                return Container(
-                                                  color: Colors.white,
-                                                  child: const Icon(
-                                                      Icons.person,
-                                                      color: Colors.black,
-                                                      size: 30),
-                                                );
-                                              },
-                                            ),
-                                          );
-                                        }
-                                      },
-                                    )
-                                  : Container(
-                                      color: Colors.white,
-                                      child: const Icon(Icons.person,
-                                          color: Colors.black, size: 30),
-                                    ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          UserInfo().currentUser?.fullName ?? '',
-                          style: TextStyle(
-                            fontSize: 25,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Only show Home and Product List items on mobile view (width < 600)
-          if (isMobileView) ...[
-            ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text('Trang chủ'),
-              onTap: () {
-                Navigator.pushNamed(context, '/');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.list_alt),
-              title: const Text('Danh sách sản phẩm'),
-              onTap: () {
-                Navigator.pushNamed(context, '/catalog_product');
-              },
-            ),
-          ],
-          // Only show Register button if not logged in
-          if (!isLoggedIn)
-            ListTile(
-              leading: const Icon(Icons.person_add_alt),
-              title: const Text('Đăng ký'),
-              onTap: () {
-                Navigator.pushNamed(context, '/signup');
-              },
-            ),
-          // Login/Logout button
-          ListTile(
-            leading: Icon(isLoggedIn ? Icons.logout : Icons.person_3_rounded),
-            title: Text(isLoggedIn ? 'Đăng xuất' : 'Đăng nhập'),
-            onTap: () {
-              if (isLoggedIn) {
-                UserInfo().logout(context);
-              } else {
-                Navigator.pushNamed(context, '/login');
-              }
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.chat),
-            title: const Text('Nhắn tin'),
-            onTap: () {
-              Navigator.pushNamed(context, '/chat');
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
+//     return Drawer(
+//       child: ListView(
+//         children: [
+//           DrawerHeader(
+//             decoration: const BoxDecoration(color: Colors.red),
+//             child: GestureDetector(
+//               onTap: () {
+//                 if (isWeb) {
+//                   // For web platform, check login status
+//                   if (UserInfo().currentUser == null) {
+//                     Navigator.pushNamed(context, '/login');
+//                   } else {
+//                     Navigator.pushNamed(context, '/info');
+//                   }
+//                 } else {
+//                   // For non-web platforms (mobile/desktop)
+//                   Navigator.pushNamed(context, '/info');
+//                 }
+//               },
+//               child: Row(
+//                 children: [
+//                   MouseRegion(
+//                     cursor: SystemMouseCursors.click,
+//                     child: Row(
+//                       children: [
+//                         Container(
+//                           decoration: BoxDecoration(
+//                             shape: BoxShape.circle,
+//                             border: Border.all(color: Colors.white, width: 2),
+//                             color: Colors.white,
+//                           ),
+//                           child: ClipOval(
+//                             child: SizedBox(
+//                               width: 60,
+//                               height: 60,
+//                               child: UserInfo().currentUser?.avatar != null
+//                                   ? FutureBuilder<Uint8List?>(
+//                                       future: UserService().getAvatarBytes(
+//                                           UserInfo().currentUser?.avatar),
+//                                       builder: (context, snapshot) {
+//                                         if (snapshot.connectionState ==
+//                                                 ConnectionState.waiting &&
+//                                             !snapshot.hasData) {
+//                                           return Container(
+//                                             color: Colors.white,
+//                                             child: const Center(
+//                                               child: SizedBox(
+//                                                 width: 15,
+//                                                 height: 15,
+//                                                 child:
+//                                                     CircularProgressIndicator(
+//                                                   strokeWidth: 2,
+//                                                   color: Colors.red,
+//                                                 ),
+//                                               ),
+//                                             ),
+//                                           );
+//                                         } else if (snapshot.hasData &&
+//                                             snapshot.data != null) {
+//                                           // Use cached image if available
+//                                           return Image.memory(
+//                                             snapshot.data!,
+//                                             fit: BoxFit.cover,
+//                                             width: 60,
+//                                             height: 60,
+//                                           );
+//                                         } else {
+//                                           // Fall back to network image if cache failed
+//                                           return Container(
+//                                             color: Colors.white,
+//                                             child: Image.network(
+//                                               UserInfo().currentUser!.avatar!,
+//                                               fit: BoxFit.cover,
+//                                               width: 60,
+//                                               height: 60,
+//                                               errorBuilder:
+//                                                   (context, error, stackTrace) {
+//                                                 return Container(
+//                                                   color: Colors.white,
+//                                                   child: const Icon(
+//                                                       Icons.person,
+//                                                       color: Colors.black,
+//                                                       size: 30),
+//                                                 );
+//                                               },
+//                                             ),
+//                                           );
+//                                         }
+//                                       },
+//                                     )
+//                                   : Container(
+//                                       color: Colors.white,
+//                                       child: const Icon(Icons.person,
+//                                           color: Colors.black, size: 30),
+//                                     ),
+//                             ),
+//                           ),
+//                         ),
+//                         const SizedBox(width: 10),
+//                         Text(
+//                           UserInfo().currentUser?.fullName ?? '',
+//                           style: TextStyle(
+//                             fontSize: 25,
+//                             color: Colors.white,
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//                   ),
+//                 ],
+//               ),
+//             ),
+//           ),
+//           // Only show Home and Product List items on mobile view (width < 600)
+//           if (isMobileView) ...[
+//             ListTile(
+//               leading: const Icon(Icons.home),
+//               title: const Text('Trang chủ'),
+//               onTap: () {
+//                 Navigator.pushNamed(context, '/');
+//               },
+//             ),
+//             ListTile(
+//               leading: const Icon(Icons.list_alt),
+//               title: const Text('Danh sách sản phẩm'),
+//               onTap: () {
+//                 Navigator.pushNamed(context, '/catalog_product');
+//               },
+//             ),
+//           ],
+//           // Only show Register button if not logged in
+//           if (!isLoggedIn)
+//             ListTile(
+//               leading: const Icon(Icons.person_add_alt),
+//               title: const Text('Đăng ký'),
+//               onTap: () {
+//                 Navigator.pushNamed(context, '/signup');
+//               },
+//             ),
+//           // Login/Logout button
+//           ListTile(
+//             leading: Icon(isLoggedIn ? Icons.logout : Icons.person_3_rounded),
+//             title: Text(isLoggedIn ? 'Đăng xuất' : 'Đăng nhập'),
+//             onTap: () {
+//               if (isLoggedIn) {
+//                 UserInfo().logout(context);
+//               } else {
+//                 Navigator.pushNamed(context, '/login');
+//               }
+//             },
+//           ),
+//           ListTile(
+//             leading: const Icon(Icons.chat),
+//             title: const Text('Nhắn tin'),
+//             onTap: () {
+//               Navigator.pushNamed(context, '/chat');
+//             },
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }

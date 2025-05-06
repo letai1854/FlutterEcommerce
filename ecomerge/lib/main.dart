@@ -98,13 +98,13 @@ class MyApp extends StatelessWidget {
               );
             } else {
               return PageRouteBuilder(
-                pageBuilder: (context, _, __) => const ResponsiveHome(),
+                pageBuilder: (context, _, __) => const PageSearch(),//comment
                 settings: const RouteSettings(name: '/home'),
               );
             }
           case '/home':
             return PageRouteBuilder(
-              pageBuilder: (context, _, __) => const ResponsiveHome(),
+              pageBuilder: (context, _, __) => const PageSearch(), //comment
               settings: settings,
             );
           case '/info':
@@ -165,7 +165,7 @@ class MyApp extends StatelessWidget {
             );
           default:
             return PageRouteBuilder(
-              pageBuilder: (context, _, __) => const ResponsiveHome(),
+              pageBuilder: (context, _, __) => const PageSearch(), //commet
               settings: settings,
             );
         }

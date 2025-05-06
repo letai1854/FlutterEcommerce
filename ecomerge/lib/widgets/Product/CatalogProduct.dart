@@ -2,9 +2,14 @@ import 'package:e_commerce_app/Constants/productTest.dart';
 import 'package:e_commerce_app/widgets/Product/PaginatedProductGrid.dart';
 import 'package:e_commerce_app/widgets/SortingBar.dart';
 import 'package:e_commerce_app/widgets/footer.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart'; // For kDebugMode
 import 'package:flutter/material.dart';
 import 'dart:math';
+
+// Import necessary DTOs and Services
+import 'package:e_commerce_app/database/models/categories.dart'; // Import CategoryDTO
+import 'package:e_commerce_app/database/services/categories_service.dart'; // Import CategoriesService (for getImageUrl)
+
 
 class CatalogProduct extends StatefulWidget {
   final List<Map<String, dynamic>> filteredProducts;
@@ -12,9 +17,17 @@ class CatalogProduct extends StatefulWidget {
   final ScrollController scrollController;
   final String currentSortMethod;
   final int selectedCategoryId;
-  final List<Map<String, dynamic>> catalog;
+
+  // *** THAY ĐỔI: Nhận List<CategoryDTO> thay vì List<Map<String, dynamic>> ***
+  final List<CategoryDTO> categories; // <--- NHẬN DANH SÁCH CATEGORIES ĐÚNG KIỂU DỮ LIỆU
+
   final Function(int) updateSelectedCategory;
   final Function(String) updateSortMethod;
+
+  // *** THÊM: Nhận trạng thái loading/initialized từ PageListProduct ***
+  final bool isAppDataLoading;
+  final bool isAppDataInitialized;
+
 
   const CatalogProduct({
     super.key,
@@ -23,9 +36,11 @@ class CatalogProduct extends StatefulWidget {
     required this.scrollController,
     required this.currentSortMethod,
     required this.selectedCategoryId,
-    required this.catalog,
+    required this.categories, // <-------------------------- NHẬN List<CategoryDTO>
     required this.updateSelectedCategory,
     required this.updateSortMethod,
+     required this.isAppDataLoading, // <-- Thêm vào constructor
+     required this.isAppDataInitialized, // <-- Thêm vào constructor
   });
 
   @override
@@ -33,25 +48,128 @@ class CatalogProduct extends StatefulWidget {
 }
 
 class _CatalogProductState extends State<CatalogProduct> {
+
+   // --- Service Instance (for getImageUrl) ---
+   // Khởi tạo CategoriesService để sử dụng hàm getImageUrl
+   final CategoriesService _categoriesService = CategoriesService();
+
+
+   @override
+  void initState() {
+    super.initState();
+     // Không cần lắng nghe AppDataService ở đây nữa vì PageListProduct đã lắng nghe và truyền data mới
+  }
+
+  @override
+  void dispose() {
+     // Dispose CategoriesService khi widget bị dispose
+     _categoriesService.dispose();
+    super.dispose();
+  }
+
+
+  // Helper function để hiển thị ảnh danh mục
+  // Sử dụng _categoriesService.getImageUrl để lấy URL đầy đủ
+  Widget _buildImageWidget(String? imageSource, {double size = 40, BoxFit fit = BoxFit.cover}) {
+     // Hiển thị icon placeholder nếu không có đường dẫn ảnh hoặc service bị null (khả năng thấp)
+    if (imageSource == null || imageSource.isEmpty) {
+      return Icon(Icons.image, size: size * 0.7, color: Colors.grey); // Placeholder icon
+    }
+
+    // Sử dụng helper từ CategoriesService để lấy URL đầy đủ cho NetworkImage
+    String fullImageUrl = _categoriesService.getImageUrl(imageSource);
+
+     if (kDebugMode) {
+         // print('[_buildImageWidget] Using FULL URL for Image.network: $fullImageUrl (Original source: $imageSource)');
+     }
+
+    // Hiển thị ảnh từ Network
+    return Image.network(
+      fullImageUrl,
+      fit: fit,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Center(
+          child: SizedBox(
+            width: size * 0.5,
+            height: size * 0.5,
+            child: CircularProgressIndicator(
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                  : null,
+              strokeWidth: 2,
+            ),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        if (kDebugMode) print('[_buildImageWidget] Image.network failed for $fullImageUrl (Original: $imageSource): $error');
+        return Icon(Icons.broken_image, size: size * 0.7, color: Colors.red); // Error icon
+      },
+    );
+  }
+
+
+  // --- Build Category Panel (using data from widget.categories) ---
   Widget _buildCategoryPanel(double width, bool isMobile) {
+     // Lấy danh sách danh mục từ widget
+     final List<CategoryDTO> categories = widget.categories;
+
+    // Hiển thị trạng thái loading hoặc không có dữ liệu dựa trên cờ từ PageListProduct
+    if (widget.isAppDataLoading && !widget.isAppDataInitialized) {
+        // Hiển thị loading indicator nếu đang tải và chưa khởi tạo lần đầu
+        return Container(
+            width: width,
+            color: Colors.white,
+            child: const Center(
+               child: Column(
+                 mainAxisAlignment: MainAxisAlignment.center,
+                 children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Đang tải danh mục...', style: TextStyle(color: Colors.grey)),
+                 ],
+               ),
+            ),
+        );
+    }
+
+    // Kiểm tra nếu danh sách category rỗng sau khi đã load (hoặc thất bại)
+     if (categories.isEmpty && widget.isAppDataInitialized && !widget.isAppDataLoading) {
+         return Container(
+            width: width,
+            color: Colors.white,
+            child: const Center(
+               child: Text('Không có danh mục nào.', style: TextStyle(color: Colors.grey)),
+            ),
+         );
+     }
+
+     // Nếu danh sách category có dữ liệu (categories.isNotEmpty) hoặc đang tải nhưng đã có dữ liệu cũ (_isAppDataInitialized && _isAppDataLoading)
+     // Hiển thị danh sách
     return Container(
       width: width,
       color: Colors.white,
       child: ListView.builder(
-        padding: EdgeInsets.symmetric(vertical: 8),
-        itemCount: widget.catalog.length,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        // *** Sử dụng danh sách được truyền qua widget ***
+        itemCount: categories.length,
         itemBuilder: (context, index) {
-          final category = widget.catalog[index];
-          final bool isSelected = widget.selectedCategoryId == category['id'];
-          
+          // *** Lấy CategoryDTO object ***
+          final CategoryDTO category = categories[index];
+          // *** So sánh ID, xử lý trường hợp category.id là null ***
+          final bool isSelected = category.id != null && widget.selectedCategoryId == category.id!;
+
           return Material(
             color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.transparent,
             child: InkWell(
-              onTap: () => widget.updateSelectedCategory(category['id']),
+              // Vô hiệu hóa chạm nếu ID danh mục là null
+              onTap: category.id == null ? null : () => widget.updateSelectedCategory(category.id!), // Truyền category ID, xử lý null
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
+                    // Image Container
                     Container(
                       width: 40,
                       height: 40,
@@ -61,21 +179,24 @@ class _CatalogProductState extends State<CatalogProduct> {
                           color: isSelected ? Colors.blue : Colors.grey.shade200,
                           width: isSelected ? 2 : 1,
                         ),
-                        image: DecorationImage(
-                          image: NetworkImage(category['image']),
-                          fit: BoxFit.cover,
-                        ),
                       ),
+                       clipBehavior: Clip.antiAlias, // Cắt ảnh theo bo góc
+                       // *** Sử dụng helper để hiển thị ảnh từ category.imageUrl ***
+                       child: _buildImageWidget(category.imageUrl, size: 40, fit: BoxFit.cover),
                     ),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 12),
+                    // Category Name
                     Expanded(
                       child: Text(
-                        category['name'],
+                        // *** Sử dụng category.name, xử lý null ***
+                        category.name ?? 'Danh mục [Không tên]',
                         style: TextStyle(
                           fontSize: 14,
                           color: isSelected ? Colors.blue : Colors.black87,
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -88,73 +209,84 @@ class _CatalogProductState extends State<CatalogProduct> {
     );
   }
 
+  // --- Get Sorted Products (vẫn giữ nguyên logic sắp xếp) ---
   List<Map<String, dynamic>> getSortedProducts() {
     var products = List<Map<String, dynamic>>.from(widget.filteredProducts);
     if (widget.currentSortMethod.isNotEmpty) {
       switch (widget.currentSortMethod) {
         case 'name':
-          products.sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
+          // Sắp xếp theo tên, xử lý trường hợp null hoặc không phải chuỗi
+          products.sort((a, b) => (a['name']?.toString() ?? '').compareTo(b['name']?.toString() ?? ''));
           break;
         case 'price':
-          products.sort((a, b) => (b['price'] as num).compareTo(a['price'] as num));
+           // Sắp xếp theo giá, xử lý trường hợp null hoặc không phải số
+          products.sort((a, b) => (b['price'] as num? ?? 0).compareTo(a['price'] as num? ?? 0));
           break;
         case 'new':
-          products.sort((a, b) => (b['created_at'] ?? '').toString().compareTo((a['created_at'] ?? '').toString()));
+           // Sắp xếp theo ngày tạo (giả định created_at là chuỗi hoặc có thể so sánh), xử lý null
+           products.sort((a, b) => (b['created_at']?.toString() ?? '').compareTo(a['created_at']?.toString() ?? ''));
           break;
         case 'rating':
-          products.sort((a, b) => (b['rating'] ?? 0).compareTo(a['rating'] ?? 0));
+          // Sắp xếp theo đánh giá, xử lý trường hợp null hoặc không phải số
+          products.sort((a, b) => (b['rating'] as num? ?? 0).compareTo(a['rating'] as num? ?? 0));
           break;
       }
     }
     return products;
   }
 
+  // --- Build Method ---
   @override
   Widget build(BuildContext context) {
+    print('Building CatalogProduct...');
+    print('Categories count received: ${widget.categories.length}');
+    print('Loading state received: isLoading=${widget.isAppDataLoading}, isInitialized=${widget.isAppDataInitialized}');
+
+
     final Size size = MediaQuery.of(context).size;
     final bool isWideScreen = size.width >= 1100;
     final bool isMobile = size.width < 600;
-    
-    // Base spacing calculations
+
     final double minSpacing = 16.0;
     final double maxSpacing = 24.0;
     final double spacing = (size.width * 0.02).clamp(minSpacing, maxSpacing);
-    
-    // Calculate category panel width based on screen size
-    final double categoryWidth = isWideScreen 
-        ? min(size.width * 0.2, 280.0) 
+
+    final double categoryWidth = isWideScreen
+        ? min(size.width * 0.2, 280.0)
         : min(size.width * 0.25, 220.0);
 
-    // Calculate main content width
-    final double mainContentWidth = isWideScreen 
-        ? size.width - categoryWidth - (spacing * 3)
-        : size.width - categoryWidth - (spacing * 2);
-    
+    // mainContentWidth is actually controlled by Expanded
+    // final double mainContentWidth = isWideScreen
+    //     ? size.width - categoryWidth - (spacing * 3)
+    //     : size.width - categoryWidth - (spacing * 2);
+
     return Scaffold(
       key: widget.scaffoldKey,
       backgroundColor: Colors.grey[100],
       // Drawer for mobile view
       drawer: isMobile ? Drawer(
-        child: _buildCategoryPanel(min(size.width * 0.6, 280.0), isMobile),
+        child: _buildCategoryPanel(min(size.width * 0.6, 280.0), isMobile), // Truyền chiều rộng cho panel trong drawer
       ) : null,
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Category Panel - visible on tablet and desktop
+          // Category Panel - hiển thị trên tablet và desktop
           if (!isMobile)
+            // Panel danh mục được đặt trực tiếp trong Row với chiều rộng cố định
             _buildCategoryPanel(categoryWidth, isMobile),
-          
-          // Main Content
-          Expanded(
+
+          // Khu vực Nội dung chính (Lưới sản phẩm + Thanh sắp xếp)
+          Expanded( // Cho phép khu vực nội dung chính chiếm hết không gian còn lại
             child: Padding(
               padding: EdgeInsets.all(spacing),
               child: SingleChildScrollView(
                 controller: widget.scrollController,
                 child: Column(
                   children: [
-                    // Sorting Bar Section with mobile menu button
+                    // Thanh sắp xếp với nút menu trên mobile
                     Container(
-                      width: isMobile ? double.infinity : mainContentWidth,
+                       // Sử dụng double.infinity để nó lấp đầy chiều rộng của Expanded
+                      width: double.infinity,
                       padding: EdgeInsets.all(spacing/2),
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -169,14 +301,14 @@ class _CatalogProductState extends State<CatalogProduct> {
                       ),
                       child: Row(
                         children: [
-                          if (isMobile) 
+                          if (isMobile)
                             IconButton(
-                              icon: Icon(Icons.menu),
-                              onPressed: () => widget.scaffoldKey.currentState?.openDrawer(),
+                              icon: const Icon(Icons.menu),
+                              onPressed: () => widget.scaffoldKey.currentState?.openDrawer(), // Mở drawer trên mobile
                             ),
-                          Expanded(
+                          Expanded( // Cho phép SortingBar chiếm không gian còn lại
                             child: SortingBar(
-                              width: double.infinity,
+                              width: double.infinity, // Sử dụng double.infinity bên trong Expanded
                               onSortChanged: widget.updateSortMethod,
                             ),
                           ),
@@ -186,28 +318,35 @@ class _CatalogProductState extends State<CatalogProduct> {
 
                     SizedBox(height: spacing),
 
-                    // Product Grid Section
+                    // Khu vực lưới sản phẩm
+                     // Sử dụng SizedBox với double.infinity bên trong SingleChildScrollView
                     SizedBox(
-                      width: isMobile ? double.infinity : mainContentWidth,
+                      width: double.infinity,
                       child: LayoutBuilder(
                         builder: (context, constraints) {
                           final double minItemWidth = isMobile ? 160.0 : 200.0;
                           final int maxColumns = (constraints.maxWidth / minItemWidth).floor();
                           final int columns = max(2, min(maxColumns, isMobile ? 2 : 4));
-                          
+
+                          // Thêm Key cho PaginatedProductGrid để giải quyết lỗi rebuild không mong muốn
+                           final gridKey = ValueKey('${widget.selectedCategoryId}_${widget.currentSortMethod}_${widget.filteredProducts.length}_${widget.categories.length}');
+
+
                           return PaginatedProductGrid(
-                            productData: getSortedProducts(),
-                            itemsPerPage: columns * 2,
-                            gridWidth: constraints.maxWidth,
-                            childAspectRatio: 0.6,
-                            crossAxisCount: columns,
-                            mainSpace: spacing,
-                            crossSpace: spacing,
+                            key: gridKey, // <--- THÊM KEY VÀO ĐÂY
+                            productData: getSortedProducts(), // Truyền danh sách sản phẩm đã sắp xếp
+                            itemsPerPage: columns * 2, // Ví dụ phân trang: 2 hàng mỗi trang
+                            gridWidth: constraints.maxWidth, // Truyền chiều rộng có sẵn
+                            childAspectRatio: 0.6, // Điều chỉnh tỷ lệ khung hình nếu cần
+                            crossAxisCount: columns, // Số cột đã tính
+                            mainSpace: spacing, // Sử dụng khoảng cách đã tính
+                            crossSpace: spacing, // Sử dụng khoảng cách đã tính
                           );
                         },
                       ),
                     ),
 
+                    // Footer (tùy chọn, thường hiển thị trên web)
                     if (kIsWeb) ...[
                       SizedBox(height: spacing),
                       const Footer(),

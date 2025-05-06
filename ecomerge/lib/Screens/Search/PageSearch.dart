@@ -154,56 +154,57 @@ class _PageSearchState extends State<PageSearch> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final screenWidth = constraints.maxWidth;
+    return Scaffold();
+    // return LayoutBuilder(
+    //   builder: (context, constraints) {
+    //     final screenWidth = constraints.maxWidth;
 
-        Widget appBar;
-        Widget body = SearchProduct(
-          current: _current,
-          imgList: imgList,
-          filteredProducts: filteredProducts,
-          scaffoldKey: _scaffoldKey,
-          scrollController: _scrollController,
-          onFiltersApplied: onFiltersApplied,
-          // Pass the state variables needed for FilterPanel
-          selectedCategories: selectedCategories,
-          selectedBrands: selectedBrands,
-          minPrice: minPrice,
-          maxPrice: maxPrice,
-          minPriceController: minPriceController,
-          maxPriceController: maxPriceController,
-          priceStep: priceStep,
-          catalog: catalog,
-          brands: brands,
-          updateMinPrice: updateMinPrice,
-          updateMaxPrice: updateMaxPrice,
-          formatPrice: formatPrice,
-          parsePrice: parsePrice,
-        );
+    //     Widget appBar;
+    //     Widget body = SearchProduct(
+    //       current: _current,
+    //       imgList: imgList,
+    //       filteredProducts: filteredProducts,
+    //       scaffoldKey: _scaffoldKey,
+    //       scrollController: _scrollController,
+    //       onFiltersApplied: onFiltersApplied,
+    //       // Pass the state variables needed for FilterPanel
+    //       selectedCategories: selectedCategories,
+    //       selectedBrands: selectedBrands,
+    //       minPrice: minPrice,
+    //       maxPrice: maxPrice,
+    //       minPriceController: minPriceController,
+    //       maxPriceController: maxPriceController,
+    //       priceStep: priceStep,
+    //       catalog: catalog,
+    //       brands: brands,
+    //       updateMinPrice: updateMinPrice,
+    //       updateMaxPrice: updateMaxPrice,
+    //       formatPrice: formatPrice,
+    //       parsePrice: parsePrice,
+    //     );
 
-        if (screenWidth < 768) {
-          // Mobile layout
-          return NavbarFormobile(
-            body: body,
-          );
-        } else if (screenWidth < 1100) {
-          // Tablet layout
-          return NavbarForTablet(
-            body: body,
-          );
-        } else {
-          // Desktop layout
-          appBar = PreferredSize(
-            preferredSize: Size.fromHeight(130),
-            child: Navbarhomedesktop(),
-          );
-          return Scaffold(
-            appBar: appBar as PreferredSize,
-            body: body,
-          );
-        }
-      },
-    );
+    //     if (screenWidth < 768) {
+    //       // Mobile layout
+    //       return NavbarFormobile(
+    //         body: body,
+    //       );
+    //     } else if (screenWidth < 1100) {
+    //       // Tablet layout
+    //       return NavbarForTablet(
+    //         body: body,
+    //       );
+    //     } else {
+    //       // Desktop layout
+    //       appBar = PreferredSize(
+    //         preferredSize: Size.fromHeight(130),
+    //         child: Navbarhomedesktop(),
+    //       );
+    //       return Scaffold(
+    //         appBar: appBar as PreferredSize,
+    //         body: body,
+    //       );
+    //     }
+    //   },
+    // );
   }
 }
