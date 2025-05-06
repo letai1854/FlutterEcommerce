@@ -56,12 +56,9 @@ class _PageforgotpasswordState extends State<Pageforgotpassword> {
   // --- HÀM DEACTIVATE (Xóa form khi rời khỏi trang) ---
   @override
   void deactivate() {
-     // Reset form state khi rời khỏi trang (trừ trường hợp là pop route)
-     // Chỉ reset khi không phải pop route, logic này hơi phức tạp nếu dùng Navigator 1.0
-     // Cách đơn giản là luôn reset khi deactivate.
-     // Để tránh reset khi resize màn hình, bạn có thể cần state theo dõi resize
-     // Nhưng trong trường hợp đơn giản, reset khi deactivate là an toàn.
-     _resetAllFormState(); // Gọi hàm reset form state và controllers
+     // Reset form state khi rời khỏi trang chỉ khi cần thiết,
+     // tránh gọi setState trong quá trình build của route mới.
+     // Việc reset state trước khi navigate trong _handleResetPasswordPressed là đủ.
      super.deactivate();
   }
 
@@ -201,11 +198,18 @@ class _PageforgotpasswordState extends State<Pageforgotpassword> {
                            backgroundColor: Colors.green,
                        ),
                   );
+                  // Hiển thị thông báo thành công
+                  ScaffoldMessenger.of(context).showSnackBar(
+                       const SnackBar( // Sử dụng const
+                           content: Text('Đổi mật khẩu thành công!'),
+                           backgroundColor: Colors.green,
+                       ),
+                  );
+                  // Reset form state và Controllers trước khi điều hướng
+                  _resetAllFormState();
                   // Chờ một chút rồi điều hướng về trang đăng nhập
                   Future.delayed(const Duration(seconds: 1), () { // Sử dụng const
                        if (mounted) {
-                           // Reset form state và Controllers trước khi điều hướng
-                           _resetAllFormState();
                            // Điều hướng và xóa các route trước đó (đặc biệt là trang quên mật khẩu)
                            Navigator.pushReplacementNamed(context, '/login');
                        }
@@ -251,11 +255,7 @@ class _PageforgotpasswordState extends State<Pageforgotpassword> {
        _newPasswordController.clear(); // Xóa mật khẩu mới
        _confirmPasswordController.clear(); // Xóa xác nhận mật khẩu
        _errorMessage = null; // Xóa lỗi
-        // Reset trạng thái verified nếu cần, tùy logic backend có yêu cầu verify lại không
-        // Nếu backend yêu cầu verify lại OTP mỗi lần thử đổi mật khẩu, thì giữ lại _isEmailVerified=true.
-        // Nếu backend yêu cầu verify lại OTP chỉ 1 lần cho mỗi request quên mật khẩu, thì giữ lại _isEmailVerified=true.
-        // Nếu bạn muốn người dùng *phải* request OTP mới khi quay lại, set _isEmailVerified = false;
-        // Giả định giữ lại trạng thái verified cho OTP hiện tại
+
     });
   }
 
