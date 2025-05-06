@@ -170,5 +170,39 @@ public class ProductController {
         }
     }
 
+    @GetMapping("/top-selling")
+    public ResponseEntity<Page<ProductDTO>> getTopSellingProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            Page<ProductDTO> productPage = productService.findTopSellingProducts(pageable);
+            if (productPage.isEmpty()) {
+                return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+            }
+            return ResponseEntity.ok(productPage);
+        } catch (Exception e) {
+            logger.error("Error fetching top-selling products", e);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/top-discounted")
+    public ResponseEntity<Page<ProductDTO>> getTopDiscountedProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            Page<ProductDTO> productPage = productService.findTopDiscountedProducts(pageable);
+            if (productPage.isEmpty()) {
+                return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+            }
+            return ResponseEntity.ok(productPage);
+        } catch (Exception e) {
+            logger.error("Error fetching top-discounted products", e);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     // Add other endpoints like getProductById, updateProduct, deleteProduct as needed
 }

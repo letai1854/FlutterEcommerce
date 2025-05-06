@@ -53,6 +53,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/users/verify-otp").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/users/set-new-password").permitAll()
                 // --- Product/Category/Brand Public Access ---
+                .requestMatchers(HttpMethod.GET, "/api/products/top-selling").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/products/top-discounted").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/brands/**").permitAll()

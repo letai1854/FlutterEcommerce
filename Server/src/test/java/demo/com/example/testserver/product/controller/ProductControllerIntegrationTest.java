@@ -32,6 +32,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Date;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -136,6 +139,9 @@ class ProductControllerIntegrationTest {
         product.setCategory(category);
         product.setBrand(brand);
         product.setMainImageUrl("main.jpg");
+        product.setAverageRating(0.0);
+        product.setDiscountPercentage(null); // Changed from BigDecimal.ZERO to null
+        product.setCreatedDate(new Date());
 
         List<ProductVariant> variants = new ArrayList<>();
         for (int i = 1; i <= variantCount; i++) {
@@ -148,6 +154,33 @@ class ProductControllerIntegrationTest {
             variants.add(variant);
         }
         product.setVariants(variants);
+
+        return productRepository.save(product);
+    }
+
+    private Product createAndSaveProductWithDetails(String name, Category category, Brand brand, double averageRating, BigDecimal discountPercentage, Date createdDate) {
+        Product product = new Product();
+        product.setName(name);
+        product.setDescription("Desc for " + name);
+        product.setCategory(category);
+        product.setBrand(brand);
+        product.setMainImageUrl(name.toLowerCase() + ".jpg");
+        product.setAverageRating(averageRating);
+        // Ensure BigDecimal.ZERO is treated as null for discountPercentage to align with DB constraint
+        // Also handle if discountPercentage is already null
+        if (discountPercentage == null || discountPercentage.compareTo(BigDecimal.ZERO) == 0) {
+            product.setDiscountPercentage(null);
+        } else {
+            product.setDiscountPercentage(discountPercentage);
+        }
+        product.setCreatedDate(createdDate);
+
+        ProductVariant variant = new ProductVariant();
+        variant.setName(name + " Variant");
+        variant.setPrice(new BigDecimal("20.00"));
+        variant.setStockQuantity(50);
+        variant.setProduct(product);
+        product.setVariants(Collections.singletonList(variant));
 
         return productRepository.save(product);
     }
@@ -392,5 +425,55 @@ class ProductControllerIntegrationTest {
                 .andExpect(status().isUnauthorized());
 
         assertTrue(productRepository.existsById(productId));
+    }
+
+    @Test
+    void getTopSellingProducts_shouldReturnSortedProducts() throws Exception {
+        Product p1 = createAndSaveProductWithDetails("Product A (High Rating, New)", testCategory, testBrand, 4.8, null, Date.from(Instant.now())); // Was BigDecimal.ZERO
+        Product p2 = createAndSaveProductWithDetails("Product B (Mid Rating, Old)", testCategory, testBrand, 4.5, BigDecimal.TEN, Date.from(Instant.now().minus(1, ChronoUnit.DAYS)));
+        Product p3 = createAndSaveProductWithDetails("Product C (High Rating, Older)", testCategory, testBrand, 4.8, BigDecimal.valueOf(5), Date.from(Instant.now().minus(2, ChronoUnit.DAYS)));
+        Product p4 = createAndSaveProductWithDetails("Product D (Low Rating, Newest)", testCategory, testBrand, 3.0, null, Date.from(Instant.now().plus(1, ChronoUnit.HOURS))); // Was BigDecimal.ZERO
+
+        mockMvc.perform(get("/api/products/top-selling")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(4)))
+                .andExpect(jsonPath("$.content[0].name", is(p1.getName())))
+                .andExpect(jsonPath("$.content[1].name", is(p3.getName())))
+                .andExpect(jsonPath("$.content[2].name", is(p2.getName())))
+                .andExpect(jsonPath("$.content[3].name", is(p4.getName())));
+    }
+
+    @Test
+    void getTopDiscountedProducts_shouldReturnSortedDiscountedProducts() throws Exception {
+        Product p1_no_discount = createAndSaveProductWithDetails("Product X (No Discount)", testCategory, testBrand, 4.0, null, new Date()); // Was BigDecimal.ZERO, renamed for clarity
+        Product p2 = createAndSaveProductWithDetails("Product Y (High Discount)", testCategory, testBrand, 4.2, new BigDecimal("25.00"), new Date());
+        Product p3 = createAndSaveProductWithDetails("Product Z (Mid Discount)", testCategory, testBrand, 3.5, new BigDecimal("15.00"), new Date());
+        Product p4 = createAndSaveProductWithDetails("Product W (Low Discount)", testCategory, testBrand, 4.5, new BigDecimal("5.00"), new Date());
+        Product p5 = createAndSaveProductWithDetails("Product V (Null Discount)", testCategory, testBrand, 4.1, null, new Date());
+
+        mockMvc.perform(get("/api/products/top-discounted")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(3)))
+                .andExpect(jsonPath("$.content[0].name", is(p2.getName())))
+                .andExpect(jsonPath("$.content[1].name", is(p3.getName())))
+                .andExpect(jsonPath("$.content[2].name", is(p4.getName())));
+    }
+
+    @Test
+    void getTopDiscountedProducts_whenNoDiscountedProducts_shouldReturnNoContent() throws Exception {
+        createAndSaveProductWithDetails("Product NoDiscount1", testCategory, testBrand, 4.0, null, new Date()); // Was BigDecimal.ZERO
+        createAndSaveProductWithDetails("Product NoDiscount2", testCategory, testBrand, 4.1, null, new Date());
+
+        mockMvc.perform(get("/api/products/top-discounted")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNoContent());
     }
 }
