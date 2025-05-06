@@ -113,7 +113,7 @@ class UserService {
         email: email,
         fullName: fullName,
         password: password,
-        address: 'Default_Address', // Add a non-empty default address here
+        address: 'null', // Add a non-empty default address here
       );
 
       if (registrationSuccess ?? false) {

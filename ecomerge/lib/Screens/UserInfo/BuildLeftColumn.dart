@@ -137,7 +137,7 @@ class _BuildLeftColumnState extends State<BuildLeftColumn> {
           Column(
             children: [
               _buildProfileSubItem(
-                'Sửa thông tin cá nhân',
+                'Sửa thông tin cá nhân',
                 ProfileSection.personalInfo,
                 Icons.edit,
               ),
@@ -155,6 +155,11 @@ class _BuildLeftColumnState extends State<BuildLeftColumn> {
                 'Quản lý địa chỉ giao hàng',
                 ProfileSection.addresses,
                 Icons.location_on,
+                refreshAction: () {
+                  // This will be called when the address section is selected
+                  // The reload functionality is already in the AddressManagement widget
+                  print('Loading addresses...');
+                },
               ),
             ],
           ),
@@ -195,9 +200,10 @@ class _BuildLeftColumnState extends State<BuildLeftColumn> {
     );
   }
 
-  // Profile sub-menu items
+  // Profile sub-menu items with optional refresh action
   Widget _buildProfileSubItem(
-      String title, ProfileSection section, IconData icon) {
+      String title, ProfileSection section, IconData icon,
+      {VoidCallback? refreshAction}) {
     // Check if user is logged in
     final bool isLoggedIn = UserInfo().currentUser != null;
 
@@ -215,6 +221,10 @@ class _BuildLeftColumnState extends State<BuildLeftColumn> {
             ? () {
                 widget.onMainSectionChanged(MainSection.profile);
                 widget.onProfileSectionChanged(section);
+                // Call refresh action if provided (for address section)
+                if (refreshAction != null) {
+                  refreshAction();
+                }
               }
             : () {
                 // Show login message when not logged in
