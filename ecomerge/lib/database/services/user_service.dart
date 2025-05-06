@@ -15,10 +15,9 @@ import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class UserService {
-
- final String baseUrl = baseurl;
+  final String baseUrl = baseurl;
   String? _authToken;
-  late  final http.Client httpClient;
+  late final http.Client httpClient;
 
   // Constants for secure storage
   static const String _CREDENTIALS_KEY = 'encrypted_credentials';
@@ -47,13 +46,13 @@ class UserService {
   // Static cache reference
   static Map<String, Uint8List> get avatarCache => UserInfo.avatarCache;
 
-  void setAuthToken(String token) {
+  void setAuthToken(String? token) {
     _authToken = token;
   }
 
   Map<String, String> _getHeaders({bool includeAuth = false}) {
     final headers = {'Content-Type': 'application/json'};
-   final userInfo = UserInfo();
+    final userInfo = UserInfo();
     if (includeAuth && userInfo.authToken != null) {
       headers['Authorization'] = 'Bearer ${userInfo.authToken}';
     }
@@ -98,7 +97,7 @@ class UserService {
     }
   }
 
-  // Method to register a guest user with random credentials
+  // Enhanced register guest user to always update local credentials
   Future<bool> registerGuestUser(String email) async {
     try {
       // Generate random username: "user" + 4 random digits
@@ -118,8 +117,11 @@ class UserService {
       );
 
       if (registrationSuccess ?? false) {
-        // Save credentials locally (encrypted)
-        await _saveCredentials(email, password);
+        // Always save credentials locally, overwriting any existing ones
+        if (!kIsWeb) {
+          await _saveCredentials(email, password);
+          print('Saved guest user credentials in local storage');
+        }
 
         // Log in the user automatically
         await loginUser(email, password);
@@ -135,7 +137,7 @@ class UserService {
     }
   }
 
-  // Save credentials only if they don't exist already
+  // Modified to always save credentials, overwriting any existing ones
   Future<void> _saveCredentials(String email, String password) async {
     try {
       // Skip on web platforms
@@ -145,11 +147,6 @@ class UserService {
       }
 
       final prefs = await SharedPreferences.getInstance();
-      // Check if credentials already exist
-      if (prefs.getString(_CREDENTIALS_KEY) != null) {
-        print('Credentials already exist, not saving again');
-        return;
-      }
 
       // Create credential map
       final credentials = {
@@ -164,10 +161,10 @@ class UserService {
       // Encrypt the credentials
       final encryptedCredentials = _encryptData(credentialsJson);
 
-      // Save to SharedPreferences
+      // Save to SharedPreferences - always overwrite any existing credentials
       await prefs.setString(_CREDENTIALS_KEY, encryptedCredentials);
 
-      print('Credentials saved securely for the first time');
+      print('Credentials saved or updated in local storage');
     } catch (e) {
       print('Error saving credentials: $e');
     }
@@ -275,7 +272,7 @@ class UserService {
     }
   }
 
-  // Method to login user
+  // Enhanced login method to always update stored credentials
   Future<bool> loginUser(String email, String password) async {
     final url = Uri.parse('$baseUrl/api/users/login');
     try {
@@ -299,6 +296,13 @@ class UserService {
           print('User has no avatar to cache');
         }
 
+        // For Windows and mobile platforms, save credentials for auto-login
+        // Always overwrite existing credentials with the new login
+        if (!kIsWeb) {
+          await _saveCredentials(email, password);
+          print('Updated stored credentials after successful login');
+        }
+
         print('Login successful: ${UserInfo().authToken}');
         return true;
       } else {
@@ -309,6 +313,18 @@ class UserService {
     } catch (e) {
       print('Error during user login: $e');
       return false;
+    }
+  }
+
+  // Enhanced logout method to clear stored credentials
+  Future<void> logout() async {
+    setAuthToken(null);
+    UserInfo().clearUserInfo();
+
+    // Clear stored credentials on logout
+    if (!kIsWeb) {
+      await clearStoredCredentials();
+      print('Cleared stored credentials during logout');
     }
   }
 
@@ -402,7 +418,6 @@ class UserService {
     }
   }
 
-  // Method to change current authenticated user's password
   Future<bool> changeCurrentUserPassword(
       String oldPassword, String newPassword) async {
     final url = Uri.parse('$baseUrl/api/users/me/change-password');
@@ -415,6 +430,14 @@ class UserService {
       );
 
       if (response.statusCode == 200) {
+        if (!kIsWeb) {
+          final userEmail = UserInfo().currentUser?.email;
+          if (userEmail != null) {
+            // Always update credentials with the new password
+            await _saveCredentials(userEmail, newPassword);
+            print('Updated stored credentials with new password');
+          }
+        }
         return true;
       } else {
         print('Failed to change password: ${response.statusCode}');
@@ -426,11 +449,71 @@ class UserService {
       return false;
     }
   }
+  // Modified to update stored credentials when passwords are changed
+  // Future<bool> changeCurrentUserPassword(
+  //   String currentPassword,
+  //   String newPassword,
+  // ) async {
+  //   final url = Uri.parse('$baseUrl/api/users/me/update-password');
+  //   try {
+  //     // Add additional debugging info(
+  //     print('Starting password change request');
+  //     print(
+  //         'Current user token: ${UserInfo().authToken?.length ?? 0} characters');
 
- Future<void> forgotPassword(String email) async {
+  //     // Ensure headers are correct
+  //     final headers = _getHeaders(includeAuth: true);
+  //     print('Request headers: $headers');
+
+  //     // Create request body
+  //     final requestBody = jsonEncode({
+  //       'currentPassword': currentPassword,
+  //       'newPassword': newPassword,
+  //     });
+  //     print('Request body: $requestBody');
+
+  //     // Send request
+  //     final response = await httpClient.post(
+  //       url,
+  //       headers: headers,
+  //       body: requestBody,
+  //     );
+
+  //     // Log entire response for debugging
+  //     print('Response status code: ${response.statusCode}');
+  //     print('Response headers: ${response.headers}');
+  //     print('Response body: ${response.body}');
+
+  //     if (response.statusCode == 200) {
+  //       print('Password changed successfully');
+
+  //       // For non-web platforms, update stored credentials with new password
+  //       if (!kIsWeb) {
+  //         final userEmail = UserInfo().currentUser?.email;
+  //         if (userEmail != null) {
+  //           // Always update credentials with the new password
+  //           await _saveCredentials(userEmail, newPassword);
+  //           print('Updated stored credentials with new password');
+  //         }
+  //       }
+
+  //       return true;
+  //     } else {
+  //       print('Failed to change password: ${response.statusCode}');
+  //       print('Response body: ${response.body}');
+  //       return false;
+  //     }
+  //   } catch (e, stackTrace) {
+  //     // Log both error and stack trace for better debugging
+  //     print('Error changing password: $e');
+  //     print('Stack trace: $stackTrace');
+  //     return false;
+  //   }
+  // }
+
+  Future<void> forgotPassword(String email) async {
     final url = Uri.parse('$baseUrl/api/users/forgot-password');
     try {
-
       final response = await httpClient.post(
         url,
         headers: _getHeaders(),
@@ -438,141 +521,171 @@ class UserService {
       );
 
       if (kDebugMode) {
-          print('Forgot Password request URL: $url');
-          print('Forgot Password request Body: ${jsonEncode({'email': email})}');
-          print('Forgot Password response status: ${response.statusCode}');
-          print('Forgot Password response body: ${response.body}');
+        print('Forgot Password request URL: $url');
+        print('Forgot Password request Body: ${jsonEncode({'email': email})}');
+        print('Forgot Password response status: ${response.statusCode}');
+        print('Forgot Password response body: ${response.body}');
       }
 
-
       if (response.statusCode == 200) {
-
         return;
       } else {
         // API trả về lỗi (status code != 200)
         String errorMessage = 'Không thể yêu cầu mã xác thực.';
         try {
-            final errorBody = jsonDecode(response.body);
-            if (errorBody is Map && errorBody.containsKey('message')) {
-               errorMessage = errorBody['message'];
-            } else if (errorBody is String && errorBody.isNotEmpty) {
-               errorMessage = errorBody;
-            }
-        } catch(_) {} // Ignore parsing error, use default message
+          final errorBody = jsonDecode(response.body);
+          if (errorBody is Map && errorBody.containsKey('message')) {
+            errorMessage = errorBody['message'];
+          } else if (errorBody is String && errorBody.isNotEmpty) {
+            errorMessage = errorBody;
+          }
+        } catch (_) {} // Ignore parsing error, use default message
 
         if (kDebugMode) {
-            print('API Error during forgot password request: ${response.statusCode}, Message: $errorMessage');
+          print(
+              'API Error during forgot password request: ${response.statusCode}, Message: $errorMessage');
         }
-        throw Exception(errorMessage); // Ném Exception với thông báo lỗi từ backend
+        throw Exception(
+            errorMessage); // Ném Exception với thông báo lỗi từ backend
       }
     } catch (e) {
-       // Lỗi mạng
-       if (kDebugMode) print('SocketException during forgot password request: $e');
-       throw Exception('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.'); // Ném Exception mạng
-    } 
+      // Lỗi mạng
+      if (kDebugMode)
+        print('SocketException during forgot password request: $e');
+      throw Exception(
+          'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.'); // Ném Exception mạng
+    }
   }
 
   // Bước 2: Xác thực mã OTP
   // Ném Exception nếu API trả về lỗi (status code != 200) hoặc lỗi mạng
   Future<void> verifyOtp(String email, String otp) async {
-      final url = Uri.parse('$baseUrl/api/users/verify-otp');
-      try {
-          final response = await httpClient.post( // Sửa thành _httpClient
-              url,
-              headers: _getHeaders(),
-              body: jsonEncode({'email': email, 'otp': otp}),
-          );
+    final url = Uri.parse('$baseUrl/api/users/verify-otp');
+    try {
+      final response = await httpClient.post(
+        // Sửa thành _httpClient
+        url,
+        headers: _getHeaders(),
+        body: jsonEncode({'email': email, 'otp': otp}),
+      );
 
-          if (kDebugMode) {
-              print('Verify OTP request URL: $url');
-              print('Verify OTP request Body: ${jsonEncode({'email': email, 'otp': otp})}');
-              print('Verify OTP response status: ${response.statusCode}');
-              print('Verify OTP response body: ${response.body}');
-          }
-
-
-          if (response.statusCode == 200) {
-              // Thành công
-              return; // Return void on success
-          } else {
-              // API trả về lỗi (status code != 200)
-              String errorMessage = 'Mã xác thực không hợp lệ hoặc đã hết hạn.';
-              try {
-                  final errorBody = jsonDecode(response.body);
-                  if (errorBody is Map && errorBody.containsKey('message')) {
-                     errorMessage = errorBody['message'];
-                  } else if (errorBody is String && errorBody.isNotEmpty) {
-                     errorMessage = errorBody;
-                  }
-              } catch(_) {}
-
-              if (kDebugMode) {
-                  print('API Error during OTP verification: ${response.statusCode}, Message: $errorMessage');
-              }
-              throw Exception(errorMessage); // Ném Exception
-          }
-      }catch (e) {
-          if (kDebugMode) print('SocketException during OTP verification: $e');
-          throw Exception('Mã xác thực không hợp lệ hoặc đã hết hạn.'); // Ném Exception mạng
+      if (kDebugMode) {
+        print('Verify OTP request URL: $url');
+        print('Verify OTP request Body: ${jsonEncode({
+              'email': email,
+              'otp': otp
+            })}');
+        print('Verify OTP response status: ${response.statusCode}');
+        print('Verify OTP response body: ${response.body}');
       }
+
+      if (response.statusCode == 200) {
+        // Thành công
+        return; // Return void on success
+      } else {
+        // API trả về lỗi (status code != 200)
+        String errorMessage = 'Mã xác thực không hợp lệ hoặc đã hết hạn.';
+        try {
+          final errorBody = jsonDecode(response.body);
+          if (errorBody is Map && errorBody.containsKey('message')) {
+            errorMessage = errorBody['message'];
+          } else if (errorBody is String && errorBody.isNotEmpty) {
+            errorMessage = errorBody;
+          }
+        } catch (_) {}
+
+        if (kDebugMode) {
+          print(
+              'API Error during OTP verification: ${response.statusCode}, Message: $errorMessage');
+        }
+        throw Exception(errorMessage); // Ném Exception
+      }
+    } catch (e) {
+      if (kDebugMode) print('SocketException during OTP verification: $e');
+      throw Exception(
+          'Mã xác thực không hợp lệ hoặc đã hết hạn.'); // Ném Exception mạng
+    }
   }
 
   // Bước 3: Đặt mật khẩu mới
   // Ném Exception nếu API trả về lỗi (status code != 200) hoặc lỗi mạng
-  Future<void> setNewPassword(String email, String otp, String newPassword) async {
-      final url = Uri.parse('$baseUrl/api/users/set-new-password');
-      try {
-          final response = await httpClient.post( // Sửa thành _httpClient
-              url,
-              headers: _getHeaders(),
-              body: jsonEncode({'email': email, 'otp': otp, 'newPassword': newPassword}),
-          );
+  Future<void> setNewPassword(
+      String email, String otp, String newPassword) async {
+    final url = Uri.parse('$baseUrl/api/users/set-new-password');
+    try {
+      final response = await httpClient.post(
+        // Sửa thành _httpClient
+        url,
+        headers: _getHeaders(),
+        body: jsonEncode(
+            {'email': email, 'otp': otp, 'newPassword': newPassword}),
+      );
 
-           if (kDebugMode) {
-              print('Set New Password request URL: $url');
-              // Không in mật khẩu mới
-              print('Set New Password request Body (partial): ${jsonEncode({'email': email, 'otp': otp, 'newPassword': '...'})}');
-              print('Set New Password response status: ${response.statusCode}');
-              print('Set New Password response body: ${response.body}');
+      if (kDebugMode) {
+        print('Set New Password request URL: $url');
+        // Không in mật khẩu mới
+        print('Set New Password request Body (partial): ${jsonEncode({
+              'email': email,
+              'otp': otp,
+              'newPassword': '...'
+            })}');
+        print('Set New Password response status: ${response.statusCode}');
+        print('Set New Password response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        // Thành công
+        return; // Return void on success
+      } else {
+        // API trả về lỗi (status code != 200)
+        String errorMessage = 'Không thể đặt mật khẩu mới.';
+        try {
+          final errorBody = jsonDecode(response.body);
+          if (errorBody is Map && errorBody.containsKey('message')) {
+            errorMessage = errorBody['message'];
+          } else if (errorBody is String && errorBody.isNotEmpty) {
+            errorMessage = errorBody;
           }
+        } catch (_) {}
 
-          if (response.statusCode == 200) {
-              // Thành công
-              return; // Return void on success
-          } else {
-              // API trả về lỗi (status code != 200)
-              String errorMessage = 'Không thể đặt mật khẩu mới.';
-              try {
-                  final errorBody = jsonDecode(response.body);
-                  if (errorBody is Map && errorBody.containsKey('message')) {
-                     errorMessage = errorBody['message'];
-                  } else if (errorBody is String && errorBody.isNotEmpty) {
-                     errorMessage = errorBody;
-                  }
-              } catch(_) {}
-
-               if (kDebugMode) {
-                  print('API Error during set new password: ${response.statusCode}, Message: $errorMessage');
-              }
-              throw Exception(errorMessage); // Ném Exception
-          }
-      }catch (e) {
-           if (kDebugMode) print('SocketException during set new password: $e');
-          throw Exception('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.'); // Ném Exception mạng
-      } 
+        if (kDebugMode) {
+          print(
+              'API Error during set new password: ${response.statusCode}, Message: $errorMessage');
+        }
+        throw Exception(errorMessage); // Ném Exception
+      }
+    } catch (e) {
+      if (kDebugMode) print('SocketException during set new password: $e');
+      throw Exception(
+          'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.'); // Ném Exception mạng
+    }
   }
 
-  // Method to reset password using token
-  Future<bool> resetPassword(String token, String newPassword) async {
+  // Modified to update stored credentials during password reset
+  Future<bool> resetPassword(
+      String email, String code, String newPassword) async {
     final url = Uri.parse('$baseUrl/api/users/reset-password');
     try {
       final response = await httpClient.post(
         url,
         headers: _getHeaders(),
-        body: jsonEncode({'token': token, 'newPassword': newPassword}),
+        body: jsonEncode({
+          'email': email,
+          'verificationCode': code,
+          'newPassword': newPassword,
+        }),
       );
 
       if (response.statusCode == 200) {
+        print('Password reset successfully');
+
+        // For non-web platforms, update stored credentials
+        if (!kIsWeb) {
+          // Always update credentials with the new password
+          await _saveCredentials(email, newPassword);
+          print('Updated stored credentials after password reset');
+        }
+
         return true;
       } else {
         print('Failed to reset password: ${response.statusCode}');

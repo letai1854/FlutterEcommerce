@@ -4,7 +4,7 @@ import 'package:e_commerce_app/Provider/UserProvider.dart';
 import 'package:e_commerce_app/constants.dart';
 import 'package:e_commerce_app/database/services/user_service.dart';
 import 'package:e_commerce_app/state/Search/SearchStateService.dart';
-import 'package:e_commerce_app/database/Storage/UserInfo.dart'; // Add import for UserInfo
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:flutter/material.dart';
 
 class Navbarhomedesktop extends StatefulWidget {
@@ -41,6 +41,9 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
   @override
   Widget build(BuildContext context) {
     final searchService = SearchStateService();
+    // Check if user is logged in
+    final bool isLoggedIn = UserInfo().currentUser != null;
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       color: const Color.fromARGB(255, 234, 29, 7),
@@ -49,6 +52,7 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
+              // Left side - Home and Product List
               Row(
                 children: [
                   MouseRegion(
@@ -56,7 +60,7 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                     child: GestureDetector(
                       onTap: () => Navigator.pushNamed(context, '/'),
                       child: const Text(
-                        'Trang chủ',
+                        'Trang chủ',
                         style: TextStyle(color: Colors.white, fontSize: 18),
                       ),
                     ),
@@ -75,6 +79,7 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                   ),
                 ],
               ),
+              // Right side - Actions
               Row(
                 children: [
                   MouseRegion(
@@ -85,47 +90,55 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                     ),
                   ),
                   SizedBox(width: 10),
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    onEnter: (_) => setState(() {
-                      _isHoveredDK = true;
-                    }),
-                    onExit: (_) => setState(() {
-                      _isHoveredDK = false;
-                    }),
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/signup');
-                      },
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: _isHoveredDK
-                              ? const Color.fromARGB(255, 255, 48, 1)
-                              : Colors.red,
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                        child: const Padding(
-                          padding:
-                              EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          child: Text(
-                            'Đăng ký',
-                            style: TextStyle(color: Colors.white, fontSize: 18),
+
+                  // Only show Sign Up button if not logged in
+                  if (!isLoggedIn) ...[
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      onEnter: (_) => setState(() {
+                        _isHoveredDK = true;
+                      }),
+                      onExit: (_) => setState(() {
+                        _isHoveredDK = false;
+                      }),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.pushNamed(context, '/signup');
+                        },
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: _isHoveredDK
+                                ? const Color.fromARGB(255, 255, 48, 1)
+                                : Colors.red,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            child: Text(
+                              'Đăng ký',
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 18),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  SizedBox(width: 5),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Color.fromARGB(255, 255, 98, 0),
+                    SizedBox(width: 5),
+                    // Separator
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Color.fromARGB(255, 255, 98, 0),
+                      ),
+                      child: SizedBox(
+                        width: 2,
+                        height: 23,
+                      ),
                     ),
-                    child: SizedBox(
-                      width: 2,
-                      height: 23,
-                    ),
-                  ),
-                  SizedBox(width: 5),
+                    SizedBox(width: 5),
+                  ],
+
+                  // Login/Logout button (changes based on login status)
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     onEnter: (_) => setState(() {
@@ -136,7 +149,13 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                     }),
                     child: GestureDetector(
                       onTap: () {
-                        Navigator.pushNamed(context, '/login');
+                        if (isLoggedIn) {
+                          // Call logout function from UserInfo
+                          UserInfo().logout(context);
+                        } else {
+                          // Navigate to login page
+                          Navigator.pushNamed(context, '/login');
+                        }
                       },
                       child: DecoratedBox(
                         decoration: BoxDecoration(
@@ -145,11 +164,11 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                               : Colors.red,
                           borderRadius: BorderRadius.circular(5),
                         ),
-                        child: const Padding(
+                        child: Padding(
                           padding:
                               EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           child: Text(
-                            'Đăng nhập',
+                            isLoggedIn ? 'Đăng xuất' : 'Đăng nhập',
                             style: TextStyle(color: Colors.white, fontSize: 18),
                           ),
                         ),
@@ -157,6 +176,8 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                     ),
                   ),
                   const SizedBox(width: 10),
+
+                  // User avatar and name
                   Row(
                     children: [
                       Container(
@@ -289,7 +310,7 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Image.asset(
-                'assets/logoSNew.png', // Remove leading slash
+                'assets/logoSNew.png',
                 height: 70,
                 width: 70,
               ),
@@ -311,7 +332,7 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                             controller: searchService.searchController,
                             decoration: InputDecoration(
                               hintText:
-                                  'Shopii đảm bảo chất lượng, giao hàng tận nơi - Đăng ký ngay!',
+                                  'Shopii đảm bảo chất lượng, giao hàng tận nơi - Đăng ký ngay!',
                               border: InputBorder.none,
                               hintStyle: TextStyle(fontSize: 14),
                             ),

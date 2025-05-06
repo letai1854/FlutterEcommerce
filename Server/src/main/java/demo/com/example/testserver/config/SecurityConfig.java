@@ -53,6 +53,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/users/verify-otp").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/users/set-new-password").permitAll()
                 // --- Product/Category/Brand Public Access ---
+                .requestMatchers(HttpMethod.GET, "/api/products/top-selling").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/products/top-discounted").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/brands/**").permitAll()
@@ -87,6 +89,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/users/me/**").authenticated() // Secure all /me routes (profile, update, change password)
                 // --- Address Management ---
                 .requestMatchers("/api/addresses/me/**").authenticated() // Secure all /me address routes
+                // --- Order Management ---
+                .requestMatchers("/api/orders/**").authenticated() // Secure all order routes
+                .requestMatchers(HttpMethod.PATCH, "/api/orders/{orderId}/status").hasRole("ADMIN") // Admin update order status
                 // Secure all other requests
                 .anyRequest().authenticated()
             );

@@ -85,5 +85,23 @@ public interface ProductService {
      */
     void deleteProduct(Long productId);
 
+    /**
+     * Finds top-selling products.
+     * Note: Current implementation uses placeholder logic for "top-selling" (e.g., sort by average rating or newest).
+     * True top-selling logic requires tracking sales counts.
+     *
+     * @param pageable Page request (page number, size).
+     * @return A page of ProductDTOs considered top-selling.
+     */
+    Page<ProductDTO> findTopSellingProducts(Pageable pageable);
+
+    /**
+     * Finds products with the highest discount percentage.
+     *
+     * @param pageable Page request (page number, size).
+     * @return A page of ProductDTOs with the highest discounts.
+     */
+    Page<ProductDTO> findTopDiscountedProducts(Pageable pageable);
+
     // Add other methods as needed
 }

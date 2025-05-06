@@ -63,7 +63,7 @@ public class Order {
 
     @Column(name = "trang_thai_don_hang", nullable = false)
     @Enumerated(EnumType.STRING)
-    private OrderStatus orderStatus = OrderStatus.cho_xac_nhan;
+    private OrderStatus orderStatus = OrderStatus.cho_xu_ly;
 
     // Loyalty
     @Column(name = "diem_tich_luy", nullable = false, precision = 10, scale = 2)
@@ -92,7 +92,7 @@ public class Order {
     }
 
     public enum OrderStatus {
-        cho_xac_nhan, da_xac_nhan, dang_dong_goi, dang_giao, da_giao, da_huy, yeu_cau_tra_hang, da_tra_hang
+        cho_xu_ly, da_xac_nhan, dang_giao, da_giao, da_huy
     }
 
     // Lifecycle Callbacks

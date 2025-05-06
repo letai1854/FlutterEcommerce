@@ -91,7 +91,7 @@ public class ProductServiceImpl implements ProductService {
         }
 
         Specification<Product> spec = productSpecificationBuilder.build(
-            search, categoryId, brandId, minPrice, maxPrice, minRating, productIdsFromSearch, null, null // Pass null for dates
+            search, categoryId, brandId, minPrice, maxPrice, minRating, productIdsFromSearch, null, null, false // Pass null for dates, false for onlyWithDiscount
         );
 
         logger.debug("Executing database query with filters and pagination.");
@@ -115,7 +115,7 @@ public class ProductServiceImpl implements ProductService {
         Pageable pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
 
         Specification<Product> spec = productSpecificationBuilder.build(
-            search, null, null, null, null, null, null, startDate, endDate // Pass null for category, brand, price, rating, ES IDs
+            search, null, null, null, null, null, null, startDate, endDate, false // Pass null for filters, false for onlyWithDiscount
         );
 
         logger.debug("Executing admin database query with filters and pagination.");
@@ -231,5 +231,49 @@ public class ProductServiceImpl implements ProductService {
         productRepository.delete(product);
 
         logger.info("Product deleted successfully with ID: {}", productId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ProductDTO> findTopSellingProducts(Pageable pageable) {
+        // TODO: Implement actual top-selling logic.
+        // This currently sorts by averageRating (desc) then by createdDate (desc) as a placeholder.
+        // True top-selling would require joining with order details and summing quantities.
+        logger.info("Finding top-selling products (placeholder logic) with page: {}", pageable);
+
+        Sort sort = Sort.by(Sort.Direction.DESC, "averageRating")
+                        .and(Sort.by(Sort.Direction.DESC, "createdDate"));
+        Pageable pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+
+        // No specific filter here, just sorting all products by the placeholder criteria
+        Specification<Product> spec = productSpecificationBuilder.build(
+            null, null, null, null, null, null, null, null, null, false
+        );
+
+        Page<Product> productPage = productRepository.findAll(spec, pageRequest);
+        List<ProductDTO> dtos = productPage.getContent().stream()
+                .map(productMapper::mapToProductDTO)
+                .collect(Collectors.toList());
+        return new PageImpl<>(dtos, pageRequest, productPage.getTotalElements());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ProductDTO> findTopDiscountedProducts(Pageable pageable) {
+        logger.info("Finding top-discounted products with page: {}", pageable);
+
+        Sort sort = Sort.by(Sort.Direction.DESC, "discountPercentage");
+        Pageable pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+
+        // Filter for products that have a discountPercentage > 0
+        Specification<Product> spec = productSpecificationBuilder.build(
+            null, null, null, null, null, null, null, null, null, true // onlyWithDiscount = true
+        );
+
+        Page<Product> productPage = productRepository.findAll(spec, pageRequest);
+        List<ProductDTO> dtos = productPage.getContent().stream()
+                .map(productMapper::mapToProductDTO)
+                .collect(Collectors.toList());
+        return new PageImpl<>(dtos, pageRequest, productPage.getTotalElements());
     }
 }
