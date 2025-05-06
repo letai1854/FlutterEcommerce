@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:e_commerce_app/Screens/UserInfo/MobilePersonalInfoScreen.dart';
 import 'package:e_commerce_app/Screens/UserInfo/MobilePasswordChangeScreen.dart';
 import 'package:e_commerce_app/widgets/Address/AddressManagement.dart';
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
+import 'package:e_commerce_app/database/models/user_model.dart';
 
 class UserFeatureButtons extends StatelessWidget {
   final String name;
@@ -58,6 +60,12 @@ class UserFeatureButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Check if user is logged in
+    final bool isLoggedIn = UserInfo().currentUser != null;
+    // Check if user is admin
+    final bool isAdmin =
+        isLoggedIn && UserInfo().currentUser!.role == UserRole.quan_tri;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -90,30 +98,34 @@ class UserFeatureButtons extends StatelessWidget {
                 _buildFeatureButton(
                   "Thông tin cá nhân",
                   Icons.person,
-                  () => _navigateToPersonalInfo(context),
+                  isLoggedIn ? () => _navigateToPersonalInfo(context) : null,
                   context,
                 ),
                 Divider(height: 1, thickness: 1, color: Colors.grey.shade100),
                 _buildFeatureButton(
                   "Đổi mật khẩu",
                   Icons.lock,
-                  () => _navigateToPasswordChange(context),
+                  isLoggedIn ? () => _navigateToPasswordChange(context) : null,
                   context,
                 ),
                 Divider(height: 1, thickness: 1, color: Colors.grey.shade100),
                 _buildFeatureButton(
                   "Địa chỉ giao hàng",
                   Icons.location_on,
-                  () => _navigateToAddressManagement(context),
+                  isLoggedIn
+                      ? () => _navigateToAddressManagement(context)
+                      : null,
                   context,
                 ),
                 Divider(height: 1, thickness: 1, color: Colors.grey.shade100),
-                _buildFeatureButton(
-                  "Admin",
-                  Icons.admin_panel_settings,
-                  () => Navigator.pushNamed(context, '/admin'),
-                  context,
-                ),
+                // Only show Admin button if user is admin
+                if (isAdmin)
+                  _buildFeatureButton(
+                    "Admin",
+                    Icons.admin_panel_settings,
+                    () => Navigator.pushNamed(context, '/admin'),
+                    context,
+                  ),
               ],
             ),
           ),
@@ -122,29 +134,34 @@ class UserFeatureButtons extends StatelessWidget {
     );
   }
 
-  // Individual feature button
+  // Individual feature button - modify to accept nullable onTap
   Widget _buildFeatureButton(
     String title,
     IconData icon,
-    VoidCallback onTap,
+    VoidCallback? onTap,
     BuildContext context,
   ) {
+    final bool isEnabled = onTap != null;
+
     return InkWell(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Icon(icon, color: Colors.red),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(fontSize: 16),
+      child: Opacity(
+        opacity: isEnabled ? 1.0 : 0.5, // Make disabled buttons appear faded
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Icon(icon, color: Colors.red),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(fontSize: 16),
+                ),
               ),
-            ),
-            Icon(Icons.chevron_right, color: Colors.grey.shade400),
-          ],
+              Icon(Icons.chevron_right, color: Colors.grey.shade400),
+            ],
+          ),
         ),
       ),
     );

@@ -659,7 +659,17 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
             decoration: const BoxDecoration(color: Colors.red),
             child: GestureDetector(
               onTap: () {
-                Navigator.pushNamed(context, '/info');
+                if (isWeb) {
+                  // For web platform, check login status
+                  if (UserInfo().currentUser == null) {
+                    Navigator.pushNamed(context, '/login');
+                  } else {
+                    Navigator.pushNamed(context, '/info');
+                  }
+                } else {
+                  // For non-web platforms (mobile/desktop)
+                  Navigator.pushNamed(context, '/info');
+                }
               },
               child: Row(
                 children: [
@@ -667,55 +677,77 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                     cursor: SystemMouseCursors.click,
                     child: Row(
                       children: [
-                        ClipOval(
-                          child: SizedBox(
-                            width: 60,
-                            height: 60,
-                            child: UserInfo().currentUser?.avatar != null
-                                ? FutureBuilder<Uint8List?>(
-                                    future: UserService().getAvatarBytes(
-                                        UserInfo().currentUser?.avatar),
-                                    builder: (context, snapshot) {
-                                      if (snapshot.connectionState ==
-                                              ConnectionState.waiting &&
-                                          !snapshot.hasData) {
-                                        return const Center(
-                                            child: SizedBox(
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                            color: Colors.white,
+                          ),
+                          child: ClipOval(
+                            child: SizedBox(
+                              width: 60,
+                              height: 60,
+                              child: UserInfo().currentUser?.avatar != null
+                                  ? FutureBuilder<Uint8List?>(
+                                      future: UserService().getAvatarBytes(
+                                          UserInfo().currentUser?.avatar),
+                                      builder: (context, snapshot) {
+                                        if (snapshot.connectionState ==
+                                                ConnectionState.waiting &&
+                                            !snapshot.hasData) {
+                                          return Container(
+                                            color: Colors.white,
+                                            child: const Center(
+                                              child: SizedBox(
                                                 width: 15,
                                                 height: 15,
                                                 child:
                                                     CircularProgressIndicator(
-                                                        strokeWidth: 2)));
-                                      } else if (snapshot.hasData &&
-                                          snapshot.data != null) {
-                                        // Use cached image if available
-                                        return Image.memory(
-                                          snapshot.data!,
-                                          fit: BoxFit.cover,
-                                        );
-                                      } else {
-                                        // Fall back to network image if cache failed
-                                        return Image.network(
-                                          UserInfo().currentUser!.avatar!,
-                                          fit: BoxFit.cover,
-                                          errorBuilder:
-                                              (context, error, stackTrace) {
-                                            return Container(
-                                              color: Colors.white,
-                                              child: Icon(Icons.person,
-                                                  color: Colors.black,
-                                                  size: 30),
-                                            );
-                                          },
-                                        );
-                                      }
-                                    },
-                                  )
-                                : CircleAvatar(
-                                    radius: 30,
-                                    backgroundColor: Colors.white,
-                                    child: Icon(Icons.person),
-                                  ),
+                                                  strokeWidth: 2,
+                                                  color: Colors.red,
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        } else if (snapshot.hasData &&
+                                            snapshot.data != null) {
+                                          // Use cached image if available
+                                          return Image.memory(
+                                            snapshot.data!,
+                                            fit: BoxFit.cover,
+                                            width: 60,
+                                            height: 60,
+                                          );
+                                        } else {
+                                          // Fall back to network image if cache failed
+                                          return Container(
+                                            color: Colors.white,
+                                            child: Image.network(
+                                              UserInfo().currentUser!.avatar!,
+                                              fit: BoxFit.cover,
+                                              width: 60,
+                                              height: 60,
+                                              errorBuilder:
+                                                  (context, error, stackTrace) {
+                                                return Container(
+                                                  color: Colors.white,
+                                                  child: const Icon(
+                                                      Icons.person,
+                                                      color: Colors.black,
+                                                      size: 30),
+                                                );
+                                              },
+                                            ),
+                                          );
+                                        }
+                                      },
+                                    )
+                                  : Container(
+                                      color: Colors.white,
+                                      child: const Icon(Icons.person,
+                                          color: Colors.black, size: 30),
+                                    ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 10),

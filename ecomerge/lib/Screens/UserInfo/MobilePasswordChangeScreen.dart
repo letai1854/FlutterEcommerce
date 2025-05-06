@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:e_commerce_app/database/services/user_service.dart';
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 
 class MobilePasswordChangeScreen extends StatefulWidget {
   final Function(String, String, String) onSave;
@@ -118,50 +119,56 @@ class _MobilePasswordChangeScreenState
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () async {
-                      if (_formKey.currentState!.validate()) {
-                        widget.onSave(
-                          _currentPasswordController.text,
-                          _newPasswordController.text,
-                          _confirmPasswordController.text,
-                        );
-                        final userService = UserService();
+                    onPressed: UserInfo().currentUser == null
+                        ? null
+                        : () async {
+                            if (_formKey.currentState!.validate()) {
+                              widget.onSave(
+                                _currentPasswordController.text,
+                                _newPasswordController.text,
+                                _confirmPasswordController.text,
+                              );
+                              final userService = UserService();
 
-                        bool checkChangePass =
-                            await userService.changeCurrentUserPassword(
-                          _currentPasswordController.text,
-                          _newPasswordController.text,
-                        );
+                              bool checkChangePass =
+                                  await userService.changeCurrentUserPassword(
+                                _currentPasswordController.text,
+                                _newPasswordController.text,
+                              );
 
-                        if (checkChangePass) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Mật khẩu đã được đổi thành công"),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                          Navigator.pop(context);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                  "Không thể đổi mật khẩu. Vui lòng thử lại."),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      }
-                    },
+                              if (checkChangePass) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content:
+                                        Text("Mật khẩu đã được đổi thành công"),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                                Navigator.pop(context);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        "Không thể đổi mật khẩu. Vui lòng thử lại."),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                          },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       backgroundColor: Colors.blue,
+                      disabledBackgroundColor: Colors.grey.shade400,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text(
-                      "Xác nhận thay đổi",
-                      style: TextStyle(fontSize: 16),
+                    child: Text(
+                      UserInfo().currentUser == null
+                          ? "Đăng nhập để tiếp tục"
+                          : "Xác nhận thay đổi",
+                      style: const TextStyle(fontSize: 16),
                     ),
                   ),
                 ),

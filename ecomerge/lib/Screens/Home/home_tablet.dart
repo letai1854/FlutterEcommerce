@@ -1,6 +1,7 @@
 import 'dart:math';
 
 // Thay đổi: Thêm import với alias thay vì dùng getter null
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/widgets/Product/ProductItem.dart'
     as product_item;
 import 'package:e_commerce_app/Constants/productTest.dart';
@@ -23,6 +24,24 @@ class HomeTablet extends StatefulWidget {
 }
 
 class _HomeTabletState extends State<HomeTablet> {
+  @override
+  void initState() {
+    super.initState();
+    // Listen for UserInfo changes and trigger rebuild
+    UserInfo().addListener(_onUserInfoChanged);
+  }
+
+  @override
+  void dispose() {
+    // Remove listener when disposed
+    UserInfo().removeListener(_onUserInfoChanged);
+    super.dispose();
+  }
+
+  void _onUserInfoChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

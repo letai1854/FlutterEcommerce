@@ -17,6 +17,24 @@ class NavbarForTablet extends StatefulWidget {
 
 class _NavbarForTabletState extends State<NavbarForTablet> {
   @override
+  void initState() {
+    super.initState();
+    // Listen for UserInfo changes and trigger rebuild
+    UserInfo().addListener(_onUserInfoChanged);
+  }
+
+  @override
+  void dispose() {
+    // Remove listener when disposed
+    UserInfo().removeListener(_onUserInfoChanged);
+    super.dispose();
+  }
+
+  void _onUserInfoChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -44,7 +62,17 @@ class _NavbarForTabletState extends State<NavbarForTablet> {
               decoration: const BoxDecoration(color: Colors.red),
               child: GestureDetector(
                 onTap: () {
-                  Navigator.pushNamed(context, '/info');
+                  if (isWeb) {
+                    // For web platform, check login status
+                    if (UserInfo().currentUser == null) {
+                      Navigator.pushNamed(context, '/login');
+                    } else {
+                      Navigator.pushNamed(context, '/info');
+                    }
+                  } else {
+                    // For non-web platforms (mobile/desktop)
+                    Navigator.pushNamed(context, '/info');
+                  }
                 },
                 child: Row(
                   children: [

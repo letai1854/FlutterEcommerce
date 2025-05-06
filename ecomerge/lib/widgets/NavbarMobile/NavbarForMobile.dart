@@ -18,6 +18,24 @@ class NavbarFormobile extends StatefulWidget {
 
 class _NavbarmobileDrawerState extends State<NavbarFormobile> {
   @override
+  void initState() {
+    super.initState();
+    // Listen for UserInfo changes and trigger rebuild
+    UserInfo().addListener(_onUserInfoChanged);
+  }
+
+  @override
+  void dispose() {
+    // Remove listener when disposed
+    UserInfo().removeListener(_onUserInfoChanged);
+    super.dispose();
+  }
+
+  void _onUserInfoChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
