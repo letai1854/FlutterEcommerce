@@ -1,4 +1,5 @@
 import 'package:e_commerce_app/Constants/productTest.dart';
+import 'package:e_commerce_app/database/models/product_dto.dart'; // Import ProductDTO
 import 'package:e_commerce_app/widgets/Product/PaginatedProductGrid.dart';
 import 'package:e_commerce_app/widgets/SortingBar.dart';
 import 'package:e_commerce_app/widgets/footer.dart';
@@ -12,7 +13,8 @@ import 'package:e_commerce_app/database/services/categories_service.dart'; // Im
 
 
 class CatalogProduct extends StatefulWidget {
-  final List<Map<String, dynamic>> filteredProducts;
+  // Change filteredProducts to accept List<ProductDTO>
+  final List<ProductDTO> filteredProducts;
   final GlobalKey<ScaffoldState> scaffoldKey;
   final ScrollController scrollController;
   final String currentSortMethod;
@@ -27,6 +29,9 @@ class CatalogProduct extends StatefulWidget {
   // *** THÊM: Nhận trạng thái loading/initialized từ PageListProduct ***
   final bool isAppDataLoading;
   final bool isAppDataInitialized;
+  // *** THÊM: Nhận trạng thái loading sản phẩm và khả năng load thêm từ PageListProduct ***
+  final bool isProductsLoading;
+  final bool canLoadMoreProducts;
 
 
   const CatalogProduct({
@@ -41,6 +46,8 @@ class CatalogProduct extends StatefulWidget {
     required this.updateSortMethod,
      required this.isAppDataLoading, // <-- Thêm vào constructor
      required this.isAppDataInitialized, // <-- Thêm vào constructor
+     required this.isProductsLoading, // <-- Thêm vào constructor
+     required this.canLoadMoreProducts, // <-- Thêm vào constructor
   });
 
   @override
@@ -209,38 +216,13 @@ class _CatalogProductState extends State<CatalogProduct> {
     );
   }
 
-  // --- Get Sorted Products (vẫn giữ nguyên logic sắp xếp) ---
-  List<Map<String, dynamic>> getSortedProducts() {
-    var products = List<Map<String, dynamic>>.from(widget.filteredProducts);
-    if (widget.currentSortMethod.isNotEmpty) {
-      switch (widget.currentSortMethod) {
-        case 'name':
-          // Sắp xếp theo tên, xử lý trường hợp null hoặc không phải chuỗi
-          products.sort((a, b) => (a['name']?.toString() ?? '').compareTo(b['name']?.toString() ?? ''));
-          break;
-        case 'price':
-           // Sắp xếp theo giá, xử lý trường hợp null hoặc không phải số
-          products.sort((a, b) => (b['price'] as num? ?? 0).compareTo(a['price'] as num? ?? 0));
-          break;
-        case 'new':
-           // Sắp xếp theo ngày tạo (giả định created_at là chuỗi hoặc có thể so sánh), xử lý null
-           products.sort((a, b) => (b['created_at']?.toString() ?? '').compareTo(a['created_at']?.toString() ?? ''));
-          break;
-        case 'rating':
-          // Sắp xếp theo đánh giá, xử lý trường hợp null hoặc không phải số
-          products.sort((a, b) => (b['rating'] as num? ?? 0).compareTo(a['rating'] as num? ?? 0));
-          break;
-      }
-    }
-    return products;
-  }
-
   // --- Build Method ---
   @override
   Widget build(BuildContext context) {
     print('Building CatalogProduct...');
     print('Categories count received: ${widget.categories.length}');
-    print('Loading state received: isLoading=${widget.isAppDataLoading}, isInitialized=${widget.isAppDataInitialized}');
+    print('Loading state received: isAppDataLoading=${widget.isAppDataLoading}, isAppDataInitialized=${widget.isAppDataInitialized}');
+    print('Product Loading State: isProductsLoading=${widget.isProductsLoading}, canLoadMoreProducts=${widget.canLoadMoreProducts}');
 
 
     final Size size = MediaQuery.of(context).size;
@@ -334,17 +316,29 @@ class _CatalogProductState extends State<CatalogProduct> {
 
                           return PaginatedProductGrid(
                             key: gridKey, // <--- THÊM KEY VÀO ĐÂY
-                            productData: getSortedProducts(), // Truyền danh sách sản phẩm đã sắp xếp
+                            productData: widget.filteredProducts, // Pass the ProductDTO list directly
                             itemsPerPage: columns * 2, // Ví dụ phân trang: 2 hàng mỗi trang
                             gridWidth: constraints.maxWidth, // Truyền chiều rộng có sẵn
                             childAspectRatio: 0.6, // Điều chỉnh tỷ lệ khung hình nếu cần
                             crossAxisCount: columns, // Số cột đã tính
                             mainSpace: spacing, // Sử dụng khoảng cách đã tính
                             crossSpace: spacing, // Sử dụng khoảng cách đã tính
+                             // Pass product loading state and can load more state
+                            isProductsLoading: widget.isProductsLoading,
+                            canLoadMoreProducts: widget.canLoadMoreProducts,
                           );
                         },
                       ),
                     ),
+
+                    // Loading indicator at the bottom of the product list
+                    if (widget.isProductsLoading && widget.filteredProducts.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                        child: Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
 
                     // Footer (tùy chọn, thường hiển thị trên web)
                     if (kIsWeb) ...[
