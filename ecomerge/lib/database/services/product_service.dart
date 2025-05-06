@@ -191,6 +191,28 @@ class ProductService {
     }
   }
 
+  // Method to get cached avatar or fetch if not available
+  Future<Uint8List?> getImageFromServer(String? avatarPath) async {
+    if (avatarPath == null || avatarPath.isEmpty) return null;
+
+    if (UserInfo.avatarCache.containsKey(avatarPath)) {
+      return UserInfo.avatarCache[avatarPath];
+    }
+
+    try {
+      String fullUrl = getImageUrl(avatarPath);
+      final response = await httpClient.get(Uri.parse(fullUrl));
+
+      if (response.statusCode == 200) {
+        UserInfo.avatarCache[avatarPath] = response.bodyBytes;
+        return response.bodyBytes;
+      }
+    } catch (e) {
+      print('Error fetching avatar: $e');
+    }
+
+    return null;
+  }
   // Helper method to get the complete image URL
   String getImageUrl(String? imagePath) {
     if (imagePath == null) return '';
@@ -264,7 +286,7 @@ class ProductService {
               print('Delete Product Response Status: ${response.statusCode}');
               print('Delete Product Response Body: ${utf8.decode(response.bodyBytes)}'); // Decode UTF-8
           }
-
+          print(response.body);
           if (response.statusCode == 204) {
               // Thành công (No Content)
               return; // Return void
@@ -302,7 +324,7 @@ class ProductService {
     String sortBy = 'createdDate',
     String sortDir = 'desc',
     int page = 0,
-    int size = 100,
+    int size = 10,
 }) async {
     final Map<String, dynamic> queryParameters = {
         'page': page.toString(),

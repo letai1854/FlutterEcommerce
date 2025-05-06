@@ -178,19 +178,18 @@ class _BuildLeftColumnState extends State<BuildLeftColumn> {
             widget.onMainSectionChanged(MainSection.points);
           },
         ),
-        if (UserInfo().currentUser != null &&
-            UserInfo().currentUser!.role == UserRole.quan_tri)
-          ListTile(
-            leading: const Icon(Icons.admin_panel_settings),
-            title: const Text('Admin'),
-            selected: widget.selectedMainSection ==
-                MainSection.admin, // Use correct section
-            selectedTileColor: Colors.blue.withOpacity(0.1),
-            onTap: () {
-              // Navigate to admin page
-              Navigator.pushNamed(context, '/admin');
-            },
-          ),
+        if (UserInfo().currentUser != null &&UserInfo().currentUser!.role.toString() == UserRole.quan_tri.name)
+        ListTile(
+          leading: const Icon(Icons.admin_panel_settings),
+          title: const Text('Admin'),
+          selected: widget.selectedMainSection ==
+              MainSection.admin, // Use correct section
+          selectedTileColor: Colors.blue.withOpacity(0.1),
+          onTap: () {
+            // Navigate to admin page
+            Navigator.pushNamed(context, '/admin');
+          },
+        ),
       ],
     );
   }

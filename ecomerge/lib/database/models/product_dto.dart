@@ -5,7 +5,7 @@ import 'package:intl/intl.dart'; // Assuming you'll use intl for date formatting
 class ProductDTO {
   final int? id;
   final String name;
-  final String description;
+  final String description; 
   final String? categoryName;
   final String? brandName;
   final String? mainImageUrl;
