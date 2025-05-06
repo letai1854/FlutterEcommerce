@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:e_commerce_app/database/services/user_service.dart';
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 
 class MobilePasswordChangeScreen extends StatefulWidget {
   final Function(String, String, String) onSave;
@@ -25,6 +26,7 @@ class _MobilePasswordChangeScreenState
   bool _obscureCurrentPassword = true;
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isProcessing = false;
 
   final _formKey = GlobalKey<FormState>();
 
@@ -118,51 +120,76 @@ class _MobilePasswordChangeScreenState
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () async {
-                      if (_formKey.currentState!.validate()) {
-                        widget.onSave(
-                          _currentPasswordController.text,
-                          _newPasswordController.text,
-                          _confirmPasswordController.text,
-                        );
-                        final userService = UserService();
+                    onPressed: _isProcessing || UserInfo().currentUser == null
+                        ? null
+                        : () async {
+                            if (_formKey.currentState!.validate()) {
+                              setState(() {
+                                _isProcessing = true;
+                              });
 
-                        bool checkChangePass =
-                            await userService.changeCurrentUserPassword(
-                          _currentPasswordController.text,
-                          _newPasswordController.text,
-                        );
+                              widget.onSave(
+                                _currentPasswordController.text,
+                                _newPasswordController.text,
+                                _confirmPasswordController.text,
+                              );
 
-                        if (checkChangePass) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Mật khẩu đã được đổi thành công"),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                          Navigator.pop(context);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                  "Không thể đổi mật khẩu. Vui lòng thử lại."),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      }
-                    },
+                              final userService = UserService();
+
+                              bool checkChangePass =
+                                  await userService.changeCurrentUserPassword(
+                                _currentPasswordController.text,
+                                _newPasswordController.text,
+                              );
+
+                              setState(() {
+                                _isProcessing = false;
+                              });
+
+                              if (checkChangePass) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content:
+                                        Text("Mật khẩu đã được đổi thành công"),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                                Navigator.pop(context);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        "Không thể đổi mật khẩu. Mật khẩu hiện tại không đúng."),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                          },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       backgroundColor: Colors.blue,
+                      disabledBackgroundColor: Colors.grey.shade400,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text(
-                      "Xác nhận thay đổi",
-                      style: TextStyle(fontSize: 16),
-                    ),
+                    child: _isProcessing
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : Text(
+                            UserInfo().currentUser == null
+                                ? "Đăng nhập để tiếp tục"
+                                : "Xác nhận thay đổi",
+                            style: const TextStyle(fontSize: 16),
+                          ),
                   ),
                 ),
               ],

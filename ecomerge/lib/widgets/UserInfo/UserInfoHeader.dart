@@ -105,7 +105,7 @@ class _UserInfoHeaderState extends State<UserInfoHeader> {
           // Username - Get from UserInfo
           Expanded(
             child: Text(
-              UserInfo().currentUser?.fullName ?? "",
+              UserInfo().currentUser?.fullName ?? "user",
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,

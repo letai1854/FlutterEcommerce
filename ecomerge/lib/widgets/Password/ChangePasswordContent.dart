@@ -1,5 +1,7 @@
 import 'package:e_commerce_app/database/services/user_service.dart';
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ChangePasswordContent extends StatefulWidget {
   final String currentPassword;
@@ -43,6 +45,7 @@ class ChangePasswordContent extends StatefulWidget {
 
 class _ChangePasswordContentState extends State<ChangePasswordContent> {
   final _formKey = GlobalKey<FormState>();
+  bool _isProcessing = false;
 
   @override
   Widget build(BuildContext context) {
@@ -109,57 +112,93 @@ class _ChangePasswordContentState extends State<ChangePasswordContent> {
                 ),
                 const SizedBox(height: 32),
                 ElevatedButton(
-                  onPressed: () async {
-                    if (_formKey.currentState!.validate()) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Đang xử lý..."),
-                          duration: Duration(seconds: 1),
-                        ),
-                      );
-                      final userService = UserService();
-                      // userService.testRegistration();
-                      // // Login to get token - use your test account
-                      // final loginResult =
-                      //     await userService.loginUser("ha@gmail.com", "123456");
+                  onPressed: _isProcessing
+                      ? null
+                      : () async {
+                          if (_formKey.currentState!.validate()) {
+                            // Check if user is logged in
+                            if (UserInfo().currentUser == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content:
+                                      Text("Bạn cần đăng nhập để đổi mật khẩu"),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
 
-                      // if (loginResult == null) {
-                      //   throw Exception("Đăng nhập thất bại");
-                      // }
+                            setState(() {
+                              _isProcessing = true;
+                            });
 
-                      // Change password with the authenticated session
-                      bool changeSuccess =
-                          await userService.changeCurrentUserPassword(
-                        widget.currentPasswordController.text,
-                        widget.newPasswordController.text,
-                      );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Đang xử lý..."),
+                                duration: Duration(seconds: 1),
+                              ),
+                            );
 
-                      // Show result based on API response
-                      if (changeSuccess) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Mật khẩu đã được đổi thành công"),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                        Navigator.pop(context);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                                "Không thể đổi mật khẩu. Vui lòng thử lại."),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    }
-                  },
+                            final userService = UserService();
+
+                            // Call API to change password
+                            bool changeSuccess =
+                                await userService.changeCurrentUserPassword(
+                              widget.currentPasswordController.text,
+                              widget.newPasswordController.text,
+                            );
+
+                            setState(() {
+                              _isProcessing = false;
+                            });
+
+                            // Show result based on API response
+                            if (changeSuccess) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content:
+                                      Text("Mật khẩu đã được đổi thành công"),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+
+                              // Clear form fields after successful change
+                              widget.currentPasswordController.clear();
+                              widget.newPasswordController.clear();
+                              widget.confirmPasswordController.clear();
+
+                              // Return to the previous screen if on mobile
+                              if (Navigator.canPop(context)) {
+                                Navigator.pop(context);
+                              }
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      "Không thể đổi mật khẩu. Mật khẩu hiện tại không đúng."),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        },
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 32, vertical: 12),
                     backgroundColor: Colors.blue,
+                    disabledBackgroundColor: Colors.grey.shade400,
                   ),
-                  child: const Text("Xác nhận thay đổi"),
+                  child: _isProcessing
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Text("Xác nhận thay đổi"),
                 ),
               ],
             ),

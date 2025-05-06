@@ -338,80 +338,100 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
               const SizedBox(height: 24),
               const SizedBox(height: 40),
               ElevatedButton(
-                onPressed: () async {
-                  setState(() => _isUploading = true);
+                onPressed: UserInfo().currentUser == null
+                    ? null
+                    : () async {
+                        // Add an additional check here to prevent API calls if user isn't logged in
+                        if (UserInfo().currentUser == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  "Bạn cần đăng nhập để thực hiện thao tác này"),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return; // Exit early if not logged in
+                        }
 
-                  try {
-                    // Step 1: Upload image if selected
-                    String? avatarPath;
-                    if (_webImageBytes != null || _selectedImageFile != null) {
-                      avatarPath = await _uploadSelectedImage();
-                    }
+                        setState(() => _isUploading = true);
 
-                    // Step 2: Create updates map with only fullName
-                    final updates = {
-                      'fullName': widget.nameController.text,
-                    };
+                        try {
+                          // Step 1: Upload image if selected
+                          String? avatarPath;
+                          if (_webImageBytes != null ||
+                              _selectedImageFile != null) {
+                            avatarPath = await _uploadSelectedImage();
+                          }
 
-                    // Add avatar path if available
-                    if (avatarPath != null) {
-                      updates['avatar'] = avatarPath;
-                    }
+                          // Step 2: Create updates map with only fullName
+                          final updates = {
+                            'fullName': widget.nameController.text,
+                          };
 
-                    // Step 3: Update user profile with all data
-                    final updatedUser =
-                        await _userService.updateCurrentUserProfile(updates);
+                          // Add avatar path if available
+                          if (avatarPath != null) {
+                            updates['avatar'] = avatarPath;
+                          }
 
-                    if (updatedUser != null) {
-                      // Update avatar and name in UserInfo (important for other components)
-                      if (avatarPath != null) {
-                        UserInfo().updateUserProperty('avatar', avatarPath);
-                      }
-                      UserInfo().updateUserProperty(
-                          'fullName', widget.nameController.text);
+                          // Step 3: Update user profile with all data
+                          final updatedUser = await _userService
+                              .updateCurrentUserProfile(updates);
 
-                      widget.onSave();
+                          if (updatedUser != null) {
+                            // Update avatar and name in UserInfo (important for other components)
+                            if (avatarPath != null) {
+                              UserInfo()
+                                  .updateUserProperty('avatar', avatarPath);
+                            }
+                            UserInfo().updateUserProperty(
+                                'fullName', widget.nameController.text);
 
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Thông tin đã được lưu"),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      }
-                    } else {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Lỗi khi cập nhật thông tin"),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    }
-                  } catch (e) {
-                    print("Error saving profile: $e");
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text("Lỗi: $e"),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
-                  } finally {
-                    if (mounted) {
-                      setState(() => _isUploading = false);
-                    }
-                  }
-                },
+                            widget.onSave();
+
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Thông tin đã được lưu"),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
+                          } else {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Lỗi khi cập nhật thông tin"),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        } catch (e) {
+                          print("Error saving profile: $e");
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("Lỗi: $e"),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        } finally {
+                          if (mounted) {
+                            setState(() => _isUploading = false);
+                          }
+                        }
+                      },
                 style: ElevatedButton.styleFrom(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
                   backgroundColor: Colors.blue,
+                  // Make button appear disabled if not logged in
+                  disabledBackgroundColor: Colors.grey.shade400,
                 ),
-                child: const Text("Lưu thay đổi"),
+                child: UserInfo().currentUser == null
+                    ? const Text("Đăng nhập để lưu")
+                    : const Text("Lưu thay đổi"),
               ),
             ],
           ),

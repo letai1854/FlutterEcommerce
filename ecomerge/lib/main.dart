@@ -12,7 +12,10 @@ import 'package:e_commerce_app/Screens/Search/PageSearch.dart';
 import 'package:e_commerce_app/Screens/SignUp/PageSignup.dart';
 import 'package:e_commerce_app/Screens/SuccessPayment/PageSuccessPayment.dart';
 import 'package:e_commerce_app/Screens/UserInfo/ResponsiveUserInfo.dart';
+import 'package:e_commerce_app/database/Storage/BrandCategoryService.dart';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
+import 'package:e_commerce_app/database/services/user_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_strategy/url_strategy.dart';
 import 'package:e_commerce_app/Screens/Home/home_responsive.dart';
@@ -25,10 +28,19 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 Future<void> initApp() async {
   WidgetsFlutterBinding.ensureInitialized();
   setPathUrlStrategy();
-
+  // Only attempt auto-login on non-web platforms
+  if (!kIsWeb) {
+    final userService = UserService();
+    await userService.attemptAutoLogin();
+    print('Auto-login attempted on ${kIsWeb ? 'web' : 'native'} platform');
+  } else {
+    print('Auto-login skipped on web platform');
+  }
   // // Initialize user session
   // final userProvider = UserProvider();
   // await userProvider.loadUserSession();
+  await AppDataService().loadData();
+  print('AppDataService loaded successfully during app init.');
 }
 
 void main() async {
@@ -57,8 +69,9 @@ class MyApp extends StatelessWidget {
       ),
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate, // Cần cho Material DatePicker
-        GlobalWidgetsLocalizations.delegate,   // Cần cho các widget cơ bản
-        GlobalCupertinoLocalizations.delegate, // Tùy chọn nếu dùng Cupertino design
+        GlobalWidgetsLocalizations.delegate, // Cần cho các widget cơ bản
+        GlobalCupertinoLocalizations
+            .delegate, // Tùy chọn nếu dùng Cupertino design
       ],
       supportedLocales: const [
         Locale('en', ''), // Hỗ trợ Tiếng Anh

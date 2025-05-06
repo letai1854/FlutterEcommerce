@@ -68,6 +68,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/brands").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/brands/{id}").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/brands/{id}").hasRole("ADMIN")
+
                 // --- Coupon Management ---
                 .requestMatchers(HttpMethod.POST, "/api/coupons").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/coupons").hasRole("ADMIN") // Admin search

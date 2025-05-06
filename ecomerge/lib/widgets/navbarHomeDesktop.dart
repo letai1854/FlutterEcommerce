@@ -1,9 +1,10 @@
 import 'dart:typed_data';
 
 import 'package:e_commerce_app/Provider/UserProvider.dart';
+import 'package:e_commerce_app/constants.dart';
 import 'package:e_commerce_app/database/services/user_service.dart';
 import 'package:e_commerce_app/state/Search/SearchStateService.dart';
-import 'package:e_commerce_app/database/Storage/UserInfo.dart'; // Add import for UserInfo
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:flutter/material.dart';
 
 class Navbarhomedesktop extends StatefulWidget {
@@ -40,6 +41,9 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
   @override
   Widget build(BuildContext context) {
     final searchService = SearchStateService();
+    // Check if user is logged in
+    final bool isLoggedIn = UserInfo().currentUser != null;
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       color: const Color.fromARGB(255, 234, 29, 7),
@@ -48,6 +52,7 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
+              // Left side - Home and Product List
               Row(
                 children: [
                   MouseRegion(
@@ -55,7 +60,7 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                     child: GestureDetector(
                       onTap: () => Navigator.pushNamed(context, '/'),
                       child: const Text(
-                        'Trang chủ',
+                        'Trang chủ',
                         style: TextStyle(color: Colors.white, fontSize: 18),
                       ),
                     ),
@@ -74,6 +79,7 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                   ),
                 ],
               ),
+              // Right side - Actions
               Row(
                 children: [
                   MouseRegion(
@@ -84,47 +90,55 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                     ),
                   ),
                   SizedBox(width: 10),
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    onEnter: (_) => setState(() {
-                      _isHoveredDK = true;
-                    }),
-                    onExit: (_) => setState(() {
-                      _isHoveredDK = false;
-                    }),
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/signup');
-                      },
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: _isHoveredDK
-                              ? const Color.fromARGB(255, 255, 48, 1)
-                              : Colors.red,
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                        child: const Padding(
-                          padding:
-                              EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          child: Text(
-                            'Đăng ký',
-                            style: TextStyle(color: Colors.white, fontSize: 18),
+
+                  // Only show Sign Up button if not logged in
+                  if (!isLoggedIn) ...[
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      onEnter: (_) => setState(() {
+                        _isHoveredDK = true;
+                      }),
+                      onExit: (_) => setState(() {
+                        _isHoveredDK = false;
+                      }),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.pushNamed(context, '/signup');
+                        },
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: _isHoveredDK
+                                ? const Color.fromARGB(255, 255, 48, 1)
+                                : Colors.red,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            child: Text(
+                              'Đăng ký',
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 18),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  SizedBox(width: 5),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Color.fromARGB(255, 255, 98, 0),
+                    SizedBox(width: 5),
+                    // Separator
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Color.fromARGB(255, 255, 98, 0),
+                      ),
+                      child: SizedBox(
+                        width: 2,
+                        height: 23,
+                      ),
                     ),
-                    child: SizedBox(
-                      width: 2,
-                      height: 23,
-                    ),
-                  ),
-                  SizedBox(width: 5),
+                    SizedBox(width: 5),
+                  ],
+
+                  // Login/Logout button (changes based on login status)
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     onEnter: (_) => setState(() {
@@ -135,7 +149,13 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                     }),
                     child: GestureDetector(
                       onTap: () {
-                        Navigator.pushNamed(context, '/login');
+                        if (isLoggedIn) {
+                          // Call logout function from UserInfo
+                          UserInfo().logout(context);
+                        } else {
+                          // Navigate to login page
+                          Navigator.pushNamed(context, '/login');
+                        }
                       },
                       child: DecoratedBox(
                         decoration: BoxDecoration(
@@ -144,11 +164,11 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                               : Colors.red,
                           borderRadius: BorderRadius.circular(5),
                         ),
-                        child: const Padding(
+                        child: Padding(
                           padding:
                               EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           child: Text(
-                            'Đăng nhập',
+                            isLoggedIn ? 'Đăng xuất' : 'Đăng nhập',
                             style: TextStyle(color: Colors.white, fontSize: 18),
                           ),
                         ),
@@ -156,90 +176,132 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  if (UserInfo().currentUser != null)
-                    Row(
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white,
-                          ),
-                          child: ClipOval(
-                            child: SizedBox(
-                              width: 33,
-                              height: 33,
-                              child: Material(
-                                color: Colors.transparent,
-                                child: UserInfo().currentUser?.avatar != null
-                                    ? FutureBuilder<Uint8List?>(
-                                        future: UserService().getAvatarBytes(
-                                            UserInfo().currentUser?.avatar),
-                                        builder: (context, snapshot) {
-                                          if (snapshot.connectionState ==
-                                                  ConnectionState.waiting &&
-                                              !snapshot.hasData) {
-                                            return const Center(
-                                                child: SizedBox(
-                                                    width: 15,
-                                                    height: 15,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                            strokeWidth: 2)));
-                                          } else if (snapshot.hasData &&
-                                              snapshot.data != null) {
-                                            // Use cached image if available
-                                            return GestureDetector(
-                                              onTap: () => Navigator.pushNamed(
-                                                  context, '/info'),
-                                              child: Image.memory(
-                                                snapshot.data!,
-                                                fit: BoxFit.cover,
-                                              ),
-                                            );
+
+                  // User avatar and name
+                  Row(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                        ),
+                        child: ClipOval(
+                          child: SizedBox(
+                            width: 33,
+                            height: 33,
+                            child: Material(
+                              color: Colors.transparent,
+                              child: UserInfo().currentUser?.avatar != null
+                                  ? FutureBuilder<Uint8List?>(
+                                      future: UserService().getAvatarBytes(
+                                          UserInfo().currentUser?.avatar),
+                                      builder: (context, snapshot) {
+                                        if (snapshot.connectionState ==
+                                                ConnectionState.waiting &&
+                                            !snapshot.hasData) {
+                                          return const Center(
+                                              child: SizedBox(
+                                                  width: 15,
+                                                  height: 15,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                          strokeWidth: 2)));
+                                        } else if (snapshot.hasData &&
+                                            snapshot.data != null) {
+                                          // Use cached image if available
+                                          return GestureDetector(
+                                            onTap: () {
+                                              if (isWeb) {
+                                                // For web platform, check login status
+                                                if (UserInfo().currentUser ==
+                                                    null) {
+                                                  Navigator.pushNamed(
+                                                      context, '/login');
+                                                } else {
+                                                  Navigator.pushNamed(
+                                                      context, '/info');
+                                                }
+                                              } else {
+                                                // For non-web platforms (mobile/desktop)
+                                                Navigator.pushNamed(
+                                                    context, '/info');
+                                              }
+                                            },
+                                            child: Image.memory(
+                                              snapshot.data!,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          );
+                                        } else {
+                                          // Fall back to network image if cache failed
+                                          return GestureDetector(
+                                            onTap: () {
+                                              if (isWeb) {
+                                                // For web platform, check login status
+                                                if (UserInfo().currentUser ==
+                                                    null) {
+                                                  Navigator.pushNamed(
+                                                      context, '/login');
+                                                } else {
+                                                  Navigator.pushNamed(
+                                                      context, '/info');
+                                                }
+                                              } else {
+                                                // For non-web platforms (mobile/desktop)
+                                                Navigator.pushNamed(
+                                                    context, '/info');
+                                              }
+                                            },
+                                            child: Image.network(
+                                              UserInfo().currentUser!.avatar!,
+                                              fit: BoxFit.cover,
+                                              errorBuilder:
+                                                  (context, error, stackTrace) {
+                                                return IconButton(
+                                                  padding: EdgeInsets.zero,
+                                                  icon: const Icon(Icons.person,
+                                                      color: Colors.black),
+                                                  onPressed: () =>
+                                                      Navigator.pushNamed(
+                                                          context, '/info'),
+                                                );
+                                              },
+                                            ),
+                                          );
+                                        }
+                                      },
+                                    )
+                                  : IconButton(
+                                      padding: EdgeInsets.zero,
+                                      icon: const Icon(Icons.person,
+                                          color: Colors.black),
+                                      onPressed: () {
+                                        if (isWeb) {
+                                          // For web platform, check login status
+                                          if (UserInfo().currentUser == null) {
+                                            Navigator.pushNamed(
+                                                context, '/login');
                                           } else {
-                                            // Fall back to network image if cache failed
-                                            return GestureDetector(
-                                              onTap: () => Navigator.pushNamed(
-                                                  context, '/info'),
-                                              child: Image.network(
-                                                UserInfo().currentUser!.avatar!,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (context, error,
-                                                    stackTrace) {
-                                                  return IconButton(
-                                                    padding: EdgeInsets.zero,
-                                                    icon: const Icon(
-                                                        Icons.person,
-                                                        color: Colors.black),
-                                                    onPressed: () =>
-                                                        Navigator.pushNamed(
-                                                            context, '/info'),
-                                                  );
-                                                },
-                                              ),
-                                            );
+                                            Navigator.pushNamed(
+                                                context, '/info');
                                           }
-                                        },
-                                      )
-                                    : IconButton(
-                                        padding: EdgeInsets.zero,
-                                        icon: const Icon(Icons.person,
-                                            color: Colors.black),
-                                        onPressed: () {
+                                        } else {
+                                          // For non-web platforms (mobile/desktop)
                                           Navigator.pushNamed(context, '/info');
-                                        },
-                                      ),
-                              ),
+                                        }
+                                      },
+                                    ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Text(
-                          UserInfo().currentUser?.fullName ?? '',
-                          style: TextStyle(color: Colors.white, fontSize: 13),
-                        ),
-                      ],
-                    )
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        UserInfo().currentUser?.fullName ?? '',
+                        style: TextStyle(color: Colors.white, fontSize: 13),
+                      ),
+                    ],
+                  )
                 ],
               ),
             ],
@@ -248,7 +310,7 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Image.asset(
-                '/logoSNew.png',
+                'assets/logoSNew.png',
                 height: 70,
                 width: 70,
               ),
@@ -270,7 +332,7 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                             controller: searchService.searchController,
                             decoration: InputDecoration(
                               hintText:
-                                  'Shopii đảm bảo chất lượng, giao hàng tận nơi - Đăng ký ngay!',
+                                  'Shopii đảm bảo chất lượng, giao hàng tận nơi - Đăng ký ngay!',
                               border: InputBorder.none,
                               hintStyle: TextStyle(fontSize: 14),
                             ),
