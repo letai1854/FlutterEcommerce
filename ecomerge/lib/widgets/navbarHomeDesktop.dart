@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:e_commerce_app/Provider/UserProvider.dart';
+import 'package:e_commerce_app/constants.dart';
 import 'package:e_commerce_app/database/services/user_service.dart';
 import 'package:e_commerce_app/state/Search/SearchStateService.dart';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart'; // Add import for UserInfo
@@ -156,90 +157,130 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  if (UserInfo().currentUser != null)
-                    Row(
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white,
-                          ),
-                          child: ClipOval(
-                            child: SizedBox(
-                              width: 33,
-                              height: 33,
-                              child: Material(
-                                color: Colors.transparent,
-                                child: UserInfo().currentUser?.avatar != null
-                                    ? FutureBuilder<Uint8List?>(
-                                        future: UserService().getAvatarBytes(
-                                            UserInfo().currentUser?.avatar),
-                                        builder: (context, snapshot) {
-                                          if (snapshot.connectionState ==
-                                                  ConnectionState.waiting &&
-                                              !snapshot.hasData) {
-                                            return const Center(
-                                                child: SizedBox(
-                                                    width: 15,
-                                                    height: 15,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                            strokeWidth: 2)));
-                                          } else if (snapshot.hasData &&
-                                              snapshot.data != null) {
-                                            // Use cached image if available
-                                            return GestureDetector(
-                                              onTap: () => Navigator.pushNamed(
-                                                  context, '/info'),
-                                              child: Image.memory(
-                                                snapshot.data!,
-                                                fit: BoxFit.cover,
-                                              ),
-                                            );
+                  Row(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                        ),
+                        child: ClipOval(
+                          child: SizedBox(
+                            width: 33,
+                            height: 33,
+                            child: Material(
+                              color: Colors.transparent,
+                              child: UserInfo().currentUser?.avatar != null
+                                  ? FutureBuilder<Uint8List?>(
+                                      future: UserService().getAvatarBytes(
+                                          UserInfo().currentUser?.avatar),
+                                      builder: (context, snapshot) {
+                                        if (snapshot.connectionState ==
+                                                ConnectionState.waiting &&
+                                            !snapshot.hasData) {
+                                          return const Center(
+                                              child: SizedBox(
+                                                  width: 15,
+                                                  height: 15,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                          strokeWidth: 2)));
+                                        } else if (snapshot.hasData &&
+                                            snapshot.data != null) {
+                                          // Use cached image if available
+                                          return GestureDetector(
+                                            onTap: () {
+                                              if (isWeb) {
+                                                // For web platform, check login status
+                                                if (UserInfo().currentUser ==
+                                                    null) {
+                                                  Navigator.pushNamed(
+                                                      context, '/login');
+                                                } else {
+                                                  Navigator.pushNamed(
+                                                      context, '/info');
+                                                }
+                                              } else {
+                                                // For non-web platforms (mobile/desktop)
+                                                Navigator.pushNamed(
+                                                    context, '/info');
+                                              }
+                                            },
+                                            child: Image.memory(
+                                              snapshot.data!,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          );
+                                        } else {
+                                          // Fall back to network image if cache failed
+                                          return GestureDetector(
+                                            onTap: () {
+                                              if (isWeb) {
+                                                // For web platform, check login status
+                                                if (UserInfo().currentUser ==
+                                                    null) {
+                                                  Navigator.pushNamed(
+                                                      context, '/login');
+                                                } else {
+                                                  Navigator.pushNamed(
+                                                      context, '/info');
+                                                }
+                                              } else {
+                                                // For non-web platforms (mobile/desktop)
+                                                Navigator.pushNamed(
+                                                    context, '/info');
+                                              }
+                                            },
+                                            child: Image.network(
+                                              UserInfo().currentUser!.avatar!,
+                                              fit: BoxFit.cover,
+                                              errorBuilder:
+                                                  (context, error, stackTrace) {
+                                                return IconButton(
+                                                  padding: EdgeInsets.zero,
+                                                  icon: const Icon(Icons.person,
+                                                      color: Colors.black),
+                                                  onPressed: () =>
+                                                      Navigator.pushNamed(
+                                                          context, '/info'),
+                                                );
+                                              },
+                                            ),
+                                          );
+                                        }
+                                      },
+                                    )
+                                  : IconButton(
+                                      padding: EdgeInsets.zero,
+                                      icon: const Icon(Icons.person,
+                                          color: Colors.black),
+                                      onPressed: () {
+                                        if (isWeb) {
+                                          // For web platform, check login status
+                                          if (UserInfo().currentUser == null) {
+                                            Navigator.pushNamed(
+                                                context, '/login');
                                           } else {
-                                            // Fall back to network image if cache failed
-                                            return GestureDetector(
-                                              onTap: () => Navigator.pushNamed(
-                                                  context, '/info'),
-                                              child: Image.network(
-                                                UserInfo().currentUser!.avatar!,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (context, error,
-                                                    stackTrace) {
-                                                  return IconButton(
-                                                    padding: EdgeInsets.zero,
-                                                    icon: const Icon(
-                                                        Icons.person,
-                                                        color: Colors.black),
-                                                    onPressed: () =>
-                                                        Navigator.pushNamed(
-                                                            context, '/info'),
-                                                  );
-                                                },
-                                              ),
-                                            );
+                                            Navigator.pushNamed(
+                                                context, '/info');
                                           }
-                                        },
-                                      )
-                                    : IconButton(
-                                        padding: EdgeInsets.zero,
-                                        icon: const Icon(Icons.person,
-                                            color: Colors.black),
-                                        onPressed: () {
+                                        } else {
+                                          // For non-web platforms (mobile/desktop)
                                           Navigator.pushNamed(context, '/info');
-                                        },
-                                      ),
-                              ),
+                                        }
+                                      },
+                                    ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Text(
-                          UserInfo().currentUser?.fullName ?? '',
-                          style: TextStyle(color: Colors.white, fontSize: 13),
-                        ),
-                      ],
-                    )
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        UserInfo().currentUser?.fullName ?? '',
+                        style: TextStyle(color: Colors.white, fontSize: 13),
+                      ),
+                    ],
+                  )
                 ],
               ),
             ],
@@ -248,7 +289,7 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Image.asset(
-                '/logoSNew.png',
+                'assets/logoSNew.png', // Remove leading slash
                 height: 70,
                 width: 70,
               ),

@@ -21,14 +21,14 @@ class PointsContent extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // Points history section with transactions
-            const Text(
-              "Lịch sử điểm",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            // // Points history section with transactions
+            // const Text(
+            //   "Lịch sử điểm",
+            //   style: TextStyle(
+            //     fontSize: 18,
+            //     fontWeight: FontWeight.bold,
+            //   ),
+            // ),
 
             const SizedBox(height: 16),
 
@@ -42,7 +42,7 @@ class PointsContent extends StatelessWidget {
               itemCount: _getPointsTransactions().length,
               itemBuilder: (context, index) {
                 final transaction = _getPointsTransactions()[index];
-                return _buildTransactionItem(transaction, isSmallScreen);
+                // return _buildTransactionItem(transaction, isSmallScreen);
               },
             ),
           ],
@@ -79,7 +79,7 @@ class PointsContent extends StatelessWidget {
             const Row(
               children: [
                 Text(
-                  "1,250",
+                  "0",
                   style: TextStyle(
                     fontSize: 36,
                     fontWeight: FontWeight.bold,

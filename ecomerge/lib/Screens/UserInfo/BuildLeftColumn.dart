@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:e_commerce_app/database/models/user_model.dart';
 import 'package:e_commerce_app/database/services/user_service.dart';
 import 'package:e_commerce_app/Screens/UserInfo/UserInfoTypes.dart';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
@@ -177,17 +178,19 @@ class _BuildLeftColumnState extends State<BuildLeftColumn> {
             widget.onMainSectionChanged(MainSection.points);
           },
         ),
-        ListTile(
-          leading: const Icon(Icons.admin_panel_settings),
-          title: const Text('Admin'),
-          selected: widget.selectedMainSection ==
-              MainSection.admin, // Use correct section
-          selectedTileColor: Colors.blue.withOpacity(0.1),
-          onTap: () {
-            // Navigate to admin page
-            Navigator.pushNamed(context, '/admin');
-          },
-        ),
+        if (UserInfo().currentUser != null &&
+            UserInfo().currentUser!.role == UserRole.quan_tri)
+          ListTile(
+            leading: const Icon(Icons.admin_panel_settings),
+            title: const Text('Admin'),
+            selected: widget.selectedMainSection ==
+                MainSection.admin, // Use correct section
+            selectedTileColor: Colors.blue.withOpacity(0.1),
+            onTap: () {
+              // Navigate to admin page
+              Navigator.pushNamed(context, '/admin');
+            },
+          ),
       ],
     );
   }
@@ -195,6 +198,9 @@ class _BuildLeftColumnState extends State<BuildLeftColumn> {
   // Profile sub-menu items
   Widget _buildProfileSubItem(
       String title, ProfileSection section, IconData icon) {
+    // Check if user is logged in
+    final bool isLoggedIn = UserInfo().currentUser != null;
+
     return Padding(
       padding: const EdgeInsets.only(left: 20),
       child: ListTile(
@@ -205,10 +211,24 @@ class _BuildLeftColumnState extends State<BuildLeftColumn> {
         selectedTileColor:
             const Color.fromARGB(255, 149, 150, 151).withOpacity(0.1),
         dense: true,
-        onTap: () {
-          widget.onMainSectionChanged(MainSection.profile);
-          widget.onProfileSectionChanged(section);
-        },
+        onTap: isLoggedIn
+            ? () {
+                widget.onMainSectionChanged(MainSection.profile);
+                widget.onProfileSectionChanged(section);
+              }
+            : () {
+                // Show login message when not logged in
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content:
+                        Text('Vui lòng đăng nhập để sử dụng tính năng này'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+        // Add visual indication that item is disabled
+        enabled: isLoggedIn,
+        tileColor: !isLoggedIn ? Colors.grey.withOpacity(0.1) : null,
       ),
     );
   }
