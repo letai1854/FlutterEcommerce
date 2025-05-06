@@ -11,7 +11,7 @@ import 'package:intl/intl.dart'; // Import intl nếu hàm formatCurrency chuy�
 class BodyPayment extends StatelessWidget {
   // Chuyển thành StatelessWidget
   // --- Dữ liệu nhận từ PagePayment ---
-  final AddressData currentAddress;
+  final AddressData? currentAddress; // Make nullable to handle no address case
   final List<Map<String, dynamic>> products;
   final VoucherData? currentVoucher;
   final String selectedPaymentMethod;
@@ -58,6 +58,32 @@ class BodyPayment extends StatelessWidget {
 
   // Ví dụ sửa đổi hàm build address display:
   Widget _buildAddressDisplay() {
+    // Handle the case when currentAddress is null
+    if (currentAddress == null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Địa Chỉ Nhận Hàng',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16.0,
+              color: Colors.grey.shade800, // Thêm màu cho dễ đọc
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Vui lòng thêm địa chỉ nhận hàng',
+            style: TextStyle(
+              color: Colors.red,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Existing code for when address is available
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -73,7 +99,7 @@ class BodyPayment extends StatelessWidget {
         Row(
           children: [
             Text(
-              currentAddress.name, // Sử dụng currentAddress từ props
+              currentAddress!.name,
               style: const TextStyle(
                   fontWeight: FontWeight.w500, // Đậm hơn chút
                   fontSize: 15.0 // To hơn chút
@@ -81,7 +107,7 @@ class BodyPayment extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Text(
-              currentAddress.phone, // Sử dụng currentAddress từ props
+              currentAddress!.phone,
               style: TextStyle(
                   fontSize: 14.0, color: Colors.grey.shade700), // Màu nhạt hơn
             ),
@@ -89,7 +115,8 @@ class BodyPayment extends StatelessWidget {
         ),
         const SizedBox(height: 4), // Giảm khoảng cách
         Text(
-          currentAddress.fullAddress, // Sử dụng phương thức getter
+          currentAddress!
+              .fullAddress, // Use the non-null assertion operator here since we've checked above
           style: TextStyle(
               fontSize: 14.0, color: Colors.grey.shade700), // Màu nhạt hơn
           maxLines: 2,
@@ -215,10 +242,11 @@ class BodyPayment extends StatelessWidget {
 
   // Sửa đổi nút Đặt hàng
   Widget _buildPlaceOrderButton() {
+    bool canPlaceOrder = currentAddress != null && !isProcessingOrder;
+
     return Align(
       alignment: Alignment.centerRight,
       child: ElevatedButton.icon(
-        // Sử dụng ElevatedButton.icon nếu muốn thêm icon
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.red.shade700, // Màu đậm hơn
           foregroundColor: Colors.white, // Màu chữ/icon
@@ -228,12 +256,12 @@ class BodyPayment extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
           elevation: isProcessingOrder ? 0 : 2, // Bỏ shadow khi đang xử lý
+          disabledBackgroundColor: Colors.grey.shade400, // Color when disabled
         ),
-        // Vô hiệu hóa nút và hiển thị loading khi isProcessingOrder là true
-        onPressed: isProcessingOrder ? null : onPlaceOrder,
+        // Disable button if no address or already processing
+        onPressed: canPlaceOrder ? onPlaceOrder : null,
         icon: isProcessingOrder
             ? Container(
-                // Thay bằng SizedBox để không làm thay đổi layout
                 width: 18,
                 height: 18,
                 child: const CircularProgressIndicator(
@@ -241,12 +269,12 @@ class BodyPayment extends StatelessWidget {
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
-            : const Icon(Icons.shopping_cart_checkout,
-                size: 18), // Icon đặt hàng
+            : const Icon(Icons.shopping_cart_checkout, size: 18),
         label: Text(
-          isProcessingOrder ? 'Đang xử lý...' : 'Đặt hàng',
+          isProcessingOrder
+              ? 'Đang xử lý...'
+              : (currentAddress == null ? 'Vui lòng thêm địa chỉ' : 'Đặt hàng'),
           style: const TextStyle(
-            // color: Colors.white, // Đã set ở foregroundColor
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
@@ -815,20 +843,30 @@ class BodyPayment extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '${currentAddress.name} | ${currentAddress.phone}', // Gộp tên và SĐT
-                style: const TextStyle(
-                    fontWeight: FontWeight.w500, fontSize: 14.5),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                currentAddress.fullAddress, // Sử dụng fullAddress
-                style: TextStyle(fontSize: 14.0, color: Colors.grey.shade700),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
+              if (currentAddress != null)
+                Text(
+                  '${currentAddress!.name} | ${currentAddress!.phone}', // Gộp tên và SĐT
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w500, fontSize: 14.5),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              if (currentAddress != null) const SizedBox(height: 4),
+              if (currentAddress != null)
+                Text(
+                  currentAddress!.fullAddress, // Sử dụng fullAddress
+                  style: TextStyle(fontSize: 14.0, color: Colors.grey.shade700),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              if (currentAddress == null)
+                const Text(
+                  'Vui lòng thêm địa chỉ nhận hàng',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
             ],
           ),
         ),

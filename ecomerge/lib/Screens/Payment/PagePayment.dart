@@ -20,28 +20,8 @@ class _PagePaymentState extends State<PagePayment> {
   //============================================================================
 
   // --- Address State ---
-  final List<AddressData> _addresses = [
-    // Dữ liệu địa chỉ gốc
-    AddressData(
-      name: 'Tuấn Tú',
-      phone: '(+84) 583541716',
-      address: 'Gần Nhà Thờ An Phú',
-      province: 'An Giang',
-      district: 'Huyện An Phú',
-      ward: 'Thị Trấn An Phú',
-      isDefault: true,
-    ),
-    AddressData(
-      name: 'Nguyễn Văn A',
-      phone: '(+84) 987654321',
-      address: '123 Đường Lê Lợi',
-      province: 'TP Hồ Chí Minh',
-      district: 'Quận 1',
-      ward: 'P. Bến Nghé', // Thêm phường cho đầy đủ
-      isDefault: false,
-    ),
-  ];
-  late AddressData _currentAddress; // Địa chỉ đang được chọn
+  final List<AddressData> _addresses = []; // Initialize as empty list
+  AddressData? _currentAddress; // Make nullable to handle no addresses case
 
   // --- Product State ---
   final List<Map<String, dynamic>> _products = [
@@ -114,9 +94,12 @@ class _PagePaymentState extends State<PagePayment> {
   @override
   void initState() {
     super.initState();
-    // Khởi tạo địa chỉ hiện tại là địa chỉ mặc định hoặc địa chỉ đầu tiên
-    _currentAddress = _addresses.firstWhere((addr) => addr.isDefault,
-        orElse: () => _addresses.first);
+    // Only set _currentAddress if addresses are available
+    if (_addresses.isNotEmpty) {
+      _currentAddress = _addresses.firstWhere((addr) => addr.isDefault,
+          orElse: () => _addresses.first);
+    }
+    // Otherwise, _currentAddress remains null
   }
 
   @override
@@ -181,6 +164,11 @@ class _PagePaymentState extends State<PagePayment> {
     return '₫${formatter.format(amount)}';
   }
 
+  // Function to check if we have a valid address
+  bool _hasValidAddress() {
+    return _currentAddress != null;
+  }
+
   //============================================================================
   // ACTION HANDLERS (Hàm xử lý sự kiện tập trung)
   //============================================================================
@@ -230,8 +218,8 @@ class _PagePaymentState extends State<PagePayment> {
           isDefault: wasDefault, // Giữ lại trạng thái default cũ
         );
         // Nếu địa chỉ được cập nhật là địa chỉ hiện tại, cập nhật _currentAddress
-        if (_currentAddress.name == _addresses[index].name &&
-            _currentAddress.phone == _addresses[index].phone) {
+        if (_currentAddress?.name == _addresses[index].name &&
+            _currentAddress?.phone == _addresses[index].phone) {
           // Cần cách xác định địa chỉ chính xác hơn ID duy nhất
           _currentAddress = _addresses[index];
         }
@@ -357,7 +345,8 @@ class _PagePaymentState extends State<PagePayment> {
 
     setState(() => _isProcessing = true);
     print("PagePayment: Processing payment...");
-    print("   Address: ${_currentAddress.fullAddress}");
+    print(
+        "   Address: ${_currentAddress?.fullAddress ?? 'No address selected'}");
     print("   Products: ${_products.length} items");
     print("   Subtotal: ${_formatCurrency(_calculateSubtotal())}");
     print("   Shipping: ${_formatCurrency(_shippingFee)}");
@@ -486,11 +475,11 @@ class _PagePaymentState extends State<PagePayment> {
     final double tax = _calculateTax();
     final double total = _calculateTotal();
     Widget appBar;
-    // Tạo widget BodyPayment và truyền tất cả dữ liệu + callbacks
+
+    // Create widget BodyPayment and pass the null-safe current address
     Widget body = BodyPayment(
       // --- Data ---
-
-      currentAddress: _currentAddress,
+      currentAddress: _currentAddress, // Can be null now
       products: _products,
       currentVoucher: _currentVoucher,
       selectedPaymentMethod: _selectedPaymentMethod,
