@@ -98,6 +98,7 @@ class _UserInfoTabletState extends State<UserInfoTablet> {
     final currentUser = UserInfo().currentUser;
     final String? avatarUrl = currentUser?.avatar;
     final String userName = currentUser?.fullName ?? 'User';
+    final bool isLoggedIn = currentUser != null;
 
     return Drawer(
       child: ListView(
@@ -178,15 +179,24 @@ class _UserInfoTabletState extends State<UserInfoTablet> {
               ),
             ),
           ),
+          if (!isLoggedIn)
+            ListTile(
+              leading: const Icon(Icons.person_add_alt),
+              title: const Text('Đăng ký'),
+              onTap: () {
+                Navigator.pushNamed(context, '/signup');
+              },
+            ),
           ListTile(
-            leading: const Icon(Icons.person_add_alt),
-            title: const Text('Đăng ký'),
-            onTap: () {},
-          ),
-          ListTile(
-            leading: const Icon(Icons.person_3_rounded),
-            title: const Text('Đăng nhập'),
-            onTap: () {},
+            leading: Icon(isLoggedIn ? Icons.logout : Icons.person_3_rounded),
+            title: Text(isLoggedIn ? 'Đăng xuất' : 'Đăng nhập'),
+            onTap: () {
+              if (isLoggedIn) {
+                UserInfo().logout(context);
+              } else {
+                Navigator.pushNamed(context, '/login');
+              }
+            },
           ),
           ListTile(
             leading: const Icon(Icons.chat),

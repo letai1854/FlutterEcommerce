@@ -26,6 +26,7 @@ class _MobilePasswordChangeScreenState
   bool _obscureCurrentPassword = true;
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isProcessing = false;
 
   final _formKey = GlobalKey<FormState>();
 
@@ -119,15 +120,20 @@ class _MobilePasswordChangeScreenState
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: UserInfo().currentUser == null
+                    onPressed: _isProcessing || UserInfo().currentUser == null
                         ? null
                         : () async {
                             if (_formKey.currentState!.validate()) {
+                              setState(() {
+                                _isProcessing = true;
+                              });
+
                               widget.onSave(
                                 _currentPasswordController.text,
                                 _newPasswordController.text,
                                 _confirmPasswordController.text,
                               );
+
                               final userService = UserService();
 
                               bool checkChangePass =
@@ -135,6 +141,10 @@ class _MobilePasswordChangeScreenState
                                 _currentPasswordController.text,
                                 _newPasswordController.text,
                               );
+
+                              setState(() {
+                                _isProcessing = false;
+                              });
 
                               if (checkChangePass) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -149,7 +159,7 @@ class _MobilePasswordChangeScreenState
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text(
-                                        "Không thể đổi mật khẩu. Vui lòng thử lại."),
+                                        "Không thể đổi mật khẩu. Mật khẩu hiện tại không đúng."),
                                     backgroundColor: Colors.red,
                                   ),
                                 );
@@ -164,12 +174,22 @@ class _MobilePasswordChangeScreenState
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: Text(
-                      UserInfo().currentUser == null
-                          ? "Đăng nhập để tiếp tục"
-                          : "Xác nhận thay đổi",
-                      style: const TextStyle(fontSize: 16),
-                    ),
+                    child: _isProcessing
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : Text(
+                            UserInfo().currentUser == null
+                                ? "Đăng nhập để tiếp tục"
+                                : "Xác nhận thay đổi",
+                            style: const TextStyle(fontSize: 16),
+                          ),
                   ),
                 ),
               ],
