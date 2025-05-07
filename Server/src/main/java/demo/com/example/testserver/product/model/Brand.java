@@ -1,5 +1,6 @@
 package demo.com.example.testserver.product.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank; // Import NotBlank
 import java.util.Date;
@@ -26,6 +27,7 @@ public class Brand {
     private Date updatedDate;
 
     @OneToMany(mappedBy = "brand")
+    @JsonIgnore // Add this to break the loop: Product -> Brand -> List<Product>
     private List<Product> products;
 
     // Lifecycle Callbacks
