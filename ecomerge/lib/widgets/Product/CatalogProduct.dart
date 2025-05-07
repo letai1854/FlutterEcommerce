@@ -18,6 +18,7 @@ class CatalogProduct extends StatefulWidget {
   final GlobalKey<ScaffoldState> scaffoldKey;
   final ScrollController scrollController;
   final String currentSortMethod;
+  final String currentSortDir; // Add this parameter to track sort direction
   final int selectedCategoryId;
 
   // *** THAY ĐỔI: Nhận List<CategoryDTO> thay vì List<Map<String, dynamic>> ***
@@ -43,6 +44,7 @@ class CatalogProduct extends StatefulWidget {
     required this.scaffoldKey,
     required this.scrollController,
     required this.currentSortMethod,
+    required this.currentSortDir, // Include in constructor
     required this.selectedCategoryId,
     required this.categories, // <-------------------------- NHẬN List<CategoryDTO>
     required this.updateSelectedCategory,
@@ -220,6 +222,22 @@ class _CatalogProductState extends State<CatalogProduct> {
     );
   }
 
+  // Add this method to handle sort direction display
+  Widget _buildSortDirectionIndicator(String sortMethod) {
+    final bool isCurrentMethod = widget.currentSortMethod == sortMethod;
+    
+    if (!isCurrentMethod) {
+      return const SizedBox.shrink();
+    }
+    
+    // Show up or down arrow based on the current sort direction
+    return Icon(
+      widget.currentSortDir == 'asc' ? Icons.arrow_upward : Icons.arrow_downward,
+      size: 16,
+      color: Colors.blue,
+    );
+  }
+
   // --- Build Method ---
   @override
   Widget build(BuildContext context) {
@@ -296,6 +314,10 @@ class _CatalogProductState extends State<CatalogProduct> {
                             child: SortingBar(
                               width: double.infinity, // Sử dụng double.infinity bên trong Expanded
                               onSortChanged: widget.updateSortMethod,
+                              currentSortMethod: widget.currentSortMethod,
+                              currentSortDir: widget.currentSortDir, // Pass sort direction
+                              // Pass sort direction indicator builder
+                              buildSortDirectionIndicator: _buildSortDirectionIndicator,
                             ),
                           ),
                         ],

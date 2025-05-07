@@ -329,6 +329,7 @@ class _PageListProductState extends State<PageListProduct> {
           scaffoldKey: _scaffoldKey,
           scrollController: _scrollController,
           currentSortMethod: currentSortMethod,
+          currentSortDir: currentSortDir, // Pass sort direction
           selectedCategoryId: selectedCategoryId,
           categories: currentCategories,
           updateSelectedCategory: updateSelectedCategory,
