@@ -2,11 +2,15 @@ package demo.com.example.testserver.product.service;
 
 import demo.com.example.testserver.product.dto.CreateProductRequestDTO;
 import demo.com.example.testserver.product.dto.ProductDTO;
+import demo.com.example.testserver.product.dto.elasticsearch.ProductElasticsearchDTO;
+import demo.com.example.testserver.product.dto.elasticsearch.ProductReviewElasticsearchDTO;
+import demo.com.example.testserver.product.dto.elasticsearch.ProductVariantElasticsearchDTO;
 import demo.com.example.testserver.product.model.Brand;
 import demo.com.example.testserver.product.model.Category;
 import demo.com.example.testserver.product.model.Product;
 import org.springframework.stereotype.Component;
 import demo.com.example.testserver.product.model.ProductImage;
+import demo.com.example.testserver.product.model.ProductReview;
 import demo.com.example.testserver.product.model.ProductVariant;
 import demo.com.example.testserver.product.dto.CreateProductVariantDTO;
 import demo.com.example.testserver.product.dto.ProductVariantDTO; // Import ProductVariantDTO
@@ -68,7 +72,7 @@ public class ProductMapper {
         product.setCategory(category);
         product.setBrand(brand);
         product.setMainImageUrl(dto.getMainImageUrl());
-        product.setDiscountPercentage(dto.getDiscountPercentage() != null ? dto.getDiscountPercentage() : BigDecimal.ZERO);
+        product.setDiscountPercentage(dto.getDiscountPercentage()); // Allow null to be set directly
 
         // Initialize denormalized fields to null or default values if appropriate
         product.setMinPrice(null);
@@ -105,15 +109,17 @@ public class ProductMapper {
 
     // Helper method to map ProductVariant entity to ProductVariantDTO
     private ProductVariantDTO mapToProductVariantDTO(ProductVariant variant) {
-        ProductVariantDTO variantDto = new ProductVariantDTO();
-        variantDto.setId(variant.getId());
-        variantDto.setName(variant.getName());
-        variantDto.setSku(variant.getSku());
-        variantDto.setPrice(variant.getPrice());
-        variantDto.setStockQuantity(variant.getStockQuantity());
-        variantDto.setVariantImageUrl(variant.getVariantImageUrl());
-        // Avoid mapping back the product to prevent circular references in JSON
-        return variantDto;
+        if (variant == null) {
+            return null;
+        }
+        ProductVariantDTO dto = new ProductVariantDTO();
+        dto.setId(variant.getId());
+        dto.setName(variant.getName());
+        dto.setSku(variant.getSku());
+        dto.setPrice(variant.getPrice());
+        dto.setStockQuantity(variant.getStockQuantity());
+        dto.setVariantImageUrl(variant.getVariantImageUrl());
+        return dto;
     }
 
     // Helper method to map CreateProductVariantDTO to ProductVariant entity
@@ -148,7 +154,7 @@ public class ProductMapper {
         product.setCategory(category);
         product.setBrand(brand);
         product.setMainImageUrl(dto.getMainImageUrl());
-        product.setDiscountPercentage(dto.getDiscountPercentage() != null ? dto.getDiscountPercentage() : BigDecimal.ZERO);
+        product.setDiscountPercentage(dto.getDiscountPercentage()); // Allow null to be set directly
 
         // Update Images (Replace strategy for simplicity, could be merge)
         updateProductImages(product, dto.getImageUrls());
@@ -226,5 +232,87 @@ public class ProductMapper {
         variant.setStockQuantity(dto.getStockQuantity());
         variant.setVariantImageUrl(dto.getVariantImageUrl());
         // product reference is set in the calling method (updateProductVariants)
+    }
+
+    // --- Elasticsearch DTO Mappers ---
+
+    public ProductElasticsearchDTO mapToProductElasticsearchDTO(Product product) {
+        if (product == null) {
+            return null;
+        }
+        ProductElasticsearchDTO dto = new ProductElasticsearchDTO();
+        dto.setId(product.getId());
+        dto.setName(product.getName());
+        dto.setDescription(product.getDescription());
+        if (product.getCategory() != null) {
+            dto.setCategoryName(product.getCategory().getName());
+        }
+        if (product.getBrand() != null) {
+            dto.setBrandName(product.getBrand().getName());
+        }
+        dto.setMainImageUrl(product.getMainImageUrl());
+        if (product.getImages() != null) {
+            dto.setImageUrls(product.getImages().stream()
+                    .map(ProductImage::getImageUrl)
+                    .collect(Collectors.toList()));
+        } else {
+            dto.setImageUrls(new ArrayList<>());
+        }
+        dto.setDiscountPercentage(product.getDiscountPercentage());
+        dto.setCreatedDate(product.getCreatedDate());
+        dto.setUpdatedDate(product.getUpdatedDate());
+        dto.setAverageRating(product.getAverageRating());
+        dto.setMinPrice(product.getMinPrice());
+        dto.setMaxPrice(product.getMaxPrice());
+        dto.setIsEnabled(product.isEnabled());
+
+        if (product.getVariants() != null) {
+            dto.setVariants(product.getVariants().stream()
+                    .map(this::mapToProductVariantElasticsearchDTO)
+                    .collect(Collectors.toList()));
+        } else {
+            dto.setVariants(new ArrayList<>());
+        }
+        
+        if (product.getReviews() != null) {
+            dto.setReviews(product.getReviews().stream()
+                    .map(this::mapToProductReviewElasticsearchDTO)
+                    .collect(Collectors.toList()));
+        } else {
+            dto.setReviews(new ArrayList<>());
+        }
+
+        return dto;
+    }
+
+    private ProductVariantElasticsearchDTO mapToProductVariantElasticsearchDTO(ProductVariant variant) {
+        if (variant == null) {
+            return null;
+        }
+        ProductVariantElasticsearchDTO dto = new ProductVariantElasticsearchDTO();
+        dto.setId(variant.getId());
+        dto.setName(variant.getName());
+        dto.setSku(variant.getSku());
+        dto.setPrice(variant.getPrice());
+        dto.setStockQuantity(variant.getStockQuantity());
+        dto.setVariantImageUrl(variant.getVariantImageUrl());
+        return dto;
+    }
+
+    private ProductReviewElasticsearchDTO mapToProductReviewElasticsearchDTO(ProductReview review) {
+        if (review == null) {
+            return null;
+        }
+        ProductReviewElasticsearchDTO dto = new ProductReviewElasticsearchDTO();
+        dto.setId(review.getId());
+        if (review.getUser() != null) {
+            dto.setReviewerName(review.getUser().getFullName());
+        } else {
+            dto.setReviewerName(review.getAnonymousReviewerName());
+        }
+        dto.setRating(review.getRating());
+        dto.setComment(review.getComment());
+        dto.setReviewTime(review.getReviewTime());
+        return dto;
     }
 }

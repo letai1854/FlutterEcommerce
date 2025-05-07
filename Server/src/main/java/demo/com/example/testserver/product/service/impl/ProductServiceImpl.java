@@ -49,14 +49,14 @@ public class ProductServiceImpl implements ProductService {
     @Autowired
     private ProductSpecificationBuilder productSpecificationBuilder;
 
-    @Autowired
+    @Autowired(required = false) // Make Elasticsearch service optional
     private ProductElasticsearchService productElasticsearchService;
 
     @Autowired
-    private ProductMapper productMapper;
+    private FallbackProductElasticsearchService fallbackProductElasticsearchService; // Inject fallback
 
-    @Autowired(required = false)
-    private ProductDenormalizationService productDenormalizationService;
+    @Autowired
+    private ProductMapper productMapper;
 
     @Override
     public Page<ProductDTO> findProducts(
@@ -76,22 +76,27 @@ public class ProductServiceImpl implements ProductService {
         Sort sort = productSortBuilder.buildSort(sortBy, sortDir);
         Pageable pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
 
-        List<Integer> productIdsFromSearch = null;
+        List<Long> productIdsFromSearch = null;
 
         if (search != null && !search.trim().isEmpty()) {
             logger.debug("Performing Elasticsearch search for keyword: {}", search);
-            productIdsFromSearch = productElasticsearchService.searchProductIds(search);
-            if (productIdsFromSearch != null && productIdsFromSearch.isEmpty()) {
-                logger.info("Elasticsearch returned no results for '{}'. Returning empty page.", search);
-                return new PageImpl<>(Collections.emptyList(), pageRequest, 0);
-            }
-            if (productIdsFromSearch == null) {
-                logger.warn("Elasticsearch search failed or not implemented/available. Proceeding with database filtering only for search term '{}'. Results might be incomplete.", search);
+            if (productElasticsearchService != null) {
+                productIdsFromSearch = productElasticsearchService.searchProductIds(search);
+                if (productIdsFromSearch != null && productIdsFromSearch.isEmpty()) {
+                    logger.info("Elasticsearch returned no results for '{}'. Attempting fallback to database LIKE search.", search);
+                    productIdsFromSearch = null; // Signal to use DB LIKE search
+                } else if (productIdsFromSearch == null) {
+                    // This case might indicate an issue with the ES service itself, even if available
+                    logger.warn("Elasticsearch search returned null (possibly an error or timeout) for search term '{}'. Falling back to database LIKE search.", search);
+                }
+            } else {
+                logger.info("Elasticsearch service is not available. Using fallback for search term: {}", search);
+                productIdsFromSearch = fallbackProductElasticsearchService.searchProductIds(search); // Fallback returns null to trigger DB LIKE
             }
         }
 
         Specification<Product> spec = productSpecificationBuilder.build(
-            search, categoryId, brandId, minPrice, maxPrice, minRating, productIdsFromSearch, null, null, false // Pass null for dates, false for onlyWithDiscount
+            search, categoryId, brandId, minPrice, maxPrice, minRating, productIdsFromSearch, null, null, false
         );
 
         logger.debug("Executing database query with filters and pagination.");
@@ -114,8 +119,25 @@ public class ProductServiceImpl implements ProductService {
         Sort sort = pageable.getSort().isSorted() ? pageable.getSort() : Sort.by(Sort.Direction.DESC, "createdDate");
         Pageable pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
 
+        List<Long> productIdsFromSearch = null;
+        if (search != null && !search.trim().isEmpty()) {
+            logger.debug("Admin: Performing Elasticsearch search for keyword: {}", search);
+            if (productElasticsearchService != null) {
+                productIdsFromSearch = productElasticsearchService.searchProductIds(search);
+                if (productIdsFromSearch != null && productIdsFromSearch.isEmpty()) {
+                    logger.info("Admin: Elasticsearch returned no results for '{}'. Attempting fallback to database LIKE search.", search);
+                    productIdsFromSearch = null; // Signal to use DB LIKE search
+                } else if (productIdsFromSearch == null) {
+                    logger.warn("Admin: Elasticsearch search returned null for search term '{}'. Falling back to database LIKE search.", search);
+                }
+            } else {
+                logger.info("Admin: Elasticsearch service is not available. Using fallback for search term: {}", search);
+                productIdsFromSearch = fallbackProductElasticsearchService.searchProductIds(search); // Fallback returns null to trigger DB LIKE
+            }
+        }
+
         Specification<Product> spec = productSpecificationBuilder.build(
-            search, null, null, null, null, null, null, startDate, endDate, false // Pass null for filters, false for onlyWithDiscount
+            search, null, null, null, null, null, productIdsFromSearch, startDate, endDate, false
         );
 
         logger.debug("Executing admin database query with filters and pagination.");
@@ -172,15 +194,14 @@ public class ProductServiceImpl implements ProductService {
         Product savedProduct = productRepository.save(product);
         logger.info("Product created successfully with ID: {}. Associated variants and images saved via cascade.", savedProduct.getId());
 
-        if (productDenormalizationService != null) {
-            try {
-                productDenormalizationService.updateDenormalizedFields(savedProduct.getId());
-                logger.info("Triggered denormalization for new product ID: {}", savedProduct.getId());
-            } catch (Exception e) {
-                logger.error("Error during post-creation denormalization for product ID {}: {}", savedProduct.getId(), e.getMessage(), e);
+        try {
+            if (productElasticsearchService != null) {
+                productElasticsearchService.saveProduct(savedProduct);
+            } else {
+                fallbackProductElasticsearchService.saveProduct(savedProduct);
             }
-        } else {
-            logger.warn("ProductDenormalizationService not available. Skipping denormalization for product ID: {}", savedProduct.getId());
+        } catch (Exception e) {
+            logger.error("Failed to process product {} with Elasticsearch/fallback after creation: {}", savedProduct.getId(), e.getMessage(), e);
         }
 
         Product finalProduct = productRepository.findById(savedProduct.getId()).orElse(savedProduct);
@@ -205,15 +226,14 @@ public class ProductServiceImpl implements ProductService {
         Product updatedProduct = productRepository.save(product);
         logger.info("Product updated successfully with ID: {}", updatedProduct.getId());
 
-        if (productDenormalizationService != null) {
-            try {
-                productDenormalizationService.updateDenormalizedFields(updatedProduct.getId());
-                logger.info("Triggered denormalization for updated product ID: {}", updatedProduct.getId());
-            } catch (Exception e) {
-                logger.error("Error during post-update denormalization for product ID {}: {}", updatedProduct.getId(), e.getMessage(), e);
+        try {
+            if (productElasticsearchService != null) {
+                productElasticsearchService.saveProduct(updatedProduct);
+            } else {
+                fallbackProductElasticsearchService.saveProduct(updatedProduct);
             }
-        } else {
-            logger.warn("ProductDenormalizationService not available. Skipping denormalization for product ID: {}", updatedProduct.getId());
+        } catch (Exception e) {
+            logger.error("Failed to process product {} with Elasticsearch/fallback after database update: {}", updatedProduct.getId(), e.getMessage(), e);
         }
 
         Product finalProduct = productRepository.findById(updatedProduct.getId()).orElse(updatedProduct);
@@ -229,23 +249,28 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new EntityNotFoundException("Product not found with ID: " + productId));
 
         productRepository.delete(product);
-
         logger.info("Product deleted successfully with ID: {}", productId);
+
+        try {
+            if (productElasticsearchService != null) {
+                productElasticsearchService.deleteProductById(productId);
+            } else {
+                fallbackProductElasticsearchService.deleteProductById(productId);
+            }
+        } catch (Exception e) {
+            logger.error("Failed to process product {} deletion with Elasticsearch/fallback after database deletion: {}", productId, e.getMessage(), e);
+        }
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<ProductDTO> findTopSellingProducts(Pageable pageable) {
-        // TODO: Implement actual top-selling logic.
-        // This currently sorts by averageRating (desc) then by createdDate (desc) as a placeholder.
-        // True top-selling would require joining with order details and summing quantities.
         logger.info("Finding top-selling products (placeholder logic) with page: {}", pageable);
 
         Sort sort = Sort.by(Sort.Direction.DESC, "averageRating")
                         .and(Sort.by(Sort.Direction.DESC, "createdDate"));
         Pageable pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
 
-        // No specific filter here, just sorting all products by the placeholder criteria
         Specification<Product> spec = productSpecificationBuilder.build(
             null, null, null, null, null, null, null, null, null, false
         );
@@ -265,9 +290,8 @@ public class ProductServiceImpl implements ProductService {
         Sort sort = Sort.by(Sort.Direction.DESC, "discountPercentage");
         Pageable pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
 
-        // Filter for products that have a discountPercentage > 0
         Specification<Product> spec = productSpecificationBuilder.build(
-            null, null, null, null, null, null, null, null, null, true // onlyWithDiscount = true
+            null, null, null, null, null, null, null, null, null, true
         );
 
         Page<Product> productPage = productRepository.findAll(spec, pageRequest);

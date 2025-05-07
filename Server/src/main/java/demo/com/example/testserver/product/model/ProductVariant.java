@@ -1,5 +1,6 @@
 package demo.com.example.testserver.product.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.util.Date;
@@ -18,6 +19,7 @@ public class ProductVariant {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "san_pham_id", nullable = false)
+    @JsonIgnore
     private Product product;
 
     @Column(name = "ten_bien_the", nullable = false)

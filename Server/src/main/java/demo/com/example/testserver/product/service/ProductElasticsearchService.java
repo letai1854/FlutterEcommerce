@@ -1,77 +1,138 @@
 package demo.com.example.testserver.product.service;
 
+import demo.com.example.testserver.product.dto.elasticsearch.ProductElasticsearchDTO;
+import demo.com.example.testserver.product.model.Product;
+import demo.com.example.testserver.product.repository.elasticsearch.ProductElasticsearchRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Conditional;
+import demo.com.example.testserver.config.ElasticsearchConnectionCondition; // Import the custom condition
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.SearchHit;
+import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.data.elasticsearch.client.elc.NativeQuery; // For new Elasticsearch client
+import co.elastic.clients.elasticsearch._types.query_dsl.Operator; // For MatchQuery Operator
 import org.springframework.stereotype.Service;
-// Import Elasticsearch related classes if needed
-// import org.springframework.beans.factory.annotation.Autowired;
-// import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
-// import org.springframework.data.elasticsearch.core.SearchHits;
-// import org.springframework.data.elasticsearch.core.query.Query;
-// import org.springframework.data.elasticsearch.core.query.StringQuery;
-// import demo.com.example.testserver.product.model.Product; // Assuming Product is indexed
 
-import java.util.Collections;
 import java.util.List;
-// import java.util.stream.Collectors;
+import java.util.stream.Collectors;
+import java.util.Collections;
 
 @Service
+@Conditional(ElasticsearchConnectionCondition.class) // Use the custom condition
 public class ProductElasticsearchService {
 
     private static final Logger logger = LoggerFactory.getLogger(ProductElasticsearchService.class);
 
-    // Inject ElasticsearchOperations or a custom search service if using Elasticsearch
-    // @Autowired(required = false) // Make optional if ES is not always available/configured
-    // private ElasticsearchOperations elasticsearchOperations;
+    private final ProductElasticsearchRepository productElasticsearchRepository;
+    private final ProductMapper productMapper;
+    private final ElasticsearchOperations elasticsearchOperations;
 
-    /**
-     * Searches for product IDs in Elasticsearch based on a keyword.
-     *
-     * @param searchKeyword The keyword to search for.
-     * @return A list of matching product IDs, an empty list if no matches, or null if an error occurs or ES is not configured.
-     */
-    public List<Integer> searchProductIds(String searchKeyword /*, other filters */) {
-        // TODO: Implement Elasticsearch Search Logic
-        // 1. Build Elasticsearch Query (e.g., using QueryBuilders) based on searchKeyword and potentially other filters.
-        //    Consider multi_match, boosting fields, fuzziness etc.
-        // 2. Execute the search using elasticsearchOperations.search(...)
-        // 3. Extract only the product IDs from the SearchHits.
-        // 4. Handle potential exceptions during ES communication.
+    @Autowired
+    public ProductElasticsearchService(
+            ProductElasticsearchRepository productElasticsearchRepository,
+            ProductMapper productMapper, // Added ProductMapper
+            ElasticsearchOperations elasticsearchOperations) {
+        this.productElasticsearchRepository = productElasticsearchRepository;
+        this.productMapper = productMapper; // Initialize ProductMapper
+        this.elasticsearchOperations = elasticsearchOperations;
+        logger.info("ProductElasticsearchService activated as Elasticsearch is enabled and reachable.");
+    }
 
-        logger.warn("Elasticsearch search method 'searchProductIds' is not implemented. Returning null.");
-        // Example structure:
-        /*
-        if (elasticsearchOperations == null) {
-             logger.warn("ElasticsearchOperations not available. Skipping Elasticsearch search.");
-             return null; // Indicate ES is not available/configured
+    public void saveProduct(Product product) {
+        if (product == null) {
+            logger.warn("Attempted to save a null product to Elasticsearch. Skipping.");
+            return;
         }
         try {
-            // Simple example using StringQuery, adapt as needed
-            Query query = new StringQuery("{\"multi_match\": {\"query\": \"" + searchKeyword + "\", \"fields\": [\"name\", \"description\"]}}");
-            // Add source filtering to only get IDs
-             query.setSourceFilter(new FetchSourceFilter(null, new String[]{"*"})); // Adjust to fetch only ID if possible in mapping
-             query.setFields("id"); // Request only the ID field if stored separately
-
-            // Add pagination if needed, though usually we get all matching IDs first
-            // query.setPageable(PageRequest.of(0, 1000)); // Limit number of IDs?
-
-            SearchHits<Product> searchHits = elasticsearchOperations.search(query, Product.class); // Assuming Product is indexed
-
-            if (searchHits.hasSearchHits()) {
-                List<Integer> ids = searchHits.getSearchHits().stream()
-                                        .map(hit -> Integer.parseInt(hit.getId())) // Assuming ID is the document ID and is integer
-                                        .collect(Collectors.toList());
-                logger.info("Elasticsearch found {} IDs for keyword '{}'", ids.size(), searchKeyword);
-                return ids;
-            } else {
-                 logger.info("Elasticsearch found no results for keyword '{}'", searchKeyword);
-                return Collections.emptyList();
+            ProductElasticsearchDTO dto = productMapper.mapToProductElasticsearchDTO(product);
+            if (dto == null) {
+                logger.error("Failed to map Product entity with ID {} to ProductElasticsearchDTO. DTO was null.", product.getId());
+                return;
             }
+            productElasticsearchRepository.save(dto);
+            logger.info("Successfully saved/updated product with ID {} in Elasticsearch.", dto.getId());
         } catch (Exception e) {
-            logger.error("Error during Elasticsearch search for keyword '{}': {}", searchKeyword, e.getMessage(), e);
-            return null; // Indicate failure
+            logger.error("Error saving product with ID {} to Elasticsearch: {}", product.getId(), e.getMessage(), e);
         }
-        */
-        return null; // Placeholder for not implemented or error
+    }
+
+    public void deleteProduct(Long productId) {
+        try {
+            productElasticsearchRepository.deleteById(productId);
+            logger.info("Successfully deleted product with ID {} from Elasticsearch.", productId);
+        } catch (Exception e) {
+            logger.error("Error deleting product with ID {} from Elasticsearch: {}", productId, e.getMessage(), e);
+        }
+    }
+
+    public ProductElasticsearchDTO findById(Long productId) {
+        return productElasticsearchRepository.findById(productId).orElse(null);
+    }
+
+    public Page<ProductElasticsearchDTO> searchProducts(org.springframework.data.elasticsearch.core.query.Query searchQuery, Pageable pageable) {
+        SearchHits<ProductElasticsearchDTO> searchHits = elasticsearchOperations.search(searchQuery, ProductElasticsearchDTO.class);
+        List<ProductElasticsearchDTO> dtos = searchHits.getSearchHits().stream()
+                .map(SearchHit::getContent)
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(dtos, pageable, searchHits.getTotalHits());
+    }
+
+    public void updateProductEnabledStatus(Long productId, boolean isEnabled) {
+        productElasticsearchRepository.findById(productId).ifPresent(dto -> {
+            dto.setIsEnabled(isEnabled);
+            productElasticsearchRepository.save(dto);
+            logger.info("Updated enabled status for product ID {} to {} in Elasticsearch.", productId, isEnabled);
+        });
+    }
+
+    public List<Long> searchProductIds(String search) {
+        logger.info("Searching for product IDs in Elasticsearch with search term: {}", search);
+        if (search == null || search.trim().isEmpty()) {
+            logger.warn("Search term is empty, returning no results.");
+            return Collections.emptyList();
+        }
+        try {
+            var esMatchQuery = co.elastic.clients.elasticsearch._types.query_dsl.MatchQuery.of(m -> m
+                    .field("name")
+                    .query(search)
+                    .operator(Operator.And)
+                    .fuzziness("AUTO")
+            );
+
+            var esQuery = co.elastic.clients.elasticsearch._types.query_dsl.Query.of(qBuilder -> qBuilder
+                    .match(esMatchQuery)
+            );
+
+            NativeQuery springDataQuery = NativeQuery.builder()
+                    .withQuery(esQuery)
+                    .build();
+
+            SearchHits<ProductElasticsearchDTO> searchHits = elasticsearchOperations.search(springDataQuery, ProductElasticsearchDTO.class);
+
+            return searchHits.getSearchHits().stream()
+                    .map(SearchHit::getContent)
+                    .map(ProductElasticsearchDTO::getId)
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            logger.error("Error searching for products with term {}: {}. Returning null to allow fallback.", search, e.getMessage(), e);
+            return null;
+        }
+    }
+
+    public void deleteProductById(Long productId) {
+        logger.info("Deleting product with ID: {} from Elasticsearch", productId);
+        try {
+            productElasticsearchRepository.deleteById(productId);
+            logger.info("Successfully deleted product with ID {} from Elasticsearch.", productId);
+        } catch (Exception e) {
+            logger.error("Error deleting product with ID {} from Elasticsearch: {}", productId, e.getMessage(), e);
+        }
     }
 }

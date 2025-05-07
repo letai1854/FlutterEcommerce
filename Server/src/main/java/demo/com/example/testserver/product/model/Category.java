@@ -1,5 +1,6 @@
 package demo.com.example.testserver.product.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank; // Import NotBlank
 import java.util.Date;
@@ -29,7 +30,8 @@ public class Category {
     @Temporal(TemporalType.TIMESTAMP)
     private Date updatedDate;
 
-    @OneToMany(mappedBy = "category")
+    @OneToMany(mappedBy = "category", fetch = FetchType.LAZY)
+    @JsonIgnore // Add this to break the loop: Product -> Category -> List<Product>
     private List<Product> products;
 
     // Lifecycle Callbacks
