@@ -312,7 +312,7 @@ class UserService {
         final responseBody = jsonDecode(response.body);
         setAuthToken(responseBody['token']);
         UserInfo().updateUserInfo(responseBody);
-
+        print("User logged in successfully--------------------: ${UserInfo().currentUser?.role}");
         String? avatarPath = UserInfo().currentUser?.avatar;
         if (avatarPath != null && avatarPath.isNotEmpty) {
           String fullAvatarUrl = getImageUrl(avatarPath);

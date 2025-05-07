@@ -53,6 +53,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/users/verify-otp").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/users/set-new-password").permitAll()
                 // --- Product/Category/Brand Public Access ---
+                .requestMatchers(HttpMethod.GET, "/api/products/top-selling").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/products/top-discounted").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/brands/**").permitAll()
@@ -87,6 +89,12 @@ public class SecurityConfig {
                 .requestMatchers("/api/users/me/**").authenticated() // Secure all /me routes (profile, update, change password)
                 // --- Address Management ---
                 .requestMatchers("/api/addresses/me/**").authenticated() // Secure all /me address routes
+                // --- Order Management ---
+                // General access to order endpoints requires authentication.
+                // Service layer ensures users can only access/modify their own orders for /me endpoints.
+                .requestMatchers("/api/orders/**").authenticated() 
+                // Specific endpoint for admin to update order status.
+                .requestMatchers(HttpMethod.PATCH, "/api/orders/{orderId}/status").hasRole("ADMIN") 
                 // Secure all other requests
                 .anyRequest().authenticated()
             );

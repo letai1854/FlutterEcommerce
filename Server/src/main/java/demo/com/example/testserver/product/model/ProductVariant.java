@@ -29,6 +29,9 @@ public class ProductVariant {
     @Column(name = "gia", nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
 
+    @Column(name = "phan_tram_giam_gia", precision = 5, scale = 2)
+    private BigDecimal discountPercentage;
+
     @Column(name = "so_luong_ton_kho", nullable = false)
     private Integer stockQuantity = 0;
 
@@ -103,6 +106,14 @@ public class ProductVariant {
 
     public void setPrice(BigDecimal price) {
         this.price = price;
+    }
+
+    public BigDecimal getDiscountPercentage() {
+        return discountPercentage == null ? BigDecimal.ZERO : discountPercentage;
+    }
+
+    public void setDiscountPercentage(BigDecimal discountPercentage) {
+        this.discountPercentage = discountPercentage;
     }
 
     public Integer getStockQuantity() {

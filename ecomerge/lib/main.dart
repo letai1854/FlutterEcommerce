@@ -39,7 +39,7 @@ Future<void> initApp() async {
   // // Initialize user session
   // final userProvider = UserProvider();
   // await userProvider.loadUserSession();
-  await AppDataService().loadData();
+  // await AppDataService().loadData();
   print('AppDataService loaded successfully during app init.');
 }
 

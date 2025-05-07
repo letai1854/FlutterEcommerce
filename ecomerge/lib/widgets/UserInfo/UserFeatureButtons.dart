@@ -64,7 +64,7 @@ class UserFeatureButtons extends StatelessWidget {
     final bool isLoggedIn = UserInfo().currentUser != null;
     // Check if user is admin
     final bool isAdmin =
-        isLoggedIn && UserInfo().currentUser!.role == UserRole.quan_tri;
+        isLoggedIn && UserInfo().currentUser!.role.toString() == UserRole.quan_tri.name;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),

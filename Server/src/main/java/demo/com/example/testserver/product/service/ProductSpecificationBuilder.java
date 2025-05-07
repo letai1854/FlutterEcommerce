@@ -1,15 +1,15 @@
 package demo.com.example.testserver.product.service;
 
 import demo.com.example.testserver.product.model.Product;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Component;
 import jakarta.persistence.criteria.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Date; // Import Date
+import java.util.Date;
 import java.util.List;
 
 @Component
@@ -17,7 +17,7 @@ public class ProductSpecificationBuilder {
 
     private static final Logger logger = LoggerFactory.getLogger(ProductSpecificationBuilder.class);
 
-    // Modified build method to include date parameters
+    // Modified build method to include date parameters and discount filter
     public Specification<Product> build(
             String search,
             Integer categoryId,
@@ -25,24 +25,28 @@ public class ProductSpecificationBuilder {
             BigDecimal minPrice,
             BigDecimal maxPrice,
             Double minRating,
-            List<Integer> productIdsFromSearch,
-            Date startDate, // New parameter
-            Date endDate    // New parameter
+            List<Integer> productIdsFromSearch, // Can be Long if product IDs are Long
+            Date startDate,
+            Date endDate,
+            Boolean onlyWithDiscount // New parameter for discount filter
     ) {
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
+            logger.debug("Building specification with Search: '{}', CategoryId: {}, BrandId: {}, Price: {}-{}, Rating >= {}, StartDate: {}, EndDate: {}, OnlyWithDiscount: {}",
+                    search, categoryId, brandId, minPrice, maxPrice, minRating, startDate, endDate, onlyWithDiscount);
 
-            // Filter by IDs from Elasticsearch if available
+
+            // Handle Elasticsearch search results
             if (productIdsFromSearch != null && !productIdsFromSearch.isEmpty()) {
-                logger.debug("Adding ID filter from Elasticsearch results ({} IDs)", productIdsFromSearch.size());
-                predicates.add(root.get("id").in(productIdsFromSearch.stream().map(Long::valueOf).toList()));
-            } else if (productIdsFromSearch == null && search != null && !search.trim().isEmpty()) {
-                // Fallback: Nếu tìm kiếm ES thất bại hoặc không có, dùng LIKE search trong DB
-                logger.warn("Elasticsearch search failed or unavailable for term '{}'. Adding DB LIKE search fallback.", search);
-                // Tìm trong tên HOẶC mô tả sản phẩm (không phân biệt hoa thường)
-                 Predicate nameLike = criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), "%" + search.toLowerCase() + "%");
-                 Predicate descriptionLike = criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), "%" + search.toLowerCase() + "%");
-                 predicates.add(criteriaBuilder.or(nameLike, descriptionLike)); // Thêm điều kiện OR vào câu truy vấn
+                logger.debug("Adding filter for productIdsFromSearch (size: {})", productIdsFromSearch.size());
+                // Assuming product ID in database is Long. If it's Integer, adjust `Product_.ID` or cast.
+                predicates.add(root.get("id").in(productIdsFromSearch));
+            } else if (search != null && !search.trim().isEmpty() && productIdsFromSearch == null) {
+                // Fallback to database search if ES failed or not used, and search term is present
+                logger.debug("Adding database LIKE filter for search term: {}", search);
+                Predicate nameLike = criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), "%" + search.toLowerCase() + "%");
+                Predicate descriptionLike = criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), "%" + search.toLowerCase() + "%");
+                predicates.add(criteriaBuilder.or(nameLike, descriptionLike)); // Thêm điều kiện OR vào câu truy vấn
             }
 
             // Filter by Category
@@ -57,43 +61,42 @@ public class ProductSpecificationBuilder {
                 predicates.add(criteriaBuilder.equal(root.get("brand").get("id"), brandId));
             }
 
-            // Filter by Price Range using denormalized fields
+            // Filter by Price Range
             if (minPrice != null) {
                 logger.debug("Adding filter for minPrice: {}", minPrice);
-                // Assuming minPrice in DB represents the lowest price of any variant
-                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("minPrice"), minPrice));
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("minPrice"), minPrice)); // Use denormalized minPrice
             }
             if (maxPrice != null) {
                 logger.debug("Adding filter for maxPrice: {}", maxPrice);
-                 // Assuming maxPrice in DB represents the highest price of any variant
-                 // Find products where *some* variant might be <= maxPrice.
-                 // A simple filter on minPrice might be sufficient depending on desired behavior:
-                 // If a product's lowest variant price is above maxPrice, exclude it.
-                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("minPrice"), maxPrice)); // Changed from maxPrice field
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("maxPrice"), maxPrice)); // Use denormalized maxPrice
             }
 
-            // Filter by Minimum Rating using denormalized field
-            if (minRating != null && minRating > 0) {
+            // Filter by Minimum Rating
+            if (minRating != null) {
                 logger.debug("Adding filter for minRating: {}", minRating);
-                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("averageRating"), minRating));
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("averageRating"), minRating)); // Use denormalized averageRating
             }
 
-            // Filter by Creation Date Range
+            // Filter by Date Range (for createdDate)
             if (startDate != null) {
                 logger.debug("Adding filter for startDate: {}", startDate);
                 predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdDate"), startDate));
             }
             if (endDate != null) {
+                // To make endDate inclusive, search for dates less than the day after endDate
+                // Or adjust based on exact requirements (e.g., end of day for endDate)
                 logger.debug("Adding filter for endDate: {}", endDate);
-                // To include the whole day, consider setting time to 23:59:59 or using LocalDate comparison if applicable
                 predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdDate"), endDate));
             }
 
-
-            // Combine predicates
-            if (predicates.isEmpty()) {
-                return criteriaBuilder.conjunction(); // Return a predicate that always evaluates to true if no filters
+            // Filter for products with discount
+            if (Boolean.TRUE.equals(onlyWithDiscount)) {
+                logger.debug("Adding filter for products with discountPercentage > 0");
+                predicates.add(criteriaBuilder.isNotNull(root.get("discountPercentage")));
+                predicates.add(criteriaBuilder.greaterThan(root.get("discountPercentage"), BigDecimal.ZERO));
             }
+
+            logger.debug("Total predicates generated: {}", predicates.size());
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
         };
     }
