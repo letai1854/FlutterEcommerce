@@ -49,7 +49,6 @@ class _HomeState extends State<Home> {
     'assets/banner2.jpg',
     'assets/banner6.jpg', // Thay thế bằng đường dẫn ảnh thực tế// Thay thế bằng đường dẫn ảnh thực tế
   ];
-  List<Map<String, dynamic>> productData = Productest.productData;
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _categoriesSectionKey = GlobalKey();
   final GlobalKey _paginatedGridKey =
@@ -343,15 +342,15 @@ class _HomeState extends State<Home> {
                         ],
                       ),
                     ),
-                    _buildVerticalCategoryItem(
-                        'Laptop', 'assets/banner6.jpg', 0),
-                    _buildVerticalCategoryItem('Ram', 'assets/banner6.jpg', 1),
-                    _buildVerticalCategoryItem(
-                        'Card đồ họa', 'assets/banner6.jpg', 2),
-                    _buildVerticalCategoryItem(
-                        'Màn hình', 'assets/banner6.jpg', 3),
-                    _buildVerticalCategoryItem(
-                        'Ổ cứng', 'assets/banner6.jpg', 4),
+                    // _buildVerticalCategoryItem(
+                    //     'Laptop', 'assets/banner6.jpg', 0),
+                    // _buildVerticalCategoryItem('Ram', 'assets/banner6.jpg', 1),
+                    // _buildVerticalCategoryItem(
+                    //     'Card đồ họa', 'assets/banner6.jpg', 2),
+                    // _buildVerticalCategoryItem(
+                    //     'Màn hình', 'assets/banner6.jpg', 3),
+                    // _buildVerticalCategoryItem(
+                    //     'Ổ cứng', 'assets/banner6.jpg', 4),
                   ],
                 ),
               ),
@@ -498,6 +497,5 @@ class _CategoriesSectionState extends State<CategoriesSection> {
     );
   }
 }
-
 
 //comment 1

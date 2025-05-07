@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 import 'package:e_commerce_app/Constants/productTest.dart';
 import 'package:e_commerce_app/constants.dart';
+import 'package:e_commerce_app/database/Storage/BrandCategoryService.dart';
+import 'package:e_commerce_app/database/models/categories.dart';
 import 'package:e_commerce_app/widgets/Product/CategoriesSection.dart';
 import 'package:e_commerce_app/widgets/Product/PaginatedProductGrid.dart';
 import 'package:e_commerce_app/widgets/Product/ProductItem.dart'
@@ -18,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:e_commerce_app/widgets/Home/bodyHomeMobile.dart';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/services/user_service.dart';
+import 'package:e_commerce_app/database/services/categories_service.dart';
 
 class ResponsiveHome extends StatefulWidget {
   const ResponsiveHome({super.key});
@@ -37,18 +40,52 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
   bool _showFloatingCategories = false;
   bool _isPanelExpanded = false; // For mobile panel expansion
   int? _selectedCategory;
-  List<Map<String, dynamic>> productData = Productest.productData;
+  final CategoriesService _categoriesService = CategoriesService();
+  List<CategoryDTO> _appCategories = [];
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    AppDataService().addListener(_onAppDataChanged);
+    _loadCategories();
+  }
+
+  void _onAppDataChanged() {
+    if (mounted) {
+      setState(() {
+        _appCategories = AppDataService().categories;
+      });
+    }
+  }
+
+  void _loadCategories() {
+    if (!AppDataService().isInitialized && !AppDataService().isLoading) {
+      AppDataService().loadData().then((_) {
+        if (mounted) {
+          setState(() {
+            _appCategories = AppDataService().categories;
+          });
+        }
+      }).catchError((error) {
+        if (kDebugMode) {
+          print("Error loading app data in ResponsiveHome: $error");
+        }
+      });
+    } else if (AppDataService().isInitialized) {
+      if (mounted) {
+        setState(() {
+          _appCategories = AppDataService().categories;
+        });
+      }
+    }
   }
 
   @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    AppDataService().removeListener(_onAppDataChanged);
     super.dispose();
   }
 
@@ -325,48 +362,15 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                           crossSpace: isMobile ? 10 : 8,
                         ),
                       ),
-                      // Container(
-                      //   height: isMobile ? 320 : 600,
-                      //   child: product_item.ProductList(
-                      //     productListKey: _bestSellerKey,
-                      //     scroll: Axis.horizontal,
-                      //     productData: productData,
-                      //     itemsPerPage: 12,
-                      //     gridHeight: isMobile ? 250 : 600,
-                      //     gridWidth: screenWidth,
-                      //     childAspectRatio: isMobile ? 0.8 : 1.47,
-                      //     crossAxisCount: isMobile ? 1 : 2,
-                      //     mainSpace: isMobile ? 10 : 9.7,
-                      //     crossSpace: isMobile ? 10 : 8,
-                      //   ),
-                      // ),
                       SizedBox(height: 10),
                       CategoriesSection(
                         key: _categoriesSectionKey,
                         selectedIndex: _selectedCategory,
                         onCategorySelected: _handleCategorySelected,
+                        categories:
+                            _appCategories, // Pass the dynamic categories here
                       ),
                       SizedBox(height: 10),
-                      // Column(
-                      //   key: _paginatedGridKey,
-                      //   children: [
-                      //     SizedBox(
-                      //       width:
-                      //           isDesktop ? screenWidth - 280 : screenWidth - 2,
-                      //       child: PaginatedProductGrid(
-                      //         productData: productData,
-                      //         itemsPerPage: _getItemsPerPage(screenWidth),
-                      //         gridWidth: isDesktop
-                      //             ? screenWidth - 280
-                      //             : screenWidth - 2,
-                      //         childAspectRatio: 0.7,
-                      //         crossAxisCount: _getCrossAxisCount(screenWidth),
-                      //         mainSpace: 10,
-                      //         crossSpace: 8.0,
-                      //       ),
-                      //     ),
-                      //   ],
-                      // ),
                       SizedBox(height: 50),
                     ],
                   ),
@@ -401,6 +405,8 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
   }
 
   Widget _buildMobileFloatingCategories({bool isTablet = false}) {
+    final List<CategoryDTO> categoriesToShow = _appCategories.take(5).toList();
+
     return Positioned(
       right: 0,
       top: isTablet
@@ -451,18 +457,13 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                             height: isTablet ? 300 : 200,
                             child: ListView(
                               shrinkWrap: true,
-                              children: [
-                                _buildVerticalCategoryItem(
-                                    'Laptop', 'assets/banner6.jpg', 0),
-                                _buildVerticalCategoryItem(
-                                    'Ram', 'assets/banner6.jpg', 1),
-                                _buildVerticalCategoryItem(
-                                    'Card đồ họa', 'assets/banner6.jpg', 2),
-                                _buildVerticalCategoryItem(
-                                    'Màn hình', 'assets/banner6.jpg', 3),
-                                _buildVerticalCategoryItem(
-                                    'Ổ cứng', 'assets/banner6.jpg', 4),
-                              ],
+                              children:
+                                  categoriesToShow.asMap().entries.map((entry) {
+                                int idx = entry.key;
+                                CategoryDTO category = entry.value;
+                                return _buildVerticalCategoryItem(
+                                    category, idx);
+                              }).toList(),
                             ),
                           ),
                         ],
@@ -512,6 +513,8 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
   }
 
   Widget _buildFloatingCategories() {
+    final List<CategoryDTO> categoriesToShow = _appCategories.take(5).toList();
+
     return Positioned(
       right: 0,
       top: 150,
@@ -554,12 +557,11 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                   ],
                 ),
               ),
-              _buildVerticalCategoryItem('Laptop', 'assets/banner6.jpg', 0),
-              _buildVerticalCategoryItem('Ram', 'assets/banner6.jpg', 1),
-              _buildVerticalCategoryItem(
-                  'Card đồ họa', 'assets/banner6.jpg', 2),
-              _buildVerticalCategoryItem('Màn hình', 'assets/banner6.jpg', 3),
-              _buildVerticalCategoryItem('Ổ cứng', 'assets/banner6.jpg', 4),
+              ...categoriesToShow.asMap().entries.map((entry) {
+                int idx = entry.key;
+                CategoryDTO category = entry.value;
+                return _buildVerticalCategoryItem(category, idx);
+              }).toList(),
             ],
           ),
         ),
@@ -567,12 +569,13 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
     );
   }
 
-  Widget _buildVerticalCategoryItem(String title, String imageUrl, int index) {
-    bool isSelected = _selectedCategory == index;
+  Widget _buildVerticalCategoryItem(CategoryDTO category, int itemIndex) {
+    bool isSelected = _selectedCategory == itemIndex;
+    String fullImageUrl = _categoriesService.getImageUrl(category.imageUrl);
 
     return GestureDetector(
       onTap: () {
-        _handleCategorySelected(index);
+        _handleCategorySelected(itemIndex);
       },
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 8.0),
@@ -583,74 +586,44 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
         child: Row(
           children: [
             Container(
-              height: 30,
-              width: 30,
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage(imageUrl),
-                  fit: BoxFit.cover,
-                ),
-                borderRadius: BorderRadius.circular(15),
-              ),
+              child: fullImageUrl.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(15.0),
+                      child: Image.network(
+                        fullImageUrl,
+                        fit: BoxFit.cover,
+                        height: 30,
+                        width: 30,
+                        errorBuilder: (context, error, stackTrace) => Icon(
+                            Icons.category,
+                            size: 20,
+                            color: Colors.grey[400]),
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: SizedBox(
+                              width: 15,
+                              height: 15,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.5,
+                                color: Colors.grey[400],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                  : Icon(Icons.category, size: 20, color: Colors.grey[400]),
             ),
             SizedBox(width: 8),
             Expanded(
               child: Text(
-                title,
+                category.name ?? 'N/A',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHorizontalCategoryItem(
-      String title, String imageUrl, int index) {
-    bool isSelected = _selectedCategory == index;
-
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 5),
-      child: InkWell(
-        onTap: () {
-          _handleCategorySelected(index);
-        },
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isSelected ? Colors.blue : Colors.grey[300]!,
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                height: 25,
-                width: 25,
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage(imageUrl),
-                    fit: BoxFit.cover,
-                  ),
-                  borderRadius: BorderRadius.circular(12.5),
-                ),
-              ),
-              SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 14,
-                  color: isSelected ? Colors.blue : Colors.black87,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
