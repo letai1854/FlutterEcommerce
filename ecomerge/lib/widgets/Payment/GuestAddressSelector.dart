@@ -223,25 +223,52 @@ class _GuestAddressSelectorState extends State<GuestAddressSelector> {
   }
 
   void _setAsDefault(int index) {
-    if (widget.addresses[index].isDefault) return;
+    if (index < 0 ||
+        index >= widget.addresses.length ||
+        widget.addresses[index].isDefault) return;
 
-    final updatedAddresses = List<AddressData>.from(widget.addresses);
+    try {
+      // First create copies of all addresses to avoid direct modification
+      final List<AddressData> updatedAddresses =
+          List<AddressData>.from(widget.addresses);
 
-    // Remove default status from current default address
-    for (int i = 0; i < updatedAddresses.length; i++) {
-      if (i != index && updatedAddresses[i].isDefault) {
-        widget.onUpdateAddress(
-            i, updatedAddresses[i].copyWith(isDefault: false));
+      // Remove default status from all other addresses
+      for (int i = 0; i < updatedAddresses.length; i++) {
+        if (i != index && updatedAddresses[i].isDefault) {
+          widget.onUpdateAddress(
+            i,
+            updatedAddresses[i].copyWith(isDefault: false),
+          );
+        }
       }
+
+      // Set new default address
+      widget.onUpdateAddress(
+        index,
+        updatedAddresses[index].copyWith(isDefault: true),
+      );
+
+      // Update selected index
+      setState(() {
+        _selectedIndex = index;
+      });
+
+      // Provide feedback to user
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã đặt địa chỉ mặc định'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    } catch (e) {
+      print('Error setting default address: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không thể đặt địa chỉ mặc định'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
-
-    // Set new default address
-    widget.onUpdateAddress(
-        index, updatedAddresses[index].copyWith(isDefault: true));
-
-    setState(() {
-      _selectedIndex = index;
-    });
   }
 
   void _confirmSelection() {

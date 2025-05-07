@@ -1,9 +1,14 @@
 import 'package:e_commerce_app/Screens/Payment/PagePayment.dart';
-import 'package:e_commerce_app/widgets/Payment/AddressDisplay.dart'; // Import the new widget
+import 'package:e_commerce_app/widgets/Payment/AddressDisplay.dart';
 import 'package:e_commerce_app/widgets/Payment/AddressSelector.dart';
 import 'package:e_commerce_app/widgets/Payment/VoucherSelector.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
+import 'package:e_commerce_app/database/services/user_service.dart';
+import 'package:e_commerce_app/database/services/address_service.dart';
+import 'package:flutter/foundation.dart';
+import 'package:e_commerce_app/database/models/address_model.dart'; // Add this import for AddressRequest
 
 class BodyPayment extends StatelessWidget {
   final AddressData? currentAddress;
@@ -23,7 +28,7 @@ class BodyPayment extends StatelessWidget {
   final Function(String) onChangePaymentMethod;
   final VoidCallback onPlaceOrder;
   final String Function(num) formatCurrency;
-  final Function(AddressData) onAddressSelected; // New parameter
+  final Function(AddressData) onAddressSelected;
 
   const BodyPayment({
     Key? key,
@@ -43,7 +48,7 @@ class BodyPayment extends StatelessWidget {
     required this.onChangePaymentMethod,
     required this.onPlaceOrder,
     required this.formatCurrency,
-    required this.onAddressSelected, // New parameter
+    required this.onAddressSelected,
   }) : super(key: key);
 
   Widget _buildAddressDisplay() {
@@ -159,7 +164,8 @@ class BodyPayment extends StatelessWidget {
     );
   }
 
-  Widget _buildPlaceOrderButton() {
+  Widget _buildPlaceOrderButton(BuildContext context) {
+    bool isLoggedIn = UserInfo().isLoggedIn;
     bool canPlaceOrder = currentAddress != null && !isProcessingOrder;
 
     return Align(
@@ -175,7 +181,15 @@ class BodyPayment extends StatelessWidget {
           elevation: isProcessingOrder ? 0 : 2,
           disabledBackgroundColor: Colors.grey.shade400,
         ),
-        onPressed: canPlaceOrder ? onPlaceOrder : null,
+        onPressed: canPlaceOrder
+            ? () {
+                if (isLoggedIn) {
+                  onPlaceOrder();
+                } else {
+                  _showEmailLoginDialog(context);
+                }
+              }
+            : null,
         icon: isProcessingOrder
             ? Container(
                 width: 18,
@@ -197,6 +211,182 @@ class BodyPayment extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _showEmailLoginDialog(BuildContext context) {
+    final TextEditingController emailController = TextEditingController();
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+    bool isProcessing = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            width: 400,
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Nhập email để tiếp tục',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: emailController,
+                    enabled: !isProcessing,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: 'Email',
+                      hintText: 'Nhập địa chỉ email của bạn',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: const Icon(Icons.email),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Vui lòng nhập email';
+                      }
+                      final emailRegex =
+                          RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                      if (!emailRegex.hasMatch(value)) {
+                        return 'Email không hợp lệ';
+                      }
+                      return null;
+                    },
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Tổng thanh toán:',
+                        style: TextStyle(fontSize: 16),
+                      ),
+                      Text(
+                        formatCurrency(totalAmount),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.deepOrange,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: isProcessing
+                            ? null
+                            : () => Navigator.pop(dialogContext),
+                        child: const Text('Hủy'),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: isProcessing
+                            ? null
+                            : () async {
+                                if (formKey.currentState!.validate()) {
+                                  final email = emailController.text.trim();
+                                  setDialogState(() => isProcessing = true);
+                                  final success =
+                                      await _registerGuestUserAndSetAddress(
+                                          email);
+
+                                  if (success) {
+                                    Navigator.pop(dialogContext);
+                                    onPlaceOrder();
+                                  } else {
+                                    setDialogState(() => isProcessing = false);
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                            'Không thể tiếp tục với email này. Vui lòng thử lại.'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepOrange,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: isProcessing
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
+                                ))
+                            : const Text('Tiếp tục'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _registerGuestUserAndSetAddress(String email) async {
+    try {
+      final userService = UserService();
+      final registrationSuccess = await userService.registerGuestUser(email);
+
+      if (registrationSuccess && currentAddress != null) {
+        final addressService = AddressService();
+        final addresses = await addressService.getUserAddresses();
+
+        if (addresses.isNotEmpty) {
+          final defaultAddress = addresses.first;
+
+          if (defaultAddress.id != null) {
+            final addressRequest = AddressRequest(
+              recipientName: currentAddress!.name,
+              phoneNumber: currentAddress!.phone,
+              specificAddress:
+                  "${currentAddress!.address}, ${currentAddress!.ward}, ${currentAddress!.district}, ${currentAddress!.province}",
+              isDefault: true,
+            );
+
+            final updatedAddress = await addressService.updateAddress(
+              defaultAddress.id!,
+              addressRequest,
+            );
+
+            return updatedAddress != null;
+          }
+        }
+
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      print('Error in guest user registration process: $e');
+      return false;
+    }
   }
 
   @override
@@ -337,7 +527,7 @@ class BodyPayment extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 24.0),
-                        _buildPlaceOrderButton(),
+                        _buildPlaceOrderButton(context),
                         const SizedBox(height: 16.0),
                         const Center(
                           child: Text(

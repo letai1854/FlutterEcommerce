@@ -205,25 +205,30 @@ class _PagePaymentState extends State<PagePayment> {
   void _updateExistingAddress(int index, AddressData updatedAddress) {
     if (index >= 0 && index < _addresses.length) {
       setState(() {
-        // Giữ lại trạng thái isDefault của địa chỉ gốc nếu không có logic thay đổi default
-        final bool wasDefault = _addresses[index].isDefault;
-        _addresses[index] = AddressData(
-          name: updatedAddress.name,
-          phone: updatedAddress.phone,
-          address: updatedAddress.address,
-          province: updatedAddress.province,
-          district: updatedAddress.district,
-          ward: updatedAddress.ward,
-          isDefault: wasDefault, // Giữ lại trạng thái default cũ
-        );
-        // Nếu địa chỉ được cập nhật là địa chỉ hiện tại, cập nhật _currentAddress
-        if (_currentAddress?.name == _addresses[index].name &&
-            _currentAddress?.phone == _addresses[index].phone) {
-          // Cần cách xác định địa chỉ chính xác hơn ID duy nhất
-          _currentAddress = _addresses[index];
+        final previousDefault = _addresses[index].isDefault;
+        final newIsDefault = updatedAddress.isDefault;
+
+        // If this address is being set as default, remove default status from others
+        if (!previousDefault && newIsDefault) {
+          for (int i = 0; i < _addresses.length; i++) {
+            if (i != index && _addresses[i].isDefault) {
+              _addresses[i] = _addresses[i].copyWith(isDefault: false);
+            }
+          }
         }
+
+        _addresses[index] = updatedAddress;
+
+        // If this was or is now the default address, update _currentAddress
+        if (previousDefault || newIsDefault || _currentAddress == null) {
+          _currentAddress = _addresses.firstWhere((addr) => addr.isDefault,
+              orElse: () => _addresses.first);
+        }
+
         print(
-            "PagePayment: Updated address at index $index - ${updatedAddress.name}");
+            "PagePayment: Updated address at index $index - ${updatedAddress.name}, isDefault: ${updatedAddress.isDefault}");
+        print(
+            "PagePayment: Current selected address: ${_currentAddress?.name}, isDefault: ${_currentAddress?.isDefault}");
       });
     } else {
       print("PagePayment: Invalid index for address update ($index)");
@@ -260,19 +265,25 @@ class _PagePaymentState extends State<PagePayment> {
   void _setAddressAsDefault(int index) {
     if (index >= 0 && index < _addresses.length) {
       setState(() {
-        // Bỏ default của địa chỉ hiện tại
+        // Find current default address and unset it
         for (int i = 0; i < _addresses.length; i++) {
-          if (_addresses[i].isDefault) {
+          if (i != index && _addresses[i].isDefault) {
             _addresses[i] = _addresses[i].copyWith(isDefault: false);
-            break; // Chỉ có 1 default
+            print(
+                "PagePayment: Removed default status from address ${_addresses[i].name}");
           }
         }
-        // Đặt default cho địa chỉ mới
+
+        // Set new default address
         _addresses[index] = _addresses[index].copyWith(isDefault: true);
-        // Cập nhật luôn địa chỉ đang chọn là địa chỉ mặc định mới
+
+        // Update current address to the new default
         _currentAddress = _addresses[index];
+
         print(
             "PagePayment: Set address at index $index as default - ${_addresses[index].name}");
+        print(
+            "PagePayment: Current selected address updated to: ${_currentAddress?.name}");
       });
     }
   }
