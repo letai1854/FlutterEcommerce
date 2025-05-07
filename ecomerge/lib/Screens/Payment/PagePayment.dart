@@ -1,9 +1,12 @@
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForTablet.dart';
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
 import 'package:e_commerce_app/widgets/Payment/bodyPayment.dart'; // Đổi tên file nếu cần
 import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
 import 'package:e_commerce_app/widgets/Payment/AddressSelector.dart';
 import 'package:e_commerce_app/widgets/Payment/VoucherSelector.dart';
+import 'package:e_commerce_app/widgets/Payment/LoggedInAddressSelector.dart';
+import 'package:e_commerce_app/widgets/Payment/GuestAddressSelector.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -15,42 +18,20 @@ class PagePayment extends StatefulWidget {
 }
 
 class _PagePaymentState extends State<PagePayment> {
-  //============================================================================
-  // STATE VARIABLES (Quản lý trạng thái tập trung)
-  //============================================================================
-
   // --- Address State ---
-  final List<AddressData> _addresses = [ // Dữ liệu địa chỉ gốc
-    AddressData(
-      name: 'Tuấn Tú',
-      phone: '(+84) 583541716',
-      address: 'Gần Nhà Thờ An Phú',
-      province: 'An Giang',
-      district: 'Huyện An Phú',
-      ward: 'Thị Trấn An Phú',
-      isDefault: true,
-    ),
-    AddressData(
-      name: 'Nguyễn Văn A',
-      phone: '(+84) 987654321',
-      address: '123 Đường Lê Lợi',
-      province: 'TP Hồ Chí Minh',
-      district: 'Quận 1',
-      ward: 'P. Bến Nghé', // Thêm phường cho đầy đủ
-      isDefault: false,
-    ),
-  ];
-  late AddressData _currentAddress; // Địa chỉ đang được chọn
+  final List<AddressData> _addresses = []; // Initialize as empty list
+  AddressData? _currentAddress; // Make nullable to handle no addresses case
 
   // --- Product State ---
-  final List<Map<String, dynamic>> _products = [ // Dữ liệu sản phẩm (có thể lấy từ giỏ hàng)
+  final List<Map<String, dynamic>> _products = [
+    // Dữ liệu sản phẩm (có thể lấy từ giỏ hàng)
     {
       'image': 'https://i.imgur.com/kZTgHwQ.png',
       'name': 'Điều Khiển Từ Xa Thay Thế Chuyên Dụng Cho...',
       'price': 42000,
       'quantity': 1,
     },
-     {
+    {
       'image': 'https://via.placeholder.com/60',
       'name': 'Sản phẩm B - Mô tả dài hơn một chút',
       'price': 150000,
@@ -59,7 +40,8 @@ class _PagePaymentState extends State<PagePayment> {
   ];
 
   // --- Voucher State ---
-  final List<VoucherData> _availableVouchers = [ // Danh sách voucher khả dụng
+  final List<VoucherData> _availableVouchers = [
+    // Danh sách voucher khả dụng
     VoucherData(
       code: 'WELCOME10',
       description: 'Giảm 10% cho đơn hàng đầu tiên',
@@ -82,21 +64,24 @@ class _PagePaymentState extends State<PagePayment> {
       discountAmount: 50000,
       expiryDate: DateTime.now().add(const Duration(days: 15)),
       isPercent: false,
-       minSpend: 500000,
+      minSpend: 500000,
     ),
   ];
   VoucherData? _currentVoucher; // Voucher đang được chọn
-  final TextEditingController _voucherCodeController = TextEditingController(); // Chỉ dùng khi áp dụng mã thủ công (có thể không cần nếu chỉ chọn từ list)
+  final TextEditingController _voucherCodeController =
+      TextEditingController(); // Chỉ dùng khi áp dụng mã thủ công (có thể không cần nếu chỉ chọn từ list)
   String? _voucherErrorMessage; // Thông báo lỗi voucher
 
   // --- Payment Method State ---
-  String _selectedPaymentMethod = 'Thanh toán khi nhận hàng'; // Phương thức thanh toán mặc định
+  String _selectedPaymentMethod =
+      'Thanh toán khi nhận hàng'; // Phương thức thanh toán mặc định
 
   // --- Calculation Constants ---
   final double _taxRate = 0.1; // 10% tax (Giả sử VAT là 10%)
   final double _shippingFee = 30000; // Phí vận chuyển cố định (ví dụ)
   // --- UI State ---
   bool _isProcessing = false; // Trạng thái đang xử lý đặt hàng
+  bool _isLoggedIn = true; // Trạng thái đăng nhập
   // Scroll controller và key nếu cần cho logic cuộn phức tạp ở PagePayment
   // final ScrollController _scrollController = ScrollController();
   // final GlobalKey _paymentInfoKey = GlobalKey();
@@ -108,8 +93,12 @@ class _PagePaymentState extends State<PagePayment> {
   @override
   void initState() {
     super.initState();
-    // Khởi tạo địa chỉ hiện tại là địa chỉ mặc định hoặc địa chỉ đầu tiên
-    _currentAddress = _addresses.firstWhere((addr) => addr.isDefault, orElse: () => _addresses.first);
+    // Only set _currentAddress if addresses are available
+    if (_addresses.isNotEmpty) {
+      _currentAddress = _addresses.firstWhere((addr) => addr.isDefault,
+          orElse: () => _addresses.first);
+    }
+    // Otherwise, _currentAddress remains null
   }
 
   @override
@@ -124,7 +113,8 @@ class _PagePaymentState extends State<PagePayment> {
   //============================================================================
 
   double _calculateSubtotal() {
-    return _products.fold(0.0, (sum, product) => sum + (product['price'] * product['quantity']));
+    return _products.fold(
+        0.0, (sum, product) => sum + (product['price'] * product['quantity']));
   }
 
   double _calculateDiscount() {
@@ -135,7 +125,8 @@ class _PagePaymentState extends State<PagePayment> {
     // Kiểm tra ngưỡng chi tiêu tối thiểu
     if (subtotal < _currentVoucher!.minSpend) {
       // Có thể hiển thị thông báo hoặc đơn giản là không áp dụng giảm giá
-      print("Subtotal doesn't meet minimum spend for voucher ${_currentVoucher!.code}");
+      print(
+          "Subtotal doesn't meet minimum spend for voucher ${_currentVoucher!.code}");
       return 0;
     }
 
@@ -172,6 +163,11 @@ class _PagePaymentState extends State<PagePayment> {
     return '₫${formatter.format(amount)}';
   }
 
+  // Function to check if we have a valid address
+  bool _hasValidAddress() {
+    return _currentAddress != null;
+  }
+
   //============================================================================
   // ACTION HANDLERS (Hàm xử lý sự kiện tập trung)
   //============================================================================
@@ -187,12 +183,14 @@ class _PagePaymentState extends State<PagePayment> {
   }
 
   void _addNewAddressToList(AddressData newAddress) {
-     // Kiểm tra trùng lặp cơ bản (có thể cần logic phức tạp hơn)
-    if (_addresses.any((addr) => addr.fullAddress == newAddress.fullAddress && addr.name == newAddress.name)) {
+    // Kiểm tra trùng lặp cơ bản (có thể cần logic phức tạp hơn)
+    if (_addresses.any((addr) =>
+        addr.fullAddress == newAddress.fullAddress &&
+        addr.name == newAddress.name)) {
       print("PagePayment: Address already exists.");
       // Có thể hiển thị SnackBar thông báo
       ScaffoldMessenger.of(context).showSnackBar(
-         SnackBar(content: Text('Địa chỉ này đã tồn tại.')),
+        SnackBar(content: Text('Địa chỉ này đã tồn tại.')),
       );
       return;
     }
@@ -200,78 +198,94 @@ class _PagePaymentState extends State<PagePayment> {
       _addresses.add(newAddress);
       // Tự động chọn địa chỉ mới thêm làm địa chỉ hiện tại? (Tùy yêu cầu)
       // _currentAddress = newAddress;
-       print("PagePayment: Added new address - ${newAddress.name}");
+      print("PagePayment: Added new address - ${newAddress.name}");
     });
   }
 
   void _updateExistingAddress(int index, AddressData updatedAddress) {
     if (index >= 0 && index < _addresses.length) {
       setState(() {
-        // Giữ lại trạng thái isDefault của địa chỉ gốc nếu không có logic thay đổi default
-        final bool wasDefault = _addresses[index].isDefault;
-        _addresses[index] = AddressData(
-          name: updatedAddress.name,
-          phone: updatedAddress.phone,
-          address: updatedAddress.address,
-          province: updatedAddress.province,
-          district: updatedAddress.district,
-          ward: updatedAddress.ward,
-          isDefault: wasDefault, // Giữ lại trạng thái default cũ
-        );
-        // Nếu địa chỉ được cập nhật là địa chỉ hiện tại, cập nhật _currentAddress
-        if (_currentAddress.name == _addresses[index].name && _currentAddress.phone == _addresses[index].phone ) { // Cần cách xác định địa chỉ chính xác hơn ID duy nhất
-           _currentAddress = _addresses[index];
+        final previousDefault = _addresses[index].isDefault;
+        final newIsDefault = updatedAddress.isDefault;
+
+        // If this address is being set as default, remove default status from others
+        if (!previousDefault && newIsDefault) {
+          for (int i = 0; i < _addresses.length; i++) {
+            if (i != index && _addresses[i].isDefault) {
+              _addresses[i] = _addresses[i].copyWith(isDefault: false);
+            }
+          }
         }
-         print("PagePayment: Updated address at index $index - ${updatedAddress.name}");
+
+        _addresses[index] = updatedAddress;
+
+        // If this was or is now the default address, update _currentAddress
+        if (previousDefault || newIsDefault || _currentAddress == null) {
+          _currentAddress = _addresses.firstWhere((addr) => addr.isDefault,
+              orElse: () => _addresses.first);
+        }
+
+        print(
+            "PagePayment: Updated address at index $index - ${updatedAddress.name}, isDefault: ${updatedAddress.isDefault}");
+        print(
+            "PagePayment: Current selected address: ${_currentAddress?.name}, isDefault: ${_currentAddress?.isDefault}");
       });
     } else {
-       print("PagePayment: Invalid index for address update ($index)");
+      print("PagePayment: Invalid index for address update ($index)");
     }
   }
 
   void _deleteAddress(int index) {
-     if (index >= 0 && index < _addresses.length) {
-       // Không cho xóa địa chỉ mặc định hoặc địa chỉ đang được chọn? (Tùy logic)
-       if (_addresses[index].isDefault) {
-           ScaffoldMessenger.of(context).showSnackBar(
-             const SnackBar(content: Text('Không thể xóa địa chỉ mặc định.')),
-           );
-           return;
-       }
-       if (_addresses[index] == _currentAddress) {
-            ScaffoldMessenger.of(context).showSnackBar(
-             const SnackBar(content: Text('Không thể xóa địa chỉ đang được chọn.')),
-           );
-           return;
-       }
+    if (index >= 0 && index < _addresses.length) {
+      // Không cho xóa địa chỉ mặc định hoặc địa chỉ đang được chọn? (Tùy logic)
+      if (_addresses[index].isDefault) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không thể xóa địa chỉ mặc định.')),
+        );
+        return;
+      }
+      if (_addresses[index] == _currentAddress) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Không thể xóa địa chỉ đang được chọn.')),
+        );
+        return;
+      }
 
-       setState(() {
-          final removedAddress = _addresses.removeAt(index);
-          print("PagePayment: Removed address - ${removedAddress.name}");
-          // Nếu danh sách rỗng sau khi xóa? Xử lý...
-       });
-     } else {
-        print("PagePayment: Invalid index for address deletion ($index)");
-     }
+      setState(() {
+        final removedAddress = _addresses.removeAt(index);
+        print("PagePayment: Removed address - ${removedAddress.name}");
+        // Nếu danh sách rỗng sau khi xóa? Xử lý...
+      });
+    } else {
+      print("PagePayment: Invalid index for address deletion ($index)");
+    }
   }
 
   void _setAddressAsDefault(int index) {
-     if (index >= 0 && index < _addresses.length) {
-       setState(() {
-          // Bỏ default của địa chỉ hiện tại
-          for (int i = 0; i < _addresses.length; i++) {
-            if (_addresses[i].isDefault) {
-               _addresses[i] = _addresses[i].copyWith(isDefault: false);
-               break; // Chỉ có 1 default
-            }
+    if (index >= 0 && index < _addresses.length) {
+      setState(() {
+        // Find current default address and unset it
+        for (int i = 0; i < _addresses.length; i++) {
+          if (i != index && _addresses[i].isDefault) {
+            _addresses[i] = _addresses[i].copyWith(isDefault: false);
+            print(
+                "PagePayment: Removed default status from address ${_addresses[i].name}");
           }
-          // Đặt default cho địa chỉ mới
-          _addresses[index] = _addresses[index].copyWith(isDefault: true);
-          // Cập nhật luôn địa chỉ đang chọn là địa chỉ mặc định mới
-          _currentAddress = _addresses[index];
-          print("PagePayment: Set address at index $index as default - ${_addresses[index].name}");
-       });
-     }
+        }
+
+        // Set new default address
+        _addresses[index] = _addresses[index].copyWith(isDefault: true);
+
+        // Update current address to the new default
+        _currentAddress = _addresses[index];
+
+        print(
+            "PagePayment: Set address at index $index as default - ${_addresses[index].name}");
+        print(
+            "PagePayment: Current selected address updated to: ${_currentAddress?.name}");
+      });
+    }
   }
 
   // --- Voucher Actions ---
@@ -279,7 +293,7 @@ class _PagePaymentState extends State<PagePayment> {
     setState(() {
       _currentVoucher = voucher;
       _voucherErrorMessage = null; // Xóa lỗi cũ khi chọn voucher mới
-       print("PagePayment: Voucher selected - ${voucher?.code}");
+      print("PagePayment: Voucher selected - ${voucher?.code}");
     });
   }
 
@@ -294,16 +308,19 @@ class _PagePaymentState extends State<PagePayment> {
 
     try {
       final voucher = _availableVouchers.firstWhere(
-        (v) => v.code.toLowerCase() == code.toLowerCase() && v.expiryDate.isAfter(DateTime.now()), // Kiểm tra cả hạn sử dụng
+        (v) =>
+            v.code.toLowerCase() == code.toLowerCase() &&
+            v.expiryDate.isAfter(DateTime.now()), // Kiểm tra cả hạn sử dụng
       );
 
       // Kiểm tra điều kiện tối thiểu (nếu có)
       if (_calculateSubtotal() < voucher.minSpend) {
-         setState(() {
-           _currentVoucher = null; // Không áp dụng
-           _voucherErrorMessage = 'Đơn hàng chưa đạt giá trị tối thiểu ${_formatCurrency(voucher.minSpend)} để dùng voucher này.';
-         });
-         return;
+        setState(() {
+          _currentVoucher = null; // Không áp dụng
+          _voucherErrorMessage =
+              'Đơn hàng chưa đạt giá trị tối thiểu ${_formatCurrency(voucher.minSpend)} để dùng voucher này.';
+        });
+        return;
       }
 
       // Áp dụng thành công
@@ -311,24 +328,24 @@ class _PagePaymentState extends State<PagePayment> {
         _currentVoucher = voucher;
         _voucherErrorMessage = null;
         _voucherCodeController.clear(); // Xóa ô input nếu có
-         print("PagePayment: Voucher applied successfully - ${voucher.code}");
+        print("PagePayment: Voucher applied successfully - ${voucher.code}");
       });
-
-    } catch (e) { // 'firstWhere' ném lỗi nếu không tìm thấy
+    } catch (e) {
+      // 'firstWhere' ném lỗi nếu không tìm thấy
       setState(() {
         _currentVoucher = null; // Xóa voucher cũ nếu có
-        _voucherErrorMessage = 'Mã voucher không hợp lệ, hết hạn hoặc không tồn tại.';
-         print("PagePayment: Invalid voucher code - $code");
+        _voucherErrorMessage =
+            'Mã voucher không hợp lệ, hết hạn hoặc không tồn tại.';
+        print("PagePayment: Invalid voucher code - $code");
       });
     }
   }
-
 
   // --- Payment Method Actions ---
   void _updatePaymentMethod(String method) {
     setState(() {
       _selectedPaymentMethod = method;
-       print("PagePayment: Payment method changed to $method");
+      print("PagePayment: Payment method changed to $method");
     });
   }
 
@@ -338,15 +355,16 @@ class _PagePaymentState extends State<PagePayment> {
 
     setState(() => _isProcessing = true);
     print("PagePayment: Processing payment...");
-    print("   Address: ${_currentAddress.fullAddress}");
+    print(
+        "   Address: ${_currentAddress?.fullAddress ?? 'No address selected'}");
     print("   Products: ${_products.length} items");
     print("   Subtotal: ${_formatCurrency(_calculateSubtotal())}");
     print("   Shipping: ${_formatCurrency(_shippingFee)}");
     print("   Tax: ${_formatCurrency(_calculateTax())}");
-    print("   Voucher: ${_currentVoucher?.code ?? 'None'} (${_formatCurrency(_calculateDiscount())})");
+    print(
+        "   Voucher: ${_currentVoucher?.code ?? 'None'} (${_formatCurrency(_calculateDiscount())})");
     print("   Total: ${_formatCurrency(_calculateTotal())}");
     print("   Payment Method: $_selectedPaymentMethod");
-
 
     // Simulate API call or actual payment logic
     await Future.delayed(const Duration(seconds: 2));
@@ -360,14 +378,16 @@ class _PagePaymentState extends State<PagePayment> {
       barrierDismissible: false, // Không đóng khi chạm bên ngoài
       builder: (context) => AlertDialog(
         title: const Text('Đặt hàng thành công'),
-        content: const Text('Cảm ơn bạn đã mua hàng! Chúng tôi sẽ xử lý đơn hàng của bạn sớm nhất.'),
+        content: const Text(
+            'Cảm ơn bạn đã mua hàng! Chúng tôi sẽ xử lý đơn hàng của bạn sớm nhất.'),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.of(context).pop(); // Đóng dialog
               // TODO: Chuyển hướng đến trang xác nhận đơn hàng hoặc trang chủ
               Navigator.pushReplacementNamed(context, '/payment_success');
-               print("PagePayment: Order placed successfully. Navigating away...");
+              print(
+                  "PagePayment: Order placed successfully. Navigating away...");
             },
             child: const Text('OK'),
           ),
@@ -375,86 +395,87 @@ class _PagePaymentState extends State<PagePayment> {
       ),
     );
     Navigator.pushReplacementNamed(context, '/payment_success');
-
   }
 
-  //============================================================================
-  // DIALOG HANDLERS (Hàm mở các Dialog lựa chọn)
-  //============================================================================
-
   void _showAddressSelectionDialog() {
-     print("PagePayment: Opening Address Selector Dialog...");
+    print("PagePayment: Opening Address Selector Dialog...");
+
+    // Check login status from UserInfo
+    bool isLoggedIn = UserInfo().isLoggedIn;
+
+    if (!isLoggedIn) {
+      // Show guest selector for non-logged in users
+      showDialog(
+        context: context,
+        builder: (BuildContext dialogContext) {
+          return Dialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: GuestAddressSelector(
+              addresses: _addresses,
+              selectedAddress: _currentAddress,
+              onAddressSelected: (selectedAddress) {
+                _updateSelectedAddress(selectedAddress);
+              },
+              onAddNewAddress: _addNewAddressToList,
+              onUpdateAddress: _updateExistingAddress,
+              onDeleteAddress: _deleteAddress,
+            ),
+          );
+        },
+      ).then((_) => print("PagePayment: Address Selector Dialog closed."));
+    } else {
+      // User is logged in, show the address selector for logged-in users
+      showDialog(
+        context: context,
+        builder: (BuildContext dialogContext) {
+          return Dialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: LoggedInAddressSelector(
+              addresses: _addresses,
+              selectedAddress: _currentAddress,
+              onAddressSelected: (selectedAddress) {
+                _updateSelectedAddress(selectedAddress);
+              },
+            ),
+          );
+        },
+      ).then((_) => print("PagePayment: Address Selector Dialog closed."));
+    }
+  }
+
+  void _showVoucherSelectionDialog() {
+    print("PagePayment: Opening Voucher Selector Dialog...");
+    // Lọc voucher hợp lệ (ví dụ: còn hạn, đủ điều kiện tối thiểu - có thể lọc trước)
+    final applicableVouchers = _availableVouchers
+        .where((v) => v.expiryDate.isAfter(DateTime.now()))
+        .toList();
+
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: AddressSelector(
-            // Truyền dữ liệu và callbacks xuống AddressSelector
-            addresses: _addresses,
-            selectedAddress: _currentAddress,
-            onAddressSelected: (selectedAddress) {
-              _updateSelectedAddress(selectedAddress);
-              Navigator.of(dialogContext).pop(); // Đóng dialog sau khi chọn
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: VoucherSelector(
+            // Truyền dữ liệu và callbacks xuống VoucherSelector
+            availableVouchers: applicableVouchers, // Chỉ truyền voucher hợp lệ
+            currentVoucher: _currentVoucher,
+            onVoucherSelected: (selectedVoucher) {
+              // PagePayment nhận voucher được chọn từ dialog
+              _updateSelectedVoucher(selectedVoucher);
+              Navigator.of(dialogContext).pop(); // Đóng dialog
             },
-            onAddNewAddress: (newAddressData) {
-              // Xử lý việc thêm mới ngay tại PagePayment
-              _addNewAddressToList(newAddressData);
-              // Có thể tự động chọn địa chỉ mới thêm làm hiện tại
-              // _updateSelectedAddress(newAddressData);
-            },
-            onUpdateAddress: (index, updatedAddressData) {
-              // Xử lý việc cập nhật ngay tại PagePayment
-              _updateExistingAddress(index, updatedAddressData);
-            },
-             onDeleteAddress: (index) {
-               // Xử lý việc xóa
-               _deleteAddress(index);
-               // Cần cập nhật lại selectedIndex trong AddressSelector nếu địa chỉ bị xóa ảnh hưởng
-               // Hoặc đóng và mở lại dialog để refresh
-             },
-             onSetDefaultAddress: (index) {
-                _setAddressAsDefault(index);
-             }
+            // Có thể thêm callback onApplyCode nếu muốn xử lý mã nhập tay từ dialog ở đây
+            // onApplyCode: (code) {
+            //   _validateAndApplyVoucher(code);
+            // }
           ),
         );
       },
-    ).then((_) => print("PagePayment: Address Selector Dialog closed."));
+    ).then((_) => print("PagePayment: Voucher Selector Dialog closed."));
   }
-
-   void _showVoucherSelectionDialog() {
-      print("PagePayment: Opening Voucher Selector Dialog...");
-     // Lọc voucher hợp lệ (ví dụ: còn hạn, đủ điều kiện tối thiểu - có thể lọc trước)
-     final applicableVouchers = _availableVouchers.where((v) => v.expiryDate.isAfter(DateTime.now())).toList();
-
-     showDialog(
-       context: context,
-       builder: (BuildContext dialogContext) {
-         return Dialog(
-           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-           child: VoucherSelector(
-             // Truyền dữ liệu và callbacks xuống VoucherSelector
-             availableVouchers: applicableVouchers, // Chỉ truyền voucher hợp lệ
-             currentVoucher: _currentVoucher,
-             onVoucherSelected: (selectedVoucher) {
-               // PagePayment nhận voucher được chọn từ dialog
-               _updateSelectedVoucher(selectedVoucher);
-               Navigator.of(dialogContext).pop(); // Đóng dialog
-             },
-             // Có thể thêm callback onApplyCode nếu muốn xử lý mã nhập tay từ dialog ở đây
-             // onApplyCode: (code) {
-             //   _validateAndApplyVoucher(code);
-             // }
-           ),
-         );
-       },
-     ).then((_) => print("PagePayment: Voucher Selector Dialog closed."));
-   }
-
-
-  //============================================================================
-  // BUILD METHOD
-  //============================================================================
 
   @override
   Widget build(BuildContext context) {
@@ -464,28 +485,32 @@ class _PagePaymentState extends State<PagePayment> {
     final double tax = _calculateTax();
     final double total = _calculateTotal();
     Widget appBar;
-    // Tạo widget BodyPayment và truyền tất cả dữ liệu + callbacks
+
+    // Create widget BodyPayment and pass the null-safe current address
     Widget body = BodyPayment(
       // --- Data ---
-
-      currentAddress: _currentAddress,
+      currentAddress: _currentAddress, // Can be null now
       products: _products,
       currentVoucher: _currentVoucher,
       selectedPaymentMethod: _selectedPaymentMethod,
       subtotal: subtotal,
       shippingFee: _shippingFee,
       taxAmount: tax,
-      taxRate : _taxRate,
+      taxRate: _taxRate,
       discountAmount: discount,
       totalAmount: total,
       isProcessingOrder: _isProcessing, // Trạng thái xử lý
 
       // --- Callbacks ---
-      onChangeAddress: _showAddressSelectionDialog, // Callback mở dialog địa chỉ
-      onSelectVoucher: _showVoucherSelectionDialog, // Callback mở dialog voucher
-      onChangePaymentMethod: _updatePaymentMethod, // Callback thay đổi phương thức TT
+      onChangeAddress:
+          _showAddressSelectionDialog, // Callback mở dialog địa chỉ
+      onSelectVoucher:
+          _showVoucherSelectionDialog, // Callback mở dialog voucher
+      onChangePaymentMethod:
+          _updatePaymentMethod, // Callback thay đổi phương thức TT
       onPlaceOrder: _processPayment, // Callback đặt hàng
       formatCurrency: _formatCurrency, // Hàm định dạng tiền tệ
+      onAddressSelected: _updateSelectedAddress, // Add this callback
     );
 
     // Layout Builder để chọn Navbar phù hợp
@@ -495,15 +520,17 @@ class _PagePaymentState extends State<PagePayment> {
 
         if (screenWidth < 768) {
           // Mobile layout
-          return NavbarFormobile( // Giả sử NavbarFixmobile là Scaffold chứa AppBar và body
+          return NavbarFormobile(
+            // Giả sử NavbarFixmobile là Scaffold chứa AppBar và body
             body: body,
             // title: 'Thanh toán', // Có thể thêm title cho AppBar
           );
         } else if (screenWidth < 1100) {
           // Tablet layout
-          return NavbarForTablet( // Giả sử NavbarFixTablet tương tự
+          return NavbarForTablet(
+            // Giả sử NavbarFixTablet tương tự
             body: body,
-             // title: 'Thanh toán',
+            // title: 'Thanh toán',
           );
         } else {
           appBar = PreferredSize(
@@ -547,8 +574,8 @@ class AddressData {
     return parts.join(', ');
   }
 
-   // Thêm phương thức copyWith để dễ dàng cập nhật (ví dụ: thay đổi isDefault)
-   AddressData copyWith({
+  // Thêm phương thức copyWith để dễ dàng cập nhật (ví dụ: thay đổi isDefault)
+  AddressData copyWith({
     String? name,
     String? phone,
     String? address,
@@ -569,28 +596,28 @@ class AddressData {
   }
 
   // Thêm == và hashCode để so sánh đối tượng (quan trọng khi dùng trong List, Set, Map)
-   @override
-   bool operator ==(Object other) =>
-       identical(this, other) ||
-       other is AddressData &&
-           runtimeType == other.runtimeType &&
-           name == other.name &&
-           phone == other.phone &&
-           address == other.address &&
-           province == other.province &&
-           district == other.district &&
-           ward == other.ward &&
-           isDefault == other.isDefault;
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AddressData &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          phone == other.phone &&
+          address == other.address &&
+          province == other.province &&
+          district == other.district &&
+          ward == other.ward &&
+          isDefault == other.isDefault;
 
-   @override
-   int get hashCode =>
-       name.hashCode ^
-       phone.hashCode ^
-       address.hashCode ^
-       province.hashCode ^
-       district.hashCode ^
-       ward.hashCode ^
-       isDefault.hashCode;
+  @override
+  int get hashCode =>
+      name.hashCode ^
+      phone.hashCode ^
+      address.hashCode ^
+      province.hashCode ^
+      district.hashCode ^
+      ward.hashCode ^
+      isDefault.hashCode;
 }
 
 class VoucherData {
@@ -615,8 +642,8 @@ class VoucherData {
   //   return isPercent ? '$discountAmount%' : '₫${formatter.format(discountAmount)}';
   // }
 
-   // Cải thiện displayValue để hiển thị rõ ràng hơn
-   String displayDiscount(NumberFormat formatter) {
+  // Cải thiện displayValue để hiển thị rõ ràng hơn
+  String displayDiscount(NumberFormat formatter) {
     if (isPercent) {
       return 'Giảm ${discountAmount}%';
     } else {
@@ -625,26 +652,26 @@ class VoucherData {
   }
 
   String displayExpiry() {
-     final formatter = DateFormat('dd/MM/yyyy');
-     return 'HSD: ${formatter.format(expiryDate)}';
+    final formatter = DateFormat('dd/MM/yyyy');
+    return 'HSD: ${formatter.format(expiryDate)}';
   }
 
   String displayCondition() {
     if (minSpend > 0) {
-        final formatter = NumberFormat("#,###", "vi_VN");
-        return 'Đơn tối thiểu ${formatter.format(minSpend)}₫';
+      final formatter = NumberFormat("#,###", "vi_VN");
+      return 'Đơn tối thiểu ${formatter.format(minSpend)}₫';
     }
     return 'Cho mọi đơn hàng';
   }
 
-   // Thêm == và hashCode
-   @override
-   bool operator ==(Object other) =>
-       identical(this, other) ||
-       other is VoucherData &&
-           runtimeType == other.runtimeType &&
-           code == other.code; // Thường mã voucher là duy nhất
+  // Thêm == và hashCode
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is VoucherData &&
+          runtimeType == other.runtimeType &&
+          code == other.code; // Thường mã voucher là duy nhất
 
-   @override
-   int get hashCode => code.hashCode;
+  @override
+  int get hashCode => code.hashCode;
 }
