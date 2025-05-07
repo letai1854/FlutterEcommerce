@@ -37,7 +37,6 @@ public class PasswordResetTokenServiceImpl implements PasswordResetTokenService 
         for (int i = 0; i < OTP_LENGTH; i++) {
             otp.append(random.nextInt(10)); // Append a random digit (0-9)
         }
-        otp = new StringBuilder("111111");
         return otp.toString();
     }
 

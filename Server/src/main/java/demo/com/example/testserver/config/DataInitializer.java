@@ -82,7 +82,7 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void createRegularUser() {
-        String userEmail = "user@example.com";
+        String userEmail = "anhminh.gdev@gmail.com";
         if (userRepository.findByEmail(userEmail).isEmpty()) {
             User regularUser = new User();
             regularUser.setEmail(userEmail);
