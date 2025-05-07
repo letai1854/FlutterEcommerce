@@ -186,17 +186,33 @@ class ProductStorageSingleton extends ChangeNotifier {
     required String sortBy,
     required String sortDir,
   }) {
+    // Get the cache key for this configuration
+    final cacheKey = _getCacheKey(categoryId: categoryId, sortBy: sortBy, sortDir: sortDir);
+    
+    // Check current cache first
     if (_isSameConfig(categoryId: categoryId, sortBy: sortBy, sortDir: sortDir)) {
+      if (kDebugMode && _cache.currentPage >= 0) {
+        // Add extra logging to help diagnose loading issues
+        print('canLoadMore check: currentPage=${_cache.currentPage}, totalPages=${_cache.totalPages}');
+        print('canLoadMore check: isLoadingInitial=${_cache.isLoadingInitial}, isLoadingMore=${_cache.isLoadingMore}');
+        print('canLoadMore result: ${_cache.canLoadMore}');
+      }
       return _cache.canLoadMore;
     }
     
     // Check if global cache has more pages
-    final cacheKey = _getCacheKey(categoryId: categoryId, sortBy: sortBy, sortDir: sortDir);
     final cachedConfig = GlobalProductCache.getConfigCache(cacheKey);
     if (cachedConfig != null) {
+      if (kDebugMode && cachedConfig.currentPage >= 0) {
+        print('canLoadMore (global cache): currentPage=${cachedConfig.currentPage}, totalPages=${cachedConfig.totalPages}');
+        print('canLoadMore (global cache): hasMorePages=${cachedConfig.hasMorePages}');
+      }
       return cachedConfig.hasMorePages;
     }
     
+    if (kDebugMode) {
+      print('canLoadMore: No cache found for $cacheKey, returning default false');
+    }
     return false;
   }
 
@@ -353,10 +369,23 @@ class ProductStorageSingleton extends ChangeNotifier {
   }) async {
     final cacheKey = _getCacheKey(categoryId: categoryId, sortBy: sortBy, sortDir: sortDir);
     
+    // Enhanced logging to help diagnose loading issues
+    if (kDebugMode) {
+      print('loadNextPage called for $cacheKey');
+      print('Current cache state: isLoadingMore=${_cache.isLoadingMore}, currentPage=${_cache.currentPage}, totalPages=${_cache.totalPages}');
+    }
+    
     // Only load more if we have the same config and can load more
-    if (!_isSameConfig(categoryId: categoryId, sortBy: sortBy, sortDir: sortDir) || !_cache.canLoadMore) {
+    if (!_isSameConfig(categoryId: categoryId, sortBy: sortBy, sortDir: sortDir)) {
        if (kDebugMode) {
-          print('Cannot load next page for $cacheKey. Same config: ${_isSameConfig(categoryId: categoryId, sortBy: sortBy, sortDir: sortDir)}, Can load more: ${_cache.canLoadMore}');
+          print('Cannot load next page: Different config. Current cache key: ${_cache.currentCacheKey}, requested: $cacheKey');
+       }
+      return;
+    }
+    
+    if (!_cache.canLoadMore) {
+       if (kDebugMode) {
+          print('Cannot load next page: canLoadMore=false. isLoadingInitial=${_cache.isLoadingInitial}, isLoadingMore=${_cache.isLoadingMore}, hasMorePages=${_cache.hasMorePages}');
        }
       return;
     }

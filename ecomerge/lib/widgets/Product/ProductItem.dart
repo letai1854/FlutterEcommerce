@@ -255,7 +255,7 @@ class ProductItem extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        maxLines: 2,
+                        maxLines: 1,  // Changed from 2 to 1
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
@@ -266,14 +266,13 @@ class ProductItem extends StatelessWidget {
                       if (describe != null && describe!.isNotEmpty)
                         Text(
                           describe!,
-                          maxLines: 2,
+                          maxLines: 1,  // Changed from 2 to 1
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[600],
                           ),
                         ),
-                      const SizedBox(height: 4),
                       Row(
                         children: [
                           const Icon(Icons.star, color: Colors.amber, size: 16),

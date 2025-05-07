@@ -110,13 +110,9 @@ class _PageListProductState extends State<PageListProduct> {
   }
 
   void _onScroll() {
-    // Check if there's scrollable content and if the user is near the bottom.
-    // - `_scrollController.position.maxScrollExtent > 0` ensures the content is actually scrollable.
-    // - `_scrollController.position.extentAfter < 300.0` triggers when less than 300px are left to scroll.
-    //   Adjust 300.0 to your preference for how early the load should trigger.
-    // Add checks for mounted and if AppData is initialized
+
     if (mounted && AppDataService().isInitialized && _scrollController.position.maxScrollExtent > 0 &&
-        _scrollController.position.extentAfter < 300.0) {
+        _scrollController.position.extentAfter < 250.0) {
       if (_isConfigInitialized && _canLoadMore && !_isCurrentlyLoadingNextPage) {
         if (kDebugMode) print("Scroll near bottom (extentAfter < 300.0), attempting to load next page.");
         _loadNextPage();

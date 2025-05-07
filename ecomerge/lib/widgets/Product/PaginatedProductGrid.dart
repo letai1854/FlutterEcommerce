@@ -52,6 +52,9 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
   bool _showArtificialGridLoader = false;
   bool _wasGridLoadingArtificially = false; 
 
+  // Track if we need to check for "load more" after build
+  bool _checkLoadMoreAfterBuild = false;
+
   // Create and cache product item widgets
   Widget _buildOrGetGridItem(ProductDTO product, int index) {
     final String key = '${product.id}_${product.name}'; // Unique key for each product
@@ -148,6 +151,12 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
     _previousDataLength = widget.productData.length;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updateCurrentConfig();
+      // Check if we should trigger load more after initial build
+      if (widget.productData.isNotEmpty && 
+          widget.canLoadMoreProducts && 
+          !widget.isProductsLoading) {
+        _checkLoadMoreAfterBuild = true;
+      }
     });
   }
 
@@ -155,9 +164,20 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
   void didUpdateWidget(PaginatedProductGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
 
+    // Schedule update for current configuration
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updateCurrentConfig();
     });
+    
+    // Check if we should verify loading more after this build
+    if (widget.productData.isNotEmpty && 
+        widget.canLoadMoreProducts &&
+        !widget.isProductsLoading && 
+        oldWidget.productData.length == widget.productData.length) {
+      // If we have products, can load more, but length hasn't changed,
+      // check if we're near the bottom to trigger more loading
+      _checkLoadMoreAfterBuild = true;
+    }
 
     // Enhanced loading state detection
     final bool isCurrentlyLoadingGridData = widget.isProductsLoading;
@@ -243,6 +263,25 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
   @override
   Widget build(BuildContext context) {
     super.build(context); // Required by AutomaticKeepAliveClientMixin
+    
+    // Check if we should notify parent to load more
+    if (_checkLoadMoreAfterBuild) {
+      _checkLoadMoreAfterBuild = false;
+      
+      // Use a post-frame callback to avoid build-phase setState calls
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && 
+            widget.productData.isNotEmpty && 
+            widget.canLoadMoreProducts &&
+            !widget.isProductsLoading) {
+          if (kDebugMode) print("Grid suggesting parent should check for load more");
+          
+          // Send a notification up to PageListProduct via NotificationListener
+          // This is more reliable than relying only on scroll listener
+          LoadMoreNotification().dispatch(context);
+        }
+      });
+    }
 
     // FIXED LOGIC: Show loader when explicitly enabled, don't 
     // automatically disable based on cached content status
@@ -342,3 +381,6 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
   @override
   bool get wantKeepAlive => true; // Keep this widget alive when scrolling
 }
+
+// Add a custom notification that will bubble up to trigger loading
+class LoadMoreNotification extends Notification {}
