@@ -145,6 +145,23 @@
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Elasticsearch Java API Client -->
+        <dependency>
+            <groupId>co.elastic.clients</groupId>
+            <artifactId>elasticsearch-java</artifactId>
+        </dependency>
+        <!-- Low-level REST client -->
+        <dependency>
+            <groupId>org.elasticsearch.client</groupId>
+            <artifactId>elasticsearch-rest-client</artifactId>
+        </dependency>
+        <!-- Jackson for JSON mapping (often needed with Elasticsearch clients) -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
         <!-- JWT Dependencies -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

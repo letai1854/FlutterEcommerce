@@ -49,8 +49,11 @@ public class ProductServiceImpl implements ProductService {
     @Autowired
     private ProductSpecificationBuilder productSpecificationBuilder;
 
-    @Autowired
+    @Autowired(required = false) // Make Elasticsearch service optional
     private ProductElasticsearchService productElasticsearchService;
+
+    @Autowired
+    private FallbackProductElasticsearchService fallbackProductElasticsearchService; // Inject fallback
 
     @Autowired
     private ProductMapper productMapper;
@@ -77,13 +80,18 @@ public class ProductServiceImpl implements ProductService {
 
         if (search != null && !search.trim().isEmpty()) {
             logger.debug("Performing Elasticsearch search for keyword: {}", search);
-            productIdsFromSearch = productElasticsearchService.searchProductIds(search);
-
-            if (productIdsFromSearch != null && productIdsFromSearch.isEmpty()) {
-                logger.info("Elasticsearch returned no results for '{}'. Attempting fallback to database LIKE search.", search);
-                productIdsFromSearch = null;
-            } else if (productIdsFromSearch == null) {
-                logger.warn("Elasticsearch search failed or not available for search term '{}'. Falling back to database LIKE search.", search);
+            if (productElasticsearchService != null) {
+                productIdsFromSearch = productElasticsearchService.searchProductIds(search);
+                if (productIdsFromSearch != null && productIdsFromSearch.isEmpty()) {
+                    logger.info("Elasticsearch returned no results for '{}'. Attempting fallback to database LIKE search.", search);
+                    productIdsFromSearch = null; // Signal to use DB LIKE search
+                } else if (productIdsFromSearch == null) {
+                    // This case might indicate an issue with the ES service itself, even if available
+                    logger.warn("Elasticsearch search returned null (possibly an error or timeout) for search term '{}'. Falling back to database LIKE search.", search);
+                }
+            } else {
+                logger.info("Elasticsearch service is not available. Using fallback for search term: {}", search);
+                productIdsFromSearch = fallbackProductElasticsearchService.searchProductIds(search); // Fallback returns null to trigger DB LIKE
             }
         }
 
@@ -114,13 +122,17 @@ public class ProductServiceImpl implements ProductService {
         List<Long> productIdsFromSearch = null;
         if (search != null && !search.trim().isEmpty()) {
             logger.debug("Admin: Performing Elasticsearch search for keyword: {}", search);
-            productIdsFromSearch = productElasticsearchService.searchProductIds(search);
-
-            if (productIdsFromSearch != null && productIdsFromSearch.isEmpty()) {
-                logger.info("Admin: Elasticsearch returned no results for '{}'. Attempting fallback to database LIKE search.", search);
-                productIdsFromSearch = null;
-            } else if (productIdsFromSearch == null) {
-                logger.warn("Admin: Elasticsearch search failed or not available for search term '{}'. Falling back to database LIKE search.", search);
+            if (productElasticsearchService != null) {
+                productIdsFromSearch = productElasticsearchService.searchProductIds(search);
+                if (productIdsFromSearch != null && productIdsFromSearch.isEmpty()) {
+                    logger.info("Admin: Elasticsearch returned no results for '{}'. Attempting fallback to database LIKE search.", search);
+                    productIdsFromSearch = null; // Signal to use DB LIKE search
+                } else if (productIdsFromSearch == null) {
+                    logger.warn("Admin: Elasticsearch search returned null for search term '{}'. Falling back to database LIKE search.", search);
+                }
+            } else {
+                logger.info("Admin: Elasticsearch service is not available. Using fallback for search term: {}", search);
+                productIdsFromSearch = fallbackProductElasticsearchService.searchProductIds(search); // Fallback returns null to trigger DB LIKE
             }
         }
 
@@ -183,9 +195,13 @@ public class ProductServiceImpl implements ProductService {
         logger.info("Product created successfully with ID: {}. Associated variants and images saved via cascade.", savedProduct.getId());
 
         try {
-            productElasticsearchService.saveProduct(savedProduct);
+            if (productElasticsearchService != null) {
+                productElasticsearchService.saveProduct(savedProduct);
+            } else {
+                fallbackProductElasticsearchService.saveProduct(savedProduct);
+            }
         } catch (Exception e) {
-            logger.error("Failed to index product {} in Elasticsearch after creation: {}", savedProduct.getId(), e.getMessage(), e);
+            logger.error("Failed to process product {} with Elasticsearch/fallback after creation: {}", savedProduct.getId(), e.getMessage(), e);
         }
 
         Product finalProduct = productRepository.findById(savedProduct.getId()).orElse(savedProduct);
@@ -211,9 +227,13 @@ public class ProductServiceImpl implements ProductService {
         logger.info("Product updated successfully with ID: {}", updatedProduct.getId());
 
         try {
-            productElasticsearchService.saveProduct(updatedProduct);
+            if (productElasticsearchService != null) {
+                productElasticsearchService.saveProduct(updatedProduct);
+            } else {
+                fallbackProductElasticsearchService.saveProduct(updatedProduct);
+            }
         } catch (Exception e) {
-            logger.error("Failed to update product {} in Elasticsearch after database update: {}", updatedProduct.getId(), e.getMessage(), e);
+            logger.error("Failed to process product {} with Elasticsearch/fallback after database update: {}", updatedProduct.getId(), e.getMessage(), e);
         }
 
         Product finalProduct = productRepository.findById(updatedProduct.getId()).orElse(updatedProduct);
@@ -232,9 +252,13 @@ public class ProductServiceImpl implements ProductService {
         logger.info("Product deleted successfully with ID: {}", productId);
 
         try {
-            productElasticsearchService.deleteProductById(productId);
+            if (productElasticsearchService != null) {
+                productElasticsearchService.deleteProductById(productId);
+            } else {
+                fallbackProductElasticsearchService.deleteProductById(productId);
+            }
         } catch (Exception e) {
-            logger.error("Failed to delete product {} from Elasticsearch after database deletion: {}", productId, e.getMessage(), e);
+            logger.error("Failed to process product {} deletion with Elasticsearch/fallback after database deletion: {}", productId, e.getMessage(), e);
         }
     }
 

@@ -6,15 +6,16 @@ import demo.com.example.testserver.product.repository.elasticsearch.ProductElast
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Conditional;
+import demo.com.example.testserver.config.ElasticsearchConnectionCondition; // Import the custom condition
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
-import org.springframework.data.elasticsearch.client.elc.NativeQuery;
-import co.elastic.clients.elasticsearch._types.query_dsl.Operator;
+import org.springframework.data.elasticsearch.client.elc.NativeQuery; // For new Elasticsearch client
+import co.elastic.clients.elasticsearch._types.query_dsl.Operator; // For MatchQuery Operator
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -22,7 +23,7 @@ import java.util.stream.Collectors;
 import java.util.Collections;
 
 @Service
-@ConditionalOnProperty(name = "spring.elasticsearch.enabled", havingValue = "true")
+@Conditional(ElasticsearchConnectionCondition.class) // Use the custom condition
 public class ProductElasticsearchService {
 
     private static final Logger logger = LoggerFactory.getLogger(ProductElasticsearchService.class);
@@ -32,12 +33,14 @@ public class ProductElasticsearchService {
     private final ElasticsearchOperations elasticsearchOperations;
 
     @Autowired
-    public ProductElasticsearchService(ProductElasticsearchRepository productElasticsearchRepository,
-                                       ProductMapper productMapper,
-                                       ElasticsearchOperations elasticsearchOperations) {
+    public ProductElasticsearchService(
+            ProductElasticsearchRepository productElasticsearchRepository,
+            ProductMapper productMapper, // Added ProductMapper
+            ElasticsearchOperations elasticsearchOperations) {
         this.productElasticsearchRepository = productElasticsearchRepository;
-        this.productMapper = productMapper;
+        this.productMapper = productMapper; // Initialize ProductMapper
         this.elasticsearchOperations = elasticsearchOperations;
+        logger.info("ProductElasticsearchService activated as Elasticsearch is enabled and reachable.");
     }
 
     public void saveProduct(Product product) {
