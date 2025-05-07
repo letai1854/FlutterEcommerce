@@ -1,3 +1,4 @@
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForTablet.dart';
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
 import 'package:e_commerce_app/widgets/Payment/bodyPayment.dart'; // Đổi tên file nếu cần
@@ -15,10 +16,6 @@ class PagePayment extends StatefulWidget {
 }
 
 class _PagePaymentState extends State<PagePayment> {
-  //============================================================================
-  // STATE VARIABLES (Quản lý trạng thái tập trung)
-  //============================================================================
-
   // --- Address State ---
   final List<AddressData> _addresses = []; // Initialize as empty list
   AddressData? _currentAddress; // Make nullable to handle no addresses case
@@ -387,48 +384,50 @@ class _PagePaymentState extends State<PagePayment> {
     Navigator.pushReplacementNamed(context, '/payment_success');
   }
 
-  //============================================================================
-  // DIALOG HANDLERS (Hàm mở các Dialog lựa chọn)
-  //============================================================================
-
   void _showAddressSelectionDialog() {
     print("PagePayment: Opening Address Selector Dialog...");
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return Dialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: AddressSelector(
-            // Pass data and callbacks to AddressSelector
-            addresses: _addresses,
-            selectedAddress: _currentAddress,
-            isLoggedIn: _isLoggedIn,
-            onAddressSelected: (selectedAddress) {
-              _updateSelectedAddress(selectedAddress);
-              Navigator.of(dialogContext).pop(); // Close dialog after selection
-            },
-            onAddNewAddress: (newAddressData) {
-              // Process new address directly in PagePayment
-              _addNewAddressToList(newAddressData);
-              // Optionally auto-select the new address
-              // _updateSelectedAddress(newAddressData);
-            },
-            onUpdateAddress: (index, updatedAddressData) {
-              // Process address update directly in PagePayment
-              _updateExistingAddress(index, updatedAddressData);
-            },
-            onDeleteAddress: (index) {
-              // Process address deletion in PagePayment
-              _deleteAddress(index);
-            },
-            onSetDefaultAddress: (index) {
-              _setAddressAsDefault(index);
-            },
-          ),
-        );
-      },
-    ).then((_) => print("PagePayment: Address Selector Dialog closed."));
+
+    // Check login status from UserInfo
+    bool isLoggedIn = UserInfo().isLoggedIn;
+
+    if (!isLoggedIn) {
+      // User is logged in, show the normal address selector
+      showDialog(
+        context: context,
+        builder: (BuildContext dialogContext) {
+          return Dialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: AddressSelector(
+              // Pass data and callbacks to AddressSelector
+              addresses: _addresses,
+              selectedAddress: _currentAddress,
+              isLoggedIn: true, // Always true in this branch
+              onAddressSelected: (selectedAddress) {
+                _updateSelectedAddress(selectedAddress);
+                Navigator.of(dialogContext)
+                    .pop(); // Close dialog after selection
+              },
+              onAddNewAddress: (newAddressData) {
+                // Process new address directly in PagePayment
+                _addNewAddressToList(newAddressData);
+              },
+              onUpdateAddress: (index, updatedAddressData) {
+                // Process address update directly in PagePayment
+                _updateExistingAddress(index, updatedAddressData);
+              },
+              onDeleteAddress: (index) {
+                // Process address deletion in PagePayment
+                _deleteAddress(index);
+              },
+              onSetDefaultAddress: (index) {
+                _setAddressAsDefault(index);
+              },
+            ),
+          );
+        },
+      ).then((_) => print("PagePayment: Address Selector Dialog closed."));
+    } else {}
   }
 
   void _showVoucherSelectionDialog() {
@@ -463,10 +462,6 @@ class _PagePaymentState extends State<PagePayment> {
     ).then((_) => print("PagePayment: Voucher Selector Dialog closed."));
   }
 
-  //============================================================================
-  // BUILD METHOD
-  //============================================================================
-
   @override
   Widget build(BuildContext context) {
     // Tính toán các giá trị cần thiết để truyền xuống BodyPayment
@@ -500,6 +495,7 @@ class _PagePaymentState extends State<PagePayment> {
           _updatePaymentMethod, // Callback thay đổi phương thức TT
       onPlaceOrder: _processPayment, // Callback đặt hàng
       formatCurrency: _formatCurrency, // Hàm định dạng tiền tệ
+      onAddressSelected: _updateSelectedAddress, // Add this callback
     );
 
     // Layout Builder để chọn Navbar phù hợp
