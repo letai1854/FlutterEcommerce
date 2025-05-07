@@ -5,6 +5,7 @@ import 'package:e_commerce_app/widgets/Payment/bodyPayment.dart'; // Đổi tên
 import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
 import 'package:e_commerce_app/widgets/Payment/AddressSelector.dart';
 import 'package:e_commerce_app/widgets/Payment/VoucherSelector.dart';
+import 'package:e_commerce_app/widgets/Payment/LoggedInAddressSelector.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -391,43 +392,56 @@ class _PagePaymentState extends State<PagePayment> {
     bool isLoggedIn = UserInfo().isLoggedIn;
 
     if (!isLoggedIn) {
-      // User is logged in, show the normal address selector
+      // User is NOT logged in, show login prompt dialog
+      showDialog(
+        context: context,
+        builder: (BuildContext dialogContext) {
+          return AlertDialog(
+            title: const Text('Đăng nhập để tiếp tục'),
+            content:
+                const Text('Bạn cần đăng nhập để quản lý địa chỉ giao hàng.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(); // Close dialog
+                },
+                child: const Text('Đóng'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(); // Close dialog
+                  Navigator.pushNamed(
+                      context, '/login'); // Navigate to login page
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade700,
+                ),
+                child: const Text('Đăng nhập',
+                    style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          );
+        },
+      );
+    } else {
+      // User is logged in, show the address selector for logged-in users
       showDialog(
         context: context,
         builder: (BuildContext dialogContext) {
           return Dialog(
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: AddressSelector(
-              // Pass data and callbacks to AddressSelector
+            child: LoggedInAddressSelector(
               addresses: _addresses,
               selectedAddress: _currentAddress,
-              isLoggedIn: true, // Always true in this branch
               onAddressSelected: (selectedAddress) {
                 _updateSelectedAddress(selectedAddress);
-                Navigator.of(dialogContext)
-                    .pop(); // Close dialog after selection
-              },
-              onAddNewAddress: (newAddressData) {
-                // Process new address directly in PagePayment
-                _addNewAddressToList(newAddressData);
-              },
-              onUpdateAddress: (index, updatedAddressData) {
-                // Process address update directly in PagePayment
-                _updateExistingAddress(index, updatedAddressData);
-              },
-              onDeleteAddress: (index) {
-                // Process address deletion in PagePayment
-                _deleteAddress(index);
-              },
-              onSetDefaultAddress: (index) {
-                _setAddressAsDefault(index);
               },
             ),
           );
         },
       ).then((_) => print("PagePayment: Address Selector Dialog closed."));
-    } else {}
+    }
   }
 
   void _showVoucherSelectionDialog() {
