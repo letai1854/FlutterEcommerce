@@ -33,6 +33,9 @@ class CatalogProduct extends StatefulWidget {
   final bool isProductsLoading;
   final bool canLoadMoreProducts;
 
+  // Add flag to indicate if showing cached content
+  final bool isShowingCachedContent;
+
 
   const CatalogProduct({
     super.key,
@@ -48,6 +51,7 @@ class CatalogProduct extends StatefulWidget {
      required this.isAppDataInitialized, // <-- Thêm vào constructor
      required this.isProductsLoading, // <-- Thêm vào constructor
      required this.canLoadMoreProducts, // <-- Thêm vào constructor
+     required this.isShowingCachedContent, // Add this parameter
   });
 
   @override
@@ -327,6 +331,7 @@ class _CatalogProductState extends State<CatalogProduct> {
                                 crossSpace: spacing,
                                 isProductsLoading: widget.isProductsLoading,
                                 canLoadMoreProducts: widget.canLoadMoreProducts,
+                                isShowingCachedContent: widget.isShowingCachedContent, // Pass this flag
                               ),
                             ),
                           );

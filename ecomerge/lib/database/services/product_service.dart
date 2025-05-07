@@ -43,6 +43,8 @@ class ProductService {
     return headers;
   }
 
+  // Add a static cache for product images
+  static final Map<String, Uint8List> _imageCache = {};
 
   Future<ProductDTO> getProductById(int id) async {
     final url = Uri.parse('$baseUrl/api/products/$id');
@@ -191,28 +193,92 @@ class ProductService {
     }
   }
 
-  // Method to get cached avatar or fetch if not available
-  Future<Uint8List?> getImageFromServer(String? avatarPath) async {
-    if (avatarPath == null || avatarPath.isEmpty) return null;
-
-    if (UserInfo.avatarCache.containsKey(avatarPath)) {
-      return UserInfo.avatarCache[avatarPath];
+  // Enhanced method to get image from cache or server with better caching
+  Future<Uint8List?> getImageFromServer(String? imagePath) async {
+    if (imagePath == null || imagePath.isEmpty) return null;
+    
+    // First check our product-specific image cache
+    if (_imageCache.containsKey(imagePath)) {
+      if (kDebugMode) print('Using cached image for $imagePath');
+      return _imageCache[imagePath];
+    }
+    
+    // Then check UserInfo avatar cache (existing implementation)
+    if (UserInfo.avatarCache.containsKey(imagePath)) {
+      return UserInfo.avatarCache[imagePath];
     }
 
     try {
-      String fullUrl = getImageUrl(avatarPath);
+      String fullUrl = getImageUrl(imagePath);
       final response = await httpClient.get(Uri.parse(fullUrl));
 
       if (response.statusCode == 200) {
-        UserInfo.avatarCache[avatarPath] = response.bodyBytes;
+        // Cache in both places for maximum compatibility
+        _imageCache[imagePath] = response.bodyBytes;
+        UserInfo.avatarCache[imagePath] = response.bodyBytes;
         return response.bodyBytes;
       }
     } catch (e) {
-      print('Error fetching avatar: $e');
+      print('Error fetching image: $e');
     }
 
     return null;
   }
+  
+  // Method to check if an image is already cached without fetching
+  bool isImageCached(String? imagePath) {
+    if (imagePath == null || imagePath.isEmpty) return false;
+    return _imageCache.containsKey(imagePath) || UserInfo.avatarCache.containsKey(imagePath);
+  }
+  
+  // New method to get image directly from cache without network request
+  Uint8List? getImageFromCache(String? imagePath) {
+    if (imagePath == null || imagePath.isEmpty) return null;
+    
+    // Check product cache first
+    if (_imageCache.containsKey(imagePath)) {
+      return _imageCache[imagePath];
+    }
+    
+    // Then check avatar cache
+    if (UserInfo.avatarCache.containsKey(imagePath)) {
+      return UserInfo.avatarCache[imagePath];
+    }
+    
+    return null; // Not found in any cache
+  }
+  
+  // New method to preload images for a list of products
+  Future<void> preloadProductImages(List<ProductDTO> products) async {
+    for (var product in products) {
+      if (product.mainImageUrl != null && !isImageCached(product.mainImageUrl)) {
+        await getImageFromServer(product.mainImageUrl);
+      }
+    }
+  }
+
+  // // Method to get cached avatar or fetch if not available
+  // Future<Uint8List?> getImageFromServer(String? avatarPath) async {
+  //   if (avatarPath == null || avatarPath.isEmpty) return null;
+
+  //   if (UserInfo.avatarCache.containsKey(avatarPath)) {
+  //     return UserInfo.avatarCache[avatarPath];
+  //   }
+
+  //   try {
+  //     String fullUrl = getImageUrl(avatarPath);
+  //     final response = await httpClient.get(Uri.parse(fullUrl));
+
+  //     if (response.statusCode == 200) {
+  //       UserInfo.avatarCache[avatarPath] = response.bodyBytes;
+  //       return response.bodyBytes;
+  //     }
+  //   } catch (e) {
+  //     print('Error fetching avatar: $e');
+  //   }
+
+  //   return null;
+  // }
   // Helper method to get the complete image URL
   String getImageUrl(String? imagePath) {
     if (imagePath == null) return '';

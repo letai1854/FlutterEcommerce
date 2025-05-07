@@ -1,5 +1,6 @@
 import 'dart:async'; // Import for Timer
 import 'package:e_commerce_app/database/models/product_dto.dart';
+import 'package:e_commerce_app/database/services/product_service.dart';
 import 'package:e_commerce_app/widgets/Product/ProductItem.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -14,6 +15,7 @@ class PaginatedProductGrid extends StatefulWidget {
   final double crossSpace;
   final bool isProductsLoading; // This prop signals when the grid is fetching more data
   final bool canLoadMoreProducts;
+  final bool isShowingCachedContent; // Add this flag
 
   const PaginatedProductGrid({
     Key? key,
@@ -26,6 +28,7 @@ class PaginatedProductGrid extends StatefulWidget {
     required this.crossSpace,
     required this.isProductsLoading,
     required this.canLoadMoreProducts,
+    required this.isShowingCachedContent, // Add this parameter
   }) : super(key: key);
 
   @override
@@ -53,10 +56,41 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
   Widget _buildOrGetGridItem(ProductDTO product, int index) {
     final String key = '${product.id}_${product.name}'; // Unique key for each product
     
+    // Create ProductService instance to check image cache status
+    final productService = ProductService();
+    
+    // Check if this specific product's image is cached - this is the key fix
+    final bool isImageCached = product.mainImageUrl != null && 
+                              productService.isImageCached(product.mainImageUrl);
+    
     // Return cached widget if available
     if (_globalProductCache.containsKey(key)) {
       if (kDebugMode) print('Using cached widget for product ${product.id}');
-      return _globalProductCache[key]!;
+      
+      // For cached widgets, we still need to update the isFromCache flag
+      // Get the existing widget
+      final existingWidget = _globalProductCache[key] as ProductItem;
+      
+      // Create a new widget with updated isFromCache flag if needed
+      if (widget.isShowingCachedContent && isImageCached) {
+        final updatedWidget = ProductItem(
+          key: ValueKey(key),
+          productId: product.id ?? 0,
+          imageUrl: product.mainImageUrl,
+          title: product.name,
+          describe: product.description,
+          price: product.minPrice ?? 0,
+          discount: product.discountPercentage?.toInt(),
+          rating: product.averageRating ?? 0,
+          isFromCache: true, // Use proper flag based on image cache status
+        );
+        
+        // Update the cache with the new widget
+        _globalProductCache[key] = updatedWidget;
+        return updatedWidget;
+      }
+      
+      return existingWidget;
     }
     
     // Create and cache new widget
@@ -70,6 +104,7 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
       price: product.minPrice ?? 0,
       discount: product.discountPercentage?.toInt(),
       rating: product.averageRating ?? 0,
+      isFromCache: widget.isShowingCachedContent && isImageCached, // Only true if both category is cached AND image is cached
     );
     
     _globalProductCache[key] = productWidget;
@@ -128,75 +163,72 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
     final bool isCurrentlyLoadingGridData = widget.isProductsLoading;
     final bool wasLoadingGridData = oldWidget.isProductsLoading;
     final bool hasGridProducts = widget.productData.isNotEmpty;
-
-    // Loading state has changed
-    if (isCurrentlyLoadingGridData != wasLoadingGridData) {
-      if (isCurrentlyLoadingGridData && hasGridProducts) {
-        // Loading just started - show loader immediately
+    
+    // Don't show loading indicator if we are showing cached products
+    if (widget.isShowingCachedContent && hasGridProducts) {
+      // If showing cached content, ensure no loading spinner
+      if (_showArtificialGridLoader) {
         if (mounted) {
           setState(() {
-            _showArtificialGridLoader = true;
-            _wasGridLoadingArtificially = true;
+            _showArtificialGridLoader = false;
+            _wasGridLoadingArtificially = false;
           });
         }
-        
-        // Ensure minimum display time of 2 seconds for better visibility
-        _gridLoaderTimer?.cancel();
-        _gridLoaderTimer = Timer(const Duration(milliseconds: 2000), () {
-          if (mounted) {
-            setState(() {
-              // Only hide if loading has finished by then
-              if (!widget.isProductsLoading) {
-                _showArtificialGridLoader = false;
-                _wasGridLoadingArtificially = false;
-              }
-            });
-          }
+      }
+      _gridLoaderTimer?.cancel();
+      return;
+    }
+    
+    // Only show loading indicator when:
+    // 1. We're loading AND we already have products
+    // 2. AND the loading is for more products (not just showing cached data)
+    // 3. AND we have more products now than before (indicating new data is being added)
+    final bool shouldShowLoadingIndicator = 
+        isCurrentlyLoadingGridData && 
+        hasGridProducts && 
+        (widget.productData.length > _previousDataLength || 
+         (isCurrentlyLoadingGridData != wasLoadingGridData && !_showArtificialGridLoader));
+
+    // Loading state has changed
+    if (shouldShowLoadingIndicator) {
+      // Loading just started - show loader immediately only for new data
+      if (mounted) {
+        setState(() {
+          _showArtificialGridLoader = true;
+          _wasGridLoadingArtificially = true;
         });
-      } else if (!isCurrentlyLoadingGridData && _wasGridLoadingArtificially) {
-        // Loading just finished
-        // If less than minimum time passed, keep showing loader until timer completes
-        if (_gridLoaderTimer == null || !_gridLoaderTimer!.isActive) {
-          if (mounted) {
-            setState(() {
+      }
+      
+      // Ensure minimum display time of 2 seconds for better visibility
+      _gridLoaderTimer?.cancel();
+      _gridLoaderTimer = Timer(const Duration(milliseconds: 2000), () {
+        if (mounted) {
+          setState(() {
+            // Only hide if loading has finished by then
+            if (!widget.isProductsLoading) {
               _showArtificialGridLoader = false;
               _wasGridLoadingArtificially = false;
-            });
-          }
+            }
+          });
+        }
+      });
+    } else if (!isCurrentlyLoadingGridData && _wasGridLoadingArtificially) {
+      // Loading just finished
+      // If less than minimum time passed, keep showing loader until timer completes
+      if (_gridLoaderTimer == null || !_gridLoaderTimer!.isActive) {
+        if (mounted) {
+          setState(() {
+            _showArtificialGridLoader = false;
+            _wasGridLoadingArtificially = false;
+          });
         }
       }
     }
     
-    // Track product data changes
+    // Track product data changes - only when product count increases
     final newItemsCount = widget.productData.length - _previousDataLength;
     if (newItemsCount > 0) {
       if (kDebugMode) print('Added $newItemsCount new products to the grid');
-      
-      // If new items were added and we're not showing a loader,
-      // but we should be loading (widget.isProductsLoading), show it
-      if (!_showArtificialGridLoader && widget.isProductsLoading && hasGridProducts) {
-        if (mounted) {
-          setState(() {
-            _showArtificialGridLoader = true;
-            _wasGridLoadingArtificially = true;
-          });
-          
-          // Set timer to hide it after minimum time
-          _gridLoaderTimer?.cancel();
-          _gridLoaderTimer = Timer(const Duration(milliseconds: 2000), () {
-            if (mounted) {
-              setState(() {
-                if (!widget.isProductsLoading) {
-                  _showArtificialGridLoader = false;
-                  _wasGridLoadingArtificially = false;
-                }
-              });
-            }
-          });
-        }
-      }
-    } else if (widget.productData.length < _previousDataLength) {
-      if (kDebugMode) print('Product list got smaller (category/sort change)');
     }
     
     _previousDataLength = widget.productData.length;
@@ -206,9 +238,10 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
   Widget build(BuildContext context) {
     super.build(context); // Required by AutomaticKeepAliveClientMixin
 
-    // Enhanced loader visibility logic
-    final bool showGridLoader = (widget.isProductsLoading && widget.productData.isNotEmpty) || 
-                               _showArtificialGridLoader;
+    // Show loader only when:
+    // 1. We've manually activated it via _showArtificialGridLoader
+    // 2. OR We're actively loading more products (not just showing cached data)
+    final bool showGridLoader = _showArtificialGridLoader && !widget.isShowingCachedContent;
     
     return Container(
       width: widget.gridWidth,

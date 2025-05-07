@@ -12,6 +12,7 @@ class ProductItem extends StatelessWidget {
   final double price;
   final int? discount;
   final double rating;
+  final bool isFromCache; // Add this flag to indicate if from cache
 
   const ProductItem({
     Key? key,
@@ -22,6 +23,7 @@ class ProductItem extends StatelessWidget {
     required this.price,
     this.discount,
     required this.rating,
+    this.isFromCache = false, // Default to false
   }) : super(key: key);
 
   void _navigateToProductDetail(BuildContext context) {
@@ -52,13 +54,74 @@ class ProductItem extends StatelessWidget {
       );
     }
 
-    // Combine image fetching with a minimum 1-second delay
+    // Create a single instance of ProductService for this widget
+    final productService =  ProductService();
+    
+    // For cached products, we should never show a loading spinner
+    if (isFromCache) {
+      // Try to get image directly from cache first
+      final cachedImage = productService.getImageFromCache(imageUrl);
+      
+      if (cachedImage != null) {
+        // If image is in cache, show it immediately without any spinner
+        return Image.memory(
+          cachedImage,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return const Center(
+              child: Icon(
+                Icons.broken_image,
+                size: 50,
+                color: Colors.grey,
+              ),
+            );
+          },
+        );
+      }
+      
+      // If claimed to be from cache but not found in cache, 
+      // load without ANY loading spinner - just show a placeholder until loaded
+      return Stack(
+        children: [
+          // Background placeholder
+          Container(
+            color: Colors.grey[200],
+            child: Center(
+              child: Icon(
+                Icons.image,
+                size: 40,
+                color: Colors.grey[400],
+              ),
+            ),
+          ),
+          
+          // Load the image without a loading indicator
+          Positioned.fill(
+            child: Image.network(
+              productService.getImageUrl(imageUrl!),
+              fit: BoxFit.cover,
+              // Remove the loadingBuilder to prevent showing a loading spinner
+              errorBuilder: (context, error, stackTrace) {
+                print('Error loading image: $error');
+                return const Center(
+                  child: Icon(
+                    Icons.broken_image,
+                    size: 50,
+                    color: Colors.grey,
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      );
+    }
+
+    // For non-cached products, use the existing loading with delay approach
     final Future<List<dynamic>> combinedFuture = Future.wait([
-      ProductService().getImageFromServer(imageUrl!).catchError((e) {
-        // Return a specific error marker or null if getImageFromServer fails,
-        // so Future.wait doesn't stop early and the delay is still respected.
+      productService.getImageFromServer(imageUrl!).catchError((e) {
         print('Error in getImageFromServer: $e');
-        return null; // Or a specific error object
+        return null; 
       }),
       Future.delayed(const Duration(milliseconds: 1500)),
     ]);

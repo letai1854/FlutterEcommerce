@@ -98,6 +98,8 @@ class _PageListProductState extends State<PageListProduct> {
 
   @override
   void dispose() {
+    // Reset flag when leaving this page
+    _productStorage.resetReturnVisitFlag();
     _scrollController.removeListener(_onScroll); // Ensure listener is removed
     _scrollController.dispose();
     AppDataService().removeListener(_onAppDataServiceChange);
@@ -120,18 +122,42 @@ class _PageListProductState extends State<PageListProduct> {
     }
   }
 
+  // Add a getter to check if we have cached data for current configuration
+  bool get _hasDataInCache => _productStorage.hasDataInCache(
+    categoryId: selectedCategoryId,
+    sortBy: currentSortMethod,
+    sortDir: currentSortDir,
+  );
+
+  // Add a getter to check if we're showing cached content immediately
+  bool get _isShowingCachedContent => _productStorage.isShowingCachedContent;
+
   // Update category selection
   void updateSelectedCategory(int categoryId) {
     if (selectedCategoryId == categoryId) return;
 
+    // Check if we already have cached data for this category
+    final bool hasCachedData = _productStorage.hasDataInCache(
+      categoryId: categoryId,
+      sortBy: currentSortMethod,
+      sortDir: currentSortDir,
+    );
+
+    if (hasCachedData) {
+      print('Using cached data for category $categoryId');
+    }
+
     setState(() {
       selectedCategoryId = categoryId;
-      // Reset sort to default when category changes
-      currentSortMethod = 'createdDate';
-      currentSortDir = 'desc';
+      // Don't reset sort method when using cached data
+      if (!hasCachedData) {
+        currentSortMethod = 'createdDate';
+        currentSortDir = 'desc';
+      }
     });
 
-    // Load initial products for the new category
+    // Load products for the new category
+    // Will automatically use cached data if available
     _loadInitialProducts();
 
     // Scroll to top when category changes
@@ -139,6 +165,19 @@ class _PageListProductState extends State<PageListProduct> {
       0,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOut,
+    );
+  }
+
+  // Modify isInitialLoading to respect cache status
+  bool get _isInitialLoading {
+    // Don't show loading if we have cached data
+    if (_hasDataInCache) {
+      return false;
+    }
+    return _productStorage.isInitialLoading(
+      categoryId: selectedCategoryId,
+      sortBy: currentSortMethod,
+      sortDir: currentSortDir,
     );
   }
 
@@ -223,12 +262,6 @@ class _PageListProductState extends State<PageListProduct> {
     sortDir: currentSortDir,
   );
 
-  bool get _isInitialLoading => _productStorage.isInitialLoading(
-    categoryId: selectedCategoryId,
-    sortBy: currentSortMethod,
-    sortDir: currentSortDir,
-  );
-
   // Explicitly handle both local and storage loading state for better visibility
   bool get _isLoadingMore {
     final storageIsLoading = _productStorage.isLoadingMore(
@@ -279,9 +312,10 @@ class _PageListProductState extends State<PageListProduct> {
         Widget appBar;
 
         // Determine the combined loading state to pass to CatalogProduct
-        // This ensures PaginatedProductGrid gets the correct signal to start its timed loader
-        // when _productStorage.isLoadingMore() becomes true due to _loadNextPage().
-        bool currentProductsLoadingState = _isInitialLoading || _isLoadingMore;
+        // Only show loading if we're actually loading new data, not using cached data
+        bool currentProductsLoadingState = 
+            (_isInitialLoading || _isLoadingMore) && 
+            (!_isShowingCachedContent || (_isLoadingMore && !_hasDataInCache));
 
         Widget body = CatalogProduct(
           filteredProducts: _currentProducts,
@@ -296,6 +330,7 @@ class _PageListProductState extends State<PageListProduct> {
           isAppDataInitialized: _isAppDataInitialized,
           isProductsLoading: currentProductsLoadingState, // Pass the combined state
           canLoadMoreProducts: _canLoadMore,
+          isShowingCachedContent: _isShowingCachedContent,
         );
 
         if (screenWidth < 768) {
