@@ -5,6 +5,7 @@ import 'package:e_commerce_app/widgets/Product/CategoriesSection.dart';
 import 'package:e_commerce_app/widgets/Product/PaginatedProductGrid.dart';
 import 'package:e_commerce_app/widgets/Product/ProductItem.dart'
     as product_item;
+import 'package:e_commerce_app/widgets/Product/PromotionalProductsList.dart';
 import 'package:e_commerce_app/widgets/carousel/carouselDesktop.dart';
 import 'package:e_commerce_app/widgets/carousel/carouselTablet.dart';
 import 'package:e_commerce_app/widgets/footer.dart';
@@ -241,21 +242,19 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                       Heading(Icons.bolt, Colors.yellowAccent,
                           'Sản phẩm khuyến mãi'),
                       SizedBox(height: 10),
-                      // Container(
-                      //   height: 320,
-                      //   child: product_item.ProductList(
-                      //     productListKey: _promoProductsKey,
-                      //     scroll: Axis.horizontal,
-                      //     productData: productData,
-                      //     itemsPerPage: isMobile ? 6 : 7,
-                      //     gridHeight: isMobile ? 250 : 320,
-                      //     gridWidth: screenWidth,
-                      //     childAspectRatio: isMobile ? 0.8 : 1.59,
-                      //     crossAxisCount: 1,
-                      //     mainSpace: isMobile ? 10 : 9,
-                      //     crossSpace: isMobile ? 10 : 8.0,
-                      //   ),
-                      // ),
+                      Container(
+                        height: isMobile ? 250 : 320,
+                        child: PromotionalProductsList(
+                          productListKey: _promoProductsKey,
+                          itemsPerPage: isMobile ? 6 : 7,
+                          gridHeight: isMobile ? 250 : 320,
+                          gridWidth: screenWidth,
+                          childAspectRatio: 1.47,
+                          crossAxisCount: 1,
+                          mainSpace: 9.7,
+                          crossSpace: 10,
+                        ),
+                      ),
                       SizedBox(height: 10),
                       Heading(Icons.new_releases, Colors.yellowAccent,
                           'Sản phẩm mới nhất'),
