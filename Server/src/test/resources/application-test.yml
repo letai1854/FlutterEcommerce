@@ -1,0 +1,13 @@
+spring:
+  elasticsearch:
+    uris: http://localhost:9200
+    connection-timeout: 1s
+    socket-timeout: 1s
+  data:
+    elasticsearch:
+      repositories:
+        enabled: true
+
+tests:
+  elasticsearch:
+    enabled: ${ELASTICSEARCH_TESTS_ENABLED:false}
