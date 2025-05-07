@@ -96,7 +96,7 @@ class ProductStorageSingleton extends ChangeNotifier {
   // Track if this is a returning visit to a category
   bool _isReturningVisit = false;
   // Flag to track if we're immediately showing cached content
-  bool get isShowingCachedContent => _isReturningVisit;
+  bool get isShowingCachedContent => _isReturningVisit && !_cache.isLoadingMore;
 
   String _getCacheKey({
     required int categoryId,
@@ -311,7 +311,7 @@ class ProductStorageSingleton extends ChangeNotifier {
           sortBy: sortBy,
           sortDir: sortDir,
           page: 0,
-          size: 4
+          size: 3
         );
 
         _cache.products = response.content;
@@ -325,14 +325,24 @@ class ProductStorageSingleton extends ChangeNotifier {
         });
         
         // Save to global cache immediately
+        // Save to global cache immediately
         GlobalProductCache.setConfigCache(cacheKey, _cache);
         
+        if (kDebugMode) {
+          print('Successfully loaded initial products for $cacheKey. Total products: ${_cache.products.length}, Page: ${_cache.currentPage}/${_cache.totalPages}');
+        }
+        
       } catch (e) {
-        if (kDebugMode) print('Error loading initial products: $e');
+        if (kDebugMode) print('Error loading initial products for $cacheKey: $e');
       } finally {
         _cache.isLoadingInitial = false;
+        // Notify listeners AFTER state is updated
         notifyListeners();
       }
+    } else {
+       if (kDebugMode) {
+          print('Initial products for $cacheKey already loaded or cached.');
+       }
     }
   }
 
@@ -341,24 +351,33 @@ class ProductStorageSingleton extends ChangeNotifier {
     required String sortBy,
     required String sortDir,
   }) async {
+    final cacheKey = _getCacheKey(categoryId: categoryId, sortBy: sortBy, sortDir: sortDir);
+    
     // Only load more if we have the same config and can load more
     if (!_isSameConfig(categoryId: categoryId, sortBy: sortBy, sortDir: sortDir) || !_cache.canLoadMore) {
+       if (kDebugMode) {
+          print('Cannot load next page for $cacheKey. Same config: ${_isSameConfig(categoryId: categoryId, sortBy: sortBy, sortDir: sortDir)}, Can load more: ${_cache.canLoadMore}');
+       }
       return;
     }
 
+    // Important: When loading more, we're not showing cached content anymore
+    // For spinner control purposes
     _cache.isLoadingMore = true;
-    notifyListeners();
+    
+    // Notify to show loading indicator
+    notifyListeners(); 
 
     try {
-      // Short delay for loading indicator visibility
-      await Future.delayed(const Duration(milliseconds: 500));
+      // Short delay for loading indicator visibility - increased for better user experience
+      await Future.delayed(const Duration(milliseconds: 800));
       
       final response = await _productService.fetchProducts(
         categoryId: categoryId,
         sortBy: sortBy,
         sortDir: sortDir,
         page: _cache.currentPage + 1,
-        size: 4
+        size: 3
       );
 
       if (response.number == _cache.currentPage + 1) {
@@ -372,18 +391,22 @@ class ProductStorageSingleton extends ChangeNotifier {
         });
         
         // Update global cache with new data
-        final cacheKey = _getCacheKey(categoryId: categoryId, sortBy: sortBy, sortDir: sortDir);
         GlobalProductCache.setConfigCache(cacheKey, _cache);
         
         if (kDebugMode) {
-          print('Loaded page ${_cache.currentPage}, total products now: ${_cache.products.length}');
+          print('Loaded page ${_cache.currentPage} for $cacheKey, total products now: ${_cache.products.length}');
           GlobalProductCache.printCache();
         }
+      } else {
+         if (kDebugMode) {
+            print('Received unexpected page number: ${response.number}. Expected: ${_cache.currentPage + 1}');
+         }
       }
     } catch (e) {
-      if (kDebugMode) print('Error loading more products: $e');
+      if (kDebugMode) print('Error loading more products for $cacheKey: $e');
     } finally {
       _cache.isLoadingMore = false;
+      // Notify listeners AFTER state is updated
       notifyListeners();
     }
   }

@@ -8,6 +8,7 @@ import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
 import 'package:e_commerce_app/widgets/Product/CatalogProduct.dart';
 import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // Import kDebugMode
 
 class PageListProduct extends StatefulWidget {
   const PageListProduct({super.key});
@@ -113,11 +114,16 @@ class _PageListProductState extends State<PageListProduct> {
     // - `_scrollController.position.maxScrollExtent > 0` ensures the content is actually scrollable.
     // - `_scrollController.position.extentAfter < 300.0` triggers when less than 300px are left to scroll.
     //   Adjust 300.0 to your preference for how early the load should trigger.
-    if (_scrollController.position.maxScrollExtent > 0 &&
+    // Add checks for mounted and if AppData is initialized
+    if (mounted && AppDataService().isInitialized && _scrollController.position.maxScrollExtent > 0 &&
         _scrollController.position.extentAfter < 300.0) {
       if (_isConfigInitialized && _canLoadMore && !_isCurrentlyLoadingNextPage) {
-        // print("Scroll near bottom (extentAfter < 300.0), attempting to load next page.");
+        if (kDebugMode) print("Scroll near bottom (extentAfter < 300.0), attempting to load next page.");
         _loadNextPage();
+      } else {
+         if (kDebugMode) {
+            print("Scroll near bottom, but cannot load next page. Config Initialized: $_isConfigInitialized, Can Load More: $_canLoadMore, Currently Loading: $_isCurrentlyLoadingNextPage");
+         }
       }
     }
   }
@@ -144,7 +150,7 @@ class _PageListProductState extends State<PageListProduct> {
     );
 
     if (hasCachedData) {
-      print('Using cached data for category $categoryId');
+      if (kDebugMode) print('Using cached data for category $categoryId');
     }
 
     setState(() {
@@ -170,8 +176,8 @@ class _PageListProductState extends State<PageListProduct> {
 
   // Modify isInitialLoading to respect cache status
   bool get _isInitialLoading {
-    // Don't show loading if we have cached data
-    if (_hasDataInCache) {
+    // Don't show loading if we have cached data and are showing it immediately
+    if (_hasDataInCache && _isShowingCachedContent) {
       return false;
     }
     return _productStorage.isInitialLoading(
@@ -190,7 +196,7 @@ class _PageListProductState extends State<PageListProduct> {
       });
     } else {
       setState(() {
-        currentSortMethod = method;
+      currentSortMethod = method;
         currentSortDir = 'desc'; // Default to descending for new sort method
       });
     }
@@ -203,7 +209,7 @@ class _PageListProductState extends State<PageListProduct> {
     if (selectedCategoryId == -1) return;
     // Prevent loading if AppData is still loading, to avoid race conditions with category selection
     if (AppDataService().isLoading && !AppDataService().isInitialized) {
-        print("Skipping initial product load as AppData is still loading.");
+        if (kDebugMode) print("Skipping initial product load as AppData is still loading.");
         return;
     }
 
@@ -224,7 +230,12 @@ class _PageListProductState extends State<PageListProduct> {
   // Load next page of products
   Future<void> _loadNextPage() async {
     // Ensure a category is selected, more products can be loaded, and not already loading
-    if (selectedCategoryId == -1 || !_canLoadMore || _isCurrentlyLoadingNextPage) return;
+    if (selectedCategoryId == -1 || !_canLoadMore || _isCurrentlyLoadingNextPage) {
+       if (kDebugMode) {
+          print("Skipping loadNextPage. Category: $selectedCategoryId, Can Load More: $_canLoadMore, Currently Loading: $_isCurrentlyLoadingNextPage");
+       }
+      return;
+    }
 
     // Set local loading state flag
     if (mounted) {
@@ -241,7 +252,7 @@ class _PageListProductState extends State<PageListProduct> {
         sortDir: currentSortDir,
       );
     } catch (e) {
-      print('Error in _loadNextPage: $e');
+      if (kDebugMode) print('Error in _loadNextPage: $e');
     } finally {
       // Reset the flag after the loading operation is complete (successful or not)
       if (mounted) {
@@ -288,9 +299,9 @@ class _PageListProductState extends State<PageListProduct> {
 
   @override
   Widget build(BuildContext context) {
-    print('Building PageListProduct...');
+    if (kDebugMode) print('Building PageListProduct...');
     final List<CategoryDTO> currentCategories = _allCategories;
-    print('Current categories count from AppDataService: ${currentCategories.length}');
+    if (kDebugMode) print('Current categories count from AppDataService: ${currentCategories.length}');
     // If no category is selected yet and categories are available, select the first one.
     // This can happen if initial loadData completes after first build.
     if (selectedCategoryId == -1 && currentCategories.isNotEmpty && AppDataService().isInitialized && !AppDataService().isLoading) {

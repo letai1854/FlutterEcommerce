@@ -164,9 +164,14 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
     final bool wasLoadingGridData = oldWidget.isProductsLoading;
     final bool hasGridProducts = widget.productData.isNotEmpty;
     
-    // Don't show loading indicator if we are showing cached products
-    if (widget.isShowingCachedContent && hasGridProducts) {
-      // If showing cached content, ensure no loading spinner
+    // FIXED LOGIC: Only disable spinner for INITIAL cached content 
+    // If we're showing more products (length increased), we should show spinner even with cached content
+    final bool initialCachedContentLoad = widget.isShowingCachedContent && 
+                                          hasGridProducts &&
+                                          widget.productData.length <= _previousDataLength;
+    
+    if (initialCachedContentLoad) {
+      // Only suppress spinner for initial load of cached content
       if (_showArtificialGridLoader) {
         if (mounted) {
           setState(() {
@@ -176,13 +181,14 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
         }
       }
       _gridLoaderTimer?.cancel();
-      return;
+      
+      // Don't return here - we need to continue to handle loading more products
     }
     
     // Only show loading indicator when:
     // 1. We're loading AND we already have products
-    // 2. AND the loading is for more products (not just showing cached data)
-    // 3. AND we have more products now than before (indicating new data is being added)
+    // 2. AND the loading is for more products (product list grew larger)
+    // 3. OR loading state changed from not loading to loading
     final bool shouldShowLoadingIndicator = 
         isCurrentlyLoadingGridData && 
         hasGridProducts && 
@@ -238,10 +244,9 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
   Widget build(BuildContext context) {
     super.build(context); // Required by AutomaticKeepAliveClientMixin
 
-    // Show loader only when:
-    // 1. We've manually activated it via _showArtificialGridLoader
-    // 2. OR We're actively loading more products (not just showing cached data)
-    final bool showGridLoader = _showArtificialGridLoader && !widget.isShowingCachedContent;
+    // FIXED LOGIC: Show loader when explicitly enabled, don't 
+    // automatically disable based on cached content status
+    final bool showGridLoader = _showArtificialGridLoader;
     
     return Container(
       width: widget.gridWidth,
