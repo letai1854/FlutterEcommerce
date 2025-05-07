@@ -623,6 +623,52 @@ class ProductService {
     }
   }
 
+  // Method to fetch top-discounted products
+  Future<PageResponse<ProductDTO>> getTopDiscountedProducts(
+      {int page = 0, int size = 10}) async {
+    final url =
+        Uri.parse('$baseUrl/api/products/top-discounted?page=$page&size=$size');
+    if (kDebugMode) {
+      print('Fetching top discounted products: $url');
+    }
+    try {
+      final response = await httpClient.get(
+        url,
+        headers: _getHeaders(
+            includeAuth: false), // Top-discounted might not need auth
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        // If content is empty but status is 200, PageResponse.fromJson should handle it.
+        // If server sends 204 for no content, it will now be caught by the 'else' block.
+        return PageResponse.fromJson(
+            jsonData,
+            (itemJson) =>
+                ProductDTO.fromJson(itemJson as Map<String, dynamic>));
+      } else {
+        // This block will now handle 204 No Content as well, by throwing an exception.
+        if (kDebugMode) {
+          print(
+              'Failed to fetch top discounted products: ${response.statusCode}');
+          print('Response body: ${response.body}');
+        }
+        throw Exception(
+            'Failed to load top discounted products: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching top discounted products: $e');
+      }
+      // Ensure the re-thrown exception includes the original error if it's not an HTTP status exception
+      if (e is Exception &&
+          e.toString().contains('Failed to load top discounted products')) {
+        throw e; // Re-throw the specific HTTP status exception
+      }
+      throw Exception('Error fetching top discounted products: $e');
+    }
+  }
+
   void dispose() {
     httpClient.close();
   }

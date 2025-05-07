@@ -1,3 +1,4 @@
+import 'package:e_commerce_app/database/PageResponse.dart';
 import 'package:flutter/material.dart';
 import 'package:e_commerce_app/database/models/paginated_response.dart';
 import 'package:e_commerce_app/database/models/product_dto.dart';
@@ -281,6 +282,7 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
   bool _hasMorePages = true;
   int _totalPagesFromAPI = 0;
   bool _isScrollingToEnd = false;
+  bool _isButtonTriggeredLoading = false; // New state variable
 
   @override
   bool get wantKeepAlive => true;
@@ -309,10 +311,39 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
     });
 
     try {
-      final response = await _productService.getTopSellingProducts(
-        page: _nextPageToRequest,
-        size: widget.itemsPerPage,
-      );
+      PageResponse<ProductDTO> response;
+      final String keyString = widget.productListKey.toString();
+
+      if (keyString.contains('newProducts')) {
+        if (kDebugMode) {
+          print(
+              'PromotionalProductsList (Newest): Fetching newest products page $_nextPageToRequest, size ${widget.itemsPerPage}');
+        }
+        response = await _productService.fetchProducts(
+          page: _nextPageToRequest,
+          size: widget.itemsPerPage,
+          sortBy: 'createdDate',
+          sortDir: 'desc',
+        );
+      } else if (keyString.contains('bestSeller')) {
+        if (kDebugMode) {
+          print(
+              'PromotionalProductsList (Top Selling): Fetching top selling products page $_nextPageToRequest, size ${widget.itemsPerPage}');
+        }
+        response = await _productService.getTopSellingProducts(
+          page: _nextPageToRequest,
+          size: widget.itemsPerPage,
+        );
+      } else {
+        if (kDebugMode) {
+          print(
+              'PromotionalProductsList (Top Selling): Fetching top selling products page $_nextPageToRequest, size ${widget.itemsPerPage}');
+        }
+        response = await _productService.getTopDiscountedProducts(
+          page: _nextPageToRequest,
+          size: widget.itemsPerPage,
+        );
+      }
 
       if (kDebugMode) {
         print(
@@ -329,10 +360,10 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
       });
     } catch (e) {
       if (kDebugMode) {
-        print('Error loading promotional products: $e');
+        print('Error loading initial products: $e');
       }
       setState(() {
-        _errorMessage = 'Không thể tải sản phẩm khuyến mãi: $e';
+        _errorMessage = 'Không thể tải sản phẩm: ${e.toString()}';
         _isLoading = false;
       });
     }
@@ -350,11 +381,9 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
               rating: product.averageRating ?? 0.0,
             ))
         .toList();
-    if (_nextPageToRequest == 0 || _displayedProducts.isEmpty) {
-      setState(() {
-        _displayedProducts = items;
-      });
-    }
+    setState(() {
+      _displayedProducts = items;
+    });
   }
 
   Future<void> _loadMoreProducts() async {
@@ -369,20 +398,43 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
 
     try {
       final int itemsToFetch = widget.itemsPerPage;
+      PageResponse<ProductDTO> response;
+      final String keyString = widget.productListKey.toString();
 
-      if (kDebugMode) {
-        print(
-            'Loading promotional products page $_nextPageToRequest with $itemsToFetch items per page');
+      if (keyString.contains('newProducts')) {
+        if (kDebugMode) {
+          print(
+              'PromotionalProductsList (Newest): Loading more newest products page $_nextPageToRequest with $itemsToFetch items per page');
+        }
+        response = await _productService.fetchProducts(
+          page: _nextPageToRequest,
+          size: itemsToFetch,
+          sortBy: 'createdDate',
+          sortDir: 'desc',
+        );
+      } else if (keyString.contains('bestSeller')) {
+        if (kDebugMode) {
+          print(
+              'PromotionalProductsList (Top Selling): Fetching top selling products page $_nextPageToRequest, size ${widget.itemsPerPage}');
+        }
+        response = await _productService.getTopSellingProducts(
+          page: _nextPageToRequest,
+          size: widget.itemsPerPage,
+        );
+      } else {
+        if (kDebugMode) {
+          print(
+              'PromotionalProductsList (Top Selling): Loading more top selling products page $_nextPageToRequest with $itemsToFetch items per page');
+        }
+        response = await _productService.getTopDiscountedProducts(
+          page: _nextPageToRequest,
+          size: widget.itemsPerPage,
+        );
       }
 
-      final response = await _productService.getTopSellingProducts(
-        page: _nextPageToRequest,
-        size: itemsToFetch,
-      );
-
       if (kDebugMode) {
         print(
-            'Loaded page ${response.number}. Total items: ${response.content.length}, Is Last: ${response.last}, Total Pages: ${response.totalPages}');
+            'Loaded more products page ${response.number}. Total items: ${response.content.length}, Is Last: ${response.last}, Total Pages: ${response.totalPages}');
       }
 
       if (response.content.isEmpty && !response.last) {
@@ -426,12 +478,17 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content:
-                Text('Không thể tải thêm sản phẩm khuyến mãi: ${e.toString()}'),
+            content: Text('Không thể tải thêm sản phẩm: ${e.toString()}'),
             backgroundColor: Colors.red.shade700,
             duration: const Duration(seconds: 2),
           ),
         );
+      }
+    } finally {
+      if (mounted && _isButtonTriggeredLoading) {
+        setState(() {
+          _isButtonTriggeredLoading = false;
+        });
       }
     }
   }
@@ -500,7 +557,7 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
       }
 
       setState(() {
-        _isScrollingToEnd = true;
+        _isButtonTriggeredLoading = true;
       });
 
       _loadMoreProducts().then((_) {
@@ -539,6 +596,7 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
           : _displayedProducts.isEmpty && !_isLoading
               ? const Center(child: Text('Không có sản phẩm khuyến mãi'))
               : Stack(
+                  alignment: Alignment.center,
                   children: [
                     Container(
                       color: Colors.white,
@@ -552,7 +610,9 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
                           crossAxisSpacing: widget.crossSpace,
                         ),
                         itemCount: _displayedProducts.length +
-                            ((_hasMorePages || _isLoadingMore) ? 1 : 0),
+                            ((_isLoadingMore && !_isButtonTriggeredLoading)
+                                ? 1
+                                : 0),
                         itemBuilder: (context, index) {
                           if (index >= _displayedProducts.length) {
                             return _buildLoadingItem();
@@ -647,44 +707,58 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
                           ),
                         ),
                       ),
-                    if (_isScrollingToEnd && !_isLoading)
-                      Positioned(
-                        right: 50,
-                        top: 0,
-                        bottom: 0,
-                        width: 40,
-                        child: Center(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 12, horizontal: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.black54,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white),
+                    if (_isLoadingMore && _isButtonTriggeredLoading)
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          double spinnerSize = constraints.maxWidth * 0.1;
+                          if (spinnerSize < 40) spinnerSize = 40;
+                          if (spinnerSize > 60) spinnerSize = 60;
+
+                          return Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 28, vertical: 20),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.75),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.25),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 1),
+                                  )
+                                ],
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SizedBox(
+                                    width: constraints.maxWidth <= 600
+                                        ? constraints.maxWidth * 0.1
+                                        : 48,
+                                    height: constraints.maxWidth <= 600
+                                        ? constraints.maxWidth * 0.1
+                                        : 48,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 4.0,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white),
+                                    ),
                                   ),
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  'Đang tải',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
+                                  const SizedBox(height: 18),
+                                  Text(
+                                    'Đang tải sản phẩm...',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
                   ],
                 ),
