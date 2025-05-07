@@ -4,7 +4,7 @@ import 'package:e_commerce_app/constants.dart';
 import 'package:e_commerce_app/database/Storage/BrandCategoryService.dart';
 import 'package:e_commerce_app/database/models/categories.dart';
 import 'package:e_commerce_app/widgets/Product/CategoriesSection.dart';
-import 'package:e_commerce_app/widgets/Product/PaginatedProductGrid.dart';
+import 'package:e_commerce_app/widgets/Product/CategoryFilteredProductGrid.dart';
 import 'package:e_commerce_app/widgets/Product/ProductItem.dart'
     as product_item;
 import 'package:e_commerce_app/widgets/Product/PromotionalProductsList.dart';
@@ -56,6 +56,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
       setState(() {
         _appCategories = AppDataService().categories;
       });
+      _autoSelectInitialCategory(); // Auto-select after categories are updated
     }
   }
 
@@ -66,6 +67,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
           setState(() {
             _appCategories = AppDataService().categories;
           });
+          _autoSelectInitialCategory(); // Auto-select after initial load
         }
       }).catchError((error) {
         if (kDebugMode) {
@@ -77,6 +79,35 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
         setState(() {
           _appCategories = AppDataService().categories;
         });
+        _autoSelectInitialCategory(); // Auto-select if data was already initialized
+      }
+    }
+  }
+
+  void _autoSelectInitialCategory() {
+    // Only run if categories are loaded and no category has been manually selected yet.
+    if (_appCategories.isNotEmpty && _selectedCategory == null) {
+      final displayedCategories = _appCategories.take(5).toList();
+      if (displayedCategories.isNotEmpty) {
+        // Find the category with the smallest ID among the displayed ones.
+        // Treat null IDs as very large numbers for comparison.
+        CategoryDTO smallestIdCategory =
+            displayedCategories.reduce((current, next) {
+          final currentId =
+              current.id ?? 999999999; // A large number for null IDs
+          final nextId = next.id ?? 999999999;
+          return currentId < nextId ? current : next;
+        });
+
+        // Find the index of this category within the displayedCategories list.
+        int indexOfSmallest = displayedCategories
+            .indexWhere((cat) => cat.id == smallestIdCategory.id);
+
+        if (indexOfSmallest != -1) {
+          // Use _handleCategorySelected to update state and UI consistently.
+          // This will also trigger the CategoryFilteredProductGrid to update.
+          _handleCategorySelected(indexOfSmallest);
+        }
       }
     }
   }
@@ -371,6 +402,46 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                             _appCategories, // Pass the dynamic categories here
                       ),
                       SizedBox(height: 10),
+                      Column(
+                        key: _paginatedGridKey,
+                        children: [
+                          Builder(
+                            builder: (context) {
+                              int? categoryIdToPass;
+                              if (_selectedCategory != null &&
+                                  _appCategories.isNotEmpty) {
+                                final displayedCategories =
+                                    _appCategories.take(5).toList();
+                                if (_selectedCategory! <
+                                    displayedCategories.length) {
+                                  categoryIdToPass =
+                                      displayedCategories[_selectedCategory!]
+                                          .id;
+                                }
+                              }
+
+                              return SizedBox(
+                                width: isDesktop
+                                    ? screenWidth - 280
+                                    : screenWidth - 2,
+                                child: CategoryFilteredProductGrid(
+                                  categoryId: categoryIdToPass,
+                                  itemsToLoadPerPage: 6,
+                                  gridWidth: isDesktop
+                                      ? screenWidth - 280
+                                      : screenWidth - 2,
+                                  childAspectRatio: 0.5,
+                                  crossAxisCount:
+                                      _getCrossAxisCount(screenWidth),
+                                  mainSpace: 10,
+                                  crossSpace: 8.0,
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 50),
                       SizedBox(height: 50),
                     ],
                   ),
