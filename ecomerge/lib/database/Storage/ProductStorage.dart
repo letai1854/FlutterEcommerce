@@ -124,6 +124,7 @@ class ProductStorageSingleton extends ChangeNotifier {
         sortBy: sortBy,
         sortDir: sortDir,
         page: 0,
+        size: 4
       );
 
       _cache.products = response.content;
@@ -151,14 +152,19 @@ class ProductStorageSingleton extends ChangeNotifier {
     }
 
     _cache.isLoadingMore = true;
+    // Immediately notify listeners when loading state changes
     notifyListeners();
 
     try {
+      // Add artificial delay to ensure loading indicator is visible
+      await Future.delayed(Duration(milliseconds: 1000));
+      
       final response = await _productService.fetchProducts(
         categoryId: categoryId,
         sortBy: sortBy,
         sortDir: sortDir,
         page: _cache.currentPage + 1,
+        size: 4
       );
 
       if (response.number == _cache.currentPage + 1) {
@@ -169,6 +175,7 @@ class ProductStorageSingleton extends ChangeNotifier {
     } catch (e) {
       print('Error loading more products: $e');
     } finally {
+      // Ensure we reset loading state and notify listeners
       _cache.isLoadingMore = false;
       notifyListeners();
     }

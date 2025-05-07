@@ -1,9 +1,10 @@
+import 'dart:async'; // Import for Future.delayed
 import 'package:flutter/material.dart';
 import 'package:e_commerce_app/database/services/product_service.dart';
 import 'dart:typed_data';
 import 'package:e_commerce_app/Screens/ProductDetail/PageProductDetail.dart';
 
-class ProductItem extends StatefulWidget {
+class ProductItem extends StatelessWidget {
   final int productId;
   final String? imageUrl;
   final String title;
@@ -23,39 +24,11 @@ class ProductItem extends StatefulWidget {
     required this.rating,
   }) : super(key: key);
 
-  @override
-  State<ProductItem> createState() => _ProductItemState();
-}
-
-class _ProductItemState extends State<ProductItem> {
-  static final ProductService _productService = ProductService();
-  late Future<dynamic> _imageLoader;
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeImageLoader();
-  }
-
-  @override
-  void didUpdateWidget(ProductItem oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.imageUrl != widget.imageUrl) {
-      _initializeImageLoader();
-    }
-  }
-
-  void _initializeImageLoader() {
-    if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty) {
-      _imageLoader = _productService.getImageFromServer(widget.imageUrl);
-    }
-  }
-
-  void _navigateToProductDetail() {
+  void _navigateToProductDetail(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => Pageproductdetail(productId: widget.productId),
+        builder: (context) => Pageproductdetail(productId: productId),
       ),
     );
   }
@@ -68,8 +41,8 @@ class _ProductItemState extends State<ProductItem> {
     return '$formatted VNĐ';
   }
 
-  Widget _buildProductImage() {
-    if (widget.imageUrl == null || widget.imageUrl!.isEmpty) {
+  Widget _buildProductImage(BuildContext context) {
+    if (imageUrl == null || imageUrl!.isEmpty) {
       return const Center(
         child: Icon(
           Icons.image_not_supported,
@@ -79,9 +52,22 @@ class _ProductItemState extends State<ProductItem> {
       );
     }
 
-    return FutureBuilder(
-      future: _imageLoader,
+    // Combine image fetching with a minimum 1-second delay
+    final Future<List<dynamic>> combinedFuture = Future.wait([
+      ProductService().getImageFromServer(imageUrl!).catchError((e) {
+        // Return a specific error marker or null if getImageFromServer fails,
+        // so Future.wait doesn't stop early and the delay is still respected.
+        print('Error in getImageFromServer: $e');
+        return null; // Or a specific error object
+      }),
+      Future.delayed(const Duration(milliseconds: 1500)),
+    ]);
+
+    return FutureBuilder<List<dynamic>>(
+      future: combinedFuture,
       builder: (context, snapshot) {
+        // The FutureBuilder remains in 'waiting' state until both futures complete.
+        // So, the CircularProgressIndicator will be shown for at least 1 second.
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
             child: CircularProgressIndicator(
@@ -90,172 +76,178 @@ class _ProductItemState extends State<ProductItem> {
           );
         }
 
-        if (snapshot.hasError) {
-          print('Error loading image: ${snapshot.error}');
-          return const Center(
+        // After waiting, check the result of getImageFromServer
+        final imageData = snapshot.data?[0]; // Data from getImageFromServer future
+
+        if (snapshot.hasError || (imageData == null && !(snapshot.data?[0] is Uint8List) ) ) {
+          // This handles errors from Future.wait or if getImageFromServer returned null/error marker
+          // Fallback to Image.network if getImageFromServer failed
+          print('FutureBuilder error or getImageFromServer failed, falling back to Image.network for: $imageUrl');
+          return Image.network(
+            ProductService().getImageUrl(imageUrl!), // imageUrl is not null here due to earlier check
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              print('Image.network Error: $error');
+              return const Center(
+                child: Icon(
+                  Icons.broken_image,
+                  size: 50,
+                  color: Colors.grey,
+                ),
+              );
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                      : null,
+                  strokeWidth: 2,
+                ),
+              );
+            },
+          );
+        }
+        
+        if (imageData is Uint8List) {
+          return Image.memory(
+            imageData,
+            fit: BoxFit.cover,
+          );
+        }
+        
+        // Should ideally not be reached if error handling is correct, but as a final fallback:
+        return const Center(
             child: Icon(
-              Icons.broken_image,
+              Icons.broken_image, // Fallback for unexpected state
               size: 50,
               color: Colors.grey,
             ),
           );
-        }
-
-        if (snapshot.hasData && snapshot.data != null) {
-          if (snapshot.data is Uint8List) {
-            return Image.memory(
-              snapshot.data as Uint8List,
-              fit: BoxFit.cover,
-            );
-          }
-        }
-
-        return Image.network(
-          _productService.getImageUrl(widget.imageUrl),
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            print('Error loading image: $error');
-            return const Center(
-              child: Icon(
-                Icons.image_not_supported,
-                size: 50,
-                color: Colors.grey,
-              ),
-            );
-          },
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return Center(
-              child: CircularProgressIndicator(
-                value: loadingProgress.expectedTotalBytes != null
-                    ? loadingProgress.cumulativeBytesLoaded /
-                        loadingProgress.expectedTotalBytes!
-                    : null,
-                strokeWidth: 2,
-              ),
-            );
-          },
-        );
       },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final discountedPrice = widget.discount != null && widget.discount! > 0
-        ? widget.price - (widget.price * widget.discount! / 100)
-        : widget.price;
+    final discountedPrice = discount != null && discount! > 0
+        ? price - (price * discount! / 100)
+        : price;
 
-    return Hero(
-      tag: 'product_${widget.productId}',
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        child: InkWell(
-          onTap: _navigateToProductDetail,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AspectRatio(
-                aspectRatio: 1,
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                  ),
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: ClipRRect(
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                          child: _buildProductImage(),
+    return RepaintBoundary(
+      child: Hero(
+        tag: 'product_$productId',
+        child: Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          child: InkWell(
+            onTap: () => _navigateToProductDetail(context),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AspectRatio(
+                  aspectRatio: 1,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                    ),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: ClipRRect(
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                            child: _buildProductImage(context),
+                          ),
                         ),
-                      ),
-                      if (widget.discount != null && widget.discount! > 0)
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              '-${widget.discount}%',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
+                        if (discount != null && discount! > 0)
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '-$discount%',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    if (widget.describe != null && widget.describe!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        widget.describe!,
+                        title,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
                       ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 16),
+                      const SizedBox(height: 4),
+                      if (describe != null && describe!.isNotEmpty)
                         Text(
-                          widget.rating.toStringAsFixed(1),
+                          describe!,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[600],
                           ),
                         ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.star, color: Colors.amber, size: 16),
+                          Text(
+                            rating.toStringAsFixed(1),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      if (discount != null && discount! > 0) ...[
+                        Text(
+                          _formatPrice(price),
+                          style: TextStyle(
+                            fontSize: 12,
+                            decoration: TextDecoration.lineThrough,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 2),
                       ],
-                    ),
-                    const SizedBox(height: 4),
-                    if (widget.discount != null && widget.discount! > 0) ...[
                       Text(
-                        _formatPrice(widget.price),
-                        style: TextStyle(
-                          fontSize: 12,
-                          decoration: TextDecoration.lineThrough,
-                          color: Colors.grey[600],
+                        _formatPrice(discountedPrice),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
                         ),
                       ),
-                      const SizedBox(height: 2),
                     ],
-                    Text(
-                      _formatPrice(discountedPrice),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -32,6 +32,10 @@ class _PageListProductState extends State<PageListProduct> {
   final ProductStorageSingleton _productStorage = ProductStorageSingleton();
   final ProductService _productService = ProductService();
 
+  // --- Add this flag ---
+  bool _isCurrentlyLoadingNextPage = false; 
+  // --------------------
+
   // Listener for AppDataService changes (for categories)
   void _onAppDataServiceChange() {
     print("AppDataService categories updated, rebuilding PageListProduct");
@@ -61,13 +65,30 @@ class _PageListProductState extends State<PageListProduct> {
     // Load AppDataService if not initialized
     if (!AppDataService().isInitialized && !AppDataService().isLoading) {
       print("AppDataService not initialized, calling loadData from PageListProduct initState");
-      AppDataService().loadData().catchError((e) {
+      AppDataService().loadData().then((_) {
+        // Ensure first category is selected after data loads if nothing is selected
+        if (selectedCategoryId == -1 && _allCategories.isNotEmpty) {
+          final firstCategoryId = _allCategories.first.id ?? -1;
+          if (firstCategoryId != -1) {
+            // Check mounted before calling setState after async operation
+            if (mounted) {
+              updateSelectedCategory(firstCategoryId);
+            }
+          }
+        }
+      }).catchError((e) {
         print("Error loading data in PageListProduct: $e");
       });
     } else if (AppDataService().isInitialized && _allCategories.isNotEmpty) {
-      final firstCategoryId = _allCategories.first.id ?? -1;
-      if (firstCategoryId != -1) {
-        updateSelectedCategory(firstCategoryId);
+      // If already initialized, ensure a category is selected
+      if (selectedCategoryId == -1) {
+        final firstCategoryId = _allCategories.first.id ?? -1;
+        if (firstCategoryId != -1) {
+          updateSelectedCategory(firstCategoryId);
+        }
+      } else {
+        // If a category is already selected, ensure its products are loaded
+        _loadInitialProducts();
       }
     }
 
@@ -77,6 +98,7 @@ class _PageListProductState extends State<PageListProduct> {
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll); // Ensure listener is removed
     _scrollController.dispose();
     AppDataService().removeListener(_onAppDataServiceChange);
     _productStorage.removeListener(_onProductStorageChange);
@@ -85,8 +107,14 @@ class _PageListProductState extends State<PageListProduct> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
-      if (_isConfigInitialized && _canLoadMore) {
+    // Check if there's scrollable content and if the user is near the bottom.
+    // - `_scrollController.position.maxScrollExtent > 0` ensures the content is actually scrollable.
+    // - `_scrollController.position.extentAfter < 300.0` triggers when less than 300px are left to scroll.
+    //   Adjust 300.0 to your preference for how early the load should trigger.
+    if (_scrollController.position.maxScrollExtent > 0 &&
+        _scrollController.position.extentAfter < 300.0) {
+      if (_isConfigInitialized && _canLoadMore && !_isCurrentlyLoadingNextPage) {
+        // print("Scroll near bottom (extentAfter < 300.0), attempting to load next page.");
         _loadNextPage();
       }
     }
@@ -134,6 +162,18 @@ class _PageListProductState extends State<PageListProduct> {
   // Load initial products for current configuration
   Future<void> _loadInitialProducts() async {
     if (selectedCategoryId == -1) return;
+    // Prevent loading if AppData is still loading, to avoid race conditions with category selection
+    if (AppDataService().isLoading && !AppDataService().isInitialized) {
+        print("Skipping initial product load as AppData is still loading.");
+        return;
+    }
+
+    // Reset the loading flag before starting, useful if a previous load was interrupted.
+    if (mounted) {
+      setState(() {
+        _isCurrentlyLoadingNextPage = false;
+      });
+    }
 
     await _productStorage.loadInitialProducts(
       categoryId: selectedCategoryId,
@@ -144,13 +184,33 @@ class _PageListProductState extends State<PageListProduct> {
 
   // Load next page of products
   Future<void> _loadNextPage() async {
-    if (selectedCategoryId == -1) return;
+    // Ensure a category is selected, more products can be loaded, and not already loading
+    if (selectedCategoryId == -1 || !_canLoadMore || _isCurrentlyLoadingNextPage) return;
 
-    await _productStorage.loadNextPage(
-      categoryId: selectedCategoryId,
-      sortBy: currentSortMethod,
-      sortDir: currentSortDir,
-    );
+    // Set local loading state flag
+    if (mounted) {
+      setState(() {
+        _isCurrentlyLoadingNextPage = true;
+      });
+    }
+
+    try {
+      // Load next page of products
+      await _productStorage.loadNextPage(
+        categoryId: selectedCategoryId,
+        sortBy: currentSortMethod,
+        sortDir: currentSortDir,
+      );
+    } catch (e) {
+      print('Error in _loadNextPage: $e');
+    } finally {
+      // Reset the flag after the loading operation is complete (successful or not)
+      if (mounted) {
+        setState(() {
+          _isCurrentlyLoadingNextPage = false;
+        });
+      }
+    }
   }
 
   // Getters for current state
@@ -169,11 +229,17 @@ class _PageListProductState extends State<PageListProduct> {
     sortDir: currentSortDir,
   );
 
-  bool get _isLoadingMore => _productStorage.isLoadingMore(
-    categoryId: selectedCategoryId,
-    sortBy: currentSortMethod,
-    sortDir: currentSortDir,
-  );
+  // Explicitly handle both local and storage loading state for better visibility
+  bool get _isLoadingMore {
+    final storageIsLoading = _productStorage.isLoadingMore(
+      categoryId: selectedCategoryId,
+      sortBy: currentSortMethod,
+      sortDir: currentSortDir,
+    );
+    
+    // Either our local flag or the storage flag can indicate loading
+    return _isCurrentlyLoadingNextPage || storageIsLoading;
+  }
 
   bool get _canLoadMore => _productStorage.canLoadMore(
     categoryId: selectedCategoryId,
@@ -192,11 +258,30 @@ class _PageListProductState extends State<PageListProduct> {
     print('Building PageListProduct...');
     final List<CategoryDTO> currentCategories = _allCategories;
     print('Current categories count from AppDataService: ${currentCategories.length}');
+    // If no category is selected yet and categories are available, select the first one.
+    // This can happen if initial loadData completes after first build.
+    if (selectedCategoryId == -1 && currentCategories.isNotEmpty && AppDataService().isInitialized && !AppDataService().isLoading) {
+        final firstCategoryId = currentCategories.first.id;
+        if (firstCategoryId != null) {
+            // Call updateSelectedCategory in a post-frame callback to avoid setState during build
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && selectedCategoryId == -1) { // Double check selection hasn't changed
+                    updateSelectedCategory(firstCategoryId);
+                }
+            });
+        }
+    }
+
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final screenWidth = constraints.maxWidth;
         Widget appBar;
+
+        // Determine the combined loading state to pass to CatalogProduct
+        // This ensures PaginatedProductGrid gets the correct signal to start its timed loader
+        // when _productStorage.isLoadingMore() becomes true due to _loadNextPage().
+        bool currentProductsLoadingState = _isInitialLoading || _isLoadingMore;
 
         Widget body = CatalogProduct(
           filteredProducts: _currentProducts,
@@ -209,7 +294,7 @@ class _PageListProductState extends State<PageListProduct> {
           updateSortMethod: updateSortMethod,
           isAppDataLoading: _isAppDataLoading,
           isAppDataInitialized: _isAppDataInitialized,
-          isProductsLoading: _isInitialLoading || _isLoadingMore,
+          isProductsLoading: currentProductsLoadingState, // Pass the combined state
           canLoadMoreProducts: _canLoadMore,
         );
 

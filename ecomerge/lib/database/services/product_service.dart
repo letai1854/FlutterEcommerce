@@ -121,7 +121,7 @@ class ProductService {
        throw Exception('Network Error: Could not connect to server.');
     } catch (e) {
        if (kDebugMode) print('Unexpected Error during create product: $e');
-       throw Exception('An unexpected error occurred: ${e.toString()}');
+       throw Exception('Không hợp lệ');
     }
   }
  Future<String?> uploadImage(List<int> imageBytes, String fileName) async {
@@ -344,7 +344,7 @@ class ProductService {
     try {
         final response = await httpClient.get(
             url,
-            headers: _getHeaders(includeAuth: true), // Cần token nếu API yêu cầu
+            headers: _getHeaders(includeAuth: false), // Make this a public API call
         );
 
         if (kDebugMode) {

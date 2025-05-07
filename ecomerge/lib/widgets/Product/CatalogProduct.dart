@@ -301,7 +301,6 @@ class _CatalogProductState extends State<CatalogProduct> {
                     SizedBox(height: spacing),
 
                     // Khu vực lưới sản phẩm
-                     // Sử dụng SizedBox với double.infinity bên trong SingleChildScrollView
                     SizedBox(
                       width: double.infinity,
                       child: LayoutBuilder(
@@ -310,41 +309,49 @@ class _CatalogProductState extends State<CatalogProduct> {
                           final int maxColumns = (constraints.maxWidth / minItemWidth).floor();
                           final int columns = max(2, min(maxColumns, isMobile ? 2 : 4));
 
-                          // Thêm Key cho PaginatedProductGrid để giải quyết lỗi rebuild không mong muốn
-                           final gridKey = ValueKey('${widget.selectedCategoryId}_${widget.currentSortMethod}_${widget.filteredProducts.length}_${widget.categories.length}');
-
-
-                          return PaginatedProductGrid(
-                            key: gridKey, // <--- THÊM KEY VÀO ĐÂY
-                            productData: widget.filteredProducts, // Pass the ProductDTO list directly
-                            itemsPerPage: columns * 2, // Ví dụ phân trang: 2 hàng mỗi trang
-                            gridWidth: constraints.maxWidth, // Truyền chiều rộng có sẵn
-                            childAspectRatio: 0.6, // Điều chỉnh tỷ lệ khung hình nếu cần
-                            crossAxisCount: columns, // Số cột đã tính
-                            mainSpace: spacing, // Sử dụng khoảng cách đã tính
-                            crossSpace: spacing, // Sử dụng khoảng cách đã tính
-                             // Pass product loading state and can load more state
-                            isProductsLoading: widget.isProductsLoading,
-                            canLoadMoreProducts: widget.canLoadMoreProducts,
+                          // Create a stable key that only changes when sort or category changes
+                          // DON'T include filteredProducts.length in the key to prevent rebuilds when loading more
+                          final gridKey = ValueKey('${widget.selectedCategoryId}_${widget.currentSortMethod}');
+                          
+                          // Wrap in RepaintBoundary to prevent repainting when parent rebuilds
+                          return RepaintBoundary(
+                            child: KeyedSubtree(
+                              key: gridKey,
+                              child: PaginatedProductGrid(
+                                productData: widget.filteredProducts,
+                                itemsPerPage: columns * 2, 
+                                gridWidth: constraints.maxWidth,
+                                childAspectRatio: 0.6,
+                                crossAxisCount: columns,
+                                mainSpace: spacing,
+                                crossSpace: spacing,
+                                isProductsLoading: widget.isProductsLoading,
+                                canLoadMoreProducts: widget.canLoadMoreProducts,
+                              ),
+                            ),
                           );
                         },
                       ),
                     ),
 
-                    // Loading indicator at the bottom of the product list
-                    if (widget.isProductsLoading && widget.filteredProducts.isNotEmpty)
+                    // Remove duplicate loading indicator since it's now handled in PaginatedProductGrid
+                    // The loading indicator in CatalogProduct causes duplicate indicators
+                    
+                    // End of list indicator only if we've loaded some products and can't load more
+                    if (!widget.isProductsLoading && !widget.canLoadMoreProducts && widget.filteredProducts.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 16.0),
                         child: Center(
-                          child: CircularProgressIndicator(),
+                          child: Text(
+                            'Bạn đã xem hết sản phẩm',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
                         ),
                       ),
 
-                    // Footer (tùy chọn, thường hiển thị trên web)
-                    if (kIsWeb) ...[
-                      SizedBox(height: spacing),
-                      const Footer(),
-                    ],
                   ],
                 ),
               ),
