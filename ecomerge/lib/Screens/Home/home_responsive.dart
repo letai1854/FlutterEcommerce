@@ -129,10 +129,10 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
         if (screenWidth < 600) {
           if (isMobile) {
             return Scaffold(
-              // body: NavbarFormobile(
-              //   body: bodyHomeMobile(),
-              // ),
-            );
+                // body: NavbarFormobile(
+                //   body: bodyHomeMobile(),
+                // ),
+                );
           }
 
           // Web mobile-style layout
@@ -238,7 +238,6 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                   ),
                   child: Column(
                     children: [
-                      // if (kIsWeb && isMobile)
                       Heading(Icons.bolt, Colors.yellowAccent,
                           'Sản phẩm khuyến mãi'),
                       SizedBox(height: 10),
@@ -314,7 +313,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                         //     crossSpace: isMobile ? 10 : 8,
                         //   ),
                         // ),
-                      SizedBox(height: 10),
+                        SizedBox(height: 10),
                       Heading(Icons.local_fire_department, Colors.yellowAccent,
                           'Sản phẩm bán chạy nhất'),
                       SizedBox(height: 10),
