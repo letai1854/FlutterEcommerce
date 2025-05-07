@@ -47,6 +47,11 @@ class _NavbarHomeMobileState extends State<NavbarHomeMobile> {
                           border: InputBorder.none,
                           hintStyle: TextStyle(fontSize: 14),
                         ),
+                        onSubmitted: (value) {
+                          // Execute search when Enter is pressed
+                          searchService.executeSearch();
+                          Navigator.pushNamed(context, '/search');
+                        },
                       ),
                     ),
                   ),
@@ -60,8 +65,9 @@ class _NavbarHomeMobileState extends State<NavbarHomeMobile> {
                     }),
                     child: GestureDetector(
                       onTap: () {
-                        Navigator.pushNamed(context, '/search',
-                            arguments: {'selectedIndex': -1});
+                        // Execute search and navigate
+                        searchService.executeSearch();
+                        Navigator.pushNamed(context, '/search');
                       },
                       child: Container(
                         width: 45,

@@ -135,13 +135,14 @@ class _CatalogProductState extends State<CatalogProduct> {
             width: width,
             color: Colors.white,
             child: const Center(
-               child: Column(
-                 mainAxisAlignment: MainAxisAlignment.center,
-                 children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Đang tải danh mục...', style: TextStyle(color: Colors.grey)),
-                 ],
+               child: Padding(
+                 padding: EdgeInsets.all(20.0),
+                 child: Text('Đang tải danh mục...', 
+                   style: TextStyle(
+                     color: Colors.grey,
+                     fontSize: 16,
+                   )
+                 ),
                ),
             ),
         );

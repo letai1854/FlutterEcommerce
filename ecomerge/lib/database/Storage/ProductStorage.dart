@@ -445,6 +445,103 @@ class ProductStorageSingleton extends ChangeNotifier {
     _isReturningVisit = false;
   }
 
+  // Add search-specific state
+  final List<ProductDTO> _searchResults = [];
+  int _searchCurrentPage = -1;
+  int _searchTotalPages = 0;
+  bool _isSearchLoading = false;
+  bool _canSearchLoadMore = true;
+  String _currentSearchQuery = '';
+  
+  // Search-related getters
+  List<ProductDTO> get searchResults => _searchResults;
+  bool get isSearchLoading => _isSearchLoading;
+  bool get canSearchLoadMore => _canSearchLoadMore && !_isSearchLoading;
+  
+  // Method to perform initial search
+  Future<void> performSearch(String query) async {
+    // Reset search state
+    _searchResults.clear();
+    _searchCurrentPage = -1;
+    _currentSearchQuery = query;
+    _isSearchLoading = true;
+    _canSearchLoadMore = true;
+    
+    notifyListeners();
+    
+    try {
+      final response = await _productService.fetchProducts(
+        search: query,
+        page: 0,
+        size: 3, // Fixed size of 3 products per page
+        sortBy: 'createdDate',
+        sortDir: 'desc'
+      );
+      
+      _searchResults.addAll(response.content);
+      _searchCurrentPage = response.number;
+      _searchTotalPages = response.totalPages;
+      _canSearchLoadMore = response.number < response.totalPages - 1;
+      
+      if (kDebugMode) {
+        print('Search results: ${_searchResults.length} products');
+        print('Search pagination: page ${response.number + 1} of ${response.totalPages}');
+      }
+      
+      // Preload images for search results in background
+      _productService.preloadProductImages(response.content).catchError((e) {
+        if (kDebugMode) print('Error preloading search result images: $e');
+      });
+      
+    } catch (e) {
+      if (kDebugMode) print('Error performing search: $e');
+    } finally {
+      _isSearchLoading = false;
+      notifyListeners();
+    }
+  }
+  
+  // Method to load next page of search results
+  Future<void> loadMoreSearchResults() async {
+    if (_isSearchLoading || !_canSearchLoadMore) {
+      if (kDebugMode) {
+        print('Skip loading more search results: isLoading=$_isSearchLoading, canLoadMore=$_canSearchLoadMore');
+      }
+      return;
+    }
+    
+    _isSearchLoading = true;
+    notifyListeners();
+    
+    try {
+      await Future.delayed(const Duration(milliseconds: 800)); // Show loading indicator
+      
+      final response = await _productService.fetchProducts(
+        search: _currentSearchQuery,
+        page: _searchCurrentPage + 1,
+        size: 3, // Fixed size of 3 products per page
+        sortBy: 'createdDate',
+        sortDir: 'desc'
+      );
+      
+      _searchResults.addAll(response.content);
+      _searchCurrentPage = response.number;
+      _searchTotalPages = response.totalPages;
+      _canSearchLoadMore = response.number < response.totalPages - 1;
+      
+      // Preload images for new items in background
+      _productService.preloadProductImages(response.content).catchError((e) {
+        if (kDebugMode) print('Error preloading new search result images: $e');
+      });
+      
+    } catch (e) {
+      if (kDebugMode) print('Error loading more search results: $e');
+    } finally {
+      _isSearchLoading = false;
+      notifyListeners();
+    }
+  }
+
   @override
   void dispose() {
     _productService.dispose();

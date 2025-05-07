@@ -16,6 +16,7 @@ class PaginatedProductGrid extends StatefulWidget {
   final bool isProductsLoading; // This prop signals when the grid is fetching more data
   final bool canLoadMoreProducts;
   final bool isShowingCachedContent; // Add this flag
+  final bool isSearchMode; // Add this flag to avoid caching in search
 
   const PaginatedProductGrid({
     Key? key,
@@ -29,6 +30,7 @@ class PaginatedProductGrid extends StatefulWidget {
     required this.isProductsLoading,
     required this.canLoadMoreProducts,
     required this.isShowingCachedContent, // Add this parameter
+    this.isSearchMode = false, // Default to false for backward compatibility
   }) : super(key: key);
 
   @override
@@ -65,6 +67,22 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
     // Check if this specific product's image is cached - this is the key fix
     final bool isImageCached = product.mainImageUrl != null && 
                               productService.isImageCached(product.mainImageUrl);
+    
+    // Skip caching for search results
+    if (widget.isSearchMode) {
+      // Always create a new widget for search results
+      return ProductItem(
+        key: ValueKey(key),
+        productId: product.id ?? 0,
+        imageUrl: product.mainImageUrl,
+        title: product.name,
+        describe: product.description,
+        price: product.minPrice ?? 0,
+        discount: product.discountPercentage?.toInt(),
+        rating: product.averageRating ?? 0,
+        isFromCache: isImageCached, // Only set true if image is cached
+      );
+    }
     
     // Return cached widget if available
     if (_globalProductCache.containsKey(key)) {
