@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:e_commerce_app/widgets/Address/AddressItem.dart';
-import 'package:e_commerce_app/widgets/location_selection.dart'; // Import the real location selection
+import 'package:e_commerce_app/widgets/location_selection.dart';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
+import 'package:e_commerce_app/database/models/address_model.dart';
+import 'package:e_commerce_app/database/services/address_service.dart';
 
 // Define address data model (matching AddressSelector structure)
 class AddressData {
+  final int? id; // ID for editing existing address
   final String name;
   final String phone;
   final String address;
@@ -14,6 +17,7 @@ class AddressData {
   final bool isDefault;
 
   AddressData({
+    this.id,
     required this.name,
     required this.phone,
     required this.address,
@@ -34,12 +38,14 @@ class AddressFormDialog extends StatefulWidget {
   final AddressFormMode mode;
   final AddressData? initialAddress; // Used when editing
   final Function(AddressData) onSave; // Callback when form is saved
+  final int? addressId; // Used for editing existing address
 
   const AddressFormDialog({
     Key? key,
     this.mode = AddressFormMode.add,
     this.initialAddress,
     required this.onSave,
+    this.addressId,
   }) : super(key: key);
 
   @override
@@ -48,6 +54,8 @@ class AddressFormDialog extends StatefulWidget {
 
 class _AddressFormDialogState extends State<AddressFormDialog> {
   final _formKey = GlobalKey<FormState>();
+  final _addressService = AddressService();
+  bool _isSubmitting = false;
 
   // Controllers for form fields
   late final TextEditingController _nameController;
@@ -72,8 +80,11 @@ class _AddressFormDialogState extends State<AddressFormDialog> {
           TextEditingController(text: widget.initialAddress!.name);
       _phoneController =
           TextEditingController(text: widget.initialAddress!.phone);
+
+      // Clean up "null" value in address field
+      final addressText = widget.initialAddress!.address;
       _addressController =
-          TextEditingController(text: widget.initialAddress!.address);
+          TextEditingController(text: addressText == "null" ? "" : addressText);
 
       _selectedProvince = widget.initialAddress!.province;
       _selectedDistrict = widget.initialAddress!.district;
@@ -101,7 +112,202 @@ class _AddressFormDialogState extends State<AddressFormDialog> {
     });
   }
 
-  void _handleSubmit() {
+  // Format specific address according to the requirement
+  String _formatSpecificAddress() {
+    String detailedAddress = _addressController.text.trim();
+    String province = _addPrefixIfNeeded(_selectedProvince, 'Tỉnh/TP');
+    String district = _addPrefixIfNeeded(_selectedDistrict, 'Quận/Huyện');
+    String ward = _addPrefixIfNeeded(_selectedWard, 'Xã/Phường');
+
+    // Format the address as: "104, Xã Quảng Lâm, Huyện Bảo Lâm, Tỉnh Cao Bằng"
+    return "$detailedAddress, $ward, $district, $province";
+  }
+
+  // Add prefix to location names if needed
+  String _addPrefixIfNeeded(String text, String defaultPrefix) {
+    // Check if text already has a standard prefix
+    List<String> prefixes = [
+      'Tỉnh',
+      'TP.',
+      'Thành phố',
+      'Quận',
+      'Huyện',
+      'Phường',
+      'Xã',
+      'Thị trấn'
+    ];
+
+    for (String prefix in prefixes) {
+      if (text.startsWith(prefix)) {
+        return text;
+      }
+    }
+
+    // Add appropriate prefix based on type
+    if (defaultPrefix == 'Tỉnh/TP') {
+      return text.contains('Thành phố') ? text : 'Tỉnh $text';
+    } else if (defaultPrefix == 'Quận/Huyện') {
+      return 'Huyện $text';
+    } else if (defaultPrefix == 'Xã/Phường') {
+      return 'Xã $text';
+    }
+
+    return text;
+  }
+
+  // Add a new address
+  Future<void> _addAddress() async {
+    setState(() => _isSubmitting = true);
+
+    try {
+      // Clean up the address to prevent storing "null" string
+      final cleanedAddress = _addressController.text.trim();
+
+      // Create AddressRequest object with server-compatible field names
+      final addressRequest = AddressRequest(
+        recipientName: _nameController.text.trim(),
+        phoneNumber: _phoneController.text.trim(),
+        specificAddress: cleanedAddress.isEmpty ? "" : _formatSpecificAddress(),
+        isDefault: widget.initialAddress?.isDefault ?? false,
+      );
+
+      // Send request to the server
+      final result = await _addressService.addAddress(addressRequest);
+
+      if (result != null) {
+        // Convert back to AddressData for the callback
+        final addressData = AddressData(
+          id: result.id, // Add the server-generated ID here
+          name: result.recipientName,
+          phone: result.phoneNumber,
+          address: _addressController.text.trim(),
+          province: _selectedProvince,
+          district: _selectedDistrict,
+          ward: _selectedWard,
+          isDefault: result.isDefault,
+        );
+
+        // Call the onSave callback to update the parent widget's UI
+        widget.onSave(addressData);
+
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Địa chỉ đã được thêm thành công'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        // Show error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Không thể thêm địa chỉ. Vui lòng thử lại sau'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error adding address: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đã xảy ra lỗi khi thêm địa chỉ'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  // Update an existing address
+  Future<void> _updateAddress() async {
+    if (widget.addressId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không tìm thấy ID địa chỉ để cập nhật'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final addressRequest = AddressRequest(
+        recipientName: _nameController.text.trim(),
+        phoneNumber: _phoneController.text.trim(),
+        specificAddress: _formatSpecificAddress(),
+        isDefault: widget.initialAddress?.isDefault ?? false,
+      );
+
+      final result = await _addressService.updateAddress(
+        widget.addressId!,
+        addressRequest,
+      );
+
+      if (result != null) {
+        // Convert back to AddressData for the callback
+        final addressData = AddressData(
+          id: widget.initialAddress?.id, // Preserve the ID
+          name: result.recipientName,
+          phone: result.phoneNumber,
+          address: _addressController.text.trim(),
+          province: _selectedProvince,
+          district: _selectedDistrict,
+          ward: _selectedWard,
+          isDefault: result.isDefault,
+        );
+
+        // Call the onSave callback to update parent widget's UI
+        widget.onSave(addressData);
+
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Địa chỉ đã được cập nhật thành công'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        // Show error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Không thể cập nhật địa chỉ. Vui lòng thử lại sau'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error updating address: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đã xảy ra lỗi khi cập nhật địa chỉ'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  void _handleSubmit() async {
     // Check if user is logged in
     if (UserInfo().currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -117,6 +323,7 @@ class _AddressFormDialogState extends State<AddressFormDialog> {
         _selectedProvince.isNotEmpty &&
         _selectedDistrict.isNotEmpty &&
         _selectedWard.isNotEmpty) {
+      // Create temporary address data for widget callback
       final addressData = AddressData(
         name: _nameController.text.trim(),
         phone: _phoneController.text.trim(),
@@ -124,15 +331,23 @@ class _AddressFormDialogState extends State<AddressFormDialog> {
         province: _selectedProvince,
         district: _selectedDistrict,
         ward: _selectedWard,
-        // Keep existing default status if editing, otherwise false
         isDefault:
             widget.mode == AddressFormMode.edit && widget.initialAddress != null
                 ? widget.initialAddress!.isDefault
                 : false,
       );
 
-      widget.onSave(addressData);
-      Navigator.of(context).pop();
+      // Submit to API based on mode
+      if (widget.mode == AddressFormMode.add) {
+        await _addAddress();
+      } else {
+        await _updateAddress();
+      }
+
+      // Close dialog after completion
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
     } else if (_selectedProvince.isEmpty ||
         _selectedDistrict.isEmpty ||
         _selectedWard.isEmpty) {
@@ -296,20 +511,31 @@ class _AddressFormDialogState extends State<AddressFormDialog> {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8)),
                 ),
-                // Disable button if not logged in
-                onPressed:
-                    UserInfo().currentUser == null ? null : _handleSubmit,
-                child: Text(
-                  UserInfo().currentUser == null
-                      ? 'Đăng nhập để thêm địa chỉ'
-                      : (widget.mode == AddressFormMode.add
-                          ? 'Thêm địa chỉ'
-                          : 'Cập nhật'),
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold),
-                ),
+                // Disable button if not logged in or if submitting
+                onPressed: (UserInfo().currentUser == null || _isSubmitting)
+                    ? null
+                    : _handleSubmit,
+                child: _isSubmitting
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Text(
+                        UserInfo().currentUser == null
+                            ? 'Đăng nhập để thêm địa chỉ'
+                            : (widget.mode == AddressFormMode.add
+                                ? 'Thêm địa chỉ'
+                                : 'Cập nhật'),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold),
+                      ),
               ),
             ),
           ],
@@ -386,6 +612,7 @@ Future<void> showAddressFormDialog({
   AddressFormMode mode = AddressFormMode.add,
   AddressData? initialAddress,
   required Function(AddressData) onSave,
+  int? addressId,
 }) {
   // Check if user is logged in
   final bool isLoggedIn = UserInfo().currentUser != null;
@@ -408,6 +635,7 @@ Future<void> showAddressFormDialog({
       mode: mode,
       initialAddress: initialAddress,
       onSave: onSave,
+      addressId: addressId,
     ),
   );
 }

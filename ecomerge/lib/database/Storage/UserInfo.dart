@@ -26,6 +26,7 @@ class UserInfo extends ChangeNotifier {
   // Getters for the stored data
   User? get currentUser => _currentUser;
   String? get authToken => _authToken;
+  bool get isLoggedIn => _authToken != null && _authToken!.isNotEmpty;
 
   // Public getter for the avatar cache
   static Map<String, Uint8List> get avatarCache => _avatarCache;

@@ -24,6 +24,10 @@ public class CreateOrderRequestDTO {
 
     private BigDecimal pointsToUse; // Optional
 
+    private BigDecimal shippingFee; // Added field
+
+    private BigDecimal tax; // Added field
+
     // Getters and Setters
     public Integer getAddressId() {
         return addressId;
@@ -63,5 +67,21 @@ public class CreateOrderRequestDTO {
 
     public void setPointsToUse(BigDecimal pointsToUse) {
         this.pointsToUse = pointsToUse;
+    }
+
+    public BigDecimal getShippingFee() {
+        return shippingFee;
+    }
+
+    public void setShippingFee(BigDecimal shippingFee) {
+        this.shippingFee = shippingFee;
+    }
+
+    public BigDecimal getTax() {
+        return tax;
+    }
+
+    public void setTax(BigDecimal tax) {
+        this.tax = tax;
     }
 }

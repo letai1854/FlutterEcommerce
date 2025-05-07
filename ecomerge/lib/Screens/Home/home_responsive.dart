@@ -238,9 +238,9 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                   ),
                   child: Column(
                     children: [
-                      if (kIsWeb && isMobile)
-                        Heading(Icons.bolt, Colors.yellowAccent,
-                            'Sản phẩm khuyến mãi'),
+                      // if (kIsWeb && isMobile)
+                      Heading(Icons.bolt, Colors.yellowAccent,
+                          'Sản phẩm khuyến mãi'),
                       SizedBox(height: 10),
                       // Container(
                       //   height: 320,

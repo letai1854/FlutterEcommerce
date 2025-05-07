@@ -14,4 +14,5 @@ public interface OrderService {
     OrderDTO getOrderByIdForCurrentUser(String userEmail, Integer orderId);
     List<OrderStatusHistoryDTO> getOrderStatusHistoryForCurrentUser(String userEmail, Integer orderId);
     OrderDTO updateOrderStatusByAdmin(Integer orderId, Order.OrderStatus newStatus, String adminNotes);
+    OrderDTO cancelOrderForCurrentUser(String userEmail, Integer orderId);
 }
