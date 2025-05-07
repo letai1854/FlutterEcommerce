@@ -5,9 +5,9 @@ class AddressItem extends StatelessWidget {
   final String phone;
   final String address;
   final bool isDefault;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
-  final VoidCallback? onSetDefault;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final VoidCallback onSetDefault;
 
   const AddressItem({
     Key? key,
@@ -15,13 +15,16 @@ class AddressItem extends StatelessWidget {
     required this.phone,
     required this.address,
     required this.isDefault,
-    this.onEdit,
-    this.onDelete,
-    this.onSetDefault,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onSetDefault,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    // Don't display "null" text in address
+    final displayAddress = address == "null" ? "" : address;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -65,7 +68,8 @@ class AddressItem extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  address,
+                  // Display cleaned address text
+                  displayAddress,
                   style: TextStyle(color: Colors.grey.shade700),
                 ),
               ],

@@ -183,20 +183,21 @@ class PaymentInfo extends StatelessWidget {
                         ElevatedButton(
                           onPressed: selectedItemCount > 0
                               ? () {
+                                  Navigator.pushNamed(context, '/payment');
                                   // Check if user is logged in
-                                  if (UserInfo().currentUser != null) {
-                                    // User is logged in, proceed to checkout
-                                    print('Proceed to Checkout');
-                                    print(
-                                        'Selected items: ${cartItems.where((i) => i['isSelected'] == true).map((i) => i['id']).toList()}');
-                                    print(
-                                        'Total: ${formatCurrency.format(totalAmount)}');
-                                    Navigator.pushNamed(context, '/payment');
-                                  } else {
-                                    // User is not logged in, show login dialog
-                                    _showEmailLoginDialog(
-                                        context, totalAmount, formatCurrency);
-                                  }
+                                  // if (UserInfo().currentUser != null) {
+                                  //   // User is logged in, proceed to checkout
+                                  //   print('Proceed to Checkout');
+                                  //   print(
+                                  //       'Selected items: ${cartItems.where((i) => i['isSelected'] == true).map((i) => i['id']).toList()}');
+                                  //   print(
+                                  //       'Total: ${formatCurrency.format(totalAmount)}');
+                                  //   Navigator.pushNamed(context, '/payment');
+                                  // } else {
+                                  //   // User is not logged in, show login dialog
+                                  //   _showEmailLoginDialog(
+                                  //       context, totalAmount, formatCurrency);
+                                  // }
                                 }
                               : null,
                           style: ElevatedButton.styleFrom(
@@ -322,22 +323,23 @@ class PaymentInfo extends StatelessWidget {
                           Navigator.pop(context);
 
                           // Register the user as a guest with random credentials
-                          _registerGuestUser(context, email).then((success) {
-                            if (success) {
-                              // If registration successful, navigate to payment
-                              Navigator.pushNamed(context, '/payment',
-                                  arguments: {'email': email});
-                            } else {
-                              // If registration failed, show error
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                      'Không thể tiếp tục với email này. Vui lòng thử lại.'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          });
+                          // _registerGuestUser(context, email).then((success) {
+                          //   if (success) {
+                          // If registration successful, navigate to payment
+                          Navigator.pushNamed(
+                            context, '/payment',
+                            arguments: {'email': email},
+                            // } else {
+                            //   // If registration failed, show error
+                            //   ScaffoldMessenger.of(context).showSnackBar(
+                            //     const SnackBar(
+                            //       content: Text(
+                            //           'Không thể tiếp tục với email này. Vui lòng thử lại.'),
+                            //       backgroundColor: Colors.red,
+                            //     ),
+                            //   );
+                            // }
+                          );
                         }
                       },
                       style: ElevatedButton.styleFrom(
