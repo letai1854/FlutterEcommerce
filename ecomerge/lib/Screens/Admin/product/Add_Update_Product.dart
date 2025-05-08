@@ -932,7 +932,7 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
              brandId: _selectedBrand!.id!,     // Guaranteed non-null by _formKey validation
              mainImageUrl: _defaultImageUrl!, // RELATIVE path, guaranteed non-null by manual validation
              imageUrls: additionalImagePaths, // List of RELATIVE paths
-             discountPercentage: double.tryParse(_discountController.text.trim()),
+             discountPercentage: double.tryParse(_discountController.text.trim()) ?? 0.0,
              variants: createVariantDTOs,
           );
 

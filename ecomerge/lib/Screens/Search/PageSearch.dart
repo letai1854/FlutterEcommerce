@@ -1,5 +1,6 @@
 import 'dart:math';
-
+import 'package:e_commerce_app/database/Storage/ProductStorage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:e_commerce_app/Constants/productTest.dart';
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForTablet.dart';
@@ -11,6 +12,12 @@ import 'package:e_commerce_app/widgets/SortingBar.dart';
 import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
 import 'package:flutter/material.dart';
 
+// Import needed services
+import 'package:e_commerce_app/database/Storage/ProductStorage.dart';
+import 'package:e_commerce_app/database/Storage/BrandCategoryService.dart';
+import 'package:e_commerce_app/state/Search/SearchStateService.dart';
+import 'package:e_commerce_app/database/models/product_dto.dart';
+
 class PageSearch extends StatefulWidget {
   const PageSearch({super.key});
 
@@ -19,10 +26,14 @@ class PageSearch extends StatefulWidget {
 }
 
 class _PageSearchState extends State<PageSearch> {
-  // Core product data and filters
   int _current = 0;
-  // List<Map<String, dynamic>> productData = Productest.productData;
-  List<Map<String, dynamic>> filteredProducts = [];
+  
+  // Using real singletons for state management
+  final ProductStorageSingleton _productStorage = ProductStorageSingleton();
+  final SearchStateService _searchService = SearchStateService();
+  
+  // Scrolling and scaffolding
+
   final ScrollController _scrollController = ScrollController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -32,6 +43,7 @@ class _PageSearchState extends State<PageSearch> {
     'assets/banner2.jpg',
     'assets/banner6.jpg',
   ];
+
 
   // Category selection state
   Map<int, bool> selectedCategories = {};
@@ -43,65 +55,119 @@ class _PageSearchState extends State<PageSearch> {
   int minPrice = 0;
   int maxPrice = 10000000; // 10 million VND default max
   final int priceStep = 1000000; // Step by 1 million VND
+  
+  // Sort settings
+  String currentSortMethod = 'createdDate'; // Default sort method
+  String currentSortDir = 'desc'; // Default sort direction
 
-  // Category and brand data
-  final List<Map<String, dynamic>> catalog = [
-    {
-      'name': 'Laptop',
-      'img':
-          'https://anhnail.com/wp-content/uploads/2024/11/son-goku-ngau-nhat.jpg',
-      'id': 1,
-    },
-    {
-      'name': 'Bàn phím',
-      'img':
-          'https://hoangtuan.vn/media/product/844_ban_phim_co_geezer_gs2_rgb_blue_switch.jpg',
-      'id': 2,
-    },
-    {
-      'name': 'Chuột',
-      'img':
-          'https://png.pngtree.com/png-vector/20240626/ourlar…n-transparent-background-a-png-image_12849468.png',
-      'id': 3,
-    },
-    {
-      'name': 'Hub',
-      'img':
-          'https://vienthongxanh.vn/wp-content/uploads/2022/12/hinh-anh-minh-hoa-thiet-bi-switch.png',
-      'id': 4,
-    },
-    {
-      'name': 'Tai nghe',
-      'img':
-          'https://img.lovepik.com/free-png/20211120/lovepik-headset-png-image_401058941_wh1200.png',
-      'id': 5,
-    }
-  ];
+  // Initialize missing variables required for proper functioning
+  bool get _isAppDataLoading => AppDataService().isLoading;
+  bool get _isAppDataInitialized => AppDataService().isInitialized;
 
-  // List of brands
-  final List<String> brands = [
-    'Apple',
-    'Samsung',
-    'Dell',
-    'HP',
-    'Asus',
-  ];
 
   @override
   void initState() {
     super.initState();
-    // filteredProducts = List.from(productData);
-    // Initialize the text controllers with formatted values
+    
+    // Set up listeners for changes
+    _productStorage.addListener(_onProductStorageChange);
+    _searchService.addListener(_onSearchServiceChange);
+    
+    // Initialize the price filter controllers
+
     minPriceController.text = formatPrice(minPrice);
     maxPriceController.text = formatPrice(maxPrice);
+    
+    // Set up scroll listener for "load more" with a slight delay to ensure proper initialization
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollController.addListener(_onScroll);
+    });
+    
+    // Initialize categories and brands from AppDataService
+    _initializeFilters();
+    
+    // Execute search if there's a query
+    _executeInitialSearch();
   }
 
   @override
   void dispose() {
+    // Clean up resources
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     minPriceController.dispose();
     maxPriceController.dispose();
+    _productStorage.removeListener(_onProductStorageChange);
+    _searchService.removeListener(_onSearchServiceChange);
     super.dispose();
+  }
+  
+  // Initialize categories and brands from AppDataService
+  void _initializeFilters() {
+    // Initialize category filters
+    final categories = AppDataService().categories;
+    for (var category in categories) {
+      if (category.id != null) {
+        selectedCategories[category.id!] = false;
+      }
+    }
+    
+    // You could initialize brands similarly if needed
+  }
+  
+  // Execute search with current query if there is one
+  void _executeInitialSearch() {
+    final query = _searchService.currentSearchQuery;
+    if (query.isNotEmpty) {
+      if (kDebugMode) {
+        print('Initial search execution for: "$query"');
+      }
+      
+      // Call the centralized search execution method - no need for post frame callback
+      _searchService.executeSearch();
+    }
+  }
+  
+  // Listener for product storage changes
+  void _onProductStorageChange() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+  
+  // Listener for search service changes
+  void _onSearchServiceChange() {
+    if (mounted) {
+      setState(() {});
+      
+      // We no longer need to call performSearch() here since executeSearch() 
+      // is called by the search button/controller already
+      // This was causing the duplicate search requests
+    }
+  }
+  
+  // Scroll handler for "load more" functionality
+  void _onScroll() {
+    // First check if ScrollController has attached clients to avoid errors
+    if (!_scrollController.hasClients) return;
+    
+    // Match the category browsing scroll trigger threshold approach
+    if (mounted && 
+        _scrollController.position.maxScrollExtent > 0 &&
+        _scrollController.position.extentAfter < 50) {
+      
+      if (!_productStorage.isSearchLoading && 
+          _productStorage.canSearchLoadMore) {
+        
+        if (kDebugMode) {
+          print('Near bottom of search scroll view, loading more search results');
+          print('Position: ${_scrollController.position.pixels}, Max: ${_scrollController.position.maxScrollExtent}');
+          print('ExtentAfter: ${_scrollController.position.extentAfter}');
+        }
+        
+        _productStorage.loadMoreSearchResults();
+      }
+    }
   }
 
   // Format price with commas
@@ -137,79 +203,113 @@ class _PageSearchState extends State<PageSearch> {
     });
   }
 
+  // Apply filters
   void onFiltersApplied({
     required List<int> categories,
     required List<String> brands,
     required int minPrice,
     required int maxPrice,
   }) {
-    // setState(() {
-    //   filteredProducts = productData.where((product) {
-    //     bool matchesCategory = categories.isEmpty || categories.contains(product['category_id']);
-    //     bool matchesBrand = brands.isEmpty || brands.contains(product['brand']);
-    //     bool matchesPrice = product['price'] >= minPrice && product['price'] <= maxPrice;
-    //     return matchesCategory && matchesBrand && matchesPrice;
-    //   }).toList();
+    // In a real implementation, this would call ProductStorage with filter params
+    // For now, we'll keep simple filtering for demo purposes
+  
+    if (MediaQuery.of(context).size.width < 1100) {
+      Navigator.of(context).pop(); // Close drawer on mobile
+    }
 
-    //   if (MediaQuery.of(context).size.width < 1100) {
-    //     Navigator.of(context).pop();
-    //   }
-    // });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold();
-    // return LayoutBuilder(
-    //   builder: (context, constraints) {
-    //     final screenWidth = constraints.maxWidth;
+    // Get AppData service state
+    final bool isAppDataLoading = AppDataService().isLoading;
+    final bool isAppDataInitialized = AppDataService().isInitialized;
+    
+    // Get list of all categories
+    final categories = AppDataService().categories;
+    
+    // Get search results
+    final List<ProductDTO> searchResults = _productStorage.searchResults;
+    final bool isSearching = _productStorage.isSearchLoading;
+    final bool canLoadMore = _productStorage.canSearchLoadMore;
+    
+    // Extract brand names from AppDataService - fixed to handle null/empty cases
+    final List<String> brandNames = AppDataService().isInitialized ?
+        AppDataService().brands.where((b) => b.name != null).map((b) => b.name!).toList() :
+        [];
+    
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = constraints.maxWidth;
 
-    //     Widget appBar;
-    //     Widget body = SearchProduct(
-    //       current: _current,
-    //       imgList: imgList,
-    //       filteredProducts: filteredProducts,
-    //       scaffoldKey: _scaffoldKey,
-    //       scrollController: _scrollController,
-    //       onFiltersApplied: onFiltersApplied,
-    //       // Pass the state variables needed for FilterPanel
-    //       selectedCategories: selectedCategories,
-    //       selectedBrands: selectedBrands,
-    //       minPrice: minPrice,
-    //       maxPrice: maxPrice,
-    //       minPriceController: minPriceController,
-    //       maxPriceController: maxPriceController,
-    //       priceStep: priceStep,
-    //       catalog: catalog,
-    //       brands: brands,
-    //       updateMinPrice: updateMinPrice,
-    //       updateMaxPrice: updateMaxPrice,
-    //       formatPrice: formatPrice,
-    //       parsePrice: parsePrice,
-    //     );
+        Widget appBar;
+        Widget body = SearchProduct(
+          current: _current,
+          imgList: imgList,
+          searchResults: searchResults,
+          scaffoldKey: _scaffoldKey,
+          scrollController: _scrollController,
+          onFiltersApplied: onFiltersApplied,
+          // Filter panel state
+          selectedCategories: selectedCategories,
+          selectedBrands: selectedBrands,
+          minPrice: minPrice,
+          maxPrice: maxPrice,
+          minPriceController: minPriceController,
+          maxPriceController: maxPriceController,
+          priceStep: priceStep,
+          catalog: categories, // This is now List<CategoryDTO>
+          brands: brandNames, // Using our extracted brand names
+          updateMinPrice: updateMinPrice,
+          updateMaxPrice: updateMaxPrice,
+          formatPrice: formatPrice,
+          parsePrice: parsePrice,
+          // Search specific state
+          isSearching: isSearching,
+          canLoadMore: canLoadMore,
+          searchQuery: _searchService.currentSearchQuery,
+          // Sort
+          currentSortMethod: currentSortMethod,
+          currentSortDir: currentSortDir,
+          updateSortMethod: (method) {
+            // In a real implementation, this would update sort and refresh results
+            setState(() {
+              if (currentSortMethod == method) {
+                // Toggle direction if same method
+                currentSortDir = currentSortDir == 'asc' ? 'desc' : 'asc';
+              } else {
+                currentSortMethod = method;
+                currentSortDir = 'desc'; // Default for new sort
+              }
+            });
+          },
+          // Additional flags
+          isAppDataLoading: isAppDataLoading,
+          isAppDataInitialized: isAppDataInitialized,
+        );
 
-    //     if (screenWidth < 768) {
-    //       // Mobile layout
-    //       return NavbarFormobile(
-    //         body: body,
-    //       );
-    //     } else if (screenWidth < 1100) {
-    //       // Tablet layout
-    //       return NavbarForTablet(
-    //         body: body,
-    //       );
-    //     } else {
-    //       // Desktop layout
-    //       appBar = PreferredSize(
-    //         preferredSize: Size.fromHeight(130),
-    //         child: Navbarhomedesktop(),
-    //       );
-    //       return Scaffold(
-    //         appBar: appBar as PreferredSize,
-    //         body: body,
-    //       );
-    //     }
-    //   },
-    // );
+        if (screenWidth < 768) {
+          // Mobile layout
+          return NavbarFormobile(
+            body: body,
+          );
+        } else if (screenWidth < 1100) {
+          // Tablet layout
+          return NavbarForTablet(
+            body: body,
+          );
+        } else {
+          // Desktop layout
+          appBar = PreferredSize(
+            preferredSize: Size.fromHeight(130),
+            child: Navbarhomedesktop(),
+          );
+          return Scaffold(
+            appBar: appBar as PreferredSize,
+            body: body,
+          );
+        }
+      },
+    );
   }
 }

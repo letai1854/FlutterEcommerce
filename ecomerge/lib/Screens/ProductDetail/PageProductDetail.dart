@@ -47,9 +47,17 @@ class _PageproductdetailState extends State<Pageproductdetail> {
       List<String> allImages = [];
       if (product.mainImageUrl != null) {
         allImages.add(product.mainImageUrl!);
+        
+        // Preload the main image to improve user experience
+        _productService.getImageFromServer(product.mainImageUrl!);
       }
       if (product.imageUrls != null) {
         allImages.addAll(product.imageUrls!);
+        
+        // Preload additional images asynchronously
+        for (String imageUrl in product.imageUrls!) {
+          _productService.getImageFromServer(imageUrl);
+        }
       }
 
       setState(() {
@@ -201,9 +209,25 @@ class _PageproductdetailState extends State<Pageproductdetail> {
         ? List<Map<String, dynamic>>.from(_productData['variants'])
         : <Map<String, dynamic>>[];
 
-    Widget content = _isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : ProductDetialInfo(
+    // Create a custom back button that we can reuse
+    Widget backButton = IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () => Navigator.of(context).pop(),
+      tooltip: 'Trở về',
+    );
+
+    // Show loading indicator while data is loading
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          leading: backButton,
+          title: const Text('Đang tải sản phẩm...'),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    Widget body = ProductDetialInfo(
             productName: _productData['name'] ?? 'N/A',
             brandName: _productData['brand'] ?? 'N/A',
             averageRating: _productData['averageRating']?.toDouble() ?? 0.0,
@@ -243,21 +267,88 @@ class _PageproductdetailState extends State<Pageproductdetail> {
             },
           );
 
-    return LayoutBuilder(
+   return LayoutBuilder(
       builder: (context, constraints) {
         final screenWidth = constraints.maxWidth;
 
         if (screenWidth < 768) {
-          return NavbarFormobile(body: content);
-        } else if (screenWidth < 1100) {
-          return NavbarForTablet(body: content);
-        } else {
-          return Scaffold(
-            appBar: PreferredSize(
-              preferredSize: const Size.fromHeight(130),
-              child: Navbarhomedesktop(),
+          // Mobile layout
+          return NavbarFormobile(
+            // Pass the back button to mobile layout
+            body: Column(
+              children: [
+                // Add a custom back button row for mobile
+                Container(
+                  color: Theme.of(context).primaryColor,
+                  padding: const EdgeInsets.only(left: 8, top: 8),
+                  alignment: Alignment.centerLeft,
+                  child: backButton,
+                ),
+                // Wrap body in Expanded to avoid overflow
+                Expanded(child: body),
+              ],
             ),
-            body: content,
+          );
+        } else if (screenWidth < 1100) {
+          // Tablet layout
+          return NavbarForTablet(
+            // Pass the back button to tablet layout
+            body: Column(
+              children: [
+                // Add a custom back button row for tablet
+                Container(
+                  color: Theme.of(context).primaryColor,
+                  padding: const EdgeInsets.only(left: 8, top: 8),
+                  alignment: Alignment.centerLeft,
+                  child: backButton,
+                ),
+                // Wrap body in Expanded to avoid overflow
+                Expanded(child: body),
+              ],
+            ),
+          );
+        } else {
+          // Desktop layout
+          var appBar = PreferredSize(
+            preferredSize: Size.fromHeight(130),
+            child: Navbarhomedesktop(),
+          );
+          return Scaffold(
+            appBar: appBar as PreferredSize,
+            body: Column(
+              children: [
+                // Add a back button bar below the desktop app bar
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      backButton,
+                      const SizedBox(width: 8),
+                      Text(
+                        _productData['name'] ?? 'Chi tiết sản phẩm',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Wrap body in Expanded to avoid overflow
+                Expanded(child: body),
+              ],
+            ),
           );
         }
       },
