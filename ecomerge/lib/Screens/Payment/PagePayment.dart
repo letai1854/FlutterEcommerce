@@ -1,4 +1,5 @@
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
+import 'package:e_commerce_app/database/services/coupon_service.dart';
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForTablet.dart';
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
 import 'package:e_commerce_app/widgets/Payment/bodyPayment.dart'; // Đổi tên file nếu cần
@@ -9,9 +10,12 @@ import 'package:e_commerce_app/widgets/Payment/LoggedInAddressSelector.dart';
 import 'package:e_commerce_app/widgets/Payment/GuestAddressSelector.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:e_commerce_app/database/models/cart_item_model.dart'; // Add this import
 
 class PagePayment extends StatefulWidget {
-  const PagePayment({super.key});
+  final List<CartItemModel> cartItems; // Add this line
+
+  const PagePayment({super.key, required this.cartItems}); // Modify constructor
 
   @override
   State<PagePayment> createState() => _PagePaymentState();
@@ -22,24 +26,9 @@ class _PagePaymentState extends State<PagePayment> {
   final List<AddressData> _addresses = []; // Initialize as empty list
   AddressData? _currentAddress; // Make nullable to handle no addresses case
 
-  // --- Product State ---
-  final List<Map<String, dynamic>> _products = [
-    // Dữ liệu sản phẩm (có thể lấy từ giỏ hàng)
-    {
-      'image': 'https://i.imgur.com/kZTgHwQ.png',
-      'name': 'Điều Khiển Từ Xa Thay Thế Chuyên Dụng Cho...',
-      'price': 42000,
-      'quantity': 1,
-    },
-    {
-      'image': 'https://via.placeholder.com/60',
-      'name': 'Sản phẩm B - Mô tả dài hơn một chút',
-      'price': 150000,
-      'quantity': 2,
-    },
-  ];
-
   // --- Voucher State ---
+  // The _availableVouchers list is kept for _validateAndApplyVoucher if manual entry is still desired,
+  // but it's not used for populating VoucherSelector anymore.
   final List<VoucherData> _availableVouchers = [
     // Danh sách voucher khả dụng
     VoucherData(
@@ -113,8 +102,8 @@ class _PagePaymentState extends State<PagePayment> {
   //============================================================================
 
   double _calculateSubtotal() {
-    return _products.fold(
-        0.0, (sum, product) => sum + (product['price'] * product['quantity']));
+    return widget.cartItems
+        .fold(0.0, (sum, item) => sum + (item.price * item.quantity));
   }
 
   double _calculateDiscount() {
@@ -160,7 +149,7 @@ class _PagePaymentState extends State<PagePayment> {
   // Helper định dạng tiền tệ
   String _formatCurrency(num amount) {
     final formatter = NumberFormat("#,###", "vi_VN");
-    return '₫${formatter.format(amount)}';
+    return '${formatter.format(amount)} VND'; // Modified this line
   }
 
   // Function to check if we have a valid address
@@ -357,7 +346,8 @@ class _PagePaymentState extends State<PagePayment> {
     print("PagePayment: Processing payment...");
     print(
         "   Address: ${_currentAddress?.fullAddress ?? 'No address selected'}");
-    print("   Products: ${_products.length} items");
+    print(
+        "   Products: ${widget.cartItems.length} items"); // Use widget.cartItems
     print("   Subtotal: ${_formatCurrency(_calculateSubtotal())}");
     print("   Shipping: ${_formatCurrency(_shippingFee)}");
     print("   Tax: ${_formatCurrency(_calculateTax())}");
@@ -447,11 +437,6 @@ class _PagePaymentState extends State<PagePayment> {
 
   void _showVoucherSelectionDialog() {
     print("PagePayment: Opening Voucher Selector Dialog...");
-    // Lọc voucher hợp lệ (ví dụ: còn hạn, đủ điều kiện tối thiểu - có thể lọc trước)
-    final applicableVouchers = _availableVouchers
-        .where((v) => v.expiryDate.isAfter(DateTime.now()))
-        .toList();
-
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -459,18 +444,11 @@ class _PagePaymentState extends State<PagePayment> {
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: VoucherSelector(
-            // Truyền dữ liệu và callbacks xuống VoucherSelector
-            availableVouchers: applicableVouchers, // Chỉ truyền voucher hợp lệ
             currentVoucher: _currentVoucher,
             onVoucherSelected: (selectedVoucher) {
-              // PagePayment nhận voucher được chọn từ dialog
               _updateSelectedVoucher(selectedVoucher);
               Navigator.of(dialogContext).pop(); // Đóng dialog
             },
-            // Có thể thêm callback onApplyCode nếu muốn xử lý mã nhập tay từ dialog ở đây
-            // onApplyCode: (code) {
-            //   _validateAndApplyVoucher(code);
-            // }
           ),
         );
       },
@@ -490,7 +468,7 @@ class _PagePaymentState extends State<PagePayment> {
     Widget body = BodyPayment(
       // --- Data ---
       currentAddress: _currentAddress, // Can be null now
-      products: _products,
+      products: widget.cartItems, // Pass widget.cartItems
       currentVoucher: _currentVoucher,
       selectedPaymentMethod: _selectedPaymentMethod,
       subtotal: subtotal,
@@ -627,6 +605,7 @@ class VoucherData {
   final DateTime expiryDate;
   final bool isPercent;
   final double minSpend; // Thêm ngưỡng chi tiêu tối thiểu
+  final int? remainingUses;
 
   VoucherData({
     required this.code,
@@ -635,6 +614,7 @@ class VoucherData {
     required this.expiryDate,
     this.isPercent = false,
     this.minSpend = 0.0, // Mặc định không có ngưỡng
+    this.remainingUses,
   });
 
   // String get displayValue {

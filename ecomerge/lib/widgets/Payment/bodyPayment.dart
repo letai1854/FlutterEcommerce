@@ -7,12 +7,14 @@ import 'package:intl/intl.dart';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/services/user_service.dart';
 import 'package:e_commerce_app/database/services/address_service.dart';
+import 'package:e_commerce_app/database/services/categories_service.dart'; // Add this import
 import 'package:flutter/foundation.dart';
 import 'package:e_commerce_app/database/models/address_model.dart'; // Add this import for AddressRequest
+import 'package:e_commerce_app/database/models/cart_item_model.dart'; // Add this import
 
 class BodyPayment extends StatelessWidget {
   final AddressData? currentAddress;
-  final List<Map<String, dynamic>> products;
+  final List<CartItemModel> products; // Change type here
   final VoucherData? currentVoucher;
   final String selectedPaymentMethod;
   final double subtotal;
@@ -30,10 +32,13 @@ class BodyPayment extends StatelessWidget {
   final String Function(num) formatCurrency;
   final Function(AddressData) onAddressSelected;
 
-  const BodyPayment({
+  final CategoriesService _categoriesService =
+      CategoriesService(); // Add this line
+
+  BodyPayment({
     Key? key,
     required this.currentAddress,
-    required this.products,
+    required this.products, // Ensure constructor matches
     required this.currentVoucher,
     required this.selectedPaymentMethod,
     required this.subtotal,
@@ -436,9 +441,21 @@ class BodyPayment extends StatelessWidget {
                     children: [
                       if (!isMobile) _buildDesktopProductHeader(),
                       if (!isMobile) const Divider(height: 1),
-                      ...products.map((product) => isMobile
-                          ? _buildMobileProductItem(product)
-                          : _buildDesktopProductItem(product)),
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: products.length,
+                        itemBuilder: (context, index) {
+                          final productItem =
+                              products[index]; // productItem is CartItemModel
+                          return isMobile
+                              ? _buildMobileProductItem(productItem)
+                              : _buildDesktopProductItem(productItem);
+                        },
+                        separatorBuilder: (context, index) => isMobile
+                            ? const SizedBox.shrink()
+                            : const Divider(height: 1),
+                      ),
                       const Divider(height: 20),
                       isMobile
                           ? _buildMobileVoucherSection()
@@ -647,7 +664,8 @@ class BodyPayment extends StatelessWidget {
     );
   }
 
-  Widget _buildDesktopProductItem(Map<String, dynamic> product) {
+  Widget _buildDesktopProductItem(CartItemModel product) {
+    // Change parameter type
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
       child: Row(
@@ -660,16 +678,17 @@ class BodyPayment extends StatelessWidget {
                 border: Border.all(color: Colors.grey.shade200),
                 borderRadius: BorderRadius.circular(4),
                 image: DecorationImage(
-                  image: NetworkImage(product['image']),
+                  image: NetworkImage(_categoriesService
+                      .getImageUrl(product.imageUrl)), // Use CategoriesService
                   fit: BoxFit.cover,
-                  onError: (exception, stackTrace) => Icon(Icons.error),
+                  onError: (exception, stackTrace) => const Icon(Icons.error),
                 )),
           ),
           const SizedBox(width: 16),
           Expanded(
             flex: 4,
             child: Text(
-              product['name'],
+              product.productName, // Use product.productName
               style: TextStyle(fontSize: 14, color: Colors.grey.shade800),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -679,7 +698,7 @@ class BodyPayment extends StatelessWidget {
             flex: 2,
             child: Center(
               child: Text(
-                formatCurrency(product['price']),
+                formatCurrency(product.price), // Use product.price
                 style: const TextStyle(fontSize: 14),
               ),
             ),
@@ -688,7 +707,7 @@ class BodyPayment extends StatelessWidget {
             flex: 1,
             child: Center(
               child: Text(
-                '${product['quantity']}',
+                '${product.quantity}', // Use product.quantity
                 style: const TextStyle(fontSize: 14),
               ),
             ),
@@ -698,7 +717,8 @@ class BodyPayment extends StatelessWidget {
             child: Align(
               alignment: Alignment.centerRight,
               child: Text(
-                formatCurrency(product['price'] * product['quantity']),
+                formatCurrency(product.price *
+                    product.quantity), // Use product.price and product.quantity
                 style: TextStyle(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w500,
@@ -712,7 +732,8 @@ class BodyPayment extends StatelessWidget {
     );
   }
 
-  Widget _buildMobileProductItem(Map<String, dynamic> product) {
+  Widget _buildMobileProductItem(CartItemModel product) {
+    // Change parameter type
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
       elevation: 0.5,
@@ -734,15 +755,17 @@ class BodyPayment extends StatelessWidget {
                       border: Border.all(color: Colors.grey.shade200),
                       borderRadius: BorderRadius.circular(4),
                       image: DecorationImage(
-                        image: NetworkImage(product['image']),
+                        image: NetworkImage(_categoriesService.getImageUrl(
+                            product.imageUrl)), // Use CategoriesService
                         fit: BoxFit.cover,
-                        onError: (exception, stackTrace) => Icon(Icons.error),
+                        onError: (exception, stackTrace) =>
+                            const Icon(Icons.error),
                       )),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    product['name'],
+                    product.productName, // Use product.productName
                     style: const TextStyle(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w500,
@@ -759,11 +782,15 @@ class BodyPayment extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                _buildMobilePriceColumn('Đơn giá',
+                    formatCurrency(product.price)), // Use product.price
+                _buildMobilePriceColumn('Số lượng',
+                    'x ${product.quantity}'), // Use product.quantity
                 _buildMobilePriceColumn(
-                    'Đơn giá', formatCurrency(product['price'])),
-                _buildMobilePriceColumn('Số lượng', 'x ${product['quantity']}'),
-                _buildMobilePriceColumn('Thành tiền',
-                    formatCurrency(product['price'] * product['quantity']),
+                    'Thành tiền',
+                    formatCurrency(product.price *
+                        product
+                            .quantity), // Use product.price and product.quantity
                     isTotal: true),
               ],
             ),
