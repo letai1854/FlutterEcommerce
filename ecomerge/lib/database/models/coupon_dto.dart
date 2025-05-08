@@ -1,5 +1,29 @@
 import 'dart:convert';
 
+class OrderSummaryDTO {
+  final int orderId;
+  final double orderValue; // Using double for BigDecimal
+
+  OrderSummaryDTO({
+    required this.orderId,
+    required this.orderValue,
+  });
+
+  factory OrderSummaryDTO.fromJson(Map<String, dynamic> json) {
+    return OrderSummaryDTO(
+      orderId: json['orderId'] as int,
+      orderValue: (json['orderValue'] as num).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'orderId': orderId,
+      'orderValue': orderValue,
+    };
+  }
+}
+
 class CouponResponseDTO {
   final int? id;
   final String code;
@@ -7,6 +31,7 @@ class CouponResponseDTO {
   final int maxUsageCount;
   final int usageCount;
   final DateTime? createdDate;
+  final List<OrderSummaryDTO>? orders; // Added orders list
 
   CouponResponseDTO({
     this.id,
@@ -15,9 +40,18 @@ class CouponResponseDTO {
     required this.maxUsageCount,
     required this.usageCount,
     this.createdDate,
+    this.orders, // Added to constructor
   });
 
   factory CouponResponseDTO.fromJson(Map<String, dynamic> json) {
+    var ordersList = json['orders'] as List<dynamic>?;
+    List<OrderSummaryDTO>? parsedOrders;
+    if (ordersList != null) {
+      parsedOrders = ordersList
+          .map((i) => OrderSummaryDTO.fromJson(i as Map<String, dynamic>))
+          .toList();
+    }
+
     return CouponResponseDTO(
       id: json['id'] as int?,
       code: json['code'] as String,
@@ -27,6 +61,7 @@ class CouponResponseDTO {
       createdDate: json['createdDate'] != null
           ? DateTime.parse(json['createdDate'] as String)
           : null,
+      orders: parsedOrders, // Assign parsed orders
     );
   }
 
@@ -38,6 +73,7 @@ class CouponResponseDTO {
       'maxUsageCount': maxUsageCount,
       'usageCount': usageCount,
       'createdDate': createdDate?.toIso8601String(),
+      'orders': orders?.map((o) => o.toJson()).toList(), // Serialize orders
     };
   }
 }

@@ -102,7 +102,8 @@ class MyApp extends StatelessWidget {
               );
             } else {
               return PageRouteBuilder(
-                pageBuilder: (context, _, __) => const ResponsiveHome(),//comment
+                pageBuilder: (context, _, __) =>
+                    const ResponsiveHome(), //comment
                 settings: const RouteSettings(name: '/home'),
               );
             }
@@ -136,7 +137,8 @@ class MyApp extends StatelessWidget {
           case '/product_detail':
             final int productId = settings.arguments as int? ?? 0;
             return PageRouteBuilder(
-              pageBuilder: (context, _, __) => Pageproductdetail(productId: productId),
+              pageBuilder: (context, _, __) =>
+                  Pageproductdetail(productId: productId),
               settings: settings,
             );
           case '/cart':
@@ -146,7 +148,9 @@ class MyApp extends StatelessWidget {
             );
           case '/payment':
             return PageRouteBuilder(
-              pageBuilder: (context, _, __) => const PagePayment(),
+              pageBuilder: (context, _, __) => const PagePayment(
+                cartItems: [],
+              ),
               settings: settings,
             );
           case '/payment_success':

@@ -4,6 +4,8 @@ import 'package:e_commerce_app/widgets/Product/ProductDetailInfo.dart';
 import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
 import 'package:flutter/material.dart';
 import 'package:e_commerce_app/database/services/product_service.dart';
+import 'package:e_commerce_app/database/models/cart_item_model.dart';
+import 'package:e_commerce_app/Screens/Payment/PagePayment.dart';
 
 class Pageproductdetail extends StatefulWidget {
   final int productId;
@@ -29,6 +31,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
   bool _isLoading = true;
   final ProductService _productService = ProductService();
   Map<String, dynamic> _productData = {};
+  int _selectedQuantity = 1;
 
   @override
   void initState() {
@@ -43,18 +46,13 @@ class _PageproductdetailState extends State<Pageproductdetail> {
       setState(() => _isLoading = true);
       final product = await _productService.getProductById(widget.productId);
 
-      // Create a list of all images
       List<String> allImages = [];
       if (product.mainImageUrl != null) {
         allImages.add(product.mainImageUrl!);
-        
-        // Preload the main image to improve user experience
         _productService.getImageFromServer(product.mainImageUrl!);
       }
       if (product.imageUrls != null) {
         allImages.addAll(product.imageUrls!);
-        
-        // Preload additional images asynchronously
         for (String imageUrl in product.imageUrls!) {
           _productService.getImageFromServer(imageUrl);
         }
@@ -68,19 +66,25 @@ class _PageproductdetailState extends State<Pageproductdetail> {
           'ratingCount': product.variantCount ?? 0,
           'shortDescription': product.description,
           'illustrationImages': allImages,
-          'variants': product.variants?.map((variant) => {
-            'name': variant.name ?? 'Không tên',
-            'mainImage': variant.variantImageUrl ?? product.mainImageUrl ?? '',
-            'variantThumbnail': variant.variantImageUrl ?? product.mainImageUrl ?? '',
-            'stock': variant.stockQuantity ?? 0,
-            'price': variant.price ?? product.minPrice ?? 0.0,
-          }).toList() ?? [],
+          'productVariants': product.variants
+                  ?.map((variant) => {
+                        'name': variant.name ?? 'Không tên',
+                        'mainImage': variant.variantImageUrl ??
+                            product.mainImageUrl ??
+                            '',
+                        'variantThumbnail': variant.variantImageUrl ??
+                            product.mainImageUrl ??
+                            '',
+                        'stock': variant.stockQuantity ?? 0,
+                        'price': variant.price ?? product.minPrice ?? 0.0,
+                      })
+                  .toList() ??
+              [],
           'minPrice': product.minPrice,
           'maxPrice': product.maxPrice,
           'discountPercentage': product.discountPercentage,
         };
 
-        // Set initial displayed image
         if (product.mainImageUrl != null) {
           _displayedMainImageUrl = product.mainImageUrl!;
         } else if (allImages.isNotEmpty) {
@@ -140,7 +144,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
   }
 
   void _onVariantSelected(int index) {
-    final variants = _productData['variants'] as List;
+    final variants = _productData['productVariants'] as List;
     if (index >= 0 && index < variants.length) {
       setState(() {
         _selectedVariantIndex = index;
@@ -183,40 +187,77 @@ class _PageproductdetailState extends State<Pageproductdetail> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn sao đánh giá và nhập bình luận.')),
+        const SnackBar(
+            content: Text('Vui lòng chọn sao đánh giá và nhập bình luận.')),
       );
     }
   }
 
   final List<Map<String, dynamic>> _dummyReviews = [
-    {'name': 'Nguyễn Văn A', 'rating': 5, 'comment': 'Sản phẩm tuyệt vời, đáng mua!', 'avatar': 'assets/avatar1.png',},
-    {'name': 'Trần Thị B', 'rating': 4, 'comment': 'Chất lượng tốt, giá cả hợp lý.', 'avatar': 'assets/avatar2.png',},
-    {'name': 'Lê Văn C', 'rating': 3, 'comment': 'Sản phẩm ổn, nhưng giao hàng hơi chậm.', 'avatar': 'assets/avatar3.png',},
-    {'name': 'Phạm Thị D', 'rating': 5, 'comment': 'Rất hài lòng về sản phẩm và dịch vụ.', 'avatar': 'assets/avatar4.png',},
-    {'name': 'Hoàng Văn E', 'rating': 4, 'comment': 'Sản phẩm tốt, đóng gói cẩn thận.', 'avatar': 'assets/avatar5.png',},
-    {'name': 'Đặng Thị F', 'rating': 3, 'comment': 'Giá hơi cao so với chất lượng.', 'avatar': 'assets/avatar6.png',},
+    {
+      'name': 'Nguyễn Văn A',
+      'rating': 5,
+      'comment': 'Sản phẩm tuyệt vời, đáng mua!',
+      'avatar': 'assets/avatar1.png',
+    },
+    {
+      'name': 'Trần Thị B',
+      'rating': 4,
+      'comment': 'Chất lượng tốt, giá cả hợp lý.',
+      'avatar': 'assets/avatar2.png',
+    },
+    {
+      'name': 'Lê Văn C',
+      'rating': 3,
+      'comment': 'Sản phẩm ổn, nhưng giao hàng hơi chậm.',
+      'avatar': 'assets/avatar3.png',
+    },
+    {
+      'name': 'Phạm Thị D',
+      'rating': 5,
+      'comment': 'Rất hài lòng về sản phẩm và dịch vụ.',
+      'avatar': 'assets/avatar4.png',
+    },
+    {
+      'name': 'Hoàng Văn E',
+      'rating': 4,
+      'comment': 'Sản phẩm tốt, đóng gói cẩn thận.',
+      'avatar': 'assets/avatar5.png',
+    },
+    {
+      'name': 'Đặng Thị F',
+      'rating': 3,
+      'comment': 'Giá hơi cao so với chất lượng.',
+      'avatar': 'assets/avatar6.png',
+    },
   ];
 
-  bool get _canLoadMoreReviews => _displayedReviews.length < _dummyReviews.length;
+  bool get _canLoadMoreReviews =>
+      _displayedReviews.length < _dummyReviews.length;
+
+  void _onQuantityChanged(int newQuantity) {
+    setState(() {
+      _selectedQuantity = newQuantity;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final List<String> illustrations = (_productData['illustrationImages'] is List)
-        ? List<String>.from(_productData['illustrationImages'])
-        : [];
+    final List<String> illustrations =
+        (_productData['illustrationImages'] is List)
+            ? List<String>.from(_productData['illustrationImages'])
+            : [];
 
-    final productVariants = (_productData['variants'] is List)
-        ? List<Map<String, dynamic>>.from(_productData['variants'])
+    final productVariants = (_productData['productVariants'] is List)
+        ? List<Map<String, dynamic>>.from(_productData['productVariants'])
         : <Map<String, dynamic>>[];
 
-    // Create a custom back button that we can reuse
     Widget backButton = IconButton(
       icon: const Icon(Icons.arrow_back),
       onPressed: () => Navigator.of(context).pop(),
       tooltip: 'Trở về',
     );
 
-    // Show loading indicator while data is loading
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(
@@ -228,87 +269,156 @@ class _PageproductdetailState extends State<Pageproductdetail> {
     }
 
     Widget body = ProductDetialInfo(
-            productName: _productData['name'] ?? 'N/A',
-            brandName: _productData['brand'] ?? 'N/A',
-            averageRating: _productData['averageRating']?.toDouble() ?? 0.0,
-            ratingCount: _productData['ratingCount'] ?? 0,
-            shortDescription: _productData['shortDescription'] ?? '',
-            illustrationImages: illustrations,
-            productVariants: productVariants,
-            selectedVariantIndex: _selectedVariantIndex,
-            currentStock: productVariants.isEmpty ? 0 : 
-                         productVariants[_selectedVariantIndex]['stock'] ?? 0,
-            onVariantSelected: _onVariantSelected,
-            displayedMainImageUrl: _displayedMainImageUrl,
-            onIllustrationImageSelected: _onIllustrationImageSelected,
-            scrollController: _scrollController,
-            displayedReviews: _displayedReviews,
-            totalReviews: _dummyReviews.length,
-            isLoadingReviews: _isLoadingReviews,
-            canLoadMoreReviews: _canLoadMoreReviews,
-            loadMoreReviews: _loadMoreReviews,
-            submitReview: _submitReview,
-            commentController: _commentController,
-            selectedRating: _selectedRating,
-            onRatingChanged: _onRatingChanged,
-            onAddToCart: () {
-              final variantName = productVariants.isEmpty ? '' : 
-                               productVariants[_selectedVariantIndex]['name'] ?? '';
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text('Đã thêm "${variantName}" vào giỏ hàng!'),
-              ));
-            },
-            onBuyNow: () {
-              final variantName = productVariants.isEmpty ? '' : 
-                               productVariants[_selectedVariantIndex]['name'] ?? '';
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text('Chuyển đến thanh toán cho "${variantName}"!'),
-              ));
-            },
+      productId: widget.productId,
+      productName: _productData['name'] ?? 'N/A',
+      brandName: _productData['brand'] ?? 'N/A',
+      averageRating: _productData['averageRating']?.toDouble() ?? 0.0,
+      ratingCount: _productData['ratingCount'] ?? 0,
+      shortDescription: _productData['shortDescription'] ?? '',
+      illustrationImages: illustrations,
+      productVariants: productVariants,
+      selectedVariantIndex: _selectedVariantIndex,
+      currentStock: productVariants.isEmpty
+          ? 0
+          : productVariants[_selectedVariantIndex]['stock'] ?? 0,
+      onVariantSelected: _onVariantSelected,
+      selectedQuantity: _selectedQuantity,
+      onQuantityChanged: _onQuantityChanged,
+      displayedMainImageUrl: _displayedMainImageUrl,
+      onIllustrationImageSelected: _onIllustrationImageSelected,
+      scrollController: _scrollController,
+      displayedReviews: _displayedReviews,
+      totalReviews: _dummyReviews.length,
+      isLoadingReviews: _isLoadingReviews,
+      canLoadMoreReviews: _canLoadMoreReviews,
+      loadMoreReviews: _loadMoreReviews,
+      submitReview: _submitReview,
+      commentController: _commentController,
+      selectedRating: _selectedRating,
+      onRatingChanged: _onRatingChanged,
+      onAddToCart: () {
+        if (_productData.isEmpty ||
+            _productData['productVariants'] == null ||
+            (_productData['productVariants'] as List).isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text(
+                    'Thông tin sản phẩm không có sẵn để thêm vào giỏ hàng.')),
           );
+          return;
+        }
+        final productVariantsList = _productData['productVariants'] as List;
+        if (_selectedVariantIndex < 0 ||
+            _selectedVariantIndex >= productVariantsList.length) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Vui lòng chọn một biến thể hợp lệ.')),
+          );
+          return;
+        }
+        final selectedVariant = productVariantsList[_selectedVariantIndex];
+        String baseProductName = _productData['name'] ?? 'Sản phẩm';
+        final String? variantName = selectedVariant['name'] as String?;
+        if (variantName != null && variantName.isNotEmpty) {
+          baseProductName = '$baseProductName - $variantName';
+        }
 
-   return LayoutBuilder(
+        // Implement your add to cart logic here
+        // For example, show a SnackBar
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Đã thêm "$baseProductName" vào giỏ hàng!')),
+        );
+      },
+      onBuyNow: () {
+        if (_productData.isEmpty ||
+            _productData['productVariants'] == null ||
+            (_productData['productVariants'] as List).isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Thông tin sản phẩm không có sẵn để mua.')),
+          );
+          return;
+        }
+
+        final productVariantsList = _productData['productVariants'] as List;
+        if (_selectedVariantIndex < 0 ||
+            _selectedVariantIndex >= productVariantsList.length) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Vui lòng chọn một biến thể hợp lệ.')),
+          );
+          return;
+        }
+
+        final selectedVariant = productVariantsList[_selectedVariantIndex];
+
+        String baseProductName = _productData['name'] ?? 'Sản phẩm';
+        final String? variantName = selectedVariant['name'] as String?;
+        if (variantName != null && variantName.isNotEmpty) {
+          baseProductName = '$baseProductName - $variantName';
+        }
+
+        final double price =
+            (selectedVariant['price'] as num? ?? 0.0).toDouble();
+
+        String finalImageUrl = _displayedMainImageUrl;
+        if (finalImageUrl.isEmpty) {
+          final String? relativePath = selectedVariant['imageUrl'] as String?;
+          if (relativePath != null && relativePath.isNotEmpty) {
+            finalImageUrl = _productService.getImageUrl(relativePath);
+          } else {
+            finalImageUrl = 'https://via.placeholder.com/150';
+          }
+        }
+
+        final cartItem = CartItemModel(
+          productId: widget.productId,
+          productName: baseProductName,
+          imageUrl: finalImageUrl,
+          quantity: _selectedQuantity,
+          price: price,
+        );
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PagePayment(cartItems: [cartItem]),
+          ),
+        );
+      },
+    );
+
+    return LayoutBuilder(
       builder: (context, constraints) {
         final screenWidth = constraints.maxWidth;
 
         if (screenWidth < 768) {
-          // Mobile layout
           return NavbarFormobile(
-            // Pass the back button to mobile layout
             body: Column(
               children: [
-                // Add a custom back button row for mobile
                 Container(
                   color: Theme.of(context).primaryColor,
                   padding: const EdgeInsets.only(left: 8, top: 8),
                   alignment: Alignment.centerLeft,
                   child: backButton,
                 ),
-                // Wrap body in Expanded to avoid overflow
                 Expanded(child: body),
               ],
             ),
           );
         } else if (screenWidth < 1100) {
-          // Tablet layout
           return NavbarForTablet(
-            // Pass the back button to tablet layout
             body: Column(
               children: [
-                // Add a custom back button row for tablet
                 Container(
                   color: Theme.of(context).primaryColor,
                   padding: const EdgeInsets.only(left: 8, top: 8),
                   alignment: Alignment.centerLeft,
                   child: backButton,
                 ),
-                // Wrap body in Expanded to avoid overflow
                 Expanded(child: body),
               ],
             ),
           );
         } else {
-          // Desktop layout
           var appBar = PreferredSize(
             preferredSize: Size.fromHeight(130),
             child: Navbarhomedesktop(),
@@ -317,7 +427,6 @@ class _PageproductdetailState extends State<Pageproductdetail> {
             appBar: appBar as PreferredSize,
             body: Column(
               children: [
-                // Add a back button bar below the desktop app bar
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
@@ -345,7 +454,6 @@ class _PageproductdetailState extends State<Pageproductdetail> {
                     ],
                   ),
                 ),
-                // Wrap body in Expanded to avoid overflow
                 Expanded(child: body),
               ],
             ),

@@ -20,9 +20,14 @@ class ProductDetialInfo extends StatelessWidget {
   final int currentStock;
   final Function(int) onVariantSelected;
 
+  // Quantity Info & Callbacks
+  final int selectedQuantity;
+  final Function(int) onQuantityChanged;
+
   // Image Display Info & Callbacks
   final String displayedMainImageUrl; // URL ảnh chính đang hiển thị
-  final Function(String) onIllustrationImageSelected; // Callback nhấn ảnh minh họa
+  final Function(String)
+      onIllustrationImageSelected; // Callback nhấn ảnh minh họa
 
   // Review Info & Callbacks
   final ScrollController scrollController;
@@ -40,6 +45,9 @@ class ProductDetialInfo extends StatelessWidget {
   final VoidCallback onAddToCart;
   final VoidCallback onBuyNow;
 
+  // Product ID
+  final int productId; // Add this line
+
   const ProductDetialInfo({
     Key? key,
     // Product
@@ -54,6 +62,9 @@ class ProductDetialInfo extends StatelessWidget {
     required this.selectedVariantIndex,
     required this.currentStock,
     required this.onVariantSelected,
+    // Quantity
+    required this.selectedQuantity,
+    required this.onQuantityChanged,
     // Image Display
     required this.displayedMainImageUrl,
     required this.onIllustrationImageSelected,
@@ -71,6 +82,7 @@ class ProductDetialInfo extends StatelessWidget {
     // Actions
     required this.onAddToCart,
     required this.onBuyNow,
+    required this.productId, // Add this line
   }) : super(key: key);
 
   @override
@@ -91,7 +103,14 @@ class ProductDetialInfo extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
-              boxShadow: [ BoxShadow( color: Colors.grey.withOpacity(0.2), spreadRadius: 1, blurRadius: 4, offset: const Offset(0, 2), ), ],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 1,
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,55 +148,201 @@ class ProductDetialInfo extends StatelessWidget {
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(7.0),
                                 child: displayedMainImageUrl.isEmpty
-                                  ? Container(
-                                      color: Colors.grey[200],
-                                      child: const Center(child: Icon(Icons.image_not_supported, color: Colors.grey, size: 50)),
-                                    )
-                                  // Use FutureBuilder for better image loading and caching
-                                  : FutureBuilder<Uint8List?>(
-                                      future: productService.getImageFromServer(displayedMainImageUrl),
-                                      builder: (context, snapshot) {
-                                        if (snapshot.connectionState == ConnectionState.done && 
-                                            snapshot.hasData && 
-                                            snapshot.data != null) {
-                                          // Display cached image data with high quality
+                                    ? Container(
+                                        color: Colors.grey[200],
+                                        child: const Center(
+                                            child: Icon(
+                                                Icons.image_not_supported,
+                                                color: Colors.grey,
+                                                size: 50)),
+                                      )
+                                    // Use FutureBuilder for better image loading and caching
+                                    : FutureBuilder<Uint8List?>(
+                                        future:
+                                            productService.getImageFromServer(
+                                                displayedMainImageUrl),
+                                        builder: (context, snapshot) {
+                                          if (snapshot.connectionState ==
+                                                  ConnectionState.done &&
+                                              snapshot.hasData &&
+                                              snapshot.data != null) {
+                                            // Display cached image data with high quality
+                                            return GestureDetector(
+                                              onTap: () {
+                                                // Show full-screen image dialog when tapped
+                                                showDialog(
+                                                  context: context,
+                                                  builder: (context) => Dialog(
+                                                    backgroundColor:
+                                                        Colors.transparent,
+                                                    insetPadding:
+                                                        EdgeInsets.zero,
+                                                    child: Stack(
+                                                      alignment:
+                                                          Alignment.center,
+                                                      children: [
+                                                        // Interactive image with pinch-zoom gesture support
+                                                        InteractiveViewer(
+                                                          panEnabled: true,
+                                                          boundaryMargin:
+                                                              const EdgeInsets
+                                                                  .all(20),
+                                                          minScale: 0.5,
+                                                          maxScale: 4.0,
+                                                          child: Hero(
+                                                            tag:
+                                                                'product_image_fullscreen',
+                                                            child: Image.memory(
+                                                              snapshot.data!,
+                                                              fit: BoxFit
+                                                                  .contain,
+                                                              filterQuality:
+                                                                  FilterQuality
+                                                                      .high,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        // Close button
+                                                        Positioned(
+                                                          top: 40,
+                                                          right: 20,
+                                                          child: CircleAvatar(
+                                                            backgroundColor:
+                                                                Colors.black54,
+                                                            radius: 18,
+                                                            child: IconButton(
+                                                              padding:
+                                                                  EdgeInsets
+                                                                      .zero,
+                                                              icon: const Icon(
+                                                                  Icons.close,
+                                                                  color: Colors
+                                                                      .white),
+                                                              onPressed: () =>
+                                                                  Navigator.of(
+                                                                          context)
+                                                                      .pop(),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                              child: Hero(
+                                                tag:
+                                                    'product_image_${displayedMainImageUrl.hashCode}',
+                                                child: Container(
+                                                  color: Colors.white,
+                                                  padding:
+                                                      const EdgeInsets.all(4),
+                                                  child: Stack(
+                                                    fit: StackFit.expand,
+                                                    children: [
+                                                      Image.memory(
+                                                        snapshot.data!,
+                                                        key: ValueKey(
+                                                            displayedMainImageUrl),
+                                                        fit: BoxFit.contain,
+                                                        filterQuality:
+                                                            FilterQuality.high,
+                                                      ),
+                                                      // Add subtle zoom indicator
+                                                      Positioned(
+                                                        right: 8,
+                                                        bottom: 8,
+                                                        child: Container(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .all(4),
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            color:
+                                                                Colors.black38,
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        4),
+                                                          ),
+                                                          child: const Icon(
+                                                            Icons.zoom_in,
+                                                            color: Colors.white,
+                                                            size: 16,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          }
+
+                                          // Fall back to CachedNetworkImage for better caching
                                           return GestureDetector(
                                             onTap: () {
-                                              // Show full-screen image dialog when tapped
+                                              // Show network image in full screen when tapped
                                               showDialog(
                                                 context: context,
                                                 builder: (context) => Dialog(
-                                                  backgroundColor: Colors.transparent,
+                                                  backgroundColor:
+                                                      Colors.transparent,
                                                   insetPadding: EdgeInsets.zero,
                                                   child: Stack(
                                                     alignment: Alignment.center,
                                                     children: [
-                                                      // Interactive image with pinch-zoom gesture support
                                                       InteractiveViewer(
                                                         panEnabled: true,
-                                                        boundaryMargin: const EdgeInsets.all(20),
+                                                        boundaryMargin:
+                                                            const EdgeInsets
+                                                                .all(20),
                                                         minScale: 0.5,
                                                         maxScale: 4.0,
-                                                        child: Hero(
-                                                          tag: 'product_image_fullscreen',
-                                                          child: Image.memory(
-                                                            snapshot.data!,
-                                                            fit: BoxFit.contain,
-                                                            filterQuality: FilterQuality.high,
+                                                        child:
+                                                            CachedNetworkImage(
+                                                          imageUrl: productService
+                                                              .getImageUrl(
+                                                                  displayedMainImageUrl),
+                                                          fit: BoxFit.contain,
+                                                          filterQuality:
+                                                              FilterQuality
+                                                                  .high,
+                                                          placeholder:
+                                                              (context, url) =>
+                                                                  Center(
+                                                            child:
+                                                                CircularProgressIndicator(
+                                                              strokeWidth: 2,
+                                                              valueColor:
+                                                                  AlwaysStoppedAnimation<
+                                                                      Color>(
+                                                                Theme.of(
+                                                                        context)
+                                                                    .primaryColor,
+                                                              ),
+                                                            ),
                                                           ),
                                                         ),
                                                       ),
-                                                      // Close button
                                                       Positioned(
                                                         top: 40,
                                                         right: 20,
                                                         child: CircleAvatar(
-                                                          backgroundColor: Colors.black54,
+                                                          backgroundColor:
+                                                              Colors.black54,
                                                           radius: 18,
                                                           child: IconButton(
-                                                            padding: EdgeInsets.zero,
-                                                            icon: const Icon(Icons.close, color: Colors.white),
-                                                            onPressed: () => Navigator.of(context).pop(),
+                                                            padding:
+                                                                EdgeInsets.zero,
+                                                            icon: const Icon(
+                                                                Icons.close,
+                                                                color: Colors
+                                                                    .white),
+                                                            onPressed: () =>
+                                                                Navigator.of(
+                                                                        context)
+                                                                    .pop(),
                                                           ),
                                                         ),
                                                       ),
@@ -186,165 +351,100 @@ class ProductDetialInfo extends StatelessWidget {
                                                 ),
                                               );
                                             },
-                                            child: Hero(
-                                              tag: 'product_image_${displayedMainImageUrl.hashCode}',
-                                              child: Container(
-                                                color: Colors.white,
-                                                padding: const EdgeInsets.all(4),
-                                                child: Stack(
-                                                  fit: StackFit.expand,
-                                                  children: [
-                                                    Image.memory(
-                                                      snapshot.data!,
-                                                      key: ValueKey(displayedMainImageUrl),
-                                                      fit: BoxFit.contain,
-                                                      filterQuality: FilterQuality.high,
-                                                    ),
-                                                    // Add subtle zoom indicator
-                                                    Positioned(
-                                                      right: 8,
-                                                      bottom: 8,
-                                                      child: Container(
-                                                        padding: const EdgeInsets.all(4),
-                                                        decoration: BoxDecoration(
-                                                          color: Colors.black38,
-                                                          borderRadius: BorderRadius.circular(4),
-                                                        ),
-                                                        child: const Icon(
-                                                          Icons.zoom_in,
-                                                          color: Colors.white,
-                                                          size: 16,
+                                            child: Stack(
+                                              alignment: Alignment.center,
+                                              children: [
+                                                Container(
+                                                  color: Colors.white,
+                                                  padding:
+                                                      const EdgeInsets.all(4),
+                                                  child: CachedNetworkImage(
+                                                    imageUrl: productService
+                                                        .getImageUrl(
+                                                            displayedMainImageUrl),
+                                                    key: ValueKey(
+                                                        displayedMainImageUrl),
+                                                    fit: BoxFit.contain,
+                                                    filterQuality:
+                                                        FilterQuality.high,
+                                                    fadeInDuration:
+                                                        const Duration(
+                                                            milliseconds: 200),
+                                                    placeholder:
+                                                        (context, url) =>
+                                                            Center(
+                                                      child:
+                                                          CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                        valueColor:
+                                                            AlwaysStoppedAnimation<
+                                                                Color>(
+                                                          Theme.of(context)
+                                                              .primaryColor,
                                                         ),
                                                       ),
                                                     ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                        
-                                        // Fall back to CachedNetworkImage for better caching
-                                        return GestureDetector(
-                                          onTap: () {
-                                            // Show network image in full screen when tapped
-                                            showDialog(
-                                              context: context,
-                                              builder: (context) => Dialog(
-                                                backgroundColor: Colors.transparent,
-                                                insetPadding: EdgeInsets.zero,
-                                                child: Stack(
-                                                  alignment: Alignment.center,
-                                                  children: [
-                                                    InteractiveViewer(
-                                                      panEnabled: true,
-                                                      boundaryMargin: const EdgeInsets.all(20),
-                                                      minScale: 0.5,
-                                                      maxScale: 4.0,
-                                                      child: CachedNetworkImage(
-                                                        imageUrl: productService.getImageUrl(displayedMainImageUrl),
-                                                        fit: BoxFit.contain,
-                                                        filterQuality: FilterQuality.high,
-                                                        placeholder: (context, url) => Center(
-                                                          child: CircularProgressIndicator(
-                                                            strokeWidth: 2,
-                                                            valueColor: AlwaysStoppedAnimation<Color>(
-                                                              Theme.of(context).primaryColor,
-                                                            ),
+                                                    errorWidget:
+                                                        (context, url, error) {
+                                                      print(
+                                                          "Error loading main image: $url, Error: $error");
+                                                      return Container(
+                                                        color: Colors.grey[200],
+                                                        child: const Center(
+                                                          child: Icon(
+                                                            Icons.broken_image,
+                                                            color: Colors.grey,
+                                                            size: 50,
                                                           ),
                                                         ),
-                                                      ),
-                                                    ),
-                                                    Positioned(
-                                                      top: 40,
-                                                      right: 20,
-                                                      child: CircleAvatar(
-                                                        backgroundColor: Colors.black54,
-                                                        radius: 18,
-                                                        child: IconButton(
-                                                          padding: EdgeInsets.zero,
-                                                          icon: const Icon(Icons.close, color: Colors.white),
-                                                          onPressed: () => Navigator.of(context).pop(),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                          child: Stack(
-                                            alignment: Alignment.center,
-                                            children: [
-                                              Container(
-                                                color: Colors.white,
-                                                padding: const EdgeInsets.all(4),
-                                                child: CachedNetworkImage(
-                                                  imageUrl: productService.getImageUrl(displayedMainImageUrl),
-                                                  key: ValueKey(displayedMainImageUrl),
-                                                  fit: BoxFit.contain,
-                                                  filterQuality: FilterQuality.high,
-                                                  fadeInDuration: const Duration(milliseconds: 200),
-                                                  placeholder: (context, url) => Center(
-                                                    child: CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                                        Theme.of(context).primaryColor,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  errorWidget: (context, url, error) {
-                                                    print("Error loading main image: $url, Error: $error");
-                                                    return Container(
-                                                      color: Colors.grey[200], 
-                                                      child: const Center(
-                                                        child: Icon(
-                                                          Icons.broken_image, 
-                                                          color: Colors.grey,
-                                                          size: 50,
-                                                        ),
-                                                      ),
-                                                    );
-                                                  },
-                                                ),
-                                              ),
-                                              // Add a subtle zoom icon to indicate the image is zoomable
-                                              Positioned(
-                                                right: 8,
-                                                bottom: 8,
-                                                child: Container(
-                                                  padding: const EdgeInsets.all(4),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.black38,
-                                                    borderRadius: BorderRadius.circular(4),
-                                                  ),
-                                                  child: const Icon(
-                                                    Icons.zoom_in,
-                                                    color: Colors.white,
-                                                    size: 16,
+                                                      );
+                                                    },
                                                   ),
                                                 ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      },
-                                    ),
+                                                // Add a subtle zoom icon to indicate the image is zoomable
+                                                Positioned(
+                                                  right: 8,
+                                                  bottom: 8,
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.all(4),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.black38,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              4),
+                                                    ),
+                                                    child: const Icon(
+                                                      Icons.zoom_in,
+                                                      color: Colors.white,
+                                                      size: 16,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),
                               ),
                             ),
                           ),
                           const SizedBox(height: 12),
                           // --- Illustration Images (Thumbnails) ---
-                          if (illustrationImages.isNotEmpty) // Chỉ hiển thị nếu có ảnh minh họa
+                          if (illustrationImages
+                              .isNotEmpty) // Chỉ hiển thị nếu có ảnh minh họa
                             SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
                               child: Row(
                                 children: illustrationImages.map((imageUrl) {
-                                  final bool isSelectedThumbnail = (imageUrl == displayedMainImageUrl);
+                                  final bool isSelectedThumbnail =
+                                      (imageUrl == displayedMainImageUrl);
                                   return BuildThumbnail(
                                     imageUrl: imageUrl,
-                                    isSelected: isSelectedThumbnail, // Highlight nếu ảnh này đang hiển thị chính
-                                    onTap: () => onIllustrationImageSelected(imageUrl), // Callback khi nhấn
+                                    isSelected:
+                                        isSelectedThumbnail, // Highlight nếu ảnh này đang hiển thị chính
+                                    onTap: () => onIllustrationImageSelected(
+                                        imageUrl), // Callback khi nhấn
                                   );
                                 }).toList(),
                               ),
@@ -358,40 +458,131 @@ class ProductDetialInfo extends StatelessWidget {
                       flex: isWideScreen ? 1 : 0,
                       fit: FlexFit.loose,
                       child: Padding(
-                        padding: EdgeInsets.only(left: isWideScreen ? 16.0 : 0.0, top: !isWideScreen ? 16.0 : 0.0),
+                        padding: EdgeInsets.only(
+                            left: isWideScreen ? 16.0 : 0.0,
+                            top: !isWideScreen ? 16.0 : 0.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Product Name, Rating, Brand
-                            Text(productName, style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                            Text(productName,
+                                style: textTheme.headlineSmall
+                                    ?.copyWith(fontWeight: FontWeight.bold)),
                             const SizedBox(height: 8),
-                            Wrap( spacing: 16, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [ Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.star, color: Colors.amber, size: 18), const SizedBox(width: 4), Text('$averageRating ($ratingCount đánh giá)', style: textTheme.bodyMedium)]), Text('Thương hiệu: $brandName', style: textTheme.bodyMedium), ],),
+                            Wrap(
+                              spacing: 16,
+                              runSpacing: 8,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Row(mainAxisSize: MainAxisSize.min, children: [
+                                  Icon(Icons.star,
+                                      color: Colors.amber, size: 18),
+                                  const SizedBox(width: 4),
+                                  Text('$averageRating ($ratingCount đánh giá)',
+                                      style: textTheme.bodyMedium)
+                                ]),
+                                Text('Thương hiệu: $brandName',
+                                    style: textTheme.bodyMedium),
+                              ],
+                            ),
                             const SizedBox(height: 16),
                             // Short Description
-                            if (shortDescription.isNotEmpty) Padding( padding: const EdgeInsets.only(bottom: 16.0), child: Text( shortDescription, style: textTheme.bodyMedium?.copyWith(color: Colors.grey[700]), ),),
+                            if (shortDescription.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 16.0),
+                                child: Text(
+                                  shortDescription,
+                                  style: textTheme.bodyMedium
+                                      ?.copyWith(color: Colors.grey[700]),
+                                ),
+                              ),
                             // Variant Selection Options
-                            Text('Chọn biến thể:', style: textTheme.titleMedium),
+                            Text('Chọn biến thể:',
+                                style: textTheme.titleMedium),
                             const SizedBox(height: 8),
-                            if (productVariants.isNotEmpty) // Chỉ hiển thị nếu có biến thể
-                              SingleChildScrollView( scrollDirection: Axis.horizontal, child: Row( children: List.generate(productVariants.length, (index) {
+                            if (productVariants
+                                .isNotEmpty) // Chỉ hiển thị nếu có biến thể
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: List.generate(
+                                      productVariants.length, (index) {
                                     final variant = productVariants[index];
                                     return BuildVariantOption(
                                       variantName: variant['name'] ?? 'N/A',
-                                      imageUrl: variant['variantThumbnail'] ?? '', // Ảnh nhỏ của biến thể
-                                      isSelected: index == selectedVariantIndex,   // Trạng thái chọn
-                                      onTap: () => onVariantSelected(index),        // Callback chọn
-                                    ); }), ),)
+                                      imageUrl: variant['variantThumbnail'] ??
+                                          '', // Ảnh nhỏ của biến thể
+                                      isSelected: index ==
+                                          selectedVariantIndex, // Trạng thái chọn
+                                      onTap: () => onVariantSelected(
+                                          index), // Callback chọn
+                                    );
+                                  }),
+                                ),
+                              )
                             else // Thông báo nếu không có biến thể
                               Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                                child: Text("Sản phẩm hiện chưa có biến thể.", style: textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic)),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8.0),
+                                child: Text("Sản phẩm hiện chưa có biến thể.",
+                                    style: textTheme.bodySmall?.copyWith(
+                                        fontStyle: FontStyle.italic)),
                               ),
                             const SizedBox(height: 16),
                             // Stock Display
-                            Text('Kho: $currentStock', style: textTheme.titleMedium),
+                            Text('Kho: $currentStock',
+                                style: textTheme.titleMedium),
+                            const SizedBox(
+                                height:
+                                    16), // Added space before quantity selector
+
+                            // --- Quantity Selector ---
+                            BuildQuantitySelector(
+                              currentQuantity: selectedQuantity,
+                              maxQuantity: currentStock,
+                              onChanged: onQuantityChanged,
+                            ),
                             const SizedBox(height: 24),
                             // Action Buttons
-                            Wrap( spacing: 12, runSpacing: 10, children: [ ElevatedButton.icon(style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade100,foregroundColor: Colors.orange.shade800, side: BorderSide(color: Colors.orange.shade300), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))), onPressed: onAddToCart, icon: const Icon(Icons.add_shopping_cart_outlined, size: 18), label: const Text('Thêm vào giỏ hàng')), ElevatedButton.icon(style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade600, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), elevation: 2), onPressed: onBuyNow, icon: const Icon(Icons.flash_on_outlined, size: 18), label: const Text('Mua ngay')), ],),
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 10,
+                              children: [
+                                ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.orange.shade100,
+                                        foregroundColor: Colors.orange.shade800,
+                                        side: BorderSide(
+                                            color: Colors.orange.shade300),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16, vertical: 12),
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8))),
+                                    onPressed: onAddToCart,
+                                    icon: const Icon(
+                                        Icons.add_shopping_cart_outlined,
+                                        size: 18),
+                                    label: const Text('Thêm vào giỏ hàng')),
+                                ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red.shade700,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 24, vertical: 14),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        elevation: 2),
+                                    onPressed: () {
+                                      Navigator.pushNamed(context, '/payment');
+                                    },
+                                    icon: const Icon(Icons.flash_on_outlined,
+                                        size: 18),
+                                    label: const Text('Mua ngay')),
+                              ],
+                            ),
                           ],
                         ),
                       ),
@@ -399,8 +590,12 @@ class ProductDetialInfo extends StatelessWidget {
 
                     // Responsive Layout
                     return isWideScreen
-                        ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [imageSection, detailsSection])
-                        : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [imageSection, detailsSection]);
+                        ? Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [imageSection, detailsSection])
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [imageSection, detailsSection]);
                   },
                 ),
                 const SizedBox(height: 24),
@@ -409,7 +604,16 @@ class ProductDetialInfo extends StatelessWidget {
 
                 // --- Review Section ---
                 BuildReviewSection(
-                  context: context, isLoading: isLoadingReviews, displayedReviews: displayedReviews, totalReviews: totalReviews, canLoadMore: canLoadMoreReviews, loadMoreReviews: loadMoreReviews, submitReview: submitReview, commentController: commentController, selectedRating: selectedRating, onRatingChanged: onRatingChanged,
+                  context: context,
+                  isLoading: isLoadingReviews,
+                  displayedReviews: displayedReviews,
+                  totalReviews: totalReviews,
+                  canLoadMore: canLoadMoreReviews,
+                  loadMoreReviews: loadMoreReviews,
+                  submitReview: submitReview,
+                  commentController: commentController,
+                  selectedRating: selectedRating,
+                  onRatingChanged: onRatingChanged,
                 ),
               ],
             ),
@@ -419,7 +623,6 @@ class ProductDetialInfo extends StatelessWidget {
     );
   }
 }
-
 
 // --- Helper Widgets ---
 
@@ -440,7 +643,7 @@ class BuildThumbnail extends StatelessWidget {
   Widget build(BuildContext context) {
     // Create ProductService instance for image loading
     final productService = ProductService();
-    
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -449,7 +652,9 @@ class BuildThumbnail extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
-            color: isSelected ? Colors.red : Colors.grey.shade300, // Viền đỏ nếu được chọn
+            color: isSelected
+                ? Colors.red
+                : Colors.grey.shade300, // Viền đỏ nếu được chọn
             width: isSelected ? 2.0 : 1.0,
           ),
         ),
@@ -474,7 +679,7 @@ class BuildThumbnail extends StatelessWidget {
                     filterQuality: FilterQuality.high,
                   );
                 }
-                
+
                 return CachedNetworkImage(
                   imageUrl: productService.getImageUrl(imageUrl),
                   width: 60,
@@ -497,7 +702,8 @@ class BuildThumbnail extends StatelessWidget {
                     width: 60,
                     height: 60,
                     color: Colors.grey[200],
-                    child: Icon(Icons.error_outline, size: 22, color: Colors.grey),
+                    child:
+                        Icon(Icons.error_outline, size: 22, color: Colors.grey),
                   ),
                 );
               },
@@ -528,7 +734,7 @@ class BuildVariantOption extends StatelessWidget {
   Widget build(BuildContext context) {
     // Create ProductService instance for image loading
     final productService = ProductService();
-    
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -536,14 +742,17 @@ class BuildVariantOption extends StatelessWidget {
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
           color: isSelected ? Colors.red.withOpacity(0.05) : Colors.transparent,
-          border: Border.all( color: isSelected ? Colors.red : Colors.grey.shade400, width: isSelected ? 1.5 : 1.0, ),
+          border: Border.all(
+            color: isSelected ? Colors.red : Colors.grey.shade400,
+            width: isSelected ? 1.5 : 1.0,
+          ),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(4), 
+              borderRadius: BorderRadius.circular(4),
               child: Container(
                 width: 45, // Slightly larger variant images
                 height: 45,
@@ -552,56 +761,71 @@ class BuildVariantOption extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: imageUrl.isEmpty
-                  ? Container(
-                      width: 45,
-                      height: 45,
-                      color: Colors.grey[200],
-                      child: Icon(Icons.hide_image_outlined, size: 20, color: Colors.grey),
-                    )
-                  : FutureBuilder<Uint8List?>(
-                      future: productService.getImageFromServer(imageUrl),
-                      builder: (context, snapshot) {
-                        if (snapshot.hasData && snapshot.data != null) {
-                          return Image.memory(
-                            snapshot.data!,
+                    ? Container(
+                        width: 45,
+                        height: 45,
+                        color: Colors.grey[200],
+                        child: Icon(Icons.hide_image_outlined,
+                            size: 20, color: Colors.grey),
+                      )
+                    : FutureBuilder<Uint8List?>(
+                        future: productService.getImageFromServer(imageUrl),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData && snapshot.data != null) {
+                            return Image.memory(
+                              snapshot.data!,
+                              width: 45,
+                              height: 45,
+                              fit: BoxFit.contain,
+                              filterQuality: FilterQuality.high,
+                            );
+                          }
+
+                          return CachedNetworkImage(
+                            imageUrl: productService.getImageUrl(imageUrl),
                             width: 45,
                             height: 45,
                             fit: BoxFit.contain,
                             filterQuality: FilterQuality.high,
-                          );
-                        }
-                        
-                        return CachedNetworkImage(
-                          imageUrl: productService.getImageUrl(imageUrl),
-                          width: 45,
-                          height: 45,
-                          fit: BoxFit.contain,
-                          filterQuality: FilterQuality.high,
-                          placeholder: (context, url) => Center(
-                            child: SizedBox(
-                              width: 15,
-                              height: 15,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  isSelected ? Colors.red : Colors.grey,
+                            placeholder: (context, url) => Center(
+                              child: SizedBox(
+                                width: 15,
+                                height: 15,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    isSelected ? Colors.red : Colors.grey,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          errorWidget: (c, url, e) => Container(
-                            width: 45,
-                            height: 45,
-                            color: Colors.grey[200],
-                            child: Icon(Icons.image_not_supported, size: 18, color: Colors.grey),
-                          ),
-                        );
-                      },
-                    ),
+                            errorWidget: (c, url, e) => Container(
+                              width: 45,
+                              height: 45,
+                              color: Colors.grey[200],
+                              child: Icon(Icons.image_not_supported,
+                                  size: 18, color: Colors.grey),
+                            ),
+                          );
+                        },
+                      ),
               ),
             ),
             const SizedBox(height: 4),
-            Padding( padding: const EdgeInsets.symmetric(horizontal: 4.0), child: Text( variantName, textAlign: TextAlign.center, style: TextStyle( fontSize: 12, color: isSelected ? Colors.red.shade700 : Colors.black87, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, ), maxLines: 1, overflow: TextOverflow.ellipsis, ),),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: Text(
+                variantName,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isSelected ? Colors.red.shade700 : Colors.black87,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
       ),
@@ -609,36 +833,218 @@ class BuildVariantOption extends StatelessWidget {
   }
 }
 
+// BuildQuantitySelector: Widget for selecting product quantity.
+class BuildQuantitySelector extends StatelessWidget {
+  final int currentQuantity;
+  final int maxQuantity;
+  final Function(int) onChanged;
+
+  const BuildQuantitySelector({
+    Key? key,
+    required this.currentQuantity,
+    required this.maxQuantity,
+    required this.onChanged,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Số lượng:', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(width: 16),
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.remove, size: 20),
+                onPressed: currentQuantity > 1
+                    ? () => onChanged(currentQuantity - 1)
+                    : null, // Disable if quantity is 1
+                splashRadius: 20,
+                constraints: const BoxConstraints(),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8), // Increased padding for quantity text
+                constraints: const BoxConstraints(
+                    minWidth: 40), // Minimum width for quantity display
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  border: Border.symmetric(
+                    vertical: BorderSide(color: Colors.grey.shade300),
+                  ),
+                ),
+                child: Text(
+                  '$currentQuantity',
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add, size: 20),
+                onPressed: currentQuantity < maxQuantity
+                    ? () => onChanged(currentQuantity + 1)
+                    : null, // Disable if quantity reaches max stock
+                splashRadius: 20,
+                constraints: const BoxConstraints(),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 // BuildReviewSection: Widget để hiển thị và nhập đánh giá.
 Widget BuildReviewSection({
-  required BuildContext context, required bool isLoading, required List<Map<String, dynamic>> displayedReviews, required int totalReviews, required bool canLoadMore, required VoidCallback loadMoreReviews, required VoidCallback submitReview, required TextEditingController commentController, required int selectedRating, required Function(int) onRatingChanged,
+  required BuildContext context,
+  required bool isLoading,
+  required List<Map<String, dynamic>> displayedReviews,
+  required int totalReviews,
+  required bool canLoadMore,
+  required VoidCallback loadMoreReviews,
+  required VoidCallback submitReview,
+  required TextEditingController commentController,
+  required int selectedRating,
+  required Function(int) onRatingChanged,
 }) {
-   return Column(
+  return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text('Đánh giá sản phẩm (${displayedReviews.length}/$totalReviews)', style: Theme.of(context).textTheme.titleLarge),
+      Text('Đánh giá sản phẩm (${displayedReviews.length}/$totalReviews)',
+          style: Theme.of(context).textTheme.titleLarge),
       const SizedBox(height: 16),
       Card(
-        elevation: 1, margin: const EdgeInsets.only(bottom: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        child: Padding( padding: const EdgeInsets.all(16.0), child: Column( crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Viết đánh giá của bạn:', style: Theme.of(context).textTheme.titleMedium), const SizedBox(height: 8),
-              Row( mainAxisAlignment: MainAxisAlignment.start, children: List.generate(5, (index) => IconButton( icon: Icon( index < selectedRating ? Icons.star : Icons.star_border, color: Colors.amber,), onPressed: () => onRatingChanged(index + 1), padding: EdgeInsets.zero, constraints: const BoxConstraints(),))),
+        elevation: 1,
+        margin: const EdgeInsets.only(bottom: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Viết đánh giá của bạn:',
+                  style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: List.generate(
+                      5,
+                      (index) => IconButton(
+                            icon: Icon(
+                              index < selectedRating
+                                  ? Icons.star
+                                  : Icons.star_border,
+                              color: Colors.amber,
+                            ),
+                            onPressed: () => onRatingChanged(index + 1),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ))),
               const SizedBox(height: 12),
-              TextField( controller: commentController, maxLines: 3, decoration: InputDecoration( hintText: 'Nhập bình luận của bạn...', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),),),
+              TextField(
+                controller: commentController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Nhập bình luận của bạn...',
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
               const SizedBox(height: 12),
-              Align( alignment: Alignment.centerRight, child: ElevatedButton( onPressed: submitReview, style: ElevatedButton.styleFrom( backgroundColor: Colors.red.shade600, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),), child: const Text('Gửi đánh giá'),),),
-            ],),),),
-      if (displayedReviews.isEmpty && !isLoading) const Center(child: Padding(padding: EdgeInsets.all(20.0), child: Text('Chưa có đánh giá nào.'))) else
+              Align(
+                alignment: Alignment.centerRight,
+                child: ElevatedButton(
+                  onPressed: submitReview,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade600,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('Gửi đánh giá'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      if (displayedReviews.isEmpty && !isLoading)
+        const Center(
+            child: Padding(
+                padding: EdgeInsets.all(20.0),
+                child: Text('Chưa có đánh giá nào.')))
+      else
         ListView.separated(
-          shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: displayedReviews.length + (isLoading || canLoadMore ? 1 : 0),
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount:
+              displayedReviews.length + (isLoading || canLoadMore ? 1 : 0),
           itemBuilder: (context, index) {
             if (index == displayedReviews.length) {
-              if (isLoading) return const Center(child: Padding(padding: EdgeInsets.symmetric(vertical: 16.0), child: CircularProgressIndicator()));
-              if (canLoadMore) return Center(child: Padding(padding: const EdgeInsets.symmetric(vertical: 8.0), child: OutlinedButton(onPressed: loadMoreReviews, child: const Text('Xem thêm đánh giá'))));
+              if (isLoading)
+                return const Center(
+                    child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16.0),
+                        child: CircularProgressIndicator()));
+              if (canLoadMore)
+                return Center(
+                    child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: OutlinedButton(
+                            onPressed: loadMoreReviews,
+                            child: const Text('Xem thêm đánh giá'))));
               return const SizedBox.shrink();
             }
             final review = displayedReviews[index];
-            final String avatarAsset = review['avatar'] is String ? review['avatar'] : 'assets/default_avatar.png'; final String name = review['name'] ?? 'Ẩn danh'; final int rating = review['rating'] is int ? review['rating'] : 0; final String comment = review['comment'] ?? '';
-            return ListTile( leading: CircleAvatar(backgroundImage: AssetImage(avatarAsset), onBackgroundImageError: (_, __) {}, backgroundColor: Colors.grey[300], child: const Icon(Icons.person, color: Colors.white)), title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)), subtitle: Column( crossAxisAlignment: CrossAxisAlignment.start, children: [ Row( children: List.generate(5, (starIndex) => Icon( starIndex < rating ? Icons.star : Icons.star_border, color: Colors.amber, size: 16,))), const SizedBox(height: 4), Text(comment), ],),);
-          }, separatorBuilder: (context, index) => const Divider(height: 1), ), ], );
+            final String avatarAsset = review['avatar'] is String
+                ? review['avatar']
+                : 'assets/default_avatar.png';
+            final String name = review['name'] ?? 'Ẩn danh';
+            final int rating = review['rating'] is int ? review['rating'] : 0;
+            final String comment = review['comment'] ?? '';
+            return ListTile(
+              leading: CircleAvatar(
+                  backgroundImage: AssetImage(avatarAsset),
+                  onBackgroundImageError: (_, __) {},
+                  backgroundColor: Colors.grey[300],
+                  child: const Icon(Icons.person, color: Colors.white)),
+              title: Text(name,
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                      children: List.generate(
+                          5,
+                          (starIndex) => Icon(
+                                starIndex < rating
+                                    ? Icons.star
+                                    : Icons.star_border,
+                                color: Colors.amber,
+                                size: 16,
+                              ))),
+                  const SizedBox(height: 4),
+                  Text(comment),
+                ],
+              ),
+            );
+          },
+          separatorBuilder: (context, index) => const Divider(height: 1),
+        ),
+    ],
+  );
 }
