@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:e_commerce_app/database/Storage/ProductStorage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:e_commerce_app/Constants/productTest.dart';
@@ -73,8 +74,10 @@ class _PageSearchState extends State<PageSearch> {
     minPriceController.text = formatPrice(minPrice);
     maxPriceController.text = formatPrice(maxPrice);
     
-    // Set up scroll listener for "load more"
-    _scrollController.addListener(_onScroll);
+    // Set up scroll listener for "load more" with a slight delay to ensure proper initialization
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollController.addListener(_onScroll);
+    });
     
     // Initialize categories and brands from AppDataService
     _initializeFilters();
@@ -112,9 +115,12 @@ class _PageSearchState extends State<PageSearch> {
   void _executeInitialSearch() {
     final query = _searchService.currentSearchQuery;
     if (query.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _productStorage.performSearch(query);
-      });
+      if (kDebugMode) {
+        print('Initial search execution for: "$query"');
+      }
+      
+      // Call the centralized search execution method - no need for post frame callback
+      _searchService.executeSearch();
     }
   }
   
@@ -127,21 +133,36 @@ class _PageSearchState extends State<PageSearch> {
   
   // Listener for search service changes
   void _onSearchServiceChange() {
-    final query = _searchService.currentSearchQuery;
-    if (_searchService.isSearchMode && query.isNotEmpty) {
-      _productStorage.performSearch(query);
-    }
     if (mounted) {
       setState(() {});
+      
+      // We no longer need to call performSearch() here since executeSearch() 
+      // is called by the search button/controller already
+      // This was causing the duplicate search requests
     }
   }
   
   // Scroll handler for "load more" functionality
   void _onScroll() {
-    if (_scrollController.position.extentAfter < 250 && 
-        !_productStorage.isSearchLoading && 
-        _productStorage.canSearchLoadMore) {
-      _productStorage.loadMoreSearchResults();
+    // First check if ScrollController has attached clients to avoid errors
+    if (!_scrollController.hasClients) return;
+    
+    // Match the category browsing scroll trigger threshold approach
+    if (mounted && 
+        _scrollController.position.maxScrollExtent > 0 &&
+        _scrollController.position.extentAfter < 50) {
+      
+      if (!_productStorage.isSearchLoading && 
+          _productStorage.canSearchLoadMore) {
+        
+        if (kDebugMode) {
+          print('Near bottom of search scroll view, loading more search results');
+          print('Position: ${_scrollController.position.pixels}, Max: ${_scrollController.position.maxScrollExtent}');
+          print('ExtentAfter: ${_scrollController.position.extentAfter}');
+        }
+        
+        _productStorage.loadMoreSearchResults();
+      }
     }
   }
 

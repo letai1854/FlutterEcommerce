@@ -1,6 +1,5 @@
 import 'package:e_commerce_app/constants.dart';
 import 'package:e_commerce_app/state/Search/SearchStateService.dart';
-// --- DÒNG 1: THÊM IMPORT SINGLETON ---
 import 'package:flutter/material.dart';
 
 class NavbarHomeMobile extends StatefulWidget {
@@ -15,14 +14,16 @@ class _NavbarHomeMobileState extends State<NavbarHomeMobile> {
   bool _isHoveredTK = false;
   bool _isHoveredGH = false;
   bool _isHoveredChat = false;
+  
+  // Create a class-level singleton instance of SearchStateService
+  final SearchStateService _searchService = SearchStateService();
 
   @override
   Widget build(BuildContext context) {
-    // --- DÒNG 2: LẤY INSTANCE SINGLETON ---
-    final searchService = SearchStateService();
-    // --- GIỮ NGUYÊN CODE GỐC CỦA BẠN ---
+    // Remove any local instance creation of SearchStateService and use the class-level one instead
+    
     return Container(
-      color: const Color.fromARGB(255, 234, 29, 7), // Màu nền giống ảnh
+      color: const Color.fromARGB(255, 234, 29, 7),
       padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       child: Row(
         children: [
@@ -39,18 +40,19 @@ class _NavbarHomeMobileState extends State<NavbarHomeMobile> {
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: 13),
                       child: TextField(
-                        // --- DÒNG 3: GÁN CONTROLLER ---
-                        controller: searchService.searchController,
-                        // --- Giữ nguyên decoration gốc ---
+                        controller: _searchService.searchController,  // Use the class-level singleton controller
                         decoration: InputDecoration(
                           hintText: 'Thanh tìm kiếm',
                           border: InputBorder.none,
                           hintStyle: TextStyle(fontSize: 14),
                         ),
                         onSubmitted: (value) {
-                          // Execute search when Enter is pressed
-                          searchService.executeSearch();
-                          Navigator.pushNamed(context, '/search');
+                          if (value.trim().isNotEmpty) {
+                            // Use the centralized executeSearch method
+                            _searchService.executeSearch().then((_) {
+                              Navigator.pushNamed(context, '/search');
+                            });
+                          }
                         },
                       ),
                     ),
@@ -65,9 +67,12 @@ class _NavbarHomeMobileState extends State<NavbarHomeMobile> {
                     }),
                     child: GestureDetector(
                       onTap: () {
-                        // Execute search and navigate
-                        searchService.executeSearch();
-                        Navigator.pushNamed(context, '/search');
+                        if (_searchService.searchController.text.trim().isNotEmpty) {
+                          // Use the centralized executeSearch method
+                          _searchService.executeSearch().then((_) {
+                            Navigator.pushNamed(context, '/search');
+                          });
+                        }
                       },
                       child: Container(
                         width: 45,

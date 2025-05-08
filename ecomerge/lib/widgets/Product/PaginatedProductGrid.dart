@@ -1,4 +1,5 @@
 import 'dart:async'; // Import for Timer
+import 'package:e_commerce_app/database/Storage/ProductStorage.dart';
 import 'package:e_commerce_app/database/models/product_dto.dart';
 import 'package:e_commerce_app/database/services/product_service.dart';
 import 'package:e_commerce_app/widgets/Product/ProductItem.dart';
@@ -16,7 +17,7 @@ class PaginatedProductGrid extends StatefulWidget {
   final bool isProductsLoading; // This prop signals when the grid is fetching more data
   final bool canLoadMoreProducts;
   final bool isShowingCachedContent; // Add this flag
-  final bool isSearchMode; // Add this flag to avoid caching in search
+  final bool isSearchMode; // Add this new flag to distinguish search vs category mode
 
   const PaginatedProductGrid({
     Key? key,
@@ -33,6 +34,15 @@ class PaginatedProductGrid extends StatefulWidget {
     this.isSearchMode = false, // Default to false for backward compatibility
   }) : super(key: key);
 
+  // Add a public static method for external components to clear search cache
+  static void clearSearchCache() {
+    if (kDebugMode) print('External call to clear PaginatedProductGrid search cache');
+    // Clear all cached widgets
+    _PaginatedProductGridState._searchProductCache.clear();
+    // Reset query to force detection of changes
+    _PaginatedProductGridState._currentSearchQuery = '';
+  }
+
   @override
   _PaginatedProductGridState createState() => _PaginatedProductGridState();
 }
@@ -41,6 +51,19 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
   // Static cache for all product items across all instances
   // This prevents rebuilding products even when the widget is recreated
   static final Map<String, Widget> _globalProductCache = {};
+  
+  // Separate cache for search results (not persisted between searches)
+  static final Map<String, Widget> _searchProductCache = {};
+  
+  // Track the current search query
+  static String _currentSearchQuery = '';
+  
+  // Force clear search cache when a new search is detected
+  static void clearSearchCache() {
+    if (kDebugMode) print('Internal call to clear widget search cache');
+    _searchProductCache.clear();
+    _currentSearchQuery = '';
+  }
   
   // Track the category and sort method to detect real changes vs just loading more
   String? _currentCategory;
@@ -64,15 +87,33 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
     // Create ProductService instance to check image cache status
     final productService = ProductService();
     
-    // Check if this specific product's image is cached - this is the key fix
-    final bool isImageCached = product.mainImageUrl != null && 
-                              productService.isImageCached(product.mainImageUrl);
-    
-    // Skip caching for search results
+    // For search mode, use the separate search cache for the CURRENT search session
     if (widget.isSearchMode) {
-      // Always create a new widget for search results
-      return ProductItem(
-        key: ValueKey(key),
+      final ProductStorageSingleton storage = ProductStorageSingleton();
+      final searchQuery = storage.currentSearchQuery;
+      
+      // Only clear cache if search query changed - this preserves cached widgets
+      // during a single search session while loading more results
+      if (_currentSearchQuery != searchQuery) {
+        if (kDebugMode) print('Search query changed from "$_currentSearchQuery" to "$searchQuery", clearing search widget cache');
+        _searchProductCache.clear();
+        _currentSearchQuery = searchQuery;
+      }
+      
+      // Create search-specific key that includes the search query 
+      // but NOT timestamp - so we can reuse widgets in the same search
+      final String searchKey = '${searchQuery}_${product.id}_${product.name}';
+      
+      // Check if we have this item cached for current search session
+      if (_searchProductCache.containsKey(searchKey)) {
+        if (kDebugMode) print('Using cached search widget for product ${product.id}');
+        return _searchProductCache[searchKey]!;
+      }
+      
+      // Create new widget for this product in current search session
+      if (kDebugMode) print('Creating new search widget for product ${product.id}');
+      final productWidget = ProductItem(
+        key: ValueKey(searchKey),
         productId: product.id ?? 0,
         imageUrl: product.mainImageUrl,
         title: product.name,
@@ -80,9 +121,19 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
         price: product.minPrice ?? 0,
         discount: product.discountPercentage?.toInt(),
         rating: product.averageRating ?? 0,
-        isFromCache: isImageCached, // Only set true if image is cached
+        isFromCache: false,
+        isSearchMode: true,
       );
+      
+      // Cache the widget for THIS search session only
+      _searchProductCache[searchKey] = productWidget;
+      return productWidget;
     }
+    
+    // For category browsing, use the existing global cache logic
+    // Check if this specific product's image is cached
+    final bool isImageCached = product.mainImageUrl != null && 
+                              productService.isImageCached(product.mainImageUrl);
     
     // Return cached widget if available
     if (_globalProductCache.containsKey(key)) {
@@ -131,6 +182,23 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
     _globalProductCache[key] = productWidget;
     return productWidget;
   }
+
+  // Add this method to ensure search cache is always cleared
+  void _ensureSearchCacheIsCleared() {
+    if (widget.isSearchMode) {
+      // Only clear the cache if the query has changed or we're entering search mode
+      final ProductStorageSingleton storage = ProductStorageSingleton();
+      final searchQuery = storage.currentSearchQuery;
+      
+      if (_currentSearchQuery != searchQuery) {
+        if (kDebugMode) print('Search query changed: "$_currentSearchQuery" -> "$searchQuery", clearing search widget cache');
+        _searchProductCache.clear();
+        _currentSearchQuery = searchQuery;
+      } else {
+        if (kDebugMode) print('Same search query detected, preserving widget cache');
+      }
+    }
+  }
   
   // Extract category and sort info from product list
   void _updateCurrentConfig() {
@@ -167,6 +235,10 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
   void initState() {
     super.initState();
     _previousDataLength = widget.productData.length;
+    
+    // Clear search cache in init if in search mode
+    _ensureSearchCacheIsCleared();
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updateCurrentConfig();
       // Check if we should trigger load more after initial build
@@ -182,11 +254,36 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
   void didUpdateWidget(PaginatedProductGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
 
+    // Always clear search cache when in search mode
+    _ensureSearchCacheIsCleared();
+
+    // If switching between search mode and category mode, update accordingly
+    if (widget.isSearchMode != oldWidget.isSearchMode) {
+      if (kDebugMode) print('Switching between search mode (${widget.isSearchMode}) and category mode (${!widget.isSearchMode})');
+      if (widget.isSearchMode) {
+        // When entering search mode, clear the search cache
+        _searchProductCache.clear();
+      }
+    }
+
+    // Force check for search query changes when in search mode
+    if (widget.isSearchMode) {
+      final ProductStorageSingleton storage = ProductStorageSingleton();
+      final searchQuery = storage.currentSearchQuery;
+      
+      // If search query changed or this is a new search session, clear the cache
+      if (_currentSearchQuery != searchQuery) {
+        if (kDebugMode) print('Search query changed from "$_currentSearchQuery" to "$searchQuery", clearing search widget cache');
+        _searchProductCache.clear();
+        _currentSearchQuery = searchQuery;
+      }
+    }
+
     // Schedule update for current configuration
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updateCurrentConfig();
     });
-    
+
     // Check if we should verify loading more after this build
     if (widget.productData.isNotEmpty && 
         widget.canLoadMoreProducts &&
@@ -205,7 +302,7 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
     // FIXED LOGIC: Only disable spinner for INITIAL cached content 
     // If we're showing more products (length increased), we should show spinner even with cached content
     final bool initialCachedContentLoad = widget.isShowingCachedContent && 
-                                          hasGridProducts &&
+                                          hasGridProducts && 
                                           widget.productData.length <= _previousDataLength;
     
     if (initialCachedContentLoad) {
@@ -219,7 +316,6 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
         }
       }
       _gridLoaderTimer?.cancel();
-      
       // Don't return here - we need to continue to handle loading more products
     }
     
@@ -232,7 +328,7 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
         hasGridProducts && 
         (widget.productData.length > _previousDataLength || 
          (isCurrentlyLoadingGridData != wasLoadingGridData && !_showArtificialGridLoader));
-
+    
     // Loading state has changed
     if (shouldShowLoadingIndicator) {
       // Loading just started - show loader immediately only for new data
@@ -274,7 +370,6 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
     if (newItemsCount > 0) {
       if (kDebugMode) print('Added $newItemsCount new products to the grid');
     }
-    
     _previousDataLength = widget.productData.length;
   }
   
@@ -283,23 +378,25 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
     super.build(context); // Required by AutomaticKeepAliveClientMixin
     
     // Check if we should notify parent to load more
-    if (_checkLoadMoreAfterBuild) {
-      _checkLoadMoreAfterBuild = false;
-      
-      // Use a post-frame callback to avoid build-phase setState calls
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && 
-            widget.productData.isNotEmpty && 
-            widget.canLoadMoreProducts &&
-            !widget.isProductsLoading) {
-          if (kDebugMode) print("Grid suggesting parent should check for load more");
-          
-          // Send a notification up to PageListProduct via NotificationListener
-          // This is more reliable than relying only on scroll listener
-          LoadMoreNotification().dispatch(context);
-        }
-      });
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_checkLoadMoreAfterBuild) {
+        _checkLoadMoreAfterBuild = false;
+        
+        // Use a post-frame callback to avoid build-phase setState calls
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && 
+              widget.productData.isNotEmpty && 
+              widget.canLoadMoreProducts &&
+              !widget.isProductsLoading) {
+            if (kDebugMode) print("Grid suggesting parent should check for load more");
+            
+            // Send a notification up to PageListProduct via NotificationListener
+            // This is more reliable than relying only on scroll listener
+            LoadMoreNotification().dispatch(context);
+          }
+        });
+      }
+    });
 
     // FIXED LOGIC: Show loader when explicitly enabled, don't 
     // automatically disable based on cached content status
@@ -395,7 +492,7 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
     _gridLoaderTimer?.cancel(); // Cancel grid loader timer on dispose
     super.dispose();
   }
-
+  
   @override
   bool get wantKeepAlive => true; // Keep this widget alive when scrolling
 }

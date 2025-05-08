@@ -5,6 +5,7 @@ import 'package:e_commerce_app/constants.dart';
 import 'package:e_commerce_app/database/services/user_service.dart';
 import 'package:e_commerce_app/state/Search/SearchStateService.dart';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class Navbarhomedesktop extends StatefulWidget {
@@ -337,9 +338,13 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                               hintStyle: TextStyle(fontSize: 14),
                             ),
                             onSubmitted: (value) {
-                              // Execute search when Enter is pressed
-                              searchService.executeSearch();
-                              Navigator.pushNamed(context, '/search');
+                              // Only execute search and navigate if text isn't empty
+                              if (value.trim().isNotEmpty) {
+                                // Use the centralized executeSearch method
+                                searchService.executeSearch().then((_) {
+                                  Navigator.pushNamed(context, '/search');
+                                });
+                              }
                             },
                           ),
                         ),
@@ -354,9 +359,17 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                         }),
                         child: GestureDetector(
                           onTap: () {
-                            // Execute search and navigate
-                            searchService.executeSearch();
-                            Navigator.pushNamed(context, '/search');
+                            // Only execute search and navigate if text isn't empty
+                            if (searchService.searchController.text.trim().isNotEmpty) {
+                              if (kDebugMode) {
+                                print('Desktop navbar: Search button clicked, executing search...');
+                              }
+                              
+                              // Call the centralized search method that clears ALL caches
+                              searchService.executeSearch().then((_) {
+                                Navigator.pushNamed(context, '/search');
+                              });
+                            }
                           },
                           child: Container(
                             width: 45,

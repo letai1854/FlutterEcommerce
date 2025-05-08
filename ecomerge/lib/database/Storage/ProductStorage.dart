@@ -457,23 +457,39 @@ class ProductStorageSingleton extends ChangeNotifier {
   List<ProductDTO> get searchResults => _searchResults;
   bool get isSearchLoading => _isSearchLoading;
   bool get canSearchLoadMore => _canSearchLoadMore && !_isSearchLoading;
+  String get currentSearchQuery => _currentSearchQuery;
+  
+  // Add an explicit method to clear search cache
+  void clearSearchCache() {
+    if (kDebugMode) print('Explicitly clearing all search-related cache');
+    _searchResults.clear();
+    _searchCurrentPage = -1;
+    _isSearchLoading = false;
+    _canSearchLoadMore = true;
+    
+    // No need to clear _currentSearchQuery here as it will be set in performSearch
+    notifyListeners();
+  }
   
   // Method to perform initial search
   Future<void> performSearch(String query) async {
-    // Reset search state
-    _searchResults.clear();
-    _searchCurrentPage = -1;
+    // Clear all search-related cache first
+    clearSearchCache();
+    
+    // Set the new query
     _currentSearchQuery = query;
     _isSearchLoading = true;
-    _canSearchLoadMore = true;
     
     notifyListeners();
+    
+    // Add a small delay to ensure UI updates with cleared state
+    await Future.delayed(const Duration(milliseconds: 800));
     
     try {
       final response = await _productService.fetchProducts(
         search: query,
         page: 0,
-        size: 3, // Fixed size of 3 products per page
+        size: 3, // Explicitly set to load only 3 products initially, matching category behavior
         sortBy: 'createdDate',
         sortDir: 'desc'
       );
@@ -484,15 +500,10 @@ class ProductStorageSingleton extends ChangeNotifier {
       _canSearchLoadMore = response.number < response.totalPages - 1;
       
       if (kDebugMode) {
-        print('Search results: ${_searchResults.length} products');
+        print('Initial search results: ${_searchResults.length} products');
         print('Search pagination: page ${response.number + 1} of ${response.totalPages}');
+        print('Can load more search results: $_canSearchLoadMore');
       }
-      
-      // Preload images for search results in background
-      _productService.preloadProductImages(response.content).catchError((e) {
-        if (kDebugMode) print('Error preloading search result images: $e');
-      });
-      
     } catch (e) {
       if (kDebugMode) print('Error performing search: $e');
     } finally {
@@ -514,12 +525,13 @@ class ProductStorageSingleton extends ChangeNotifier {
     notifyListeners();
     
     try {
-      await Future.delayed(const Duration(milliseconds: 800)); // Show loading indicator
+      // Use same loading delay as category browsing for consistency
+      await Future.delayed(const Duration(milliseconds: 800));
       
       final response = await _productService.fetchProducts(
         search: _currentSearchQuery,
         page: _searchCurrentPage + 1,
-        size: 3, // Fixed size of 3 products per page
+        size: 3, // Consistently use 3 products per page to match category browsing
         sortBy: 'createdDate',
         sortDir: 'desc'
       );
@@ -529,7 +541,14 @@ class ProductStorageSingleton extends ChangeNotifier {
       _searchTotalPages = response.totalPages;
       _canSearchLoadMore = response.number < response.totalPages - 1;
       
-      // Preload images for new items in background
+      if (kDebugMode) {
+        print('Added more search results: ${response.content.length} new products');
+        print('Total search results now: ${_searchResults.length}');
+        print('Search pagination: page ${_searchCurrentPage + 1} of ${_searchTotalPages}');
+        print('Can load more search results: $_canSearchLoadMore');
+      }
+      
+      // Preload images for new items in background, matching category behavior
       _productService.preloadProductImages(response.content).catchError((e) {
         if (kDebugMode) print('Error preloading new search result images: $e');
       });

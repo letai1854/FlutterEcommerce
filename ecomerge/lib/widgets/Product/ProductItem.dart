@@ -1,4 +1,5 @@
 import 'dart:async'; // Import for Future.delayed
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:e_commerce_app/database/services/product_service.dart';
 import 'dart:typed_data';
@@ -13,6 +14,7 @@ class ProductItem extends StatelessWidget {
   final int? discount;
   final double rating;
   final bool isFromCache; // Add this flag to indicate if from cache
+  final bool isSearchMode; // Add this flag for search mode
 
   const ProductItem({
     Key? key,
@@ -24,6 +26,7 @@ class ProductItem extends StatelessWidget {
     this.discount,
     required this.rating,
     this.isFromCache = false, // Default to false
+    this.isSearchMode = false, // Default to false
   }) : super(key: key);
 
   void _navigateToProductDetail(BuildContext context) {
@@ -54,10 +57,73 @@ class ProductItem extends StatelessWidget {
       );
     }
 
-    // Create a single instance of ProductService for this widget
-    final productService =  ProductService();
+    final productService = ProductService();
     
-    // For cached products, we should never show a loading spinner
+    // For search mode, ALWAYS load from server with spinner
+    if (isSearchMode) {
+      // Generate a unique timestamp for each image request to prevent caching
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final cacheBuster = '&t=$timestamp';
+      
+      // Create a combined Future that includes both the image loading and a fixed delay
+      return FutureBuilder<List<dynamic>>(
+        // Wait for both the image to load AND a minimum delay to complete
+        future: Future.wait([
+          productService.getImageFromServer(imageUrl!, forceReload: true),
+          // Add a minimum 1.5 second delay to show the spinner
+          Future.delayed(const Duration(milliseconds: 1500))
+        ]),
+        builder: (context, snapshot) {
+          // Always show spinner while loading or within minimum delay time
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+              ),
+            );
+          }
+          
+          if (snapshot.hasData && snapshot.data != null && snapshot.data![0] != null) {
+            // First item in the list is the image data
+            final imageData = snapshot.data![0] as Uint8List;
+            return Image.memory(
+              imageData,
+              fit: BoxFit.cover,
+            );
+          }
+          
+          // Fallback to direct network image if needed
+          return Image.network(
+            // Add cache buster to URL to ensure fresh load
+            productService.getImageUrl(imageUrl!) + cacheBuster,
+            fit: BoxFit.cover,
+            // Force a loading spinner for network image too
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress != null) {
+                return const Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                  ),
+                );
+              }
+              return child;
+            },
+            errorBuilder: (context, error, stackTrace) {
+              if (kDebugMode) print('Error loading search image: $error');
+              return const Center(
+                child: Icon(
+                  Icons.broken_image,
+                  size: 50,
+                  color: Colors.grey,
+                ),
+              );
+            },
+          );
+        }
+      );
+    }
+    
+    // For non-search mode, keep existing behavior
     if (isFromCache) {
       // Try to get image directly from cache first
       final cachedImage = productService.getImageFromCache(imageUrl);
@@ -116,8 +182,8 @@ class ProductItem extends StatelessWidget {
         ],
       );
     }
-
-    // For non-cached products, use the existing loading with delay approach
+    
+    // For non-cached, non-search products, keep existing behavior
     final Future<List<dynamic>> combinedFuture = Future.wait([
       productService.getImageFromServer(imageUrl!).catchError((e) {
         print('Error in getImageFromServer: $e');

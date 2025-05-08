@@ -194,28 +194,40 @@ class ProductService {
   }
 
   // Enhanced method to get image from cache or server with better caching
-  Future<Uint8List?> getImageFromServer(String? imagePath) async {
+  Future<Uint8List?> getImageFromServer(String? imagePath, {bool forceReload = false}) async {
     if (imagePath == null || imagePath.isEmpty) return null;
     
-    // First check our product-specific image cache
-    if (_imageCache.containsKey(imagePath)) {
-      if (kDebugMode) print('Using cached image for $imagePath');
-      return _imageCache[imagePath];
-    }
-    
-    // Then check UserInfo avatar cache (existing implementation)
-    if (UserInfo.avatarCache.containsKey(imagePath)) {
-      return UserInfo.avatarCache[imagePath];
+    // Check cache only if not forcing reload
+    if (!forceReload) {
+      // First check our product-specific image cache
+      if (_imageCache.containsKey(imagePath)) {
+        if (kDebugMode) print('Using cached image for $imagePath');
+        return _imageCache[imagePath];
+      }
+      
+      // Then check UserInfo avatar cache (existing implementation)
+      if (UserInfo.avatarCache.containsKey(imagePath)) {
+        return UserInfo.avatarCache[imagePath];
+      }
     }
 
     try {
       String fullUrl = getImageUrl(imagePath);
+      // Add cache-busting parameter for forceReload
+      if (forceReload) {
+        final cacheBuster = DateTime.now().millisecondsSinceEpoch;
+        fullUrl += '?cacheBust=$cacheBuster';
+      }
+      
       final response = await httpClient.get(Uri.parse(fullUrl));
 
       if (response.statusCode == 200) {
-        // Cache in both places for maximum compatibility
-        _imageCache[imagePath] = response.bodyBytes;
-        UserInfo.avatarCache[imagePath] = response.bodyBytes;
+        // Cache the image unless we're forcing reload
+        if (!forceReload) {
+          // Cache in both places for maximum compatibility
+          _imageCache[imagePath] = response.bodyBytes;
+          UserInfo.avatarCache[imagePath] = response.bodyBytes;
+        }
         return response.bodyBytes;
       }
     } catch (e) {

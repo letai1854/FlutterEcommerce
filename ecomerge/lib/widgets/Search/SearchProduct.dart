@@ -1,4 +1,5 @@
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:e_commerce_app/constants.dart';
 import 'package:e_commerce_app/database/models/categories.dart';
 import 'package:e_commerce_app/database/models/product_dto.dart';
 import 'package:e_commerce_app/widgets/Product/PaginatedProductGrid.dart';
@@ -377,10 +378,12 @@ class _SearchProductState extends State<SearchProduct> {
                           width: mainContentWidth,
                           child: LayoutBuilder(
                             builder: (context, constraints) {
-                              final double minItemWidth = 200.0;
+                              // final double minItemWidth = 200.0;
+                              // final int maxColumns = (constraints.maxWidth / minItemWidth).floor();
+                              // final int columns = max(2, min(maxColumns, 5));
+                              final double minItemWidth = isMobile ? 160.0 : 200.0;
                               final int maxColumns = (constraints.maxWidth / minItemWidth).floor();
-                              final int columns = max(2, min(maxColumns, 5));
-                              
+                              final int columns = max(2, min(maxColumns, isMobile ? 2 : 4));
                               final double itemSpacing = spacing * 0.75;
                               
                               return PaginatedProductGrid(
@@ -393,8 +396,8 @@ class _SearchProductState extends State<SearchProduct> {
                                 crossSpace: itemSpacing,
                                 isProductsLoading: widget.isSearching,
                                 canLoadMoreProducts: widget.canLoadMore,
-                                isShowingCachedContent: false, // No caching for search
-                                isSearchMode: true, // Tell grid this is search mode
+                                isShowingCachedContent: false, // Never show cached content in search
+                                isSearchMode: true, // Essential flag to indicate search mode
                               );
                             },
                           ),
@@ -420,9 +423,7 @@ class _SearchProductState extends State<SearchProduct> {
                           ),
                         ),
 
-                      SizedBox(height: spacing),
 
-                      if (kIsWeb) const Footer(),
                     ],
                   ),
                 ),
