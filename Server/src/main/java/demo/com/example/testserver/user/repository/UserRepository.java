@@ -51,4 +51,6 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
     // Potential future methods for password reset tokens:
     Optional<User> findByPasswordResetToken(String token);
+
+    long countByCreatedDateGreaterThanEqual(Date date);
 }
