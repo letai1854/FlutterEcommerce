@@ -2,6 +2,8 @@ package demo.com.example.testserver.coupon.dto;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
+import demo.com.example.testserver.order.dto.OrderSummaryDTO;
 
 public class CouponResponseDTO {
     private Integer id;
@@ -10,6 +12,7 @@ public class CouponResponseDTO {
     private Integer maxUsageCount;
     private Integer usageCount;
     private Date createdDate;
+    private List<OrderSummaryDTO> orders;
 
     // Constructor, Getters and Setters
     public CouponResponseDTO(Integer id, String code, BigDecimal discountValue, Integer maxUsageCount, Integer usageCount, Date createdDate) {
@@ -19,6 +22,7 @@ public class CouponResponseDTO {
         this.maxUsageCount = maxUsageCount;
         this.usageCount = usageCount;
         this.createdDate = createdDate;
+        // this.orders = orders;
     }
 
     public Integer getId() {
@@ -67,5 +71,13 @@ public class CouponResponseDTO {
 
     public void setCreatedDate(Date createdDate) {
         this.createdDate = createdDate;
+    }
+
+    public List<OrderSummaryDTO> getOrders() {
+        return orders;
+    }
+
+    public void setOrders(List<OrderSummaryDTO> orders) {
+        this.orders = orders;
     }
 }
