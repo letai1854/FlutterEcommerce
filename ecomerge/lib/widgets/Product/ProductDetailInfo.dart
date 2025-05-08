@@ -575,9 +575,7 @@ class ProductDetialInfo extends StatelessWidget {
                                               BorderRadius.circular(8),
                                         ),
                                         elevation: 2),
-                                    onPressed: () {
-                                      Navigator.pushNamed(context, '/payment');
-                                    },
+                                    onPressed: onBuyNow,
                                     icon: const Icon(Icons.flash_on_outlined,
                                         size: 18),
                                     label: const Text('Mua ngay')),
