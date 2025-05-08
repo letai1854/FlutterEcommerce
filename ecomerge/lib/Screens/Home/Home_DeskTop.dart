@@ -267,7 +267,7 @@ class _HomeState extends State<Home> {
                         children: [
                           // SizedBox(
                           //   width: screenWidth - 280,
-                          //   child: PaginatedProductGrid(
+                          //   child: ductGrid(
                           //     productData: productData,
                           //     itemsPerPage: screenWidth < 1300
                           //         ? 8

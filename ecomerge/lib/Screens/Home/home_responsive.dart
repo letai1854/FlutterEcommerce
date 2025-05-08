@@ -311,13 +311,13 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                           'Sản phẩm khuyến mãi'),
                       SizedBox(height: 10),
                       Container(
-                        height: isMobile ? 250 : 320,
+                        height: isMobile ? 400 : 400,
                         child: PromotionalProductsList(
                           productListKey: _promoProductsKey,
                           itemsPerPage: isMobile ? 6 : 7,
-                          gridHeight: isMobile ? 250 : 320,
+                          gridHeight: isMobile ? 400 : 400,
                           gridWidth: screenWidth,
-                          childAspectRatio: isMobile ? 1.3 : 1.47,
+                          childAspectRatio: isMobile ? 1.8 : 1.9,
                           crossAxisCount: 1,
                           mainSpace: 9.7,
                           crossSpace: 10,
@@ -327,67 +327,105 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                       Heading(Icons.new_releases, Colors.yellowAccent,
                           'Sản phẩm mới nhất'),
                       SizedBox(height: 10),
-                      if (isDesktop)
-                        Container(
-                          height: 600,
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: screenWidth * 0.27,
-                                height: 600,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    image: DecorationImage(
-                                      image:
-                                          AssetImage('assets/bannerMain.jpg'),
-                                      fit: BoxFit.cover,
-                                      alignment: Alignment.center,
+                      Builder(
+                        builder: (context) {
+                          int itemsPerPage;
+                          double sectionHeight;
+                          double listChildAspectRatio;
+                          int listCrossAxisCount;
+                          double listMainSpace;
+                          double listCrossSpace;
+                          double listEffectiveGridWidth;
+
+                          double contentAreaWidth = screenWidth -
+                              (isDesktop ? 280 : (isTablet ? 2 : 0));
+
+                          if (isDesktop) {
+                            sectionHeight = 700;
+                            double bannerWidth = contentAreaWidth * 0.27;
+                            double spacerWidth = 10;
+                            listEffectiveGridWidth =
+                                contentAreaWidth - bannerWidth - spacerWidth;
+
+                            itemsPerPage = 10;
+                            listCrossAxisCount = 2;
+                            listChildAspectRatio = 1.85;
+                            listMainSpace = 9.7;
+                            listCrossSpace = 10;
+                          } else if (isTablet) {
+                            sectionHeight = 700;
+                            listEffectiveGridWidth = contentAreaWidth;
+
+                            itemsPerPage = 12;
+                            listCrossAxisCount = 2;
+                            listChildAspectRatio = 1.85;
+                            listMainSpace = 9.7;
+                            listCrossSpace = 8;
+                          } else {
+                            sectionHeight = 400;
+                            listEffectiveGridWidth = contentAreaWidth;
+
+                            itemsPerPage = 12;
+                            listCrossAxisCount = 1;
+                            listChildAspectRatio = 1.8;
+                            listMainSpace = 10;
+                            listCrossSpace = 10;
+                          }
+
+                          return Container(
+                            height: sectionHeight,
+                            child: Row(
+                              children: [
+                                Offstage(
+                                  offstage: !isDesktop,
+                                  child: SizedBox(
+                                    width: contentAreaWidth * 0.27,
+                                    height: sectionHeight,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        image: DecorationImage(
+                                          image: AssetImage(
+                                              'assets/bannerMain.jpg'),
+                                          fit: BoxFit.cover,
+                                          alignment: Alignment.center,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              SizedBox(width: 10),
-                              Expanded(
-                                child: PromotionalProductsList(
-                                  productListKey: _newProductsKey,
-                                  itemsPerPage: 8,
-                                  gridHeight: 600,
-                                  gridWidth: screenWidth * 0.72,
-                                  childAspectRatio: 1.47,
-                                  crossAxisCount: 2,
-                                  mainSpace: 9.7,
-                                  crossSpace: 10,
+                                Offstage(
+                                  offstage: !isDesktop,
+                                  child: SizedBox(width: 10),
                                 ),
-                              ),
-                            ],
-                          ),
-                        )
-                      else
-                        Container(
-                          height: isMobile ? 320 : 600,
-                          child: PromotionalProductsList(
-                            productListKey: _newProductsKey,
-                            itemsPerPage: !isMobile ? 12 : 6,
-                            gridHeight: isMobile ? 250 : 600,
-                            gridWidth: screenWidth,
-                            childAspectRatio: isMobile ? 1.47 : 1.47,
-                            crossAxisCount: isMobile ? 1 : 2,
-                            mainSpace: isMobile ? 10 : 9.7,
-                            crossSpace: isMobile ? 10 : 8,
-                          ),
-                        ),
+                                Expanded(
+                                  child: PromotionalProductsList(
+                                    productListKey: _newProductsKey,
+                                    itemsPerPage: itemsPerPage,
+                                    gridHeight: sectionHeight,
+                                    gridWidth: listEffectiveGridWidth,
+                                    childAspectRatio: listChildAspectRatio,
+                                    crossAxisCount: listCrossAxisCount,
+                                    mainSpace: listMainSpace,
+                                    crossSpace: listCrossSpace,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
                       SizedBox(height: 10),
                       Heading(Icons.local_fire_department, Colors.yellowAccent,
                           'Sản phẩm bán chạy nhất'),
                       SizedBox(height: 10),
                       Container(
-                        height: isMobile ? 320 : 600,
+                        height: isMobile ? 400 : 700,
                         child: PromotionalProductsList(
                           productListKey: _bestSellerKey,
-                          itemsPerPage: 12,
-                          gridHeight: isMobile ? 250 : 600,
+                          itemsPerPage: isMobile ? 6 : 14,
+                          gridHeight: isMobile ? 400 : 700,
                           gridWidth: screenWidth,
-                          childAspectRatio: isMobile ? 1.3 : 1.47,
+                          childAspectRatio: isMobile ? 1.8 : 1.85,
                           crossAxisCount: isMobile ? 1 : 2,
                           mainSpace: isMobile ? 10 : 9.7,
                           crossSpace: isMobile ? 10 : 8,

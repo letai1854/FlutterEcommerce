@@ -7,7 +7,6 @@ import 'package:e_commerce_app/widgets/Product/ProductItem.dart'
 import 'package:e_commerce_app/Constants/productTest.dart';
 import 'package:e_commerce_app/constants.dart';
 import 'package:e_commerce_app/widgets/Product/CategoriesSection.dart';
-import 'package:e_commerce_app/widgets/Product/PaginatedProductGrid.dart';
 import 'package:e_commerce_app/widgets/carousel/carouselDesktop.dart';
 import 'package:e_commerce_app/widgets/carousel/carouselTablet.dart';
 import 'package:e_commerce_app/widgets/footer.dart';
@@ -335,7 +334,7 @@ class _HomeState extends State<Home> {
                         children: [
                           // SizedBox(
                           //   width: screenWidth - 2,
-                          //   child: PaginatedProductGrid(
+                          //   child: ductGrid(
                           //     productData: productData,
                           //     itemsPerPage: screenWidth < 800
                           //         ? 6
