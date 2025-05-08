@@ -146,11 +146,19 @@ class _NavbarhomeTabletState extends State<NavbarhomeTablet> {
                           child: TextField(
                             controller: searchService.searchController,
                             decoration: InputDecoration(
-                              hintText:
-                                  'Shopii đảm bảo chất lượng, giao hàng tận nơi - Đăng ký ngay!',
+                              hintText: 'Tìm kiếm sản phẩm...',
                               border: InputBorder.none,
                               hintStyle: TextStyle(fontSize: 14),
                             ),
+                            onSubmitted: (value) {
+                              // Only execute search when Enter is pressed with non-empty text
+                              if (value.trim().isNotEmpty) {
+                                // Use the centralized executeSearch method
+                                searchService.executeSearch().then((_) {
+                                  Navigator.pushNamed(context, '/search');
+                                });
+                              }
+                            },
                           ),
                         ),
                       ),
@@ -164,7 +172,13 @@ class _NavbarhomeTabletState extends State<NavbarhomeTablet> {
                         }),
                         child: GestureDetector(
                           onTap: () {
-                            Navigator.pushNamed(context, '/search');
+                            // Only execute search and navigate if text isn't empty
+                            if (searchService.searchController.text.trim().isNotEmpty) {
+                              // Use the centralized executeSearch method
+                              searchService.executeSearch().then((_) {
+                                Navigator.pushNamed(context, '/search');
+                              });
+                            }
                           },
                           child: Container(
                             width: 45,

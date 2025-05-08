@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:e_commerce_app/constants.dart';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/services/user_service.dart';
+import 'package:e_commerce_app/state/Search/SearchStateService.dart'; // Add this import
 import 'package:e_commerce_app/widgets/BottomNavigation.dart';
 import 'package:e_commerce_app/widgets/navbarHomeMobile.dart';
 import 'package:flutter/material.dart';

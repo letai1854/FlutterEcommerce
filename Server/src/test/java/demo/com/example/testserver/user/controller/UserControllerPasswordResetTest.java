@@ -56,7 +56,8 @@ class UserControllerPasswordResetTest {
 
     private User testUser;
     private PasswordResetToken testToken;
-    private final String testEmail = "test@example.com";
+    private final String defaultTestEmail = "test@example.com";
+    private final String targetTestEmail = "anhminh.gdev@gmail.com";
     private final String testOtp = "123456";
     private final String hashedOtp = "hashedOtp123"; // Placeholder for mocked hash
 
@@ -64,7 +65,6 @@ class UserControllerPasswordResetTest {
     void setUp() {
         testUser = new User();
         testUser.setId(1);
-        testUser.setEmail(testEmail);
         when(passwordEncoder.encode("oldPassword")).thenReturn("hashedOldPassword");
         testUser.setPassword(passwordEncoder.encode("oldPassword"));
         testUser.setStatus(User.UserStatus.kich_hoat);
@@ -82,12 +82,12 @@ class UserControllerPasswordResetTest {
     @Test
     void forgotPassword_UserExists_ShouldSendOtpAndReturnOk() throws Exception {
         Map<String, String> requestBody = new HashMap<>();
-        requestBody.put("email", testEmail);
+        requestBody.put("email", defaultTestEmail);
 
-        when(userRepository.findActiveUserByEmail(testEmail)).thenReturn(Optional.of(testUser));
+        when(userRepository.findActiveUserByEmail(defaultTestEmail)).thenReturn(Optional.of(testUser));
         when(passwordResetTokenService.createPasswordResetToken(testUser)).thenReturn(testOtp);
         // Mock email service to do nothing successfully
-        doNothing().when(emailService).sendPasswordResetOtp(testEmail, testOtp);
+        doNothing().when(emailService).sendPasswordResetOtp(defaultTestEmail, testOtp);
 
         mockMvc.perform(post("/api/users/forgot-password")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -96,7 +96,33 @@ class UserControllerPasswordResetTest {
                 .andExpect(content().string("If an account with that email exists and is active, a password reset OTP has been sent."));
 
         verify(passwordResetTokenService).createPasswordResetToken(testUser);
-        verify(emailService).sendPasswordResetOtp(testEmail, testOtp);
+        verify(emailService).sendPasswordResetOtp(defaultTestEmail, testOtp);
+    }
+
+    @Test
+    void forgotPassword_UserExists_ShouldSendOtpAndReturnOk_sendsToTargetEmail() throws Exception {
+        Map<String, String> requestBody = new HashMap<>();
+        requestBody.put("email", targetTestEmail);
+
+        User targetUser = new User(); // Create a user specific to this test
+        targetUser.setId(2); // Different ID
+        targetUser.setEmail(targetTestEmail);
+        targetUser.setStatus(User.UserStatus.kich_hoat);
+
+        when(userRepository.findActiveUserByEmail(targetTestEmail)).thenReturn(Optional.of(targetUser));
+        when(passwordResetTokenService.createPasswordResetToken(targetUser)).thenReturn(testOtp);
+        // Mock email service to do nothing successfully, we verify the call
+        doNothing().when(emailService).sendPasswordResetOtp(targetTestEmail, testOtp);
+
+        mockMvc.perform(post("/api/users/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestBody)))
+                .andExpect(status().isOk())
+                .andExpect(content().string("If an account with that email exists and is active, a password reset OTP has been sent."));
+
+        verify(userRepository).findActiveUserByEmail(targetTestEmail);
+        verify(passwordResetTokenService).createPasswordResetToken(targetUser);
+        verify(emailService).sendPasswordResetOtp(targetTestEmail, testOtp); // Verify this call
     }
 
     @Test
@@ -120,7 +146,7 @@ class UserControllerPasswordResetTest {
     @Test
     void forgotPassword_MissingEmail_ShouldReturnBadRequest() throws Exception {
         Map<String, String> requestBody = new HashMap<>();
-        // requestBody.put("email", testEmail); // Email is missing
+        // requestBody.put("email", defaultTestEmail); // Email is missing
 
         mockMvc.perform(post("/api/users/forgot-password")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -133,11 +159,12 @@ class UserControllerPasswordResetTest {
 
     @Test
     void verifyOtp_ValidOtp_ShouldReturnOk() throws Exception {
+        testUser.setEmail(defaultTestEmail);
         Map<String, String> requestBody = new HashMap<>();
-        requestBody.put("email", testEmail);
+        requestBody.put("email", defaultTestEmail);
         requestBody.put("otp", testOtp);
 
-        when(userRepository.findActiveUserByEmail(testEmail)).thenReturn(Optional.of(testUser));
+        when(userRepository.findActiveUserByEmail(defaultTestEmail)).thenReturn(Optional.of(testUser));
         when(tokenRepository.findByUser(testUser)).thenReturn(Optional.of(testToken));
         // Mock passwordEncoder.matches to return true for the correct OTP and hash
         when(passwordEncoder.matches(testOtp, hashedOtp)).thenReturn(true);
@@ -149,7 +176,7 @@ class UserControllerPasswordResetTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string("OTP verified successfully."));
 
-        verify(userRepository).findActiveUserByEmail(testEmail);
+        verify(userRepository).findActiveUserByEmail(defaultTestEmail);
         verify(tokenRepository).findByUser(testUser);
         verify(passwordEncoder).matches(testOtp, hashedOtp);
         verify(tokenRepository, never()).delete(any()); // Should not delete on successful verification
@@ -157,11 +184,12 @@ class UserControllerPasswordResetTest {
 
     @Test
     void verifyOtp_InvalidOtp_ShouldReturnBadRequest() throws Exception {
+        testUser.setEmail(defaultTestEmail);
         Map<String, String> requestBody = new HashMap<>();
-        requestBody.put("email", testEmail);
+        requestBody.put("email", defaultTestEmail);
         requestBody.put("otp", "wrongotp");
 
-        when(userRepository.findActiveUserByEmail(testEmail)).thenReturn(Optional.of(testUser));
+        when(userRepository.findActiveUserByEmail(defaultTestEmail)).thenReturn(Optional.of(testUser));
         when(tokenRepository.findByUser(testUser)).thenReturn(Optional.of(testToken));
         // Mock passwordEncoder.matches to return false for the wrong OTP
         when(passwordEncoder.matches("wrongotp", hashedOtp)).thenReturn(false);
@@ -178,14 +206,15 @@ class UserControllerPasswordResetTest {
 
      @Test
     void verifyOtp_ExpiredOtp_ShouldReturnBadRequestAndDeleteToken() throws Exception {
+        testUser.setEmail(defaultTestEmail);
         Map<String, String> requestBody = new HashMap<>();
-        requestBody.put("email", testEmail);
+        requestBody.put("email", defaultTestEmail);
         requestBody.put("otp", testOtp);
 
         // Make token expired
         testToken.setExpiryDate(new Date(System.currentTimeMillis() - 1000)); // 1 second in the past
 
-        when(userRepository.findActiveUserByEmail(testEmail)).thenReturn(Optional.of(testUser));
+        when(userRepository.findActiveUserByEmail(defaultTestEmail)).thenReturn(Optional.of(testUser));
         when(tokenRepository.findByUser(testUser)).thenReturn(Optional.of(testToken));
         when(passwordEncoder.matches(testOtp, hashedOtp)).thenReturn(true); // Assume OTP matches hash
 
@@ -201,11 +230,12 @@ class UserControllerPasswordResetTest {
 
     @Test
     void verifyOtp_TokenNotFound_ShouldReturnBadRequest() throws Exception {
+        testUser.setEmail(defaultTestEmail);
         Map<String, String> requestBody = new HashMap<>();
-        requestBody.put("email", testEmail);
+        requestBody.put("email", defaultTestEmail);
         requestBody.put("otp", testOtp);
 
-        when(userRepository.findActiveUserByEmail(testEmail)).thenReturn(Optional.of(testUser));
+        when(userRepository.findActiveUserByEmail(defaultTestEmail)).thenReturn(Optional.of(testUser));
         // Mock token repository to return empty optional
         when(tokenRepository.findByUser(testUser)).thenReturn(Optional.empty());
 
@@ -243,12 +273,13 @@ class UserControllerPasswordResetTest {
 
     @Test
     void setNewPassword_ValidRequest_ShouldResetPasswordAndDeleteToken() throws Exception {
+        testUser.setEmail(defaultTestEmail);
         Map<String, String> requestBody = new HashMap<>();
-        requestBody.put("email", testEmail);
+        requestBody.put("email", defaultTestEmail);
         requestBody.put("otp", testOtp);
         requestBody.put("newPassword", "newSecurePassword");
 
-        when(userRepository.findActiveUserByEmail(testEmail)).thenReturn(Optional.of(testUser));
+        when(userRepository.findActiveUserByEmail(defaultTestEmail)).thenReturn(Optional.of(testUser));
         when(tokenRepository.findByUser(testUser)).thenReturn(Optional.of(testToken));
         when(passwordEncoder.matches(testOtp, hashedOtp)).thenReturn(true);
         // Mock the encoding of the new password
@@ -260,7 +291,7 @@ class UserControllerPasswordResetTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string("Password has been reset successfully."));
 
-        verify(userRepository).findActiveUserByEmail(testEmail);
+        verify(userRepository).findActiveUserByEmail(defaultTestEmail);
         verify(tokenRepository).findByUser(testUser);
         verify(passwordEncoder).matches(testOtp, hashedOtp);
         verify(passwordEncoder).encode("newSecurePassword");
@@ -272,12 +303,13 @@ class UserControllerPasswordResetTest {
 
     @Test
     void setNewPassword_InvalidOtp_ShouldReturnBadRequest() throws Exception {
+        testUser.setEmail(defaultTestEmail);
         Map<String, String> requestBody = new HashMap<>();
-        requestBody.put("email", testEmail);
+        requestBody.put("email", defaultTestEmail);
         requestBody.put("otp", "wrongotp");
         requestBody.put("newPassword", "newSecurePassword");
 
-        when(userRepository.findActiveUserByEmail(testEmail)).thenReturn(Optional.of(testUser));
+        when(userRepository.findActiveUserByEmail(defaultTestEmail)).thenReturn(Optional.of(testUser));
         when(tokenRepository.findByUser(testUser)).thenReturn(Optional.of(testToken));
         when(passwordEncoder.matches("wrongotp", hashedOtp)).thenReturn(false); // OTP doesn't match
 
@@ -294,15 +326,16 @@ class UserControllerPasswordResetTest {
 
     @Test
     void setNewPassword_ExpiredOtp_ShouldReturnBadRequestAndDeleteToken() throws Exception {
+        testUser.setEmail(defaultTestEmail);
         Map<String, String> requestBody = new HashMap<>();
-        requestBody.put("email", testEmail);
+        requestBody.put("email", defaultTestEmail);
         requestBody.put("otp", testOtp);
         requestBody.put("newPassword", "newSecurePassword");
 
         // Make token expired
         testToken.setExpiryDate(new Date(System.currentTimeMillis() - 1000));
 
-        when(userRepository.findActiveUserByEmail(testEmail)).thenReturn(Optional.of(testUser));
+        when(userRepository.findActiveUserByEmail(defaultTestEmail)).thenReturn(Optional.of(testUser));
         when(tokenRepository.findByUser(testUser)).thenReturn(Optional.of(testToken));
         when(passwordEncoder.matches(testOtp, hashedOtp)).thenReturn(true); // Assume OTP matches hash
 
@@ -319,8 +352,9 @@ class UserControllerPasswordResetTest {
 
      @Test
     void setNewPassword_PasswordTooShort_ShouldReturnBadRequest() throws Exception {
+        testUser.setEmail(defaultTestEmail);
         Map<String, String> requestBody = new HashMap<>();
-        requestBody.put("email", testEmail);
+        requestBody.put("email", defaultTestEmail);
         requestBody.put("otp", testOtp);
         requestBody.put("newPassword", "123"); // Too short
 
@@ -338,8 +372,9 @@ class UserControllerPasswordResetTest {
 
      @Test
     void setNewPassword_MissingData_ShouldReturnBadRequest() throws Exception {
+        testUser.setEmail(defaultTestEmail);
         Map<String, String> requestBody = new HashMap<>();
-        requestBody.put("email", testEmail);
+        requestBody.put("email", defaultTestEmail);
         // requestBody.put("otp", testOtp); // OTP missing
         requestBody.put("newPassword", "newSecurePassword");
 

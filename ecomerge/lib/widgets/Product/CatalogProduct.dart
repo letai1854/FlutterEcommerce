@@ -18,6 +18,7 @@ class CatalogProduct extends StatefulWidget {
   final GlobalKey<ScaffoldState> scaffoldKey;
   final ScrollController scrollController;
   final String currentSortMethod;
+  final String currentSortDir; // Add this parameter to track sort direction
   final int selectedCategoryId;
 
   // *** THAY ĐỔI: Nhận List<CategoryDTO> thay vì List<Map<String, dynamic>> ***
@@ -33,6 +34,9 @@ class CatalogProduct extends StatefulWidget {
   final bool isProductsLoading;
   final bool canLoadMoreProducts;
 
+  // Add flag to indicate if showing cached content
+  final bool isShowingCachedContent;
+
 
   const CatalogProduct({
     super.key,
@@ -40,6 +44,7 @@ class CatalogProduct extends StatefulWidget {
     required this.scaffoldKey,
     required this.scrollController,
     required this.currentSortMethod,
+    required this.currentSortDir, // Include in constructor
     required this.selectedCategoryId,
     required this.categories, // <-------------------------- NHẬN List<CategoryDTO>
     required this.updateSelectedCategory,
@@ -48,6 +53,7 @@ class CatalogProduct extends StatefulWidget {
      required this.isAppDataInitialized, // <-- Thêm vào constructor
      required this.isProductsLoading, // <-- Thêm vào constructor
      required this.canLoadMoreProducts, // <-- Thêm vào constructor
+     required this.isShowingCachedContent, // Add this parameter
   });
 
   @override
@@ -129,13 +135,14 @@ class _CatalogProductState extends State<CatalogProduct> {
             width: width,
             color: Colors.white,
             child: const Center(
-               child: Column(
-                 mainAxisAlignment: MainAxisAlignment.center,
-                 children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Đang tải danh mục...', style: TextStyle(color: Colors.grey)),
-                 ],
+               child: Padding(
+                 padding: EdgeInsets.all(20.0),
+                 child: Text('Đang tải danh mục...', 
+                   style: TextStyle(
+                     color: Colors.grey,
+                     fontSize: 16,
+                   )
+                 ),
                ),
             ),
         );
@@ -216,6 +223,22 @@ class _CatalogProductState extends State<CatalogProduct> {
     );
   }
 
+  // Add this method to handle sort direction display
+  Widget _buildSortDirectionIndicator(String sortMethod) {
+    final bool isCurrentMethod = widget.currentSortMethod == sortMethod;
+    
+    if (!isCurrentMethod) {
+      return const SizedBox.shrink();
+    }
+    
+    // Show up or down arrow based on the current sort direction
+    return Icon(
+      widget.currentSortDir == 'asc' ? Icons.arrow_upward : Icons.arrow_downward,
+      size: 16,
+      color: Colors.blue,
+    );
+  }
+
   // --- Build Method ---
   @override
   Widget build(BuildContext context) {
@@ -292,6 +315,10 @@ class _CatalogProductState extends State<CatalogProduct> {
                             child: SortingBar(
                               width: double.infinity, // Sử dụng double.infinity bên trong Expanded
                               onSortChanged: widget.updateSortMethod,
+                              currentSortMethod: widget.currentSortMethod,
+                              currentSortDir: widget.currentSortDir, // Pass sort direction
+                              // Pass sort direction indicator builder
+                              buildSortDirectionIndicator: _buildSortDirectionIndicator,
                             ),
                           ),
                         ],
@@ -301,7 +328,6 @@ class _CatalogProductState extends State<CatalogProduct> {
                     SizedBox(height: spacing),
 
                     // Khu vực lưới sản phẩm
-                     // Sử dụng SizedBox với double.infinity bên trong SingleChildScrollView
                     SizedBox(
                       width: double.infinity,
                       child: LayoutBuilder(
@@ -310,41 +336,50 @@ class _CatalogProductState extends State<CatalogProduct> {
                           final int maxColumns = (constraints.maxWidth / minItemWidth).floor();
                           final int columns = max(2, min(maxColumns, isMobile ? 2 : 4));
 
-                          // Thêm Key cho PaginatedProductGrid để giải quyết lỗi rebuild không mong muốn
-                           final gridKey = ValueKey('${widget.selectedCategoryId}_${widget.currentSortMethod}_${widget.filteredProducts.length}_${widget.categories.length}');
-
-
-                          return PaginatedProductGrid(
-                            key: gridKey, // <--- THÊM KEY VÀO ĐÂY
-                            productData: widget.filteredProducts, // Pass the ProductDTO list directly
-                            itemsPerPage: columns * 2, // Ví dụ phân trang: 2 hàng mỗi trang
-                            gridWidth: constraints.maxWidth, // Truyền chiều rộng có sẵn
-                            childAspectRatio: 0.6, // Điều chỉnh tỷ lệ khung hình nếu cần
-                            crossAxisCount: columns, // Số cột đã tính
-                            mainSpace: spacing, // Sử dụng khoảng cách đã tính
-                            crossSpace: spacing, // Sử dụng khoảng cách đã tính
-                             // Pass product loading state and can load more state
-                            isProductsLoading: widget.isProductsLoading,
-                            canLoadMoreProducts: widget.canLoadMoreProducts,
+                          // Create a stable key that only changes when sort or category changes
+                          // DON'T include filteredProducts.length in the key to prevent rebuilds when loading more
+                          final gridKey = ValueKey('${widget.selectedCategoryId}_${widget.currentSortMethod}');
+                          
+                          // Wrap in RepaintBoundary to prevent repainting when parent rebuilds
+                          return RepaintBoundary(
+                            child: KeyedSubtree(
+                              key: gridKey,
+                              child: PaginatedProductGrid(
+                                productData: widget.filteredProducts,
+                                itemsPerPage: columns * 2, 
+                                gridWidth: constraints.maxWidth,
+                                childAspectRatio: 0.6,
+                                crossAxisCount: columns,
+                                mainSpace: spacing,
+                                crossSpace: spacing,
+                                isProductsLoading: widget.isProductsLoading,
+                                canLoadMoreProducts: widget.canLoadMoreProducts,
+                                isShowingCachedContent: widget.isShowingCachedContent, // Pass this flag
+                              ),
+                            ),
                           );
                         },
                       ),
                     ),
 
-                    // Loading indicator at the bottom of the product list
-                    if (widget.isProductsLoading && widget.filteredProducts.isNotEmpty)
+                    // Remove duplicate loading indicator since it's now handled in PaginatedProductGrid
+                    // The loading indicator in CatalogProduct causes duplicate indicators
+                    
+                    // End of list indicator only if we've loaded some products and can't load more
+                    if (!widget.isProductsLoading && !widget.canLoadMoreProducts && widget.filteredProducts.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 16.0),
                         child: Center(
-                          child: CircularProgressIndicator(),
+                          child: Text(
+                            'Bạn đã xem hết sản phẩm',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
                         ),
                       ),
 
-                    // Footer (tùy chọn, thường hiển thị trên web)
-                    if (kIsWeb) ...[
-                      SizedBox(height: spacing),
-                      const Footer(),
-                    ],
                   ],
                 ),
               ),
