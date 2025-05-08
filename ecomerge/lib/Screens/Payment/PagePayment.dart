@@ -61,6 +61,9 @@ class _PagePaymentState extends State<PagePayment> {
       TextEditingController(); // Chỉ dùng khi áp dụng mã thủ công (có thể không cần nếu chỉ chọn từ list)
   String? _voucherErrorMessage; // Thông báo lỗi voucher
 
+  // --- Accumulated Points State ---
+  bool _useAccumulatedPoints = false;
+
   // --- Payment Method State ---
   String _selectedPaymentMethod =
       'Thanh toán khi nhận hàng'; // Phương thức thanh toán mặc định
@@ -355,6 +358,8 @@ class _PagePaymentState extends State<PagePayment> {
         "   Voucher: ${_currentVoucher?.code ?? 'None'} (${_formatCurrency(_calculateDiscount())})");
     print("   Total: ${_formatCurrency(_calculateTotal())}");
     print("   Payment Method: $_selectedPaymentMethod");
+    print(
+        "   Using Accumulated Points: $_useAccumulatedPoints"); // Log points usage
 
     // Simulate API call or actual payment logic
     await Future.delayed(const Duration(seconds: 2));
@@ -455,6 +460,17 @@ class _PagePaymentState extends State<PagePayment> {
     ).then((_) => print("PagePayment: Voucher Selector Dialog closed."));
   }
 
+  void _toggleUseAccumulatedPoints(bool? value) {
+    if (value == null) return;
+    // Add any logic here if needed, e.g., check if user has enough points
+    // For now, just toggle the state.
+    setState(() {
+      _useAccumulatedPoints = value;
+    });
+    // Recalculate total if points usage changes the total
+    // _calculateTotal(); // This might be needed if points directly affect total before order processing
+  }
+
   @override
   Widget build(BuildContext context) {
     // Tính toán các giá trị cần thiết để truyền xuống BodyPayment
@@ -478,6 +494,8 @@ class _PagePaymentState extends State<PagePayment> {
       discountAmount: discount,
       totalAmount: total,
       isProcessingOrder: _isProcessing, // Trạng thái xử lý
+      useAccumulatedPoints: _useAccumulatedPoints, // Add this
+      onToggleUseAccumulatedPoints: _toggleUseAccumulatedPoints, // Add this
 
       // --- Callbacks ---
       onChangeAddress:

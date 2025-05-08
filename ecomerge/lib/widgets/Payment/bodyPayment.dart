@@ -24,6 +24,8 @@ class BodyPayment extends StatelessWidget {
   final double discountAmount;
   final double totalAmount;
   final bool isProcessingOrder;
+  final bool useAccumulatedPoints; // New parameter
+  final ValueChanged<bool?> onToggleUseAccumulatedPoints; // New parameter
 
   final VoidCallback onChangeAddress;
   final VoidCallback onSelectVoucher;
@@ -54,6 +56,8 @@ class BodyPayment extends StatelessWidget {
     required this.onPlaceOrder,
     required this.formatCurrency,
     required this.onAddressSelected,
+    required this.useAccumulatedPoints, // Initialize new parameter
+    required this.onToggleUseAccumulatedPoints, // Initialize new parameter
   }) : super(key: key);
 
   Widget _buildAddressDisplay() {
@@ -125,6 +129,79 @@ class BodyPayment extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDesktopAccumulatedPointsSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12.0),
+      child: Row(
+        children: [
+          Icon(Icons.star_outline, color: Colors.deepPurple.shade700, size: 20),
+          const SizedBox(width: 12),
+          const Text(
+            'Điểm tích lũy',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '(Hiện có: ${UserInfo().currentUser?.customerPoints.toStringAsFixed(0) ?? "0"})',
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+          ),
+          const Spacer(),
+          Text(
+            'Sử dụng điểm:',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+          ),
+          Checkbox(
+            value: useAccumulatedPoints,
+            onChanged: onToggleUseAccumulatedPoints,
+            activeColor: Colors.red.shade700,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileAccumulatedPointsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.star_outline,
+                color: Colors.deepPurple.shade700, size: 20),
+            const SizedBox(width: 8),
+            const Text(
+              'Điểm tích lũy',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                '(Hiện có: ${UserInfo().currentUser?.customerPoints.toStringAsFixed(0) ?? "0"})',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Sử dụng điểm tích lũy của bạn:',
+              style: TextStyle(fontSize: 14),
+            ),
+            Checkbox(
+              value: useAccumulatedPoints,
+              onChanged: onToggleUseAccumulatedPoints,
+              activeColor: Colors.red.shade700,
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -460,6 +537,11 @@ class BodyPayment extends StatelessWidget {
                       isMobile
                           ? _buildMobileVoucherSection()
                           : _buildDesktopVoucherSection(),
+                      const SizedBox(
+                          height: 12.0), // Spacing before points section
+                      isMobile
+                          ? _buildMobileAccumulatedPointsSection()
+                          : _buildDesktopAccumulatedPointsSection(),
                     ],
                   ),
                 ),
@@ -474,22 +556,22 @@ class BodyPayment extends StatelessWidget {
                           runSpacing: 12,
                           alignment: WrapAlignment.center,
                           children: [
-                            _buildPaymentOption(
-                              'Ngân hàng',
-                              Icons.account_balance_wallet_outlined,
-                              selectedPaymentMethod == 'Ngân hàng',
-                            ),
+                            // _buildPaymentOption(
+                            //   'Ngân hàng',
+                            //   Icons.account_balance_wallet_outlined,
+                            //   selectedPaymentMethod == 'Ngân hàng',
+                            // ),
                             _buildPaymentOption(
                               'Thanh toán khi nhận hàng',
                               Icons.local_shipping_outlined,
                               selectedPaymentMethod ==
                                   'Thanh toán khi nhận hàng',
                             ),
-                            _buildPaymentOption(
-                              'Ví điện tử',
-                              Icons.wallet_giftcard,
-                              selectedPaymentMethod == 'Ví điện tử',
-                            ),
+                            // _buildPaymentOption(
+                            //   'Ví điện tử',
+                            //   Icons.wallet_giftcard,
+                            //   selectedPaymentMethod == 'Ví điện tử',
+                            // ),
                           ],
                         ),
                         const SizedBox(height: 16.0),
@@ -671,18 +753,43 @@ class BodyPayment extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
+          SizedBox(
             width: 60,
             height: 60,
-            decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade200),
-                borderRadius: BorderRadius.circular(4),
-                image: DecorationImage(
-                  image: NetworkImage(_categoriesService
-                      .getImageUrl(product.imageUrl)), // Use CategoriesService
-                  fit: BoxFit.cover,
-                  onError: (exception, stackTrace) => const Icon(Icons.error),
-                )),
+            child: FutureBuilder<Uint8List?>(
+              future: _categoriesService.getImageFromServer(product.imageUrl),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2));
+                } else if (snapshot.hasError ||
+                    !snapshot.hasData ||
+                    snapshot.data == null) {
+                  return Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade200),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Icon(Icons.error_outline, color: Colors.grey),
+                  );
+                } else {
+                  return Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade200),
+                      borderRadius: BorderRadius.circular(4),
+                      image: DecorationImage(
+                        image: MemoryImage(snapshot.data!),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -748,19 +855,45 @@ class BodyPayment extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
+                SizedBox(
                   width: 65,
                   height: 65,
-                  decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade200),
-                      borderRadius: BorderRadius.circular(4),
-                      image: DecorationImage(
-                        image: NetworkImage(_categoriesService.getImageUrl(
-                            product.imageUrl)), // Use CategoriesService
-                        fit: BoxFit.cover,
-                        onError: (exception, stackTrace) =>
-                            const Icon(Icons.error),
-                      )),
+                  child: FutureBuilder<Uint8List?>(
+                    future:
+                        _categoriesService.getImageFromServer(product.imageUrl),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2));
+                      } else if (snapshot.hasError ||
+                          !snapshot.hasData ||
+                          snapshot.data == null) {
+                        return Container(
+                          width: 65,
+                          height: 65,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade200),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Icon(Icons.error_outline,
+                              color: Colors.grey),
+                        );
+                      } else {
+                        return Container(
+                          width: 65,
+                          height: 65,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade200),
+                            borderRadius: BorderRadius.circular(4),
+                            image: DecorationImage(
+                              image: MemoryImage(snapshot.data!),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
