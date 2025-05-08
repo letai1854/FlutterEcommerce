@@ -973,7 +973,8 @@ class BodyPayment extends StatelessWidget {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16.0,
-                color: Color.fromARGB(255, 201, 201, 201),
+                color:
+                    Color.fromARGB(255, 201, 201, 201), // Kept original color
               ),
             ),
             const Spacer(),
@@ -991,34 +992,11 @@ class BodyPayment extends StatelessWidget {
         const SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.only(left: 28.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (currentAddress != null)
-                Text(
-                  '${currentAddress!.name} | ${currentAddress!.phone}',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w500, fontSize: 14.5),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              if (currentAddress != null) const SizedBox(height: 4),
-              if (currentAddress != null)
-                Text(
-                  currentAddress!.fullAddress,
-                  style: TextStyle(fontSize: 14.0, color: Colors.grey.shade700),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              if (currentAddress == null)
-                const Text(
-                  'Vui lòng thêm địa chỉ nhận hàng',
-                  style: TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-            ],
+          // Pass the currentAddress from BodyPayment to AddressDisplay
+          child: AddressDisplay(
+            currentAddress:
+                currentAddress, // Changed from null to currentAddress
+            onAddressSelected: onAddressSelected,
           ),
         ),
       ],
