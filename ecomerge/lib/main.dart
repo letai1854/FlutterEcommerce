@@ -13,6 +13,7 @@ import 'package:e_commerce_app/Screens/SignUp/PageSignup.dart';
 import 'package:e_commerce_app/Screens/SuccessPayment/PageSuccessPayment.dart';
 import 'package:e_commerce_app/Screens/UserInfo/ResponsiveUserInfo.dart';
 import 'package:e_commerce_app/database/Storage/BrandCategoryService.dart';
+import 'package:e_commerce_app/database/Storage/ProductStorage.dart';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/services/user_service.dart';
 import 'package:flutter/foundation.dart';
@@ -36,10 +37,12 @@ Future<void> initApp() async {
   } else {
     print('Auto-login skipped on web platform');
   }
-  // // Initialize user session
+  // Initialize user session
   // final userProvider = UserProvider();
   // await userProvider.loadUserSession();
-  // await AppDataService().loadData();
+
+  // Initialize services
+  await AppDataService().loadData();
   print('AppDataService loaded successfully during app init.');
 }
 
@@ -50,6 +53,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => SignupFormProvider()),
         ChangeNotifierProvider(create: (_) => LoginFormProvider()),
+        ChangeNotifierProvider(create: (_) => ProductStorageSingleton()),
       ],
       child: const MyApp(),
     ),
@@ -98,13 +102,13 @@ class MyApp extends StatelessWidget {
               );
             } else {
               return PageRouteBuilder(
-                pageBuilder: (context, _, __) => const ResponsiveHome(),
+                pageBuilder: (context, _, __) => const ResponsiveHome(),//comment
                 settings: const RouteSettings(name: '/home'),
               );
             }
           case '/home':
             return PageRouteBuilder(
-              pageBuilder: (context, _, __) => const ResponsiveHome(),
+              pageBuilder: (context, _, __) => const ResponsiveHome(), //comment
               settings: settings,
             );
           case '/info':
@@ -128,9 +132,11 @@ class MyApp extends StatelessWidget {
               pageBuilder: (context, _, __) => const PageListProduct(),
               settings: settings,
             );
+          case '/product-detail':
           case '/product_detail':
+            final int productId = settings.arguments as int? ?? 0;
             return PageRouteBuilder(
-              pageBuilder: (context, _, __) => const Pageproductdetail(),
+              pageBuilder: (context, _, __) => Pageproductdetail(productId: productId),
               settings: settings,
             );
           case '/cart':
@@ -165,7 +171,7 @@ class MyApp extends StatelessWidget {
             );
           default:
             return PageRouteBuilder(
-              pageBuilder: (context, _, __) => const ResponsiveHome(),
+              pageBuilder: (context, _, __) => const ResponsiveHome(), //commet
               settings: settings,
             );
         }

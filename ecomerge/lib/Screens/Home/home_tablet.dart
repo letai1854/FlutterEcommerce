@@ -134,7 +134,6 @@ class _HomeState extends State<Home> {
     'assets/banner2.jpg',
     'assets/banner6.jpg', // Thay thế bằng đường dẫn ảnh thực tế// Thay thế bằng đường dẫn ảnh thực tế
   ];
-  List<Map<String, dynamic>> productData = Productest.productData;
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _categoriesSectionKey = GlobalKey();
   final GlobalKey _paginatedGridKey =
@@ -259,18 +258,18 @@ class _HomeState extends State<Home> {
                       Heading(Icons.bolt, Colors.yellowAccent,
                           'Sản phẩm khuyến mãi'),
                       SizedBox(height: 10),
-                      product_item.ProductList(
-                        scroll: Axis.horizontal,
+                      // product_item.ProductList(
+                      //   scroll: Axis.horizontal,
 
-                        productData: productData,
-                        itemsPerPage: 7,
-                        gridHeight: 320,
-                        gridWidth: screenWidth, // hoặc giá trị khác tùy ý
-                        childAspectRatio: 1.59, // hoặc giá trị khác tùy ý
-                        crossAxisCount: 1, // hoặc giá trị khác tùy ý
-                        mainSpace: 9, // hoặc giá trị khác tùy ý
-                        crossSpace: 8.0, // hoặc giá trị khác tùy ý
-                      ),
+                      //   productData: productData,
+                      //   itemsPerPage: 7,
+                      //   gridHeight: 320,
+                      //   gridWidth: screenWidth, // hoặc giá trị khác tùy ý
+                      //   childAspectRatio: 1.59, // hoặc giá trị khác tùy ý
+                      //   crossAxisCount: 1, // hoặc giá trị khác tùy ý
+                      //   mainSpace: 9, // hoặc giá trị khác tùy ý
+                      //   crossSpace: 8.0, // hoặc giá trị khác tùy ý
+                      // ),
                       SizedBox(height: 10),
                       Heading(Icons.new_releases, Colors.yellowAccent,
                           'Sản phẩm mới nhất'),
@@ -284,23 +283,23 @@ class _HomeState extends State<Home> {
                           children: [
                             Row(
                               children: [
-                                Expanded(
-                                  child: product_item.ProductList(
-                                    scroll: Axis.horizontal,
+                                // Expanded(
+                                //   child: product_item.ProductList(
+                                //     scroll: Axis.horizontal,
 
-                                    productData: productData,
-                                    itemsPerPage: 10,
-                                    gridHeight: 600,
-                                    gridWidth: screenWidth *
-                                        0.72, // hoặc giá trị khác tùy ý
-                                    childAspectRatio:
-                                        1.47, // hoặc giá trị khác tùy ý
-                                    crossAxisCount:
-                                        2, // hoặc giá trị khác tùy ý
-                                    mainSpace: 9.7, // hoặc giá trị khác tùy ý
-                                    crossSpace: 10, // hoặc giá trị khác tùy ý
-                                  ),
-                                ),
+                                //     productData: productData,
+                                //     itemsPerPage: 10,
+                                //     gridHeight: 600,
+                                //     gridWidth: screenWidth *
+                                //         0.72, // hoặc giá trị khác tùy ý
+                                //     childAspectRatio:
+                                //         1.47, // hoặc giá trị khác tùy ý
+                                //     crossAxisCount:
+                                //         2, // hoặc giá trị khác tùy ý
+                                //     mainSpace: 9.7, // hoặc giá trị khác tùy ý
+                                //     crossSpace: 10, // hoặc giá trị khác tùy ý
+                                //   ),
+                                // ),
                               ],
                             ),
                           ],
@@ -310,46 +309,46 @@ class _HomeState extends State<Home> {
                       Heading(Icons.local_fire_department, Colors.yellowAccent,
                           'Sản phẩm bán chạy nhất'),
                       SizedBox(height: 10),
-                      product_item.ProductList(
-                        scroll: Axis.horizontal,
-                        productData: productData,
-                        itemsPerPage: 12,
-                        gridHeight: 600,
-                        gridWidth: screenWidth, // hoặc giá trị khác tùy ý
-                        childAspectRatio: 1.47, // hoặc giá trị khác tùy ý
-                        crossAxisCount: 2, // hoặc giá trị khác tùy ý
-                        mainSpace: 9.7, // hoặc giá trị khác tùy ý
-                        crossSpace: 8, // hoặc giá trị khác tùy ý
-                      ),
+                      // product_item.ProductList(
+                      //   scroll: Axis.horizontal,
+                      //   productData: productData,
+                      //   itemsPerPage: 12,
+                      //   gridHeight: 600,
+                      //   gridWidth: screenWidth, // hoặc giá trị khác tùy ý
+                      //   childAspectRatio: 1.47, // hoặc giá trị khác tùy ý
+                      //   crossAxisCount: 2, // hoặc giá trị khác tùy ý
+                      //   mainSpace: 9.7, // hoặc giá trị khác tùy ý
+                      //   crossSpace: 8, // hoặc giá trị khác tùy ý
+                      // ),
                       SizedBox(height: 10),
                       // Main categories section with key for position tracking
-                      CategoriesSection(
-                        key: _categoriesSectionKey,
-                        selectedIndex: _selectedCategory,
-                        onCategorySelected: _handleCategorySelected,
-                      ),
+                      // CategoriesSection(
+                      //   key: _categoriesSectionKey,
+                      //   selectedIndex: _selectedCategory,
+                      //   onCategorySelected: _handleCategorySelected,
+                      // ),
                       SizedBox(height: 10),
 
                       // Add key to the product grid section
                       Column(
                         key: _paginatedGridKey, // Thêm key để theo dõi vị trí
                         children: [
-                          SizedBox(
-                            width: screenWidth - 2,
-                            child: PaginatedProductGrid(
-                              productData: productData,
-                              itemsPerPage: screenWidth < 800
-                                  ? 6
-                                  : (screenWidth < 1300 ? 8 : 10),
-                              gridWidth: screenWidth - 2,
-                              childAspectRatio: 0.7,
-                              crossAxisCount: screenWidth < 800
-                                  ? 3
-                                  : (screenWidth < 1470 ? 4 : 5),
-                              mainSpace: 10,
-                              crossSpace: 8.0,
-                            ),
-                          ),
+                          // SizedBox(
+                          //   width: screenWidth - 2,
+                          //   child: PaginatedProductGrid(
+                          //     productData: productData,
+                          //     itemsPerPage: screenWidth < 800
+                          //         ? 6
+                          //         : (screenWidth < 1300 ? 8 : 10),
+                          //     gridWidth: screenWidth - 2,
+                          //     childAspectRatio: 0.7,
+                          //     crossAxisCount: screenWidth < 800
+                          //         ? 3
+                          //         : (screenWidth < 1470 ? 4 : 5),
+                          //     mainSpace: 10,
+                          //     crossSpace: 8.0,
+                          //   ),
+                          // ),
                         ],
                       ),
 
@@ -411,15 +410,15 @@ class _HomeState extends State<Home> {
                         ],
                       ),
                     ),
-                    _buildVerticalCategoryItem(
-                        'Laptop', 'assets/banner6.jpg', 0),
-                    _buildVerticalCategoryItem('Ram', 'assets/banner6.jpg', 1),
-                    _buildVerticalCategoryItem(
-                        'Card đồ họa', 'assets/banner6.jpg', 2),
-                    _buildVerticalCategoryItem(
-                        'Màn hình', 'assets/banner6.jpg', 3),
-                    _buildVerticalCategoryItem(
-                        'Ổ cứng', 'assets/banner6.jpg', 4),
+                    // _buildVerticalCategoryItem(
+                    //     'Laptop', 'assets/banner6.jpg', 0),
+                    // _buildVerticalCategoryItem('Ram', 'assets/banner6.jpg', 1),
+                    // _buildVerticalCategoryItem(
+                    //     'Card đồ họa', 'assets/banner6.jpg', 2),
+                    // _buildVerticalCategoryItem(
+                    //     'Màn hình', 'assets/banner6.jpg', 3),
+                    // _buildVerticalCategoryItem(
+                    //     'Ổ cứng', 'assets/banner6.jpg', 4),
                   ],
                 ),
               ),

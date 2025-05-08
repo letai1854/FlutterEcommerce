@@ -4,13 +4,13 @@ import 'dart:convert'; // Needed for jsonDecode
 class PageResponse<T> {
   final List<T> content; // The list of items for the current page
   final int totalElements; // Total number of elements across all pages
-  final int totalPages;    // Total number of available pages
-  final int number;        // The zero-based number of the current page
-  final int size;          // The size of the page
+  final int totalPages; // Total number of available pages
+  final int number; // The zero-based number of the current page
+  final int size; // The size of the page
   final int numberOfElements; // Number of elements on the current page
-  final bool first;        // Is this the first page?
-  final bool last;         // Is this the last page?
-  final bool empty;        // Is the content list empty?
+  final bool first; // Is this the first page?
+  final bool last; // Is this the last page?
+  final bool empty; // Is the content list empty?
 
   // You might also include sort information if needed
   // final dynamic sort; // Or a dedicated Sort object
@@ -31,11 +31,13 @@ class PageResponse<T> {
   // Factory constructor to create a PageResponse from a JSON map
   // It requires a function to parse the generic type T from JSON
   // THIS IS CRUCIAL: It uses fromJsonT to parse items in the content list
-  factory PageResponse.fromJson(Map<String, dynamic> json, T Function(Map<String, dynamic> json) fromJsonT) {
+  factory PageResponse.fromJson(Map<String, dynamic> json,
+      T Function(Map<String, dynamic> json) fromJsonT) {
     List<T> contentList;
     if (json['content'] != null) {
       // Map each item in the 'content' list using the provided fromJsonT function
-      contentList = List<T>.from(json['content'].map((itemJson) => fromJsonT(itemJson as Map<String, dynamic>)));
+      contentList = List<T>.from(json['content']
+          .map((itemJson) => fromJsonT(itemJson as Map<String, dynamic>)));
     } else {
       contentList = [];
     }
@@ -56,23 +58,23 @@ class PageResponse<T> {
   }
 
   // Optional: A factory constructor for creating an empty response
-   factory PageResponse.empty() {
-      return PageResponse(
-          content: [],
-          totalElements: 0,
-          totalPages: 0,
-          number: 0,
-          size: 0,
-          numberOfElements: 0,
-          first: true,
-          last: true,
-          empty: true,
-      );
-   }
+  factory PageResponse.empty() {
+    return PageResponse(
+      content: [],
+      totalElements: 0,
+      totalPages: 0,
+      number: 0,
+      size: 0,
+      numberOfElements: 0,
+      first: true,
+      last: true,
+      empty: true,
+    );
+  }
 
-   // Optional: Add a toString or other helper methods for debugging
-   @override
-   String toString() {
-     return 'PageResponse(totalElements: $totalElements, totalPages: $totalPages, number: $number, size: $size, numberOfElements: $numberOfElements, first: $first, last: $last, empty: $empty, content.length: ${content.length})';
-   }
+  // Optional: Add a toString or other helper methods for debugging
+  @override
+  String toString() {
+    return 'PageResponse(totalElements: $totalElements, totalPages: $totalPages, number: $number, size: $size, numberOfElements: $numberOfElements, first: $first, last: $last, empty: $empty, content.length: ${content.length})';
+  }
 }

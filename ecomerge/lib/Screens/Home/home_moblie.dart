@@ -29,9 +29,10 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   @override
   Widget build(BuildContext context) {
-    return NavbarFormobile(
-      body: bodyHomeMobile(), // Truyền body vào NavbarFixmobile
-    );
+    // return NavbarFormobile(
+    //   body: bodyHomeMobile(), // Truyền body vào NavbarFixmobile
+    // );
+    return Scaffold();
     // return SingleChildScrollView(
     //   child: Column(
     //     children: [
