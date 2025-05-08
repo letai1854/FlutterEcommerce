@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 
 class FilterPanel extends StatefulWidget {
   final Function({
-    required List<int> categories,
-    required List<String> brands,
+    required int? categoryId,
+    required String? brandName,
     required int minPrice, 
     required int maxPrice
   }) onFiltersApplied;
-  final Map<int, bool> selectedCategories;
-  final Set<String> selectedBrands;
+  // Changed from Map<int, bool> to int? for single selection
+  final int? selectedCategoryId;
+  // Changed from Set<String> to String? for single selection
+  final String? selectedBrandName;
   final int minPrice;
   final int maxPrice;
   final TextEditingController minPriceController;
@@ -24,8 +26,8 @@ class FilterPanel extends StatefulWidget {
   const FilterPanel({
     Key? key,
     required this.onFiltersApplied,
-    required this.selectedCategories,
-    required this.selectedBrands,
+    required this.selectedCategoryId,
+    required this.selectedBrandName,
     required this.minPrice,
     required this.maxPrice,
     required this.minPriceController,
@@ -44,20 +46,36 @@ class FilterPanel extends StatefulWidget {
 }
 
 class _FilterPanelState extends State<FilterPanel> {
-  void applyFilters() {
-    // Convert selected categories to list
-    List<int> categoryIds = widget.selectedCategories.entries
-        .where((entry) => entry.value)
-        .map((entry) => entry.key)
-        .toList();
-        
-    // Convert selected brands to list
-    List<String> brandNames = widget.selectedBrands.toList();
+  // Local state to track selections
+  int? _categoryId;
+  String? _brandName;
+  
+  @override
+  void initState() {
+    super.initState();
+    _categoryId = widget.selectedCategoryId;
+    _brandName = widget.selectedBrandName;
+  }
+  
+  @override
+  void didUpdateWidget(FilterPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
     
-    // Notify parent about filters
+    // Update local state if external state changed
+    if (widget.selectedCategoryId != oldWidget.selectedCategoryId) {
+      _categoryId = widget.selectedCategoryId;
+    }
+    
+    if (widget.selectedBrandName != oldWidget.selectedBrandName) {
+      _brandName = widget.selectedBrandName;
+    }
+  }
+
+  void applyFilters() {
+    // Send single selected category and brand
     widget.onFiltersApplied(
-      categories: categoryIds,
-      brands: brandNames,
+      categoryId: _categoryId,
+      brandName: _brandName,
       minPrice: widget.minPrice,
       maxPrice: widget.maxPrice,
     );
@@ -94,7 +112,7 @@ class _FilterPanelState extends State<FilterPanel> {
             ),
             Divider(height: 24),
             
-            // Categories Filter
+            // Categories Filter - Now using Radio buttons
             Text(
               'Danh mục',
               style: TextStyle(
@@ -104,67 +122,18 @@ class _FilterPanelState extends State<FilterPanel> {
             ),
             SizedBox(height: 10),
             
+            // All categories option (no filter)
+            _buildCategoryRadioItem(null, 'Tất cả danh mục'),
+            
             // Selectable category items
-            ...widget.catalog.map((category) => Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: InkWell(
-                onTap: () {
-                  setState(() {
-                    // Toggle selection for this category
-                    widget.selectedCategories[category['id']] = 
-                        !(widget.selectedCategories[category['id']] ?? false);
-                  });
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                  decoration: BoxDecoration(
-                    color: (widget.selectedCategories[category['id']] ?? false)
-                        ? Colors.red.withOpacity(0.1)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: (widget.selectedCategories[category['id']] ?? false)
-                          ? Colors.red
-                          : Colors.grey.withOpacity(0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        (widget.selectedCategories[category['id']] ?? false)
-                            ? Icons.check_circle
-                            : Icons.circle_outlined,
-                        size: 16,
-                        color: (widget.selectedCategories[category['id']] ?? false)
-                            ? Colors.red
-                            : Colors.grey,
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          category['name'],
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: (widget.selectedCategories[category['id']] ?? false)
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                            color: (widget.selectedCategories[category['id']] ?? false)
-                                ? Colors.red
-                                : Colors.black87,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            )).toList(),
+            ...widget.catalog.map((category) => 
+              _buildCategoryRadioItem(category['id'], category['name'])
+            ).toList(),
             
             SizedBox(height: 16),
             Divider(),
             
-            // Brands Filter
+            // Brands Filter - Now using Radio buttons
             Text(
               'Thương hiệu',
               style: TextStyle(
@@ -174,65 +143,13 @@ class _FilterPanelState extends State<FilterPanel> {
             ),
             SizedBox(height: 10),
             
+            // All brands option (no filter)
+            _buildBrandRadioItem(null, 'Tất cả thương hiệu'),
+            
             // Selectable brand items
-            ...widget.brands.map((brand) => Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: InkWell(
-                onTap: () {
-                  setState(() {
-                    // Toggle selection for this brand
-                    if (widget.selectedBrands.contains(brand)) {
-                      widget.selectedBrands.remove(brand);
-                    } else {
-                      widget.selectedBrands.add(brand);
-                    }
-                  });
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                  decoration: BoxDecoration(
-                    color: widget.selectedBrands.contains(brand)
-                        ? Colors.red.withOpacity(0.1)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: widget.selectedBrands.contains(brand)
-                          ? Colors.red
-                          : Colors.grey.withOpacity(0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        widget.selectedBrands.contains(brand)
-                            ? Icons.check_circle
-                            : Icons.circle_outlined,
-                        size: 16,
-                        color: widget.selectedBrands.contains(brand)
-                            ? Colors.red
-                            : Colors.grey,
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          brand,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: widget.selectedBrands.contains(brand)
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                            color: widget.selectedBrands.contains(brand)
-                                ? Colors.red
-                                : Colors.black87,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            )).toList(),
+            ...widget.brands.map((brand) => 
+              _buildBrandRadioItem(brand, brand)
+            ).toList(),
             
             SizedBox(height: 16),
             Divider(),
@@ -460,20 +377,113 @@ class _FilterPanelState extends State<FilterPanel> {
             SizedBox(height: 24),
             
             // Apply button
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: applyFilters,
+                child: Text(
+                  'Áp Dụng',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-              onPressed: applyFilters,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  // New method to build category radio button
+  Widget _buildCategoryRadioItem(int? categoryId, String name) {
+    final bool isSelected = _categoryId == categoryId;
+    
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _categoryId = categoryId; // Select this category or null to deselect
+        });
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+        margin: EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.red.withOpacity(0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: isSelected ? Colors.red : Colors.grey.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+              size: 16,
+              color: isSelected ? Colors.red : Colors.grey,
+            ),
+            SizedBox(width: 8),
+            Expanded(
               child: Text(
-                'Áp Dụng',
+                name,
                 style: TextStyle(
-                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? Colors.red : Colors.black87,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  // New method to build brand radio button
+  Widget _buildBrandRadioItem(String? brand, String displayName) {
+    final bool isSelected = _brandName == brand;
+    
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _brandName = brand; // Select this brand or null to deselect
+        });
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+        margin: EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.red.withOpacity(0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: isSelected ? Colors.red : Colors.grey.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+              size: 16,
+              color: isSelected ? Colors.red : Colors.grey,
+            ),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                displayName,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? Colors.red : Colors.black87,
                 ),
               ),
             ),

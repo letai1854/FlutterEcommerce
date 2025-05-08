@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:e_commerce_app/database/Storage/BrandCategoryService.dart';
 import 'package:e_commerce_app/database/Storage/ProductStorage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:carousel_slider/carousel_slider.dart';
@@ -13,8 +14,6 @@ import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
 import 'package:flutter/material.dart';
 
 // Import needed services
-import 'package:e_commerce_app/database/Storage/ProductStorage.dart';
-import 'package:e_commerce_app/database/Storage/BrandCategoryService.dart';
 import 'package:e_commerce_app/state/Search/SearchStateService.dart';
 import 'package:e_commerce_app/database/models/product_dto.dart';
 
@@ -33,7 +32,6 @@ class _PageSearchState extends State<PageSearch> {
   final SearchStateService _searchService = SearchStateService();
   
   // Scrolling and scaffolding
-
   final ScrollController _scrollController = ScrollController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -44,10 +42,9 @@ class _PageSearchState extends State<PageSearch> {
     'assets/banner6.jpg',
   ];
 
-
-  // Category selection state
-  Map<int, bool> selectedCategories = {};
-  Set<String> selectedBrands = {};
+  // Single selection for category and brand
+  int? selectedCategoryId;
+  String? selectedBrandName;
 
   // Price range state
   TextEditingController minPriceController = TextEditingController();
@@ -64,7 +61,6 @@ class _PageSearchState extends State<PageSearch> {
   bool get _isAppDataLoading => AppDataService().isLoading;
   bool get _isAppDataInitialized => AppDataService().isInitialized;
 
-
   @override
   void initState() {
     super.initState();
@@ -74,7 +70,6 @@ class _PageSearchState extends State<PageSearch> {
     _searchService.addListener(_onSearchServiceChange);
     
     // Initialize the price filter controllers
-
     minPriceController.text = formatPrice(minPrice);
     maxPriceController.text = formatPrice(maxPrice);
     
@@ -83,11 +78,26 @@ class _PageSearchState extends State<PageSearch> {
       _scrollController.addListener(_onScroll);
     });
     
-    // Initialize categories and brands from AppDataService
-    _initializeFilters();
+    // Sync with search service state
+    _syncWithSearchService();
     
     // Execute search if there's a query
     _executeInitialSearch();
+  }
+  
+  // Sync local state with SearchStateService
+  void _syncWithSearchService() {
+    // Get current values from search service
+    selectedCategoryId = _searchService.selectedCategoryId;
+    selectedBrandName = _searchService.selectedBrandName;
+    minPrice = _searchService.minPrice;
+    maxPrice = _searchService.maxPrice;
+    currentSortMethod = _searchService.sortBy;
+    currentSortDir = _searchService.sortDir;
+    
+    // Update controllers
+    minPriceController.text = formatPrice(minPrice);
+    maxPriceController.text = formatPrice(maxPrice);
   }
 
   @override
@@ -102,29 +112,24 @@ class _PageSearchState extends State<PageSearch> {
     super.dispose();
   }
   
-  // Initialize categories and brands from AppDataService
-  void _initializeFilters() {
-    // Initialize category filters
-    final categories = AppDataService().categories;
-    for (var category in categories) {
-      if (category.id != null) {
-        selectedCategories[category.id!] = false;
-      }
-    }
-    
-    // You could initialize brands similarly if needed
-  }
-  
   // Execute search with current query if there is one
   void _executeInitialSearch() {
     final query = _searchService.currentSearchQuery;
     if (query.isNotEmpty) {
       if (kDebugMode) {
         print('Initial search execution for: "$query"');
+        print('isInitialSearch flag: ${_searchService.isInitialSearch}');
       }
       
-      // Call the centralized search execution method - no need for post frame callback
-      _searchService.executeSearch();
+      // If this is a brand new search (like coming directly from search bar),
+      // we need to execute it as an initial search without filters
+      if (_searchService.isInitialSearch) {
+        _searchService.executeSearch();
+      } else {
+        // Otherwise, if we're returning to the page and filters are already set,
+        // preserve those filters in the search
+        _searchService.executeSearch();
+      }
     }
   }
   
@@ -138,11 +143,10 @@ class _PageSearchState extends State<PageSearch> {
   // Listener for search service changes
   void _onSearchServiceChange() {
     if (mounted) {
-      setState(() {});
-      
-      // We no longer need to call performSearch() here since executeSearch() 
-      // is called by the search button/controller already
-      // This was causing the duplicate search requests
+      setState(() {
+        // Sync local state with search service
+        _syncWithSearchService();
+      });
     }
   }
   
@@ -203,20 +207,55 @@ class _PageSearchState extends State<PageSearch> {
     });
   }
 
-  // Apply filters
+  // Apply filters and execute search
   void onFiltersApplied({
-    required List<int> categories,
-    required List<String> brands,
+    required int? categoryId,
+    required String? brandName,
     required int minPrice,
     required int maxPrice,
   }) {
-    // In a real implementation, this would call ProductStorage with filter params
-    // For now, we'll keep simple filtering for demo purposes
-  
+    // Update local state first
+    setState(() {
+      selectedCategoryId = categoryId;
+      selectedBrandName = brandName;
+      this.minPrice = minPrice;
+      this.maxPrice = maxPrice;
+    });
+    
+    // Close drawer on mobile
     if (MediaQuery.of(context).size.width < 1100) {
       Navigator.of(context).pop(); // Close drawer on mobile
     }
-
+    
+    // Update search service state
+    _searchService.setFilters(
+      categoryId: categoryId,
+      brandName: brandName,
+      minPrice: minPrice,
+      maxPrice: maxPrice
+    );
+    
+    // Execute search with current parameters and force refresh
+    _searchService.executeSearch(forceRefresh: true);
+  }
+  
+  // Update sort method and execute search
+  void updateSortMethod(String method) {
+    setState(() {
+      if (currentSortMethod == method) {
+        // Toggle direction if same method
+        currentSortDir = currentSortDir == 'asc' ? 'desc' : 'asc';
+      } else {
+        currentSortMethod = method;
+        currentSortDir = 'desc'; // Default for new sort
+      }
+    });
+    
+    // Update search service state
+    _searchService.setSort(currentSortMethod, currentSortDir);
+    
+    // Execute search with current parameters (sort is now included)
+    _searchService.executeSearch(forceRefresh: true);
   }
 
   @override
@@ -251,15 +290,15 @@ class _PageSearchState extends State<PageSearch> {
           scrollController: _scrollController,
           onFiltersApplied: onFiltersApplied,
           // Filter panel state
-          selectedCategories: selectedCategories,
-          selectedBrands: selectedBrands,
+          selectedCategoryId: selectedCategoryId,
+          selectedBrandName: selectedBrandName,
           minPrice: minPrice,
           maxPrice: maxPrice,
           minPriceController: minPriceController,
           maxPriceController: maxPriceController,
           priceStep: priceStep,
-          catalog: categories, // This is now List<CategoryDTO>
-          brands: brandNames, // Using our extracted brand names
+          catalog: categories,
+          brands: brandNames,
           updateMinPrice: updateMinPrice,
           updateMaxPrice: updateMaxPrice,
           formatPrice: formatPrice,
@@ -271,18 +310,7 @@ class _PageSearchState extends State<PageSearch> {
           // Sort
           currentSortMethod: currentSortMethod,
           currentSortDir: currentSortDir,
-          updateSortMethod: (method) {
-            // In a real implementation, this would update sort and refresh results
-            setState(() {
-              if (currentSortMethod == method) {
-                // Toggle direction if same method
-                currentSortDir = currentSortDir == 'asc' ? 'desc' : 'asc';
-              } else {
-                currentSortMethod = method;
-                currentSortDir = 'desc'; // Default for new sort
-              }
-            });
-          },
+          updateSortMethod: updateSortMethod,
           // Additional flags
           isAppDataLoading: isAppDataLoading,
           isAppDataInitialized: isAppDataInitialized,
