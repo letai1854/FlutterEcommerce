@@ -26,6 +26,7 @@ class BodyPayment extends StatelessWidget {
   final bool isProcessingOrder;
   final bool useAccumulatedPoints; // New parameter
   final ValueChanged<bool?> onToggleUseAccumulatedPoints; // New parameter
+  final double pointsDiscountAmount; // New parameter for points discount
 
   final VoidCallback onChangeAddress;
   final VoidCallback onSelectVoucher;
@@ -58,6 +59,7 @@ class BodyPayment extends StatelessWidget {
     required this.onAddressSelected,
     required this.useAccumulatedPoints, // Initialize new parameter
     required this.onToggleUseAccumulatedPoints, // Initialize new parameter
+    required this.pointsDiscountAmount, // Initialize new parameter
   }) : super(key: key);
 
   Widget _buildAddressDisplay() {
@@ -133,6 +135,7 @@ class BodyPayment extends StatelessWidget {
   }
 
   Widget _buildDesktopAccumulatedPointsSection() {
+    final double customerPoints = UserInfo().currentUser?.customerPoints ?? 0;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12.0),
       child: Row(
@@ -145,7 +148,7 @@ class BodyPayment extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            '(Hiện có: ${UserInfo().currentUser?.customerPoints.toStringAsFixed(0) ?? "0"})',
+            '(Hiện có: ${customerPoints.toStringAsFixed(0)})',
             style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
           ),
           const Spacer(),
@@ -155,8 +158,12 @@ class BodyPayment extends StatelessWidget {
           ),
           Checkbox(
             value: useAccumulatedPoints,
-            onChanged: onToggleUseAccumulatedPoints,
+            // Disable checkbox if no points, but allow PagePayment to handle message
+            onChanged: customerPoints > 0 ? onToggleUseAccumulatedPoints : null,
             activeColor: Colors.red.shade700,
+            fillColor: customerPoints == 0
+                ? MaterialStateProperty.all(Colors.grey.shade300)
+                : null,
           ),
         ],
       ),
@@ -164,6 +171,7 @@ class BodyPayment extends StatelessWidget {
   }
 
   Widget _buildMobileAccumulatedPointsSection() {
+    final double customerPoints = UserInfo().currentUser?.customerPoints ?? 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -179,7 +187,7 @@ class BodyPayment extends StatelessWidget {
             const SizedBox(width: 4),
             Expanded(
               child: Text(
-                '(Hiện có: ${UserInfo().currentUser?.customerPoints.toStringAsFixed(0) ?? "0"})',
+                '(Hiện có: ${customerPoints.toStringAsFixed(0)})',
                 style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -196,8 +204,12 @@ class BodyPayment extends StatelessWidget {
             ),
             Checkbox(
               value: useAccumulatedPoints,
-              onChanged: onToggleUseAccumulatedPoints,
+              onChanged:
+                  customerPoints > 0 ? onToggleUseAccumulatedPoints : null,
               activeColor: Colors.red.shade700,
+              fillColor: customerPoints == 0
+                  ? MaterialStateProperty.all(Colors.grey.shade300)
+                  : null,
             ),
           ],
         ),
@@ -603,6 +615,10 @@ class BodyPayment extends StatelessWidget {
                         if (discountAmount > 0)
                           _buildSummaryRow('Giảm giá voucher:',
                               '-${formatCurrency(discountAmount)}',
+                              isDiscount: true),
+                        if (pointsDiscountAmount > 0) // Display points discount
+                          _buildSummaryRow('Giảm giá điểm tích lũy:',
+                              '-${formatCurrency(pointsDiscountAmount)}',
                               isDiscount: true),
                         const Divider(height: 24, thickness: 1),
                         Row(

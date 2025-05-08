@@ -63,6 +63,7 @@ class _PagePaymentState extends State<PagePayment> {
 
   // --- Accumulated Points State ---
   bool _useAccumulatedPoints = false;
+  double _pointsDiscountAmount = 0.0; // New state for points discount value
 
   // --- Payment Method State ---
   String _selectedPaymentMethod =
@@ -145,7 +146,11 @@ class _PagePaymentState extends State<PagePayment> {
     double discount = _calculateDiscount();
     double tax = _calculateTax();
     // Đảm bảo tổng không âm
-    double total = subtotal + _shippingFee + tax - discount;
+    double total = subtotal +
+        _shippingFee +
+        tax -
+        discount -
+        _pointsDiscountAmount; // Subtract points discount
     return total < 0 ? 0 : total;
   }
 
@@ -462,13 +467,46 @@ class _PagePaymentState extends State<PagePayment> {
 
   void _toggleUseAccumulatedPoints(bool? value) {
     if (value == null) return;
-    // Add any logic here if needed, e.g., check if user has enough points
-    // For now, just toggle the state.
+
+    final double customerPoints = UserInfo().currentUser?.customerPoints ?? 0;
+
     setState(() {
-      _useAccumulatedPoints = value;
+      if (value) {
+        if (customerPoints == 0) {
+          _useAccumulatedPoints = false;
+          _pointsDiscountAmount = 0.0;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Bạn không có điểm tích lũy để sử dụng.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          return;
+        }
+
+        double potentialPointsDiscount =
+            customerPoints * 1000; // 1 point = 1000 VND
+        // Calculate total before applying points to ensure discount doesn't exceed it
+        double currentTotalBeforePoints = _calculateSubtotal() +
+            _shippingFee +
+            _calculateTax() -
+            _calculateDiscount();
+
+        // Points discount cannot make the total negative or exceed the current total
+        _pointsDiscountAmount =
+            (potentialPointsDiscount > currentTotalBeforePoints)
+                ? currentTotalBeforePoints
+                : potentialPointsDiscount;
+
+        if (_pointsDiscountAmount < 0)
+          _pointsDiscountAmount = 0; // Ensure not negative
+
+        _useAccumulatedPoints = true;
+      } else {
+        _useAccumulatedPoints = false;
+        _pointsDiscountAmount = 0.0;
+      }
     });
-    // Recalculate total if points usage changes the total
-    // _calculateTotal(); // This might be needed if points directly affect total before order processing
   }
 
   @override
@@ -492,6 +530,7 @@ class _PagePaymentState extends State<PagePayment> {
       taxAmount: tax,
       taxRate: _taxRate,
       discountAmount: discount,
+      pointsDiscountAmount: _pointsDiscountAmount, // Pass points discount
       totalAmount: total,
       isProcessingOrder: _isProcessing, // Trạng thái xử lý
       useAccumulatedPoints: _useAccumulatedPoints, // Add this
