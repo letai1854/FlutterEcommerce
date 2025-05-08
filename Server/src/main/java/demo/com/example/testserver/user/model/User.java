@@ -77,7 +77,7 @@ public class User {
     private List<Address> addresses = new ArrayList<>(); // Initialize the list
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<CartItem> cartItems;
+    private List<CartItem> cartItems = new ArrayList<>(); // Initialize the list
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<Order> orders;

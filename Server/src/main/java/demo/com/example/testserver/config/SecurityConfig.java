@@ -96,6 +96,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/orders/**").authenticated() 
                 // Specific endpoint for admin to update order status.
                 .requestMatchers(HttpMethod.PATCH, "/api/orders/{orderId}/status").hasRole("ADMIN") 
+                // Cart Management
+                .requestMatchers("/api/cart/**").authenticated()
                 // Secure all other requests
                 .anyRequest().authenticated()
             );
