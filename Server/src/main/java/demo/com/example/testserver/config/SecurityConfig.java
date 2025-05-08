@@ -98,6 +98,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PATCH, "/api/orders/{orderId}/status").hasRole("ADMIN") 
                 // Cart Management
                 .requestMatchers("/api/cart/**").authenticated()
+                // Admin Dashboard Management
+                .requestMatchers("/api/admin/dashboard/**").hasRole("ADMIN") // Secure all admin dashboard endpoints
                 // Secure all other requests
                 .anyRequest().authenticated()
             );
