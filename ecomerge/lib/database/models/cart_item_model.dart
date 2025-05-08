@@ -1,9 +1,11 @@
 class CartItemModel {
   final int productId;
   final String productName;
-  final String imageUrl; // URL or local path to the product image
+  final String
+      imageUrl; // URL or local path to the product image (will store variant image)
   final int quantity;
   final double price;
+  final int? variantId; // ID of the selected variant
 
   CartItemModel({
     required this.productId,
@@ -11,6 +13,7 @@ class CartItemModel {
     required this.imageUrl,
     required this.quantity,
     required this.price,
+    this.variantId, // Added variantId
   });
 
   // Optional: Add toJson and fromJson methods if you need to serialize/deserialize
@@ -21,6 +24,7 @@ class CartItemModel {
       'imageUrl': imageUrl,
       'quantity': quantity,
       'price': price,
+      'variantId': variantId, // Added variantId
     };
   }
 
@@ -31,6 +35,7 @@ class CartItemModel {
       imageUrl: json['imageUrl'] as String,
       quantity: json['quantity'] as int,
       price: (json['price'] as num).toDouble(),
+      variantId: json['variantId'] as int?, // Added variantId
     );
   }
 
@@ -41,6 +46,7 @@ class CartItemModel {
     String? imageUrl,
     int? quantity,
     double? price,
+    int? variantId, // Added variantId
   }) {
     return CartItemModel(
       productId: productId ?? this.productId,
@@ -48,6 +54,7 @@ class CartItemModel {
       imageUrl: imageUrl ?? this.imageUrl,
       quantity: quantity ?? this.quantity,
       price: price ?? this.price,
+      variantId: variantId ?? this.variantId, // Added variantId
     );
   }
 }

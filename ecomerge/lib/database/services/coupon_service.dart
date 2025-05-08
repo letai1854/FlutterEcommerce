@@ -168,6 +168,61 @@ class CouponService {
     }
   }
 
+  Future<List<CouponResponseDTO>> getAvailableCoupons() async {
+    final url = Uri.parse('$_baseUrl/available');
+
+    try {
+      final response = await _httpClient.get(
+        url,
+        headers: _getHeaders(
+            includeAuth:
+                true), // Assuming auth might be needed, adjust if public
+      );
+
+      if (kDebugMode) {
+        print('Get Available Coupons Request URL: $url');
+        print('Get Available Coupons Response Status: ${response.statusCode}');
+        if (response.bodyBytes.isNotEmpty) {
+          print(
+              'Get Available Coupons Response Body: ${utf8.decode(response.bodyBytes)}');
+        } else {
+          print('Get Available Coupons Response Body: (Empty or 204)');
+        }
+      }
+
+      if (response.statusCode == 200) {
+        final List<dynamic> jsonList =
+            jsonDecode(utf8.decode(response.bodyBytes));
+        return jsonList
+            .map((jsonItem) =>
+                CouponResponseDTO.fromJson(jsonItem as Map<String, dynamic>))
+            .toList();
+      } else if (response.statusCode == 204) {
+        return []; // No content, as per server logic
+      } else {
+        String errorMessage = 'Failed to fetch available coupons.';
+        try {
+          final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
+          if (errorBody is Map && errorBody.containsKey('message')) {
+            errorMessage = errorBody['message'];
+          } else if (errorBody is String && errorBody.isNotEmpty) {
+            errorMessage = errorBody;
+          }
+        } catch (_) {}
+        throw Exception(
+            'Failed to fetch available coupons: $errorMessage (Status: ${response.statusCode})');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) print('SocketException during get available coupons: $e');
+      throw Exception(
+          'Network Error: Could not connect to server. Verify server is running and accessible.');
+    } catch (e) {
+      if (kDebugMode)
+        print('Unexpected Error during get available coupons: $e');
+      throw Exception('An unexpected error occurred: ${e.toString()}');
+    }
+  }
+
   void dispose() {
     _httpClient.close();
   }

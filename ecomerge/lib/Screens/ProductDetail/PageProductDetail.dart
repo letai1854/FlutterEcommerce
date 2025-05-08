@@ -36,30 +36,34 @@ class _PageproductdetailState extends State<Pageproductdetail> {
   @override
   void initState() {
     super.initState();
-    _loadProductData();
+    _loadProductDetails(widget.productId);
     _loadInitialReviews();
     _scrollController.addListener(_loadMoreReviewsOnScroll);
   }
 
-  Future<void> _loadProductData() async {
+  Future<void> _loadProductDetails(int productId) async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _productData = {}; // Clear previous data
+    });
+
     try {
-      setState(() => _isLoading = true);
-      final product = await _productService.getProductById(widget.productId);
+      final product = await _productService.getProductById(productId);
+      if (!mounted) return;
 
       List<String> allImages = [];
-      if (product.mainImageUrl != null) {
+      if (product.mainImageUrl != null && product.mainImageUrl!.isNotEmpty) {
         allImages.add(product.mainImageUrl!);
-        _productService.getImageFromServer(product.mainImageUrl!);
       }
       if (product.imageUrls != null) {
-        allImages.addAll(product.imageUrls!);
-        for (String imageUrl in product.imageUrls!) {
-          _productService.getImageFromServer(imageUrl);
-        }
+        allImages.addAll(product.imageUrls!
+            .where((img) => img.isNotEmpty && !allImages.contains(img)));
       }
 
       setState(() {
         _productData = {
+          'id': product.id,
           'name': product.name,
           'brand': product.brandName ?? "N/A",
           'averageRating': product.averageRating ?? 0.0,
@@ -68,6 +72,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
           'illustrationImages': allImages,
           'productVariants': product.variants
                   ?.map((variant) => {
+                        'id': variant.id,
                         'name': variant.name ?? 'Không tên',
                         'mainImage': variant.variantImageUrl ??
                             product.mainImageUrl ??
@@ -322,8 +327,23 @@ class _PageproductdetailState extends State<Pageproductdetail> {
           baseProductName = '$baseProductName - $variantName';
         }
 
-        // Implement your add to cart logic here
-        // For example, show a SnackBar
+        final String variantImageUrl =
+            selectedVariant['variantThumbnail'] as String? ??
+                selectedVariant['mainImage'] as String? ??
+                _productData['illustrationImages']?.firstWhere(
+                    (img) => img != null && img.isNotEmpty,
+                    orElse: () => '') ??
+                '';
+
+        final cartItem = CartItemModel(
+          productId: widget.productId,
+          productName: baseProductName,
+          imageUrl: variantImageUrl,
+          quantity: _selectedQuantity,
+          price: selectedVariant['price'] as double,
+          variantId: selectedVariant['id'] as int?,
+        );
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Đã thêm "$baseProductName" vào giỏ hàng!')),
         );
@@ -349,38 +369,33 @@ class _PageproductdetailState extends State<Pageproductdetail> {
         }
 
         final selectedVariant = productVariantsList[_selectedVariantIndex];
-
         String baseProductName = _productData['name'] ?? 'Sản phẩm';
         final String? variantName = selectedVariant['name'] as String?;
         if (variantName != null && variantName.isNotEmpty) {
           baseProductName = '$baseProductName - $variantName';
         }
 
-        final double price =
-            (selectedVariant['price'] as num? ?? 0.0).toDouble();
+        final String variantImageUrl =
+            selectedVariant['variantThumbnail'] as String? ??
+                selectedVariant['mainImage'] as String? ??
+                _productData['illustrationImages']?.firstWhere(
+                    (img) => img != null && img.isNotEmpty,
+                    orElse: () => '') ??
+                '';
 
-        String finalImageUrl = _displayedMainImageUrl;
-        if (finalImageUrl.isEmpty) {
-          final String? relativePath = selectedVariant['imageUrl'] as String?;
-          if (relativePath != null && relativePath.isNotEmpty) {
-            finalImageUrl = _productService.getImageUrl(relativePath);
-          } else {
-            finalImageUrl = 'https://via.placeholder.com/150';
-          }
-        }
-
-        final cartItem = CartItemModel(
+        final buyNowItem = CartItemModel(
           productId: widget.productId,
           productName: baseProductName,
-          imageUrl: finalImageUrl,
+          imageUrl: variantImageUrl,
           quantity: _selectedQuantity,
-          price: price,
+          price: selectedVariant['price'] as double,
+          variantId: selectedVariant['id'] as int?,
         );
 
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => PagePayment(cartItems: [cartItem]),
+            builder: (context) => PagePayment(cartItems: [buyNowItem]),
           ),
         );
       },
