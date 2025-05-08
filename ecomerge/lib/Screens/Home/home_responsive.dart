@@ -426,7 +426,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                                     : screenWidth - 2,
                                 child: CategoryFilteredProductGrid(
                                   categoryId: categoryIdToPass,
-                                  itemsToLoadPerPage: 6,
+                                  itemsToLoadPerPage: isMobile ? 2 : 6,
                                   gridWidth: isDesktop
                                       ? screenWidth - 280
                                       : screenWidth - 2,

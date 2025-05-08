@@ -39,11 +39,35 @@ class _CategoryFilteredProductGridState
   bool _isLoadingMore = false; // For loading more items
   bool _hasMore = true;
   String? _error;
+  ScrollPosition? _scrollPosition; // To listen to parent scroll
 
   @override
   void initState() {
     super.initState();
     _fetchProducts(page: 0, isInitialLoad: true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupScrollListener();
+    });
+  }
+
+  void _setupScrollListener() {
+    // Find the ancestor Scrollable's position
+    _scrollPosition = Scrollable.of(context)?.position;
+    _scrollPosition?.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollPosition != null) {
+      final maxScroll = _scrollPosition!.maxScrollExtent;
+      final currentScroll = _scrollPosition!.pixels;
+      // Load more when user is near the bottom, e.g., 300 pixels from the end
+      if (currentScroll >= maxScroll - 300 &&
+          _hasMore &&
+          !_isLoadingMore &&
+          !_isLoadingFirstLoad) {
+        _loadMoreProducts();
+      }
+    }
   }
 
   @override
@@ -232,20 +256,15 @@ class _CategoryFilteredProductGridState
         ),
         if (_isLoadingMore)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16.0),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-        if (_hasMore &&
-            !_isLoadingMore &&
-            !_isLoadingFirstLoad &&
-            _products.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16.0),
-            child: ElevatedButton(
-              onPressed: _loadMoreProducts,
-              child: Text('Tải thêm sản phẩm'),
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+            padding: const EdgeInsets.symmetric(vertical: 20.0),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 10),
+                  Text('Đang tải thêm sản phẩm...'),
+                ],
               ),
             ),
           ),
@@ -264,6 +283,7 @@ class _CategoryFilteredProductGridState
 
   @override
   void dispose() {
+    _scrollPosition?.removeListener(_onScroll); // Remove listener
     _productService.dispose();
     super.dispose();
   }
