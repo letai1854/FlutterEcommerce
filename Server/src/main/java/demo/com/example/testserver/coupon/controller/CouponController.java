@@ -16,6 +16,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/coupons")
+@CrossOrigin(origins = "*")
 public class CouponController {
 
     @Autowired
@@ -40,5 +41,14 @@ public class CouponController {
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.ok(coupons);
+    }
+
+    @GetMapping("/available")
+    public ResponseEntity<List<CouponResponseDTO>> getAvailableCoupons() {
+        List<CouponResponseDTO> availableCoupons = couponService.getAvailableCouponsSortedByDiscount();
+        if (availableCoupons.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(availableCoupons);
     }
 }

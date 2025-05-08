@@ -73,7 +73,7 @@ public class SecurityConfig {
                 // --- Coupon Management ---
                 .requestMatchers(HttpMethod.POST, "/api/coupons").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/coupons").hasRole("ADMIN") // Admin search
-                .requestMatchers(HttpMethod.GET, "/api/coupons/available").authenticated() // User available
+                .requestMatchers(HttpMethod.GET, "/api/coupons/available").permitAll() // User available
                 // --- Image Routes ---
                 .requestMatchers(HttpMethod.GET, "/api/images/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/images/upload").authenticated()

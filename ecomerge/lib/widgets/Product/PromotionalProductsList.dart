@@ -1,4 +1,5 @@
 import 'package:e_commerce_app/database/PageResponse.dart';
+import 'package:e_commerce_app/widgets/Product/ProductItem.dart';
 import 'package:flutter/material.dart';
 import 'package:e_commerce_app/database/models/paginated_response.dart';
 import 'package:e_commerce_app/database/models/product_dto.dart';
@@ -64,173 +65,216 @@ class _PromoProductItemState extends State<PromoProductItem> {
     );
   }
 
-  String _formatDescription(String? description) {
-    if (description == null || description.isEmpty) return "";
-    final words = description.split(' ');
-    if (words.length <= 5) {
-      return description;
-    } else {
-      return '${words.take(5).join(' ')}...';
+  String _formatPrice(double price) {
+    final formatted = price.toStringAsFixed(0).replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (match) => '${match[1]},',
+        );
+    return '$formatted VNĐ';
+  }
+
+  Widget _buildProductImage() {
+    if (widget.imageUrl == null || widget.imageUrl!.isEmpty) {
+      return const Center(
+        child: Icon(
+          Icons.image_not_supported,
+          size: 50,
+          color: Colors.grey,
+        ),
+      );
     }
+
+    return FutureBuilder(
+      future: _imageLoader,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          if (kDebugMode) {
+            print('Error loading promo image: ${snapshot.error}');
+          }
+          return const Center(
+            child: Icon(
+              Icons.broken_image,
+              size: 50,
+              color: Colors.grey,
+            ),
+          );
+        }
+
+        if (snapshot.hasData && snapshot.data != null) {
+          if (snapshot.data is Uint8List) {
+            return Image.memory(
+              snapshot.data as Uint8List,
+              fit: BoxFit.cover,
+            );
+          }
+        }
+        return Image.network(
+          _productService.getImageUrl(widget.imageUrl),
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            if (kDebugMode) {
+              print('Error loading promo image network: $error');
+            }
+            return const Center(
+              child: Icon(
+                Icons.image_not_supported,
+                size: 50,
+                color: Colors.grey,
+              ),
+            );
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+                strokeWidth: 2,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _formatDescription(String? description) {
+    if (description == null || description.isEmpty) {
+      return '';
+    }
+    List<String> words = description.split(' ');
+    if (words.length > 6) {
+      return '${words.sublist(0, 6).join(' ')}...';
+    }
+    return description;
   }
 
   @override
   Widget build(BuildContext context) {
-    // Calculate discounted price
-    double discountedPrice = widget.discount != null
-        ? widget.price * (1 - widget.discount! / 100)
+    final discountedPrice = widget.discount != null && widget.discount! > 0
+        ? widget.price - (widget.price * widget.discount! / 100)
         : widget.price;
 
-    // Format description
-    String formattedDescription = _formatDescription(widget.describe);
+    final String displayDescription = _formatDescription(widget.describe);
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: _navigateToProductDetail,
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[300]!),
-          ),
+    return Hero(
+      tag: 'promo_product_${widget.productId}',
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        child: InkWell(
+          onTap: _navigateToProductDetail,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Stack(
-                children: [
-                  // Product image
-                  FutureBuilder(
-                    future: _imageLoader,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Container(
-                          width: double.infinity,
-                          height: 120,
-                          color: Colors.grey[200],
-                          child: const Center(
-                            child: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          ),
-                        );
-                      } else if (snapshot.hasData && snapshot.data != null) {
-                        return Image.memory(
-                          snapshot.data as dynamic,
-                          width: double.infinity,
-                          height: 120,
-                          fit: BoxFit.cover,
-                          errorBuilder: (ctx, error, stackTrace) => Container(
-                            width: double.infinity,
-                            height: 120,
-                            color: Colors.grey[200],
-                            child:
-                                const Icon(Icons.image_not_supported, size: 40),
-                          ),
-                        );
-                      } else {
-                        return Container(
-                          width: double.infinity,
-                          height: 120,
-                          color: Colors.grey[200],
-                          child:
-                              const Icon(Icons.image_not_supported, size: 40),
-                        );
-                      }
-                    },
+              AspectRatio(
+                aspectRatio: 1,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(8)),
                   ),
-                  // Discount badge
-                  if (widget.discount != null)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: const Color.fromARGB(255, 255, 85, 0),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          '-${widget.discount}%',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              // Product details
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Stack(
                     children: [
-                      // Title
-                      Text(
-                        widget.title,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                      Positioned.fill(
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(8)),
+                          child: _buildProductImage(),
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
-                      // Description
-                      Text(
-                        formattedDescription,
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 12,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-                      // Price information
-                      Row(
-                        children: [
-                          Text(
-                            '${discountedPrice.toStringAsFixed(0)} đ',
-                            style: const TextStyle(
+                      if (widget.discount != null && widget.discount! > 0)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
                               color: Colors.red,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                          ),
-                          if (widget.discount != null) ...[
-                            const SizedBox(width: 4),
-                            Text(
-                              '${widget.price.toStringAsFixed(0)} đ',
+                            child: Text(
+                              '-${widget.discount}%',
                               style: const TextStyle(
-                                color: Colors.grey,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
                                 fontSize: 12,
-                                decoration: TextDecoration.lineThrough,
                               ),
                             ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      // Rating stars
-                      Row(
-                        children: List.generate(5, (index) {
-                          return Icon(
-                            index < widget.rating.floor()
-                                ? Icons.star
-                                : Icons.star_border,
-                            color: Colors.amber,
-                            size: 14,
-                          );
-                        }),
-                      ),
+                          ),
+                        ),
                     ],
                   ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    if (displayDescription.isNotEmpty)
+                      Text(
+                        displayDescription,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.star, color: Colors.amber, size: 16),
+                        Text(
+                          widget.rating.toStringAsFixed(1),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    if (widget.discount != null && widget.discount! > 0) ...[
+                      Text(
+                        _formatPrice(widget.price),
+                        style: TextStyle(
+                          fontSize: 12,
+                          decoration: TextDecoration.lineThrough,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                    ],
+                    Text(
+                      _formatPrice(discountedPrice),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -274,7 +318,7 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
   final ProductService _productService = ProductService();
   final ScrollController _scrollController = ScrollController();
 
-  List<PromoProductItem> _displayedProducts = [];
+  List<ProductItem> _displayedProducts = [];
   bool _isLoading = true;
   bool _isLoadingMore = false;
   String? _errorMessage;
@@ -282,7 +326,7 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
   bool _hasMorePages = true;
   int _totalPagesFromAPI = 0;
   bool _isScrollingToEnd = false;
-  bool _isButtonTriggeredLoading = false; // New state variable
+  bool _isButtonTriggeredLoading = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -371,7 +415,7 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
 
   void _createProductItems(List<ProductDTO> products) {
     final items = products
-        .map((product) => PromoProductItem(
+        .map((product) => ProductItem(
               productId: product.id ?? 0,
               imageUrl: product.mainImageUrl,
               title: product.name,
@@ -447,7 +491,7 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
       }
 
       final newItems = response.content
-          .map((product) => PromoProductItem(
+          .map((product) => ProductItem(
                 productId: product.id ?? 0,
                 imageUrl: product.mainImageUrl,
                 title: product.name,
