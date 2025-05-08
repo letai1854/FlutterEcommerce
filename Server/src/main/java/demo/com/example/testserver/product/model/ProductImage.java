@@ -2,6 +2,7 @@ package demo.com.example.testserver.product.model;
 
 import java.util.Date;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -25,6 +26,7 @@ public class ProductImage {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "san_pham_id", nullable = false)
+    @JsonIgnore
     private Product product;
 
     @Column(name = "url_hinh_anh", nullable = false)

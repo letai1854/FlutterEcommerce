@@ -69,6 +69,7 @@ CREATE TABLE san_pham (
     thuong_hieu_id INT NOT NULL,
     anh_chinh_url VARCHAR(255) NULL, -- Ảnh đại diện chính
     phan_tram_giam_gia DECIMAL(5, 2) NULL DEFAULT NULL, -- Giảm giá riêng cho SP (vd: 10.50 là 10.5%)
+    is_enabled BOOLEAN NOT NULL DEFAULT TRUE, -- Cột cho phép bật/tắt sản phẩm
     ngay_tao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ngay_cap_nhat TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (danh_muc_id) REFERENCES danh_muc(id) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -99,11 +100,13 @@ CREATE TABLE bien_the_san_pham (
     ten_bien_the VARCHAR(255) NOT NULL, -- Ví dụ: "Màu Đen, RAM 16GB, SSD 512GB"
     sku VARCHAR(100) UNIQUE NULL, -- Mã SKU (Stock Keeping Unit) nếu cần
     gia DECIMAL(12, 2) NOT NULL, -- Giá của biến thể này
+    phan_tram_giam_gia DECIMAL(5, 2) NULL DEFAULT NULL, -- Giảm giá riêng cho biến thể (vd: 10.50 là 10.5%)
     so_luong_ton_kho INT NOT NULL DEFAULT 0,
     hinh_anh_bien_the_url VARCHAR(255) NULL, -- Ảnh riêng cho biến thể nếu có
     ngay_tao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ngay_cap_nhat TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (san_pham_id) REFERENCES san_pham(id) ON DELETE CASCADE ON UPDATE CASCADE -- Xóa biến thể nếu sản phẩm bị xóa
+    FOREIGN KEY (san_pham_id) REFERENCES san_pham(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Xóa biến thể nếu sản phẩm bị xóa
+    CHECK (phan_tram_giam_gia IS NULL OR (phan_tram_giam_gia > 0 AND phan_tram_giam_gia <= 50.00)) -- Giới hạn % giảm giá
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ================= Bảng Giỏ hàng (Cart) =================

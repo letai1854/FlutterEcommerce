@@ -25,7 +25,7 @@ public class ProductSpecificationBuilder {
             BigDecimal minPrice,
             BigDecimal maxPrice,
             Double minRating,
-            List<Integer> productIdsFromSearch, // Can be Long if product IDs are Long
+            List<Long> productIdsFromSearch, // Changed to List<Long>
             Date startDate,
             Date endDate,
             Boolean onlyWithDiscount // New parameter for discount filter

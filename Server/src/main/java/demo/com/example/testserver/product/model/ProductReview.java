@@ -2,6 +2,7 @@ package demo.com.example.testserver.product.model;
 
 import java.util.Date;
 
+import com.fasterxml.jackson.annotation.JsonIgnore; // Import JsonIgnore
 import demo.com.example.testserver.user.model.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -26,6 +27,7 @@ public class ProductReview {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "san_pham_id", nullable = false)
+    @JsonIgnore // Add this to break potential cycles
     private Product product;
 
     @ManyToOne(fetch = FetchType.LAZY)
