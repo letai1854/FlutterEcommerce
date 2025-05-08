@@ -3,6 +3,8 @@ import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
 import 'package:e_commerce_app/widgets/Cart/BodyCart.dart';
 import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
 import 'package:flutter/material.dart';
+import 'package:e_commerce_app/database/Storage/CartStorage.dart';
+import 'package:e_commerce_app/database/models/CartDTO.dart';
 
 class PageCart extends StatefulWidget {
   const PageCart({super.key});
@@ -12,76 +14,18 @@ class PageCart extends StatefulWidget {
 }
 
 class _PageCartState extends State<PageCart> {
-  // Core cart data
-  List<Map<String, dynamic>> cartItems = [
-    {
-      'id': 1,
-      'name': 'Điều Khiển Từ Xa Thay Thế Chuyên Dụng Cho Samsung',
-      'image': 'https://i.imgur.com/s10B7s2.png',
-      'originalPrice': 456000,
-      'price': 42000,
-      'quantity': 1,
-      'isSelected': false,
-    },
-    {
-      'id': 2,
-      'name': 'Điều Khiển Từ Xa Thay Thế Chuyên Dụng Cho Samsung',
-      'image': 'https://i.imgur.com/s10B7s2.png',
-      'originalPrice': 456000,
-      'price': 42000,
-      'quantity': 1,
-      'isSelected': false,
-    },
-    {
-      'id': 3,
-      'name': 'Điều Khiển Từ Xa Thay Thế Chuyên Dụng Cho Samsung',
-      'image': 'https://i.imgur.com/s10B7s2.png',
-      'originalPrice': 456000,
-      'price': 42000,
-      'quantity': 1,
-      'isSelected': false,
-    },
-    {
-      'id': 4,
-      'name': 'Điều Khiển Từ Xa Thay Thế Chuyên Dụng Cho Samsung',
-      'image': 'https://i.imgur.com/s10B7s2.png',
-      'originalPrice': 456000,
-      'price': 42000,
-      'quantity': 1,
-      'isSelected': false,
-    },
-    {
-      'id': 5,
-      'name': 'Điều Khiển Từ Xa Thay Thế Chuyên Dụng Cho Samsung',
-      'image': 'https://i.imgur.com/s10B7s2.png',
-      'originalPrice': 456000,
-      'price': 42000,
-      'quantity': 1,
-      'isSelected': false,
-    },
-    {
-      'id': 6,
-      'name': 'Điều Khiển Từ Xa Thay Thế Chuyên Dụng Cho Samsung',
-      'image': 'https://i.imgur.com/s10B7s2.png',
-      'originalPrice': 456000,
-      'price': 42000,
-      'quantity': 1,
-      'isSelected': false,
-    },
-    {
-      'id': 7,
-      'name': 'Điều Khiển Từ Xa Thay Thế Chuyên Dụng Cho Samsung',
-      'image': 'https://i.imgur.com/s10B7s2.png',
-      'originalPrice': 456000,
-      'price': 42000,
-      'quantity': 1,
-      'isSelected': false,
-    },
-  ];
+  // Cart storage instance
+  final CartStorage _cartStorage = CartStorage();
+  
+  // Selected items tracking
+  Map<int?, bool> selectedItems = {};
   
   // Constants
   final double taxRate = 0.05; // Thuế 5%
   final double shippingFee = 20000; // Phí vận chuyển 20k
+  
+  // Loading state
+  bool _isLoading = true;
   
   // Controllers and keys
   final ScrollController _scrollController = ScrollController();
@@ -95,8 +39,33 @@ class _PageCartState extends State<PageCart> {
     super.initState();
     _isPaymentInfoBottomVisible = ValueNotifier<bool>(false);
     _scrollController.addListener(_onScroll);
-    // --- Kiểm tra visibility lần đầu sau khi layout ---
+    
+    // Load cart data
+    _loadCartData();
+    
+    // Check visibility after first layout
     WidgetsBinding.instance.addPostFrameCallback((_) => _updateStickyPaymentVisibility());
+  }
+
+  Future<void> _loadCartData() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      await _cartStorage.loadData();
+      
+      // Initialize selection state for all items (all unselected by default)
+      selectedItems.clear();
+      for (var item in _cartStorage.cartItems) {
+        if (item.cartItemId != null) {
+          selectedItems[item.cartItemId] = false;
+        }
+      }
+      
+    } catch (e) {
+      print('Error loading cart data: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -106,13 +75,14 @@ class _PageCartState extends State<PageCart> {
     _isPaymentInfoBottomVisible.dispose();
     super.dispose();
   }
-void _updateStickyPaymentVisibility() {
-    if (!mounted) return; // Đảm bảo widget còn tồn tại
 
-    // Điều kiện 1: Số lượng sản phẩm phải đủ lớn
-    bool hasEnoughItems = cartItems.length >= 4;
+  void _updateStickyPaymentVisibility() {
+    if (!mounted) return;
 
-    // Điều kiện 2: Thanh PaymentInfo cuộn phải đi ra khỏi màn hình
+    // Condition 1: Must have enough items
+    bool hasEnoughItems = _cartStorage.cartItems.length >= 4;
+
+    // Condition 2: Payment info must be off-screen
     bool isScrollablePaymentInfoOffScreen = false;
     if (_paymentInfoKey.currentContext != null) {
       final RenderBox? paymentInfoRenderBox =
@@ -121,15 +91,14 @@ void _updateStickyPaymentVisibility() {
          final position = paymentInfoRenderBox.localToGlobal(Offset.zero);
          final bottomEdgePosition = position.dy + paymentInfoRenderBox.size.height;
          final screenHeight = MediaQuery.of(context).size.height;
-         // Coi là off-screen nếu cạnh dưới của nó vượt quá chiều cao màn hình
          isScrollablePaymentInfoOffScreen = bottomEdgePosition > screenHeight;
       }
     }
 
-    // Kết hợp 2 điều kiện
+    // Combine conditions
     final bool shouldBeVisible = hasEnoughItems && isScrollablePaymentInfoOffScreen;
 
-    // Chỉ cập nhật notifier nếu giá trị thay đổi
+    // Update notifier if value changed
     if (_isPaymentInfoBottomVisible.value != shouldBeVisible) {
       _isPaymentInfoBottomVisible.value = shouldBeVisible;
     }
@@ -137,80 +106,91 @@ void _updateStickyPaymentVisibility() {
 
   // Scroll handler
   void _onScroll() {
-    // if (_paymentInfoKey.currentContext != null) {
-    //   final RenderBox paymentInfoRenderBox =
-    //       _paymentInfoKey.currentContext!.findRenderObject() as RenderBox;
-    //   final position = paymentInfoRenderBox.localToGlobal(Offset.zero);
-    //   double paymentInfoOffset = position.dy;
-    //   double screenHeight = MediaQuery.of(context).size.height;
-
-    //   final isVisible = paymentInfoOffset > screenHeight;
-    //   if (_isPaymentInfoBottomVisible.value != isVisible) {
-    //     _isPaymentInfoBottomVisible.value = isVisible;
-    //   }
-    // }
     _updateStickyPaymentVisibility();
   }
 
   // Cart item handlers
-void toggleSelectItem(int itemId) {
+  void toggleSelectItem(int itemId) {
     setState(() {
-      final itemIndex = cartItems.indexWhere((item) => item['id'] == itemId);
-      if (itemIndex != -1) {
-        cartItems[itemIndex]['isSelected'] = !cartItems[itemIndex]['isSelected'];
+      if (selectedItems.containsKey(itemId)) {
+        selectedItems[itemId] = !(selectedItems[itemId] ?? false);
       }
     });
-    _updateStickyPaymentVisibility(); // Cập nhật sau khi thay đổi trạng thái chọn
+    _updateStickyPaymentVisibility();
   }
 
-  void increaseQuantity(int itemId) {
-    setState(() {
-      final itemIndex = cartItems.indexWhere((item) => item['id'] == itemId);
-      if (itemIndex != -1) {
-        cartItems[itemIndex]['quantity']++;
+  void increaseQuantity(int itemId) async {
+    final index = _cartStorage.cartItems.indexWhere((item) => item.cartItemId == itemId);
+    if (index >= 0) {
+      final item = _cartStorage.cartItems[index];
+      final newQuantity = (item.quantity ?? 0) + 1;
+      
+      // Update through CartStorage
+      final success = await _cartStorage.updateItem(itemId, newQuantity);
+      
+      if (success) {
+        setState(() {}); // Refresh UI
+        _updateStickyPaymentVisibility();
       }
-    });
-     _updateStickyPaymentVisibility(); // Cập nhật sau khi thay đổi số lượng (ít ảnh hưởng hơn)
+    }
   }
 
- void decreaseQuantity(int itemId) {
-    setState(() {
-      final itemIndex = cartItems.indexWhere((item) => item['id'] == itemId);
-      if (itemIndex != -1 && cartItems[itemIndex]['quantity'] > 1) {
-        cartItems[itemIndex]['quantity']--;
+  void decreaseQuantity(int itemId) async {
+    final index = _cartStorage.cartItems.indexWhere((item) => item.cartItemId == itemId);
+    if (index >= 0) {
+      final item = _cartStorage.cartItems[index];
+      if ((item.quantity ?? 0) > 1) {
+        final newQuantity = (item.quantity ?? 0) - 1;
+        
+        // Update through CartStorage
+        final success = await _cartStorage.updateItem(itemId, newQuantity);
+        
+        if (success) {
+          setState(() {}); // Refresh UI
+          _updateStickyPaymentVisibility();
+        }
       }
-    });
-    _updateStickyPaymentVisibility(); // Cập nhật sau khi thay đổi số lượng
+    }
   }
-void removeItem(int itemId) {
-    setState(() {
-      cartItems.removeWhere((item) => item['id'] == itemId);
-    });
-    _updateStickyPaymentVisibility(); // --- Cập nhật sau khi xóa item ---
+
+  void removeItem(int itemId) async {
+    // Remove through CartStorage
+    final success = await _cartStorage.removeItem(itemId);
+    
+    if (success) {
+      setState(() {
+        // Also remove from selected items
+        selectedItems.remove(itemId);
+      });
+      _updateStickyPaymentVisibility();
+    }
   }
 
   void toggleSelectAll(bool value) {
     setState(() {
-      for (var item in cartItems) {
-        item['isSelected'] = value;
+      for (var itemId in selectedItems.keys) {
+        selectedItems[itemId] = value;
       }
     });
-    _updateStickyPaymentVisibility(); // Cập nhật sau khi thay đổi trạng thái chọn
+    _updateStickyPaymentVisibility();
   }
 
   void unselectAllItems() {
     setState(() {
-      for (var item in cartItems) {
-        item['isSelected'] = false;
+      for (var itemId in selectedItems.keys) {
+        selectedItems[itemId] = false;
       }
     });
-     _updateStickyPaymentVisibility(); // Cập nhật sau khi thay đổi trạng thái chọn
+    _updateStickyPaymentVisibility();
   }
-   double calculateSubtotal() {
+
+  double calculateSubtotal() {
     double subtotal = 0;
-    for (var item in cartItems) {
-      if (item['isSelected'] == true) { // Kiểm tra rõ ràng true
-        subtotal += (item['price'] ?? 0) * (item['quantity'] ?? 1);
+    for (var item in _cartStorage.cartItems) {
+      if (item.cartItemId != null && selectedItems[item.cartItemId] == true) {
+        double price = item.productVariant?.finalPrice ?? 
+                       item.productVariant?.price ?? 0;
+        subtotal += price * (item.quantity ?? 1);
       }
     }
     return subtotal;
@@ -222,7 +202,7 @@ void removeItem(int itemId) {
 
   double calculateTotal() {
     final subtotal = calculateSubtotal();
-    if (subtotal == 0) return 0; // Nếu không chọn gì thì tổng là 0
+    if (subtotal == 0) return 0;
     return subtotal + calculateTax() + shippingFee;
   }
 
@@ -232,44 +212,74 @@ void removeItem(int itemId) {
       builder: (context, constraints) {
         final screenWidth = constraints.maxWidth;
 
-        Widget appBar;
-        Widget body = BodyCart(
-          cartItems: cartItems,
-          taxRate: taxRate,
-          shippingFee: shippingFee,
-          scrollController: _scrollController,
-          isPaymentInfoBottomVisible: _isPaymentInfoBottomVisible,
-          paymentInfoKey: _paymentInfoKey,
-          toggleSelectItem: toggleSelectItem,
-          increaseQuantity: increaseQuantity,
-          decreaseQuantity: decreaseQuantity,
-          removeItem: removeItem,
-          toggleSelectAll: toggleSelectAll,
-          unselectAllItems: unselectAllItems,
-          calculateSubtotal: calculateSubtotal,
-          calculateTax: calculateTax,
-          calculateTotal: calculateTotal,
-        );
+        Widget content;
+        
+        if (_isLoading) {
+          content = const Center(child: CircularProgressIndicator());
+        } else if (_cartStorage.cartItems.isEmpty) {
+          content = Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.shopping_cart_outlined, size: 80, color: Colors.grey),
+                const SizedBox(height: 16),
+                const Text(
+                  'Giỏ hàng của bạn đang trống',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Thêm sản phẩm vào giỏ để tiến hành mua hàng',
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => Navigator.pushReplacementNamed(context, '/'),
+                  child: const Text('Tiếp tục mua sắm'),
+                ),
+              ],
+            ),
+          );
+        } else {
+          content = BodyCart(
+            cartItems: _cartStorage.cartItems,
+            selectedItems: selectedItems,
+            taxRate: taxRate,
+            shippingFee: shippingFee,
+            scrollController: _scrollController,
+            isPaymentInfoBottomVisible: _isPaymentInfoBottomVisible,
+            paymentInfoKey: _paymentInfoKey,
+            toggleSelectItem: toggleSelectItem,
+            increaseQuantity: increaseQuantity,
+            decreaseQuantity: decreaseQuantity,
+            removeItem: removeItem,
+            toggleSelectAll: toggleSelectAll,
+            unselectAllItems: unselectAllItems,
+            calculateSubtotal: calculateSubtotal,
+            calculateTax: calculateTax,
+            calculateTotal: calculateTotal,
+          );
+        }
 
         if (screenWidth < 768) {
           // Mobile layout
           return NavbarFormobile(
-            body: body,
+            body: content,
           );
         } else if (screenWidth < 1100) {
           // Tablet layout
           return NavbarForTablet(
-            body: body,
+            body: content,
           );
         } else {
           // Desktop layout
-          appBar = PreferredSize(
-            preferredSize: Size.fromHeight(130),
+          final appBar = PreferredSize(
+            preferredSize: const Size.fromHeight(130),
             child: Navbarhomedesktop(),
           );
           return Scaffold(
-            appBar: appBar as PreferredSize,
-            body: body,
+            appBar: appBar,
+            body: content,
           );
         }
       },

@@ -329,7 +329,7 @@ class ProductStorageSingleton extends ChangeNotifier {
           sortBy: sortBy,
           sortDir: sortDir,
           page: 0,
-          size: 3
+          size: 4
         );
 
         _cache.products = response.content;
@@ -408,7 +408,7 @@ class ProductStorageSingleton extends ChangeNotifier {
         sortBy: sortBy,
         sortDir: sortDir,
         page: _cache.currentPage + 1,
-        size: 3
+        size: 4
       );
 
       if (response.number == _cache.currentPage + 1) {
@@ -547,7 +547,7 @@ class ProductStorageSingleton extends ChangeNotifier {
         minPrice: skipPriceFilter ? null : minPrice.toDouble(), // <-- PASS NULL IF SKIPPING
         maxPrice: skipPriceFilter ? null : maxPrice.toDouble(), // <-- PASS NULL IF SKIPPING
         page: 0,
-        size: 3, // Explicitly set to load only 3 products initially, matching category behavior
+        size: 4, // Explicitly set to load only 3 products initially, matching category behavior
         sortBy: sortBy,
         sortDir: sortDir
       );
@@ -623,7 +623,7 @@ class ProductStorageSingleton extends ChangeNotifier {
         minPrice: _searchMinPrice?.toDouble(), // <-- USE NULL-AWARE OPERATOR
         maxPrice: _searchMaxPrice?.toDouble(), // <-- USE NULL-AWARE OPERATOR
         page: _searchCurrentPage + 1,
-        size: 3, // Consistently use 3 products per page to match category browsing
+        size: 4, // Consistently use 3 products per page to match category browsing
         sortBy: _searchSortBy,
         sortDir: _searchSortDir
       );

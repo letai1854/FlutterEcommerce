@@ -13,6 +13,7 @@ import 'package:e_commerce_app/Screens/SignUp/PageSignup.dart';
 import 'package:e_commerce_app/Screens/SuccessPayment/PageSuccessPayment.dart';
 import 'package:e_commerce_app/Screens/UserInfo/ResponsiveUserInfo.dart';
 import 'package:e_commerce_app/database/Storage/BrandCategoryService.dart';
+import 'package:e_commerce_app/database/Storage/CartStorage.dart';
 import 'package:e_commerce_app/database/Storage/ProductStorage.dart';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/services/user_service.dart';
@@ -37,10 +38,15 @@ Future<void> initApp() async {
   } else {
     print('Auto-login skipped on web platform');
   }
-  // Initialize user session
-  // final userProvider = UserProvider();
-  // await userProvider.loadUserSession();
-
+  
+  // Initialize CartStorage singleton and load cart data
+  try {
+    await CartStorage().loadData();
+    print('CartStorage data loaded successfully during app init.');
+  } catch (e) {
+    print('Error loading CartStorage data: $e');
+  }
+  
   // Initialize services
   await AppDataService().loadData();
   print('AppDataService loaded successfully during app init.');

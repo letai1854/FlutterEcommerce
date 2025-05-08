@@ -2,13 +2,14 @@ import 'package:e_commerce_app/database/services/user_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Import để định dạng tiền tệ
 import 'package:e_commerce_app/database/Storage/UserInfo.dart'; // Add import for UserInfo
+import 'package:e_commerce_app/database/models/CartDTO.dart';
 
 // Thanh Payment Info (có thể là bản cuộn hoặc bản sticky)
 class PaymentInfo extends StatelessWidget {
   // Dữ liệu và hàm tính toán
-  final List<Map<String, dynamic>> cartItems;
-  final double Function()
-      calculateSubtotal; // Mặc dù không hiển thị trực tiếp, có thể cần cho tính toán khác
+  final List<CartItemDTO> cartItems;
+  final Map<int?, bool> selectedItems;
+  final double Function() calculateSubtotal;
   final double Function() calculateTax;
   final double Function() calculateTotal;
   final double shippingFee;
@@ -24,7 +25,8 @@ class PaymentInfo extends StatelessWidget {
   const PaymentInfo({
     Key? key,
     required this.cartItems,
-    required this.calculateSubtotal, // Vẫn nhận vào dù không hiển thị trực tiếp
+    required this.selectedItems,
+    required this.calculateSubtotal,
     required this.calculateTax,
     required this.calculateTotal,
     required this.shippingFee,
@@ -37,10 +39,10 @@ class PaymentInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Tính toán các giá trị cần thiết
-    final bool isAllSelected = cartItems.isNotEmpty &&
-        cartItems.every((item) => item['isSelected'] == true);
-    final int selectedItemCount =
-        cartItems.where((item) => item['isSelected'] == true).length;
+    final bool isAllSelected = selectedItems.isNotEmpty && 
+                               selectedItems.values.every((isSelected) => isSelected == true);
+    final int selectedItemCount = selectedItems.values.where((isSelected) => isSelected).length;
+    final int totalItems = cartItems.length;
     final double taxAmount = calculateTax();
     final double totalAmount = calculateTotal();
     // Định dạng tiền tệ Việt Nam

@@ -1,7 +1,12 @@
+import 'dart:typed_data';
+
+import 'package:e_commerce_app/database/models/CartDTO.dart';
+import 'package:e_commerce_app/database/Storage/CartStorage.dart';
 import 'package:flutter/material.dart';
 
-class CartItemList extends StatefulWidget {
-  final List<Map<String, dynamic>> cartItems;
+class CartItemList extends StatelessWidget {
+  final List<CartItemDTO> cartItems;
+  final Map<int?, bool> selectedItems;
   final Function(int) toggleSelectItem;
   final Function(int) increaseQuantity;
   final Function(int) decreaseQuantity;
@@ -10,6 +15,7 @@ class CartItemList extends StatefulWidget {
   const CartItemList({
     Key? key,
     required this.cartItems,
+    required this.selectedItems,
     required this.toggleSelectItem,
     required this.increaseQuantity,
     required this.decreaseQuantity,
@@ -17,390 +23,384 @@ class CartItemList extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<CartItemList> createState() => _CartItemListState();
-}
-
-class _CartItemListState extends State<CartItemList> {
-  @override
   Widget build(BuildContext context) {
-    // Get screen width to determine layout
-    final screenWidth = MediaQuery.of(context).size.width;
-    
-    // Tăng ngưỡng để bao gồm cả tablet (từ 800 lên 1000)
-    // Khi màn hình dưới 1000px, sẽ sử dụng layout mobile
-    final isSmallOrMediumScreen = screenWidth < 1200;
+    final isDesktop = MediaQuery.of(context).size.width >= 1100;
+    final isTablet = MediaQuery.of(context).size.width >= 768 && MediaQuery.of(context).size.width < 1100;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Empty cart message
-        if (widget.cartItems.isEmpty)
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Column(
-                children: [
-                  Icon(Icons.shopping_cart_outlined, size: 80, color: Colors.grey),
-                  SizedBox(height: 16),
-                  Text(
-                    'Giỏ hàng của bạn đang trống',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () {
-                      // Navigate to product page
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepOrange,
-                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    ),
-                    child: Text('Tiếp tục mua sắm', style: TextStyle(color: Colors.white)),
-                  ),
-                ],
-              ),
+    if (isDesktop) {
+      return _buildDesktopLayout(context);
+    } else if (isTablet) {
+      return _buildTabletLayout(context);
+    } else {
+      return _buildMobileLayout(context);
+    }
+  }
+
+  // Desktop layout - horizontal table with all columns
+  Widget _buildDesktopLayout(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: const Text(
+              'Giỏ hàng của bạn',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
           ),
-
-        // Column headers - only show on desktop view
-        if (widget.cartItems.isNotEmpty && !isSmallOrMediumScreen)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+          // Header row
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              border: Border(
+                bottom: BorderSide(color: Colors.grey[300]!),
+              ),
+            ),
             child: Row(
               children: [
-                SizedBox(width: 48), // Space for checkbox
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    'Sản phẩm',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.start,
-                  ),
+                const Expanded(
+                  flex: 4,
+                  child: Text('Sản phẩm', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
                 Expanded(
                   flex: 1,
-                  child: Text(
-                    'Đơn giá',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
+                  child: Text('Đơn giá',
+                      textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
                 Expanded(
                   flex: 1,
-                  child: Text(
-                    'Số lượng',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
+                  child: Text('Số lượng',
+                      textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
                 Expanded(
                   flex: 1,
-                  child: Text(
-                    'Thành tiền',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
+                  child: Text('Thành tiền',
+                      textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+                const Expanded(
+                  flex: 1,
+                  child: Text('Thao tác',
+                      textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
+          // Cart items
+          ...cartItems.map((item) => _buildDesktopItemRow(item, context)).toList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopItemRow(CartItemDTO item, BuildContext context) {
+    final cartItemId = item.cartItemId ?? -1;
+    final isSelected = selectedItems[item.cartItemId] ?? false;
+    
+    final imageUrl = item.productVariant?.imageUrl ?? '';
+    final name = item.productVariant?.name ?? 'Unknown product';
+    final price = item.productVariant?.finalPrice ?? item.productVariant?.price ?? 0;
+    final quantity = item.quantity ?? 0;
+    final lineTotal = price * quantity;
+    
+    // Use CartStorage to get cached image if available
+    final cartStorage = CartStorage();
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16.0),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+      ),
+      child: Row(
+        children: [
+          // Product info with checkbox
+          Expanded(
+            flex: 4,
+            child: Row(
+              children: [
+                Checkbox(
+                  value: isSelected,
+                  onChanged: (value) => toggleSelectItem(cartItemId),
+                  activeColor: Colors.red,
+                ),
+                Container(
+                  width: 100,
+                  height: 100,
+                  margin: const EdgeInsets.symmetric(horizontal: 12.0),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: FutureBuilder<Uint8List?>(
+                    future: cartStorage.getImage(imageUrl),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      
+                      if (snapshot.hasData && snapshot.data != null) {
+                        return Image.memory(
+                          snapshot.data!,
+                          fit: BoxFit.cover,
+                        );
+                      }
+                      
+                      return Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => const Icon(
+                          Icons.image_not_supported,
+                          size: 40,
+                          color: Colors.grey,
+                        ),
+                      );
+                    },
                   ),
                 ),
                 Expanded(
-                  flex: 1,
                   child: Text(
-                    'Thao tác',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
+                    name,
+                    style: const TextStyle(fontWeight: FontWeight.w500),
                   ),
                 ),
               ],
             ),
           ),
-
-        // Cart items - responsive layout
-        if (isSmallOrMediumScreen)
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: widget.cartItems.length,
-            itemBuilder: (context, index) => _buildMobileItemCard(widget.cartItems[index]),
-          )
-        else
-          // For desktop - horizontal scrollable container to prevent overflow
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: screenWidth < 1200 ? 1200 : screenWidth - 40, // Tăng chiều rộng tối thiểu
-              child: ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: widget.cartItems.length,
-                itemBuilder: (context, index) => _buildDesktopItemCard(widget.cartItems[index]),
+          // Unit price
+          Expanded(
+            flex: 1,
+            child: Text(
+              '₫${price.toStringAsFixed(0)}',
+              textAlign: TextAlign.center,
+            ),
+          ),
+          // Quantity control
+          Expanded(
+            flex: 1,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.remove),
+                  color: Colors.red,
+                  onPressed: () {
+                    decreaseQuantity(cartItemId);
+                  },
+                ),
+                Text(quantity.toString()),
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  color: Colors.green,
+                  onPressed: () {
+                    increaseQuantity(cartItemId);
+                  },
+                ),
+              ],
+            ),
+          ),
+          // Line total
+          Expanded(
+            flex: 1,
+            child: Text(
+              '₫${lineTotal.toStringAsFixed(0)}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+          // Remove button
+          Expanded(
+            flex: 1,
+            child: Center(
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.red,
+                ),
+                onPressed: () {
+                  removeItem(cartItemId);
+                },
+                child: const Text('Xóa'),
               ),
             ),
           ),
-      ],
-    );
-  }
-
-  // Desktop layout item card
-  Widget _buildDesktopItemCard(Map<String, dynamic> item) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-      child: Card(
-        color: Colors.grey[100],
-        child: Container(
-          padding: const EdgeInsets.all(8.0),
-          child: Row(
-            children: [
-              Checkbox(
-                value: item['isSelected'],
-                onChanged: (bool? value) {
-                  widget.toggleSelectItem(item['id']);
-                },
-              ),
-              Expanded(
-                flex: 3,
-                child: Row(
-                  children: [
-                    Image.network(
-                      item['image'],
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.cover,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item['name'],
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                          const SizedBox(height: 4),
-                          // Additional product info
-
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                flex: 1,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      '₫${item['originalPrice']}',
-                      style: TextStyle(
-                        decoration: TextDecoration.lineThrough,
-                        color: Colors.grey,
-                        fontSize: 13,
-                      ),
-                    ),
-                    Text(
-                      '₫${item['price']}',
-                      style: TextStyle(
-                        color: Colors.deepOrange,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                flex: 1,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.remove), 
-                      color: Colors.red,
-                      onPressed: () {
-                        widget.decreaseQuantity(item['id']);
-                      },
-                    ),
-                    Text(item['quantity'].toString()),
-                    IconButton(
-                      icon: const Icon(Icons.add),
-                      color: Colors.green,
-                      onPressed: () {
-                        widget.increaseQuantity(item['id']);
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                flex: 1,
-                child: Text(
-                  '₫${(item['price'] * item['quantity']).toString()}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.red),
-                ),
-              ),
-              Expanded(
-                flex: 1,
-                child: Center(
-                  child: TextButton(
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      backgroundColor: Colors.red,
-                    ),
-                    onPressed: () {
-                      widget.removeItem(item['id']);
-                    },
-                    child: const Text('Xóa'),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }
 
-  // Mobile layout item card - vertical layout for small screens
-  Widget _buildMobileItemCard(Map<String, dynamic> item) {
+  // Tablet layout with slight adjustments
+  Widget _buildTabletLayout(BuildContext context) {
+    // Similar to desktop but with fewer columns or adjusted layout
+    // ... existing tablet layout code adapted for CartItemDTO ...
+    return _buildDesktopLayout(context); // For simplicity, using desktop layout for now
+  }
+
+  // Mobile layout - vertical cards
+  Widget _buildMobileLayout(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: const Text(
+              'Giỏ hàng của bạn',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ),
+          // Mobile item cards
+          ...cartItems.map((item) => _buildMobileItemCard(item)).toList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileItemCard(CartItemDTO item) {
+    final cartItemId = item.cartItemId ?? -1;
+    final isSelected = selectedItems[item.cartItemId] ?? false;
+    
+    final imageUrl = item.productVariant?.imageUrl ?? '';
+    final name = item.productVariant?.name ?? 'Unknown product';
+    final price = item.productVariant?.finalPrice ?? item.productVariant?.price ?? 0;
+    final quantity = item.quantity ?? 0;
+    final lineTotal = price * quantity;
+    
+    // Use CartStorage to get cached image if available
+    final cartStorage = CartStorage();
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
       child: Card(
-        color: Colors.grey[100],
+        elevation: 2,
         child: Padding(
-          padding: const EdgeInsets.all(12.0),
+          padding: const EdgeInsets.all(8.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Product header with checkbox, image and name
+              // Top row - product image and info
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Checkbox
                   Checkbox(
-                    value: item['isSelected'],
-                    onChanged: (bool? value) {
-                      widget.toggleSelectItem(item['id']);
-                    },
+                    value: isSelected,
+                    onChanged: (value) => toggleSelectItem(cartItemId),
+                    activeColor: Colors.red,
                   ),
-                  Image.network(
-                    item['image'],
+                  
+                  // Product image
+                  Container(
                     width: 80,
                     height: 80,
-                    fit: BoxFit.cover,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: FutureBuilder<Uint8List?>(
+                      future: cartStorage.getImage(imageUrl),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        
+                        if (snapshot.hasData && snapshot.data != null) {
+                          return Image.memory(
+                            snapshot.data!,
+                            fit: BoxFit.cover,
+                          );
+                        }
+                        
+                        return Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => const Icon(
+                            Icons.image_not_supported,
+                            size: 30,
+                            color: Colors.grey,
+                          ),
+                        );
+                      },
+                    ),
                   ),
+                  
                   const SizedBox(width: 12),
+                  
+                  // Product details
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          item['name'],
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                          name,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
+                        Text(
+                          '₫${price.toStringAsFixed(0)}',
+                          style: TextStyle(color: Colors.red[700]),
+                        ),
                       ],
                     ),
                   ),
                 ],
               ),
               
-              Divider(height: 24),
+              const Divider(),
               
-              // Product details in vertical layout
+              // Bottom row - quantity controls and actions
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Đơn giá:', style: TextStyle(fontWeight: FontWeight.w500)),
-                      Row(
-                        children: [
-                          Text(
-                            '₫${item['originalPrice']}',
-                            style: TextStyle(
-                              decoration: TextDecoration.lineThrough,
-                              color: Colors.grey,
-                              fontSize: 13,
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            '₫${item['price']}',
-                            style: TextStyle(
-                              color: Colors.deepOrange,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text('Thành tiền:', style: TextStyle(fontWeight: FontWeight.w500)),
-                      Text(
-                        '₫${(item['price'] * item['quantity']).toString()}',
-                        style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              
-              SizedBox(height: 16),
-              
-              // Quantity controls and delete button
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
+                  const Spacer(),
+                  // Quantity controls
                   Row(
                     children: [
-                      Text('Số lượng:', style: TextStyle(fontWeight: FontWeight.w500)),
-                      SizedBox(width: 8),
                       IconButton(
-                        icon: const Icon(Icons.remove),
-                        color: Colors.red,
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.grey.shade200,
-                          padding: EdgeInsets.zero,
-                          minimumSize: Size(32, 32),
+                        icon: const Icon(Icons.remove_circle_outline),
+                        onPressed: () => decreaseQuantity(cartItemId),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[300]!),
+                          borderRadius: BorderRadius.circular(4),
                         ),
-                        onPressed: () {
-                          widget.decreaseQuantity(item['id']);
-                        },
+                        child: Text(quantity.toString()),
                       ),
-                      SizedBox(width: 4),
-                      Text(
-                        item['quantity'].toString(),
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      SizedBox(width: 4),
                       IconButton(
-                        icon: const Icon(Icons.add),
-                        color: Colors.green,
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.grey.shade200,
-                          padding: EdgeInsets.zero,
-                          minimumSize: Size(32, 32),
-                        ),
-                        onPressed: () {
-                          widget.increaseQuantity(item['id']);
-                        },
+                        icon: const Icon(Icons.add_circle_outline),
+                        onPressed: () => increaseQuantity(cartItemId),
                       ),
                     ],
                   ),
+                  const Spacer(),
+                  // Delete button
                   TextButton.icon(
-                    icon: Icon(Icons.delete_outline, color: Colors.white),
-                    label: Text('Xóa'),
+                    icon: const Icon(Icons.delete_outline, color: Colors.white),
+                    label: const Text('Xóa'),
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.white,
                       backgroundColor: Colors.red,
                     ),
-                    onPressed: () {
-                      widget.removeItem(item['id']);
-                    },
+                    onPressed: () => removeItem(cartItemId),
                   ),
                 ],
+              ),
+              
+              // Total line
+              Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8.0, right: 8.0),
+                  child: Text(
+                    'Tổng: ₫${lineTotal.toStringAsFixed(0)}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red[700],
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
