@@ -1,111 +1,91 @@
 import 'package:flutter/material.dart';
-class SortingBar extends StatelessWidget {
+
+class SortingBar extends StatefulWidget {
   final double width;
-  final Function(String)? onSortChanged;
-  
+  final Function(String) onSortChanged;
+  final String currentSortMethod;
+  final String currentSortDir;
+  final Widget Function(String)? buildSortDirectionIndicator;
+
   const SortingBar({
     Key? key,
     required this.width,
-    this.onSortChanged,
-
+    required this.onSortChanged,
+    required this.currentSortMethod,
+    required this.currentSortDir,
+    this.buildSortDirectionIndicator,
   }) : super(key: key);
+
+  @override
+  State<SortingBar> createState() => _SortingBarState();
+}
+
+class _SortingBarState extends State<SortingBar> {
+  // Define sorting options with display names and method identifiers
+  final List<Map<String, String>> _sortOptions = [
+    {'name': 'Mới nhất', 'method': 'createdDate'},
+    {'name': 'Giá', 'method': 'price'},
+    {'name': 'A-Z', 'method': 'name'},
+    {'name': 'Đánh giá', 'method': 'rating'},
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: width,
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 2,
-            offset: Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Sắp xếp theo:',
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
+      width: widget.width,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            const Text(
+              'Sắp xếp theo:',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-          SizedBox(height: 8),
-          Wrap(
-            spacing: 12, // horizontal spacing
-            runSpacing: 12, // vertical spacing
-            children: [
-              _buildSortButton(
-                icon: Icons.sort_by_alpha,
-                label: 'Tên (A-Z)',
-                onTap: () => onSortChanged?.call('name'),
-              ),
-              _buildSortButton(
-                icon: Icons.attach_money,
-                label: 'Giá',
-                trailing: Icon(Icons.unfold_more, size: 16),
-                onTap: () => onSortChanged?.call('price'),
-              ),
-              _buildSortButton(
-                icon: Icons.new_releases_outlined,
-                label: 'Mới nhất',
-                onTap: () => onSortChanged?.call('new'),
-              ),
-              _buildSortButton(
-                icon: Icons.star_border,
-                label: 'Đánh giá',
-                onTap: () => onSortChanged?.call('rating'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSortButton({
-    required IconData icon,
-    required String label,
-    Widget? trailing,
-    VoidCallback? onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(6),
-        onTap: onTap,
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 0, vertical: 8),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.withOpacity(0.3)),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 18, color: Colors.grey[700]),
-              SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey[800],
+            const SizedBox(width: 10),
+            ...List.generate(_sortOptions.length, (index) {
+              final option = _sortOptions[index];
+              final bool isSelected = widget.currentSortMethod == option['method'];
+              
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: InkWell(
+                  onTap: () => widget.onSortChanged(option['method'] ?? ''),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.transparent,
+                      border: Border.all(
+                        color: isSelected ? Colors.blue : Colors.grey.shade300,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          option['name'] ?? '',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isSelected ? Colors.blue : Colors.black87,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                        if (isSelected && widget.buildSortDirectionIndicator != null)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 4),
+                            child: widget.buildSortDirectionIndicator!(option['method'] ?? ''),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-              if (trailing != null) ...[
-                SizedBox(width: 4),
-                trailing,
-              ],
-            ],
-          ),
+              );
+            }),
+          ],
         ),
       ),
     );
