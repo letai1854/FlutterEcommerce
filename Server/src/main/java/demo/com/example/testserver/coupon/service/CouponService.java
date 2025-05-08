@@ -5,10 +5,13 @@ import demo.com.example.testserver.coupon.dto.CouponResponseDTO;
 import demo.com.example.testserver.coupon.dto.CreateCouponRequestDTO;
 import demo.com.example.testserver.coupon.model.Coupon;
 import demo.com.example.testserver.coupon.repository.CouponRepository;
+import demo.com.example.testserver.order.dto.OrderSummaryDTO; // Added import
+import demo.com.example.testserver.order.model.Order; // Ensure this import exists if not already
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections; // Added import
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -33,7 +36,7 @@ public class CouponService {
         coupon.setUsageCount(0); // Khởi tạo số lần đã sử dụng là 0
 
         Coupon savedCoupon = couponRepository.save(coupon);
-        return mapToResponseDTO(savedCoupon);
+        return mapToResponseDTO(savedCoupon, true); // Admins creating coupons might want to see full details initially
     }
 
     @Transactional(readOnly = true)
@@ -53,7 +56,7 @@ public class CouponService {
         }
 
         return coupons.stream()
-                .map(this::mapToResponseDTO)
+                .map(coupon -> this.mapToResponseDTO(coupon, true)) // For admin search, include order details
                 .collect(Collectors.toList());
     }
 
@@ -62,12 +65,12 @@ public class CouponService {
     public List<CouponResponseDTO> getAvailableCouponsSortedByDiscount() {
         List<Coupon> availableCoupons = couponRepository.findAvailableCouponsOrderByDiscountValueDesc();
         return availableCoupons.stream()
-                .map(this::mapToResponseDTO)
+                .map(coupon -> this.mapToResponseDTO(coupon, false)) // For available coupons, do not include order details
                 .collect(Collectors.toList());
     }
 
-    private CouponResponseDTO mapToResponseDTO(Coupon coupon) {
-        return new CouponResponseDTO(
+    private CouponResponseDTO mapToResponseDTO(Coupon coupon, boolean includeOrderDetails) {
+        CouponResponseDTO dto = new CouponResponseDTO(
                 coupon.getId(),
                 coupon.getCode(),
                 coupon.getDiscountValue(),
@@ -75,5 +78,20 @@ public class CouponService {
                 coupon.getUsageCount(),
                 coupon.getCreatedDate()
         );
+
+        if (includeOrderDetails) {
+            List<OrderSummaryDTO> orderSummaries;
+            if (coupon.getOrders() != null && !coupon.getOrders().isEmpty()) {
+                orderSummaries = coupon.getOrders().stream()
+                        .map(order -> new OrderSummaryDTO(order.getId(), order.getTotalAmount())) // Assumes Order has getId() and getTotalAmount()
+                        .collect(Collectors.toList());
+            } else {
+                orderSummaries = Collections.emptyList();
+            }
+            dto.setOrders(orderSummaries);
+        }
+        // If includeOrderDetails is false, dto.getOrders() will be null by default (as it's not set in constructor)
+
+        return dto;
     }
 }
