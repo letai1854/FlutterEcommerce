@@ -3,13 +3,19 @@ package demo.com.example.testserver.product.service.impl;
 import demo.com.example.testserver.product.dto.CreateProductRequestDTO;
 import demo.com.example.testserver.product.dto.ProductDTO;
 import demo.com.example.testserver.product.dto.UpdateProductRequestDTO;
+import demo.com.example.testserver.product.dto.CreateProductReviewRequestDTO;
+import demo.com.example.testserver.product.dto.ProductReviewDTO;
 import demo.com.example.testserver.product.model.Brand;
 import demo.com.example.testserver.product.model.Category;
 import demo.com.example.testserver.product.model.Product;
+import demo.com.example.testserver.product.model.ProductReview;
 import demo.com.example.testserver.product.repository.BrandRepository;
 import demo.com.example.testserver.product.repository.CategoryRepository;
 import demo.com.example.testserver.product.repository.ProductRepository;
+import demo.com.example.testserver.product.repository.ProductReviewRepository;
 import demo.com.example.testserver.product.service.*;
+import demo.com.example.testserver.user.model.User;
+import demo.com.example.testserver.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,6 +63,15 @@ public class ProductServiceImpl implements ProductService {
 
     @Autowired
     private ProductMapper productMapper;
+
+    @Autowired
+    private ProductDenormalizationService productDenormalizationService;
+
+    @Autowired
+    private ProductReviewRepository productReviewRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Override
     public Page<ProductDTO> findProducts(
@@ -299,5 +314,71 @@ public class ProductServiceImpl implements ProductService {
                 .map(productMapper::mapToProductDTO)
                 .collect(Collectors.toList());
         return new PageImpl<>(dtos, pageRequest, productPage.getTotalElements());
+    }
+
+    @Override
+    @Transactional
+    public ProductReviewDTO addReview(Long productId, CreateProductReviewRequestDTO reviewDTO, String userEmail) {
+        logger.info("Attempting to add review for product ID: {} by user: {}", productId, userEmail != null ? userEmail : "Anonymous");
+
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found with ID: " + productId));
+
+        ProductReview review = new ProductReview();
+        review.setProduct(product);
+
+        if (userEmail != null) { // Authenticated user
+            User user = userRepository.findByEmail(userEmail)
+                    .orElseThrow(() -> new EntityNotFoundException("User not found with email: " + userEmail));
+            review.setUser(user);
+            if (reviewDTO.getRating() != null) {
+                review.setRating(reviewDTO.getRating());
+            }
+        } else { // Anonymous user
+            if (reviewDTO.getRating() != null) {
+                throw new IllegalArgumentException("Anonymous users cannot submit ratings.");
+            }
+            if (reviewDTO.getComment() == null || reviewDTO.getComment().trim().isEmpty()) {
+                 throw new IllegalArgumentException("Anonymous users must provide a comment.");
+            }
+            review.setAnonymousReviewerName(reviewDTO.getAnonymousReviewerName());
+        }
+
+        if (reviewDTO.getComment() != null && !reviewDTO.getComment().trim().isEmpty()) {
+            review.setComment(reviewDTO.getComment().trim());
+        }
+        
+        // Ensure either rating (for logged-in) or comment is present
+        if (review.getRating() == null && (review.getComment() == null || review.getComment().trim().isEmpty())) {
+            throw new IllegalArgumentException("Review must contain either a rating (for logged-in users) or a comment.");
+        }
+
+
+        ProductReview savedReview = productReviewRepository.save(review);
+        logger.info("Review ID: {} saved for product ID: {}", savedReview.getId(), productId);
+
+        // Update denormalized fields and Elasticsearch
+        // This will re-fetch the product, including the new review in its collection, then calculate average rating.
+        productDenormalizationService.updateDenormalizedFields(productId);
+
+        // Re-fetch the product to get the updated denormalized values for Elasticsearch indexing
+        Product updatedProduct = productRepository.findById(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found after denormalization for ID: " + productId));
+
+
+        try {
+            if (productElasticsearchService != null) {
+                productElasticsearchService.saveProduct(updatedProduct);
+            } else {
+                fallbackProductElasticsearchService.saveProduct(updatedProduct);
+            }
+            logger.info("Product ID: {} re-indexed in Elasticsearch after review.", productId);
+        } catch (Exception e) {
+            logger.error("Failed to process product {} with Elasticsearch/fallback after review submission: {}", productId, e.getMessage(), e);
+        }
+        
+        // TODO: Implement WebSocket push for real-time review updates if desired
+
+        return productMapper.toProductReviewDTO(savedReview);
     }
 }

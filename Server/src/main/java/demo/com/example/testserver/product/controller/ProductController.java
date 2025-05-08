@@ -3,6 +3,9 @@ package demo.com.example.testserver.product.controller;
 import demo.com.example.testserver.product.dto.CreateProductRequestDTO; // Import new DTO
 import demo.com.example.testserver.product.dto.ProductDTO;
 import demo.com.example.testserver.product.dto.UpdateProductRequestDTO; // Import Update DTO
+import demo.com.example.testserver.product.dto.CreateProductReviewRequestDTO; // Import for reviews
+import demo.com.example.testserver.product.dto.ProductReviewDTO; // Import for reviews
+import org.springframework.security.core.userdetails.UserDetails; // Import UserDetails
 import demo.com.example.testserver.product.service.ProductService;
 import jakarta.persistence.EntityNotFoundException; // Import
 import jakarta.validation.Valid; // Import for validation
@@ -15,7 +18,17 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal; // Import for authentication
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.access.prepost.PreAuthorize; // Import PreAuthorize
 
 import java.math.BigDecimal;
@@ -204,5 +217,24 @@ public class ProductController {
         }
     }
 
-    // Add other endpoints like getProductById, updateProduct, deleteProduct as needed
+    @PostMapping("/{productId}/reviews")
+    public ResponseEntity<?> addProductReview(
+            @PathVariable Long productId,
+            @Valid @RequestBody CreateProductReviewRequestDTO reviewDTO,
+            @AuthenticationPrincipal UserDetails currentUser) { 
+        try {
+            String userEmail = (currentUser != null) ? currentUser.getUsername() : null; // Use getUsername() which is the email
+            ProductReviewDTO createdReview = productService.addReview(productId, reviewDTO, userEmail);
+            return new ResponseEntity<>(createdReview, HttpStatus.CREATED);
+        } catch (EntityNotFoundException e) {
+            logger.warn("Cannot add review: {}", e.getMessage());
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
+        } catch (IllegalArgumentException e) {
+            logger.warn("Invalid review submission: {}", e.getMessage());
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (Exception e) {
+            logger.error("Error adding product review for product ID {}: {}", productId, e.getMessage(), e);
+            return new ResponseEntity<>("Error adding review.", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 }

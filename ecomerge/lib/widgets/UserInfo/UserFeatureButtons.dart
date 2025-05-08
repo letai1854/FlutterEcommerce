@@ -63,8 +63,8 @@ class UserFeatureButtons extends StatelessWidget {
     // Check if user is logged in
     final bool isLoggedIn = UserInfo().currentUser != null;
     // Check if user is admin
-    final bool isAdmin =
-        isLoggedIn && UserInfo().currentUser!.role.toString() == UserRole.quan_tri.name;
+    final bool isAdmin = isLoggedIn &&
+        UserInfo().currentUser!.role.toString() == UserRole.quan_tri.name;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -119,7 +119,9 @@ class UserFeatureButtons extends StatelessWidget {
                 ),
                 Divider(height: 1, thickness: 1, color: Colors.grey.shade100),
                 // Only show Admin button if user is admin
-                if (isAdmin)
+                if (UserInfo().currentUser != null &&
+                    UserInfo().currentUser!.role.toString() ==
+                        UserRole.quan_tri.name)
                   _buildFeatureButton(
                     "Admin",
                     Icons.admin_panel_settings,

@@ -1,10 +1,13 @@
 import 'dart:typed_data';
 import 'package:e_commerce_app/Constants/productTest.dart';
 import 'package:e_commerce_app/constants.dart';
+import 'package:e_commerce_app/database/Storage/BrandCategoryService.dart';
+import 'package:e_commerce_app/database/models/categories.dart';
 import 'package:e_commerce_app/widgets/Product/CategoriesSection.dart';
-import 'package:e_commerce_app/widgets/Product/PaginatedProductGrid.dart';
+import 'package:e_commerce_app/widgets/Product/CategoryFilteredProductGrid.dart';
 import 'package:e_commerce_app/widgets/Product/ProductItem.dart'
     as product_item;
+import 'package:e_commerce_app/widgets/Product/PromotionalProductsList.dart';
 import 'package:e_commerce_app/widgets/carousel/carouselDesktop.dart';
 import 'package:e_commerce_app/widgets/carousel/carouselTablet.dart';
 import 'package:e_commerce_app/widgets/footer.dart';
@@ -17,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:e_commerce_app/widgets/Home/bodyHomeMobile.dart';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/services/user_service.dart';
+import 'package:e_commerce_app/database/services/categories_service.dart';
 
 class ResponsiveHome extends StatefulWidget {
   const ResponsiveHome({super.key});
@@ -36,18 +40,83 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
   bool _showFloatingCategories = false;
   bool _isPanelExpanded = false; // For mobile panel expansion
   int? _selectedCategory;
-  List<Map<String, dynamic>> productData = Productest.productData;
+  final CategoriesService _categoriesService = CategoriesService();
+  List<CategoryDTO> _appCategories = [];
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    AppDataService().addListener(_onAppDataChanged);
+    _loadCategories();
+  }
+
+  void _onAppDataChanged() {
+    if (mounted) {
+      setState(() {
+        _appCategories = AppDataService().categories;
+      });
+      _autoSelectInitialCategory(); // Auto-select after categories are updated
+    }
+  }
+
+  void _loadCategories() {
+    if (!AppDataService().isInitialized && !AppDataService().isLoading) {
+      AppDataService().loadData().then((_) {
+        if (mounted) {
+          setState(() {
+            _appCategories = AppDataService().categories;
+          });
+          _autoSelectInitialCategory(); // Auto-select after initial load
+        }
+      }).catchError((error) {
+        if (kDebugMode) {
+          print("Error loading app data in ResponsiveHome: $error");
+        }
+      });
+    } else if (AppDataService().isInitialized) {
+      if (mounted) {
+        setState(() {
+          _appCategories = AppDataService().categories;
+        });
+        _autoSelectInitialCategory(); // Auto-select if data was already initialized
+      }
+    }
+  }
+
+  void _autoSelectInitialCategory() {
+    // Only run if categories are loaded and no category has been manually selected yet.
+    if (_appCategories.isNotEmpty && _selectedCategory == null) {
+      final displayedCategories = _appCategories.take(5).toList();
+      if (displayedCategories.isNotEmpty) {
+        // Find the category with the smallest ID among the displayed ones.
+        // Treat null IDs as very large numbers for comparison.
+        CategoryDTO smallestIdCategory =
+            displayedCategories.reduce((current, next) {
+          final currentId =
+              current.id ?? 999999999; // A large number for null IDs
+          final nextId = next.id ?? 999999999;
+          return currentId < nextId ? current : next;
+        });
+
+        // Find the index of this category within the displayedCategories list.
+        int indexOfSmallest = displayedCategories
+            .indexWhere((cat) => cat.id == smallestIdCategory.id);
+
+        if (indexOfSmallest != -1) {
+          // Use _handleCategorySelected to update state and UI consistently.
+          // This will also trigger the CategoryFilteredProductGrid to update.
+          _handleCategorySelected(indexOfSmallest);
+        }
+      }
+    }
   }
 
   @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    AppDataService().removeListener(_onAppDataChanged);
     super.dispose();
   }
 
@@ -129,10 +198,10 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
         if (screenWidth < 600) {
           if (isMobile) {
             return Scaffold(
-              // body: NavbarFormobile(
-              //   body: bodyHomeMobile(),
-              // ),
-            );
+                // body: NavbarFormobile(
+                //   body: bodyHomeMobile(),
+                // ),
+                );
           }
 
           // Web mobile-style layout
@@ -238,25 +307,22 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                   ),
                   child: Column(
                     children: [
-                      // if (kIsWeb && isMobile)
                       Heading(Icons.bolt, Colors.yellowAccent,
                           'Sản phẩm khuyến mãi'),
                       SizedBox(height: 10),
-                      // Container(
-                      //   height: 320,
-                      //   child: product_item.ProductList(
-                      //     productListKey: _promoProductsKey,
-                      //     scroll: Axis.horizontal,
-                      //     productData: productData,
-                      //     itemsPerPage: isMobile ? 6 : 7,
-                      //     gridHeight: isMobile ? 250 : 320,
-                      //     gridWidth: screenWidth,
-                      //     childAspectRatio: isMobile ? 0.8 : 1.59,
-                      //     crossAxisCount: 1,
-                      //     mainSpace: isMobile ? 10 : 9,
-                      //     crossSpace: isMobile ? 10 : 8.0,
-                      //   ),
-                      // ),
+                      Container(
+                        height: isMobile ? 250 : 320,
+                        child: PromotionalProductsList(
+                          productListKey: _promoProductsKey,
+                          itemsPerPage: isMobile ? 6 : 7,
+                          gridHeight: isMobile ? 250 : 320,
+                          gridWidth: screenWidth,
+                          childAspectRatio: isMobile ? 1.3 : 1.47,
+                          crossAxisCount: 1,
+                          mainSpace: 9.7,
+                          crossSpace: 10,
+                        ),
+                      ),
                       SizedBox(height: 10),
                       Heading(Icons.new_releases, Colors.yellowAccent,
                           'Sản phẩm mới nhất'),
@@ -281,85 +347,101 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                                 ),
                               ),
                               SizedBox(width: 10),
-                              // Expanded(
-                              //   child: product_item.ProductList(
-                              //     productListKey: _newProductsKey,
-                              //     scroll: Axis.horizontal,
-                              //     productData: productData,
-                              //     itemsPerPage: 8,
-                              //     gridHeight: 600,
-                              //     gridWidth: screenWidth * 0.72,
-                              //     childAspectRatio: 1.47,
-                              //     crossAxisCount: 2,
-                              //     mainSpace: 9.7,
-                              //     crossSpace: 10,
-                              //   ),
-                              // ),
+                              Expanded(
+                                child: PromotionalProductsList(
+                                  productListKey: _newProductsKey,
+                                  itemsPerPage: 8,
+                                  gridHeight: 600,
+                                  gridWidth: screenWidth * 0.72,
+                                  childAspectRatio: 1.47,
+                                  crossAxisCount: 2,
+                                  mainSpace: 9.7,
+                                  crossSpace: 10,
+                                ),
+                              ),
                             ],
                           ),
                         )
                       else
-                        // Container(
-                        //   height: isMobile ? 320 : 600,
-                        //   child: product_item.ProductList(
-                        //     productListKey: _newProductsKey,
-                        //     scroll: Axis.horizontal,
-                        //     productData: productData,
-                        //     itemsPerPage: !isMobile ? 12 : 10,
-                        //     gridHeight: isMobile ? 250 : 600,
-                        //     gridWidth: screenWidth,
-                        //     childAspectRatio: isMobile ? 0.8 : 1.47,
-                        //     crossAxisCount: isMobile ? 1 : 2,
-                        //     mainSpace: isMobile ? 10 : 9.7,
-                        //     crossSpace: isMobile ? 10 : 8,
-                        //   ),
-                        // ),
+                        Container(
+                          height: isMobile ? 320 : 600,
+                          child: PromotionalProductsList(
+                            productListKey: _newProductsKey,
+                            itemsPerPage: !isMobile ? 12 : 6,
+                            gridHeight: isMobile ? 250 : 600,
+                            gridWidth: screenWidth,
+                            childAspectRatio: isMobile ? 1.47 : 1.47,
+                            crossAxisCount: isMobile ? 1 : 2,
+                            mainSpace: isMobile ? 10 : 9.7,
+                            crossSpace: isMobile ? 10 : 8,
+                          ),
+                        ),
                       SizedBox(height: 10),
                       Heading(Icons.local_fire_department, Colors.yellowAccent,
                           'Sản phẩm bán chạy nhất'),
                       SizedBox(height: 10),
-                      // Container(
-                      //   height: isMobile ? 320 : 600,
-                      //   child: product_item.ProductList(
-                      //     productListKey: _bestSellerKey,
-                      //     scroll: Axis.horizontal,
-                      //     productData: productData,
-                      //     itemsPerPage: 12,
-                      //     gridHeight: isMobile ? 250 : 600,
-                      //     gridWidth: screenWidth,
-                      //     childAspectRatio: isMobile ? 0.8 : 1.47,
-                      //     crossAxisCount: isMobile ? 1 : 2,
-                      //     mainSpace: isMobile ? 10 : 9.7,
-                      //     crossSpace: isMobile ? 10 : 8,
-                      //   ),
-                      // ),
+                      Container(
+                        height: isMobile ? 320 : 600,
+                        child: PromotionalProductsList(
+                          productListKey: _bestSellerKey,
+                          itemsPerPage: 12,
+                          gridHeight: isMobile ? 250 : 600,
+                          gridWidth: screenWidth,
+                          childAspectRatio: isMobile ? 1.3 : 1.47,
+                          crossAxisCount: isMobile ? 1 : 2,
+                          mainSpace: isMobile ? 10 : 9.7,
+                          crossSpace: isMobile ? 10 : 8,
+                        ),
+                      ),
                       SizedBox(height: 10),
                       CategoriesSection(
                         key: _categoriesSectionKey,
                         selectedIndex: _selectedCategory,
                         onCategorySelected: _handleCategorySelected,
+                        categories:
+                            _appCategories, // Pass the dynamic categories here
                       ),
                       SizedBox(height: 10),
-                      // Column(
-                      //   key: _paginatedGridKey,
-                      //   children: [
-                      //     SizedBox(
-                      //       width:
-                      //           isDesktop ? screenWidth - 280 : screenWidth - 2,
-                      //       child: PaginatedProductGrid(
-                      //         productData: productData,
-                      //         itemsPerPage: _getItemsPerPage(screenWidth),
-                      //         gridWidth: isDesktop
-                      //             ? screenWidth - 280
-                      //             : screenWidth - 2,
-                      //         childAspectRatio: 0.7,
-                      //         crossAxisCount: _getCrossAxisCount(screenWidth),
-                      //         mainSpace: 10,
-                      //         crossSpace: 8.0,
-                      //       ),
-                      //     ),
-                      //   ],
-                      // ),
+                      Column(
+                        key: _paginatedGridKey,
+                        children: [
+                          Builder(
+                            builder: (context) {
+                              int? categoryIdToPass;
+                              if (_selectedCategory != null &&
+                                  _appCategories.isNotEmpty) {
+                                final displayedCategories =
+                                    _appCategories.take(5).toList();
+                                if (_selectedCategory! <
+                                    displayedCategories.length) {
+                                  categoryIdToPass =
+                                      displayedCategories[_selectedCategory!]
+                                          .id;
+                                }
+                              }
+
+                              return SizedBox(
+                                width: isDesktop
+                                    ? screenWidth - 280
+                                    : screenWidth - 2,
+                                child: CategoryFilteredProductGrid(
+                                  categoryId: categoryIdToPass,
+                                  itemsToLoadPerPage: isMobile ? 2 : 6,
+                                  gridWidth: isDesktop
+                                      ? screenWidth - 280
+                                      : screenWidth - 2,
+                                  childAspectRatio: 0.5,
+                                  crossAxisCount:
+                                      _getCrossAxisCount(screenWidth),
+                                  mainSpace: 10,
+                                  crossSpace: 8.0,
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 50),
                       SizedBox(height: 50),
                     ],
                   ),
@@ -394,6 +476,8 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
   }
 
   Widget _buildMobileFloatingCategories({bool isTablet = false}) {
+    final List<CategoryDTO> categoriesToShow = _appCategories.take(5).toList();
+
     return Positioned(
       right: 0,
       top: isTablet
@@ -444,18 +528,13 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                             height: isTablet ? 300 : 200,
                             child: ListView(
                               shrinkWrap: true,
-                              children: [
-                                _buildVerticalCategoryItem(
-                                    'Laptop', 'assets/banner6.jpg', 0),
-                                _buildVerticalCategoryItem(
-                                    'Ram', 'assets/banner6.jpg', 1),
-                                _buildVerticalCategoryItem(
-                                    'Card đồ họa', 'assets/banner6.jpg', 2),
-                                _buildVerticalCategoryItem(
-                                    'Màn hình', 'assets/banner6.jpg', 3),
-                                _buildVerticalCategoryItem(
-                                    'Ổ cứng', 'assets/banner6.jpg', 4),
-                              ],
+                              children:
+                                  categoriesToShow.asMap().entries.map((entry) {
+                                int idx = entry.key;
+                                CategoryDTO category = entry.value;
+                                return _buildVerticalCategoryItem(
+                                    category, idx);
+                              }).toList(),
                             ),
                           ),
                         ],
@@ -505,6 +584,8 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
   }
 
   Widget _buildFloatingCategories() {
+    final List<CategoryDTO> categoriesToShow = _appCategories.take(5).toList();
+
     return Positioned(
       right: 0,
       top: 150,
@@ -547,12 +628,11 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                   ],
                 ),
               ),
-              _buildVerticalCategoryItem('Laptop', 'assets/banner6.jpg', 0),
-              _buildVerticalCategoryItem('Ram', 'assets/banner6.jpg', 1),
-              _buildVerticalCategoryItem(
-                  'Card đồ họa', 'assets/banner6.jpg', 2),
-              _buildVerticalCategoryItem('Màn hình', 'assets/banner6.jpg', 3),
-              _buildVerticalCategoryItem('Ổ cứng', 'assets/banner6.jpg', 4),
+              ...categoriesToShow.asMap().entries.map((entry) {
+                int idx = entry.key;
+                CategoryDTO category = entry.value;
+                return _buildVerticalCategoryItem(category, idx);
+              }).toList(),
             ],
           ),
         ),
@@ -560,12 +640,13 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
     );
   }
 
-  Widget _buildVerticalCategoryItem(String title, String imageUrl, int index) {
-    bool isSelected = _selectedCategory == index;
+  Widget _buildVerticalCategoryItem(CategoryDTO category, int itemIndex) {
+    bool isSelected = _selectedCategory == itemIndex;
+    String fullImageUrl = _categoriesService.getImageUrl(category.imageUrl);
 
     return GestureDetector(
       onTap: () {
-        _handleCategorySelected(index);
+        _handleCategorySelected(itemIndex);
       },
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 8.0),
@@ -576,74 +657,44 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
         child: Row(
           children: [
             Container(
-              height: 30,
-              width: 30,
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage(imageUrl),
-                  fit: BoxFit.cover,
-                ),
-                borderRadius: BorderRadius.circular(15),
-              ),
+              child: fullImageUrl.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(15.0),
+                      child: Image.network(
+                        fullImageUrl,
+                        fit: BoxFit.cover,
+                        height: 30,
+                        width: 30,
+                        errorBuilder: (context, error, stackTrace) => Icon(
+                            Icons.category,
+                            size: 20,
+                            color: Colors.grey[400]),
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: SizedBox(
+                              width: 15,
+                              height: 15,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.5,
+                                color: Colors.grey[400],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                  : Icon(Icons.category, size: 20, color: Colors.grey[400]),
             ),
             SizedBox(width: 8),
             Expanded(
               child: Text(
-                title,
+                category.name ?? 'N/A',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHorizontalCategoryItem(
-      String title, String imageUrl, int index) {
-    bool isSelected = _selectedCategory == index;
-
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 5),
-      child: InkWell(
-        onTap: () {
-          _handleCategorySelected(index);
-        },
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isSelected ? Colors.blue : Colors.grey[300]!,
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                height: 25,
-                width: 25,
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage(imageUrl),
-                    fit: BoxFit.cover,
-                  ),
-                  borderRadius: BorderRadius.circular(12.5),
-                ),
-              ),
-              SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 14,
-                  color: isSelected ? Colors.blue : Colors.black87,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

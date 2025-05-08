@@ -17,6 +17,7 @@ import demo.com.example.testserver.user.model.Address;
 import demo.com.example.testserver.user.model.User;
 import demo.com.example.testserver.user.repository.AddressRepository;
 import demo.com.example.testserver.user.repository.UserRepository;
+import demo.com.example.testserver.common.service.EmailService;
 import jakarta.persistence.EntityNotFoundException;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
@@ -38,7 +39,8 @@ import java.util.stream.Collectors;
 public class OrderServiceImpl implements OrderService {
 
     private static final Logger logger = LoggerFactory.getLogger(OrderServiceImpl.class);
-    private static final BigDecimal POINTS_EARNED_RATE = new BigDecimal("0.01"); // Example: 1% of subtotal as points
+    private static final BigDecimal POINTS_EARNED_RATE = new BigDecimal("0.0001"); // 100 points per 1,000,000 VND spent
+    private static final BigDecimal ONE_POINT_VALUE_IN_VND = new BigDecimal("1000"); // 1 point = 1000 VND
 
     @Autowired
     private OrderRepository orderRepository;
@@ -57,6 +59,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private ModelMapper modelMapper;
+
+    @Autowired
+    private EmailService emailService;
 
     @Override
     @Transactional
@@ -126,19 +131,34 @@ public class OrderServiceImpl implements OrderService {
             couponRepository.save(coupon);
         }
 
-        BigDecimal pointsToUseValue = requestDTO.getPointsToUse() != null ? requestDTO.getPointsToUse() : BigDecimal.ZERO;
-        if (pointsToUseValue.compareTo(BigDecimal.ZERO) > 0) {
-            if (user.getCustomerPoints().compareTo(pointsToUseValue) < 0) {
-                throw new IllegalArgumentException("User has insufficient points. Available: " + user.getCustomerPoints() + ", Requested: " + pointsToUseValue);
+        BigDecimal numPointsToUse = requestDTO.getPointsToUse() != null ? requestDTO.getPointsToUse() : BigDecimal.ZERO;
+        numPointsToUse = numPointsToUse.setScale(0, RoundingMode.DOWN); // Ensure whole points are used
+
+        BigDecimal pointsDiscountAmount = BigDecimal.ZERO;
+        boolean pointsUsed = false;
+
+        if (numPointsToUse.compareTo(BigDecimal.ZERO) > 0) {
+            if (user.getCustomerPoints() == null || user.getCustomerPoints().compareTo(numPointsToUse) < 0) {
+                throw new IllegalArgumentException("User has insufficient points. Available: " +
+                        (user.getCustomerPoints() != null ? user.getCustomerPoints().setScale(0, RoundingMode.DOWN) : BigDecimal.ZERO) +
+                        ", Requested: " + numPointsToUse);
             }
-            user.setCustomerPoints(user.getCustomerPoints().subtract(pointsToUseValue));
-            order.setPointsDiscount(pointsToUseValue);
-            // User will be saved later if points were used or earned
+            pointsDiscountAmount = numPointsToUse.multiply(ONE_POINT_VALUE_IN_VND); // Convert number of points to VND value
+            user.setCustomerPoints(user.getCustomerPoints().subtract(numPointsToUse)); // Deduct number of points
+            order.setPointsDiscount(pointsDiscountAmount); // Set monetary discount on order
+            pointsUsed = true;
         }
 
-        // Calculate points earned for this order (e.g., 1% of subtotal)
+        // Calculate potential points earned for this order and store them in the order.
+        // Points will be actually awarded to the user when the order is marked as 'da_giao'.
         BigDecimal pointsEarned = subtotal.multiply(POINTS_EARNED_RATE).setScale(0, RoundingMode.DOWN);
-        order.setPointsEarned(pointsEarned);
+        order.setPointsEarned(pointsEarned); // Store number of points earned in this order
+        
+        // Save user only if points were used (or other user-specific modifications occurred).
+        // Earned points are not added to user's balance at this stage.
+        if (pointsUsed) {
+            userRepository.save(user); 
+        }
 
         // Assuming shippingFee and tax are fixed or calculated simply for now
         order.setShippingFee(requestDTO.getShippingFee() != null ? requestDTO.getShippingFee() : BigDecimal.ZERO); // Or fetch from config/logic
@@ -146,7 +166,7 @@ public class OrderServiceImpl implements OrderService {
 
         BigDecimal totalAmount = subtotal
                 .subtract(couponDiscountValue)
-                .subtract(pointsToUseValue)
+                .subtract(pointsDiscountAmount)
                 .add(order.getShippingFee())
                 .add(order.getTax());
         order.setTotalAmount(totalAmount.max(BigDecimal.ZERO)); // Ensure total is not negative
@@ -162,10 +182,23 @@ public class OrderServiceImpl implements OrderService {
         // Timestamp will be set by @PrePersist in OrderStatusHistory
         order.getStatusHistory().add(initialHistory);
         
-        userRepository.save(user); // Save user if points were used
         Order savedOrder = orderRepository.save(order); // Cascades to OrderDetail and OrderStatusHistory
 
         logger.info("Order created successfully with ID: {}", savedOrder.getId());
+
+        // Send order confirmation email
+        try {
+            emailService.sendOrderConfirmationEmail(
+                    user.getEmail(),
+                    user.getFullName(),
+                    savedOrder.getId(),
+                    savedOrder.getTotalAmount()
+            );
+        } catch (Exception e) {
+            logger.error("Failed to send order confirmation email for order ID {}: {}", savedOrder.getId(), e.getMessage(), e);
+            // Do not fail the order creation if email sending fails, just log it.
+        }
+
         return modelMapper.map(savedOrder, OrderDTO.class);
     }
 
@@ -237,12 +270,16 @@ public class OrderServiceImpl implements OrderService {
         // Award points if order is marked as delivered and wasn't already delivered
         if (newStatus == Order.OrderStatus.da_giao && oldStatus != Order.OrderStatus.da_giao) {
             User orderUser = order.getUser();
+            // Ensure pointsEarned is not null and user's current points are initialized
             if (orderUser != null && order.getPointsEarned() != null && order.getPointsEarned().compareTo(BigDecimal.ZERO) > 0) {
-                orderUser.setCustomerPoints(orderUser.getCustomerPoints().add(order.getPointsEarned()));
+                BigDecimal currentPoints = orderUser.getCustomerPoints() != null ? orderUser.getCustomerPoints() : BigDecimal.ZERO;
+                orderUser.setCustomerPoints(currentPoints.add(order.getPointsEarned()));
                 userRepository.save(orderUser);
                 logger.info("Awarded {} points to user {} for order {}. New total points: {}",
                         order.getPointsEarned(), orderUser.getEmail(), orderId, orderUser.getCustomerPoints());
-                historyEntry.setNotes( (adminNotes != null ? adminNotes : "Order status updated by admin.") + " Points awarded: " + order.getPointsEarned());
+                // Append to notes that points were awarded
+                String currentNotes = historyEntry.getNotes();
+                historyEntry.setNotes( (currentNotes != null ? currentNotes : "") + " Points awarded: " + order.getPointsEarned().setScale(0, RoundingMode.DOWN));
             }
         }
         // TODO: Implement other side effects of status changes (e.g., payment processing, notifications)

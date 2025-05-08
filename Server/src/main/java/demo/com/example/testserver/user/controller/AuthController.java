@@ -6,6 +6,7 @@ import demo.com.example.testserver.user.model.Address;
 import demo.com.example.testserver.user.model.User;
 import demo.com.example.testserver.user.repository.UserRepository;
 import demo.com.example.testserver.user.security.JwtTokenProvider;
+import demo.com.example.testserver.common.service.EmailService; // Added import
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +46,9 @@ public class AuthController {
     @Autowired
     private JwtTokenProvider tokenProvider;
 
+    @Autowired // Added EmailService injection
+    private EmailService emailService;
+
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@Valid @RequestBody RegistrationRequest request) {
         try {
@@ -75,6 +79,10 @@ public class AuthController {
             // Save the user (Address will be saved due to CascadeType.ALL)
             User savedUser = userRepository.save(newUser);
             UserDTO userDTO = new UserDTO(savedUser); // Create DTO from saved entity
+            
+            if (request.isNeedSendMail()) {
+                emailService.sendRegistrationEmail(savedUser.getEmail(), savedUser.getFullName(), request.getPassword());
+            }
 
             logger.info("User registered successfully: ID [{}], Email [{}]", savedUser.getId(), savedUser.getEmail());
             return new ResponseEntity<>(userDTO, HttpStatus.CREATED); // Return DTO

@@ -229,6 +229,7 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
     } catch (e) {
       if (kDebugMode) print('Error extracting config: $e');
     }
+
   }
 
   @override

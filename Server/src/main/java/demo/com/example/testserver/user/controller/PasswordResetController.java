@@ -30,7 +30,7 @@ public class PasswordResetController {
     @Autowired
     private PasswordResetTokenService passwordResetTokenService;
 
-    @Autowired(required = false)
+    @Autowired(required = true) // Make EmailService optional for now, or ensure it's always present
     private EmailService emailService;
 
     @Autowired
@@ -58,11 +58,11 @@ public class PasswordResetController {
             // Send email with OTP (if service is available)
             if (emailService != null) {
                 try {
-                    // Use the EmailService interface - needs a new method sendPasswordResetOtp
+                    // Use the EmailService interface
                     emailService.sendPasswordResetOtp(user.getEmail(), plainOtp);
                     logger.info("Password reset OTP sent to: {}", email); // Log info
                 } catch (Exception e) {
-                    logger.error("Failed to send password reset OTP email to {}: {}", email, e.getMessage());
+                    logger.error("Failed to send password reset OTP email to {}: {}", email, e.getMessage(), e);
                     // Still return OK to not reveal if email exists, but log the error
                 }
             } else {

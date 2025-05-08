@@ -33,20 +33,22 @@ class _PageSearchState extends State<PageSearch> {
   final SearchStateService _searchService = SearchStateService();
   
   // Scrolling and scaffolding
+
   final ScrollController _scrollController = ScrollController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  
+
   // Banner images
   final List<String> imgList = [
     'assets/bannerMain.jpg',
     'assets/banner2.jpg',
     'assets/banner6.jpg',
   ];
-  
-  // Filter state
+
+
+  // Category selection state
   Map<int, bool> selectedCategories = {};
   Set<String> selectedBrands = {};
-  
+
   // Price range state
   TextEditingController minPriceController = TextEditingController();
   TextEditingController maxPriceController = TextEditingController();
@@ -62,6 +64,7 @@ class _PageSearchState extends State<PageSearch> {
   bool get _isAppDataLoading => AppDataService().isLoading;
   bool get _isAppDataInitialized => AppDataService().isInitialized;
 
+
   @override
   void initState() {
     super.initState();
@@ -71,6 +74,7 @@ class _PageSearchState extends State<PageSearch> {
     _searchService.addListener(_onSearchServiceChange);
     
     // Initialize the price filter controllers
+
     minPriceController.text = formatPrice(minPrice);
     maxPriceController.text = formatPrice(maxPrice);
     
@@ -171,28 +175,28 @@ class _PageSearchState extends State<PageSearch> {
     return price.toString().replaceAllMapped(
         RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (match) => '${match[1]},');
   }
-  
+
   // Parse price from formatted string
   int parsePrice(String text) {
     if (text.isEmpty) return 0;
     return int.tryParse(text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
   }
-  
+
   // Update min price with validation
   void updateMinPrice(int newValue) {
     if (newValue < 0) newValue = 0;
     if (newValue > maxPrice) newValue = maxPrice;
-    
+
     setState(() {
       minPrice = newValue;
       minPriceController.text = formatPrice(newValue);
     });
   }
-  
+
   // Update max price with validation
   void updateMaxPrice(int newValue) {
     if (newValue < minPrice) newValue = minPrice;
-    
+
     setState(() {
       maxPrice = newValue;
       maxPriceController.text = formatPrice(newValue);
@@ -208,10 +212,11 @@ class _PageSearchState extends State<PageSearch> {
   }) {
     // In a real implementation, this would call ProductStorage with filter params
     // For now, we'll keep simple filtering for demo purposes
-    
+  
     if (MediaQuery.of(context).size.width < 1100) {
       Navigator.of(context).pop(); // Close drawer on mobile
     }
+
   }
 
   @override

@@ -16,6 +16,7 @@ import demo.com.example.testserver.product.dto.CreateProductVariantDTO;
 import demo.com.example.testserver.product.dto.ProductVariantDTO; // Import ProductVariantDTO
 import demo.com.example.testserver.product.dto.UpdateProductRequestDTO; // Import Update DTOs
 import demo.com.example.testserver.product.dto.UpdateProductVariantDTO;
+import demo.com.example.testserver.product.dto.ProductReviewDTO;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -296,6 +297,27 @@ public class ProductMapper {
         dto.setPrice(variant.getPrice());
         dto.setStockQuantity(variant.getStockQuantity());
         dto.setVariantImageUrl(variant.getVariantImageUrl());
+        return dto;
+    }
+
+    public ProductReviewDTO toProductReviewDTO(ProductReview review) {
+        if (review == null) {
+            return null;
+        }
+        ProductReviewDTO dto = new ProductReviewDTO();
+        dto.setId(review.getId());
+        if (review.getUser() != null) {
+            dto.setReviewerName(review.getUser().getFullName());
+            dto.setUserId(review.getUser().getId().longValue());
+        } else {
+            dto.setReviewerName(review.getAnonymousReviewerName());
+        }
+        dto.setRating(review.getRating());
+        dto.setComment(review.getComment());
+        dto.setReviewTime(review.getReviewTime());
+        if (review.getProduct() != null) {
+            dto.setProductId(review.getProduct().getId());
+        }
         return dto;
     }
 
