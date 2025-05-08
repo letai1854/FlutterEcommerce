@@ -56,6 +56,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/products/top-selling").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/top-discounted").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/products/{productId}/reviews").permitAll() // Allow anonymous and authenticated to post reviews
                 .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/brands/**").permitAll()
                 // --- Product/Category/Brand Admin Management ---

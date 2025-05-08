@@ -2,6 +2,8 @@ package demo.com.example.testserver.product.service;
 
 import demo.com.example.testserver.product.dto.CreateProductRequestDTO;
 import demo.com.example.testserver.product.dto.ProductDTO;
+import demo.com.example.testserver.product.dto.CreateProductReviewRequestDTO;
+import demo.com.example.testserver.product.dto.ProductReviewDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import demo.com.example.testserver.product.dto.UpdateProductRequestDTO; // Import Update DTO
@@ -102,6 +104,16 @@ public interface ProductService {
      * @return A page of ProductDTOs with the highest discounts.
      */
     Page<ProductDTO> findTopDiscountedProducts(Pageable pageable);
+
+    /**
+     * Adds a review (comment and/or rating) to a product.
+     *
+     * @param productId The ID of the product to review.
+     * @param reviewDTO DTO containing review details.
+     * @param userEmail The email of the authenticated user, or null if anonymous.
+     * @return The created ProductReviewDTO.
+     */
+    ProductReviewDTO addReview(Long productId, CreateProductReviewRequestDTO reviewDTO, String userEmail);
 
     // Add other methods as needed
 }

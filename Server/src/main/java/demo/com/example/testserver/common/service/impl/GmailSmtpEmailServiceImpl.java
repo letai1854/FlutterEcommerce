@@ -59,4 +59,47 @@ public class GmailSmtpEmailServiceImpl implements EmailService {
             // Consider re-throwing a custom exception or handling accordingly
         }
     }
+
+    @Override
+    public void sendRegistrationEmail(String recipientEmail, String fullName, String password) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo(recipientEmail);
+        message.setSubject("Welcome to Our Service! Your Account Details");
+        message.setText("Hello " + fullName + ",\n\n" +
+                        "Welcome! Your account has been successfully created.\n\n" +
+                        "Here are your login details:\n" +
+                        "Email: " + recipientEmail + "\n" +
+                        "Password: " + password + "\n\n" +
+                        "We strongly recommend that you change your password after your first login for security reasons.\n\n" +
+                        "Thank you for joining us!");
+        try {
+            mailSender.send(message);
+            logger.info("Registration email sent successfully to {}", recipientEmail);
+        } catch (MailException e) {
+            logger.error("Error sending registration email to {}: {}", recipientEmail, e.getMessage(), e);
+            // Consider re-throwing a custom exception or handling accordingly
+        }
+    }
+
+    @Override
+    public void sendOrderConfirmationEmail(String recipientEmail, String fullName, Integer orderId, java.math.BigDecimal totalAmount) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo(recipientEmail);
+        message.setSubject("Your Order #" + orderId + " has been Confirmed!");
+        message.setText("Hello " + fullName + ",\n\n" +
+                        "Thank you for your order!\n\n" +
+                        "Your Order ID: " + orderId + "\n" +
+                        "Total Amount: " + totalAmount.toString() + "\n\n" +
+                        "We will notify you once your order has been shipped.\n\n" +
+                        "Thank you for shopping with us!");
+        try {
+            mailSender.send(message);
+            logger.info("Order confirmation email sent successfully to {} for order ID {}", recipientEmail, orderId);
+        } catch (MailException e) {
+            logger.error("Error sending order confirmation email to {} for order ID {}: {}", recipientEmail, orderId, e.getMessage(), e);
+            // Consider re-throwing a custom exception or handling accordingly
+        }
+    }
 }

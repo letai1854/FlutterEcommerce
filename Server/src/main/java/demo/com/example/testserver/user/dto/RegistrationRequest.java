@@ -20,6 +20,8 @@ public class RegistrationRequest {
     @NotBlank(message = "Address is required")
     private String address; // Specific address line
 
+    private boolean needSendMail = false;
+
     // Getters and Setters
     public String getEmail() {
         return email;
@@ -51,5 +53,13 @@ public class RegistrationRequest {
 
     public void setAddress(String address) {
         this.address = address;
+    }
+
+    public void setNeedSendMail(boolean needSendMail) {
+        this.needSendMail = needSendMail;
+    }
+
+    public boolean isNeedSendMail() {
+        return needSendMail;
     }
 }
