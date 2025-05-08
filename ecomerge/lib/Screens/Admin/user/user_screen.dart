@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
+import 'package:e_commerce_app/database/services/admin_user_service.dart';
+import 'package:e_commerce_app/database/models/UserDTO.dart';
 
 class UserScreen extends StatefulWidget {
   const UserScreen({Key? key}) : super(key: key);
@@ -9,94 +11,122 @@ class UserScreen extends StatefulWidget {
 }
 
 class _UserScreenState extends State<UserScreen> {
-  String _selectedFilter = 'Tất cả';
-  final List<String> _filterOptions = [
-    'Tất cả',
-    'Hôm nay',
-    'Hôm qua',
-    'Tuần này',
-    'Tháng này',
-    'Khoảng thời gian cụ thể',
-  ];
+  // Add service instance
+  final AdminUserService _adminUserService = AdminUserService();
 
-  DateTimeRange? _customDateRange;
-
-  // Thêm các biến cần thiết cho phân trang
+  // Variables for pagination
   int _currentPage = 0;
   final int _rowsPerPage = 10;
+  int _totalUsers = 0;
+  bool _isLoading = true;
+  String _searchEmail = '';
 
-  // Lấy danh sách người dùng cho trang hiện tại
-  List<Map<String, dynamic>> get _paginatedData {
+  // List to store users
+  List<UserDTO> _allUsers = [];
+  List<UserDTO> _filteredUsers = [];
+
+  // Get paginated data
+  List<UserDTO> get _paginatedData {
     final startIndex = _currentPage * _rowsPerPage;
-    final endIndex = min(startIndex + _rowsPerPage, _userData.length);
+    final endIndex = min(startIndex + _rowsPerPage, _filteredUsers.length);
 
-    if (startIndex >= _userData.length) return [];
-    return _userData.sublist(startIndex, endIndex);
+    if (startIndex >= _filteredUsers.length) return [];
+    return _filteredUsers.sublist(startIndex, endIndex);
   }
 
-  // Tính số trang dựa trên dữ liệu và số hàng mỗi trang
-  int get _pageCount => (_userData.length / _rowsPerPage).ceil();
+  // Calculate total pages
+  int get _pageCount => (_filteredUsers.length / _rowsPerPage).ceil();
 
-  void _showDateRangePicker() async {
-    final DateTimeRange? picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-      initialDateRange: _customDateRange ??
-          DateTimeRange(
-            start: DateTime.now().subtract(const Duration(days: 7)),
-            end: DateTime.now(),
-          ),
-    );
-    if (picked != null) {
+  @override
+  void initState() {
+    super.initState();
+    _loadUsers();
+    _userDataSource = UserDataSource([], this);
+  }
+
+  // Load users from service
+  Future<void> _loadUsers() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final users = await _adminUserService.getAllUsers();
+      print('Total users returned from API: ${users.length}');
+      print('All users: ${users.map((u) => "${u.id}:${u.email}:${u.role}").join(', ')}');
+      
+      final filteredUsers = users.where((user) => user.role == 'khach_hang').toList();
+      print('Customer users: ${filteredUsers.length}');
+      print('Customer details: ${filteredUsers.map((u) => "${u.id}:${u.email}:${u.role}").join(', ')}');
+      
       setState(() {
-        _customDateRange = picked;
-        _selectedFilter = 'Khoảng thời gian cụ thể';
-        // TODO: Implement filter logic based on _customDateRange
+        // Filter to only show regular users (not admins), but include both active and locked accounts
+        _allUsers = filteredUsers;
+        _filteredUsers = List.from(_allUsers);
+        _totalUsers = _filteredUsers.length;
+        _userDataSource = UserDataSource(_paginatedData, this);
+        _isLoading = false;
       });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      print('Error loading users: $e');
     }
   }
 
-  DateTime _getStartDate() {
-    switch (_selectedFilter) {
-      case 'Hôm nay':
-        return DateTime.now().subtract(const Duration(days: 1));
-      case 'Hôm qua':
-        return DateTime.now().subtract(const Duration(days: 2));
-      case 'Tuần này':
-        return DateTime.now().subtract(const Duration(days: 7));
-      case 'Tháng này':
-        return DateTime.now().subtract(const Duration(days: 30));
-      case 'Khoảng thời gian cụ thể':
-        return _customDateRange?.start ?? DateTime.now();
-      default:
-        return DateTime(2020);
+  // Search users by email
+  Future<void> _searchUsers(String email) async {
+    setState(() {
+      _isLoading = true;
+      _searchEmail = email;
+    });
+
+    try {
+      if (email.isEmpty) {
+        // If search is empty, reset to all users
+        setState(() {
+          _filteredUsers = List.from(_allUsers);
+          _currentPage = 0; // Reset to first page
+          _userDataSource = UserDataSource(_paginatedData, this);
+          _isLoading = false;
+        });
+      } else {
+        // Filter locally first for quick feedback
+        final localFiltered = _allUsers.where(
+          (user) => user.email?.toLowerCase().contains(email.toLowerCase()) ?? false
+        ).toList();
+        
+        setState(() {
+          _filteredUsers = localFiltered;
+          _currentPage = 0; // Reset to first page
+          _userDataSource = UserDataSource(_paginatedData, this);
+          _isLoading = false;
+        });
+        
+        // If the email is very specific, try to fetch exact match from server
+        if (email.contains('@')) {
+          final user = await _adminUserService.getUserByEmail(email);
+          if (user != null && user.role == 'khach_hang') {
+            setState(() {
+              _filteredUsers = [user];
+              _userDataSource = UserDataSource(_paginatedData, this);
+            });
+          }
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      print('Error searching users: $e');
     }
   }
 
-  // Sample data for demonstration
-  final List<Map<String, dynamic>> _userData = List.generate(
-    25,
-    (index) => {
-      'id': index + 1,
-      'ho_ten': 'Người dùng ${index + 1}',
-      'email': 'user${index + 1}@example.com',
-      'diem_khach_hang_than_thiet': (index * 10).toDouble(),
-      'vai_tro': index % 5 == 0 ? 'quan_tri' : 'khach_hang',
-      'trang_thai': index % 3 == 0 ? 'khoa' : 'kich_hoat',
-      'ngay_tao': DateTime.now().subtract(Duration(days: index)).toString(),
-      'ngay_cap_nhat': DateTime.now().toString(),
-    },
-  )
-      .where((user) => user['vai_tro'] == 'khach_hang')
-      .toList(); // Filter out admin users
-
-  void _showEditDialog(Map<String, dynamic> user) {
+  // Show dialog to edit user
+  void _showEditDialog(UserDTO user) {
     final TextEditingController nameController = TextEditingController(
-      text: user['ho_ten'],
-    );
-    final TextEditingController emailController = TextEditingController(
-      text: user['email'],
+      text: user.fullName,
     );
 
     showDialog(
@@ -149,16 +179,19 @@ class _UserScreenState extends State<UserScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              // Display email but make it read-only
               TextField(
-                controller: emailController,
+                controller: TextEditingController(text: user.email),
+                readOnly: true,
+                enabled: false,
                 decoration: InputDecoration(
-                  labelText: 'Email',
+                  labelText: 'Email (không thể chỉnh sửa)',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   prefixIcon: const Icon(Icons.email),
                   filled: true,
-                  fillColor: Colors.grey[50],
+                  fillColor: Colors.grey[200],
                 ),
               ),
               const SizedBox(height: 24),
@@ -177,7 +210,7 @@ class _UserScreenState extends State<UserScreen> {
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       if (nameController.text.trim().isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -187,30 +220,68 @@ class _UserScreenState extends State<UserScreen> {
                         );
                         return;
                       }
-                      setState(() {
-                        final index = _userData
-                            .indexWhere((item) => item['id'] == user['id']);
-                        if (index != -1) {
-                          // Update user data
-                          _userData[index]['ho_ten'] =
-                              nameController.text.trim();
-                          _userData[index]['email'] =
-                              emailController.text.trim();
-                          _userData[index]['ngay_cap_nhat'] =
-                              DateTime.now().toString();
-
-                          // Refresh data sources
-                          _userDataSource = UserDataSource(_userData, this);
-                          // Force rebuild of list view
-                          _paginatedData.clear();
-                          _paginatedData.addAll(_userData.sublist(
-                            _currentPage * _rowsPerPage,
-                            min((_currentPage + 1) * _rowsPerPage,
-                                _userData.length),
-                          ));
-                        }
-                      });
+                      
                       Navigator.pop(context);
+                      
+                      // Show loading indicator
+                      setState(() {
+                        _isLoading = true;
+                      });
+                      
+                      // Update user with service
+                      try {
+                        final updatedUser = await _adminUserService.updateUser(
+                          user.id!, 
+                          {'fullName': nameController.text.trim()}
+                        );
+                        
+                        if (updatedUser != null) {
+                          // Update local data
+                          setState(() {
+                            final index = _allUsers.indexWhere((u) => u.id == user.id);
+                            if (index != -1) {
+                              _allUsers[index] = updatedUser;
+                            }
+                            
+                            final filteredIndex = _filteredUsers.indexWhere((u) => u.id == user.id);
+                            if (filteredIndex != -1) {
+                              _filteredUsers[filteredIndex] = updatedUser;
+                            }
+                            
+                            _userDataSource = UserDataSource(_paginatedData, this);
+                            _isLoading = false;
+                          });
+                          
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Cập nhật thành công'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        } else {
+                          setState(() {
+                            _isLoading = false;
+                          });
+                          
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Không thể cập nhật người dùng'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setState(() {
+                          _isLoading = false;
+                        });
+                        
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Lỗi: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
@@ -233,8 +304,9 @@ class _UserScreenState extends State<UserScreen> {
     );
   }
 
-  void _toggleUserStatus(Map<String, dynamic> user) {
-    final bool willLock = user['trang_thai'] == 'kich_hoat';
+  // Toggle user status (lock/unlock)
+  void _toggleUserStatus(UserDTO user) {
+    final bool willLock = user.status == 'kich_hoat';
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -270,8 +342,8 @@ class _UserScreenState extends State<UserScreen> {
               const SizedBox(height: 24),
               Text(
                 willLock
-                    ? 'Bạn có chắc chắn muốn khóa tài khoản của ${user['ho_ten']}?'
-                    : 'Bạn có chắc chắn muốn kích hoạt tài khoản của ${user['ho_ten']}?',
+                    ? 'Bạn có chắc chắn muốn khóa tài khoản của ${user.fullName}?'
+                    : 'Bạn có chắc chắn muốn kích hoạt tài khoản của ${user.fullName}?',
                 style: const TextStyle(fontSize: 16),
               ),
               const SizedBox(height: 24),
@@ -290,42 +362,75 @@ class _UserScreenState extends State<UserScreen> {
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
-                    onPressed: () {
-                      // Update status and trigger UI refresh
-                      setState(() {
-                        final index = _userData
-                            .indexWhere((item) => item['id'] == user['id']);
-                        if (index != -1) {
-                          _userData[index]['trang_thai'] =
-                              willLock ? 'khoa' : 'kich_hoat';
-                          _userData[index]['ngay_cap_nhat'] =
-                              DateTime.now().toString();
-                          // Refresh both data sources
-                          _userDataSource = UserDataSource(_userData, this);
-                          // Force rebuild of list view
-                          _paginatedData.clear();
-                          _paginatedData.addAll(_userData.sublist(
-                            _currentPage * _rowsPerPage,
-                            min((_currentPage + 1) * _rowsPerPage,
-                                _userData.length),
-                          ));
-                        }
-                      });
+                    onPressed: () async {
                       Navigator.pop(context);
-
-                      // Show confirmation snackbar
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            willLock
-                                ? 'Đã khóa tài khoản của ${user['ho_ten']}'
-                                : 'Đã kích hoạt tài khoản của ${user['ho_ten']}',
-                            style: const TextStyle(color: Colors.white),
+                      
+                      // Show loading indicator
+                      setState(() {
+                        _isLoading = true;
+                      });
+                      
+                      try {
+                        final newStatus = willLock ? 'khoa' : 'kich_hoat';
+                        final updatedUser = await _adminUserService.updateUser(
+                          user.id!,
+                          {'status': newStatus}
+                        );
+                        
+                        if (updatedUser != null) {
+                          // Update local data
+                          setState(() {
+                            final index = _allUsers.indexWhere((u) => u.id == user.id);
+                            if (index != -1) {
+                              _allUsers[index] = updatedUser;
+                            }
+                            
+                            final filteredIndex = _filteredUsers.indexWhere((u) => u.id == user.id);
+                            if (filteredIndex != -1) {
+                              _filteredUsers[filteredIndex] = updatedUser;
+                            }
+                            
+                            _userDataSource = UserDataSource(_paginatedData, this);
+                            _isLoading = false;
+                          });
+                          
+                          // Show confirmation
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                willLock
+                                    ? 'Đã khóa tài khoản của ${user.fullName}'
+                                    : 'Đã kích hoạt tài khoản của ${user.fullName}',
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                              backgroundColor: willLock ? Colors.red : Colors.green,
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        } else {
+                          setState(() {
+                            _isLoading = false;
+                          });
+                          
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Không thể cập nhật trạng thái người dùng'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setState(() {
+                          _isLoading = false;
+                        });
+                        
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Lỗi: $e'),
+                            backgroundColor: Colors.red,
                           ),
-                          backgroundColor: willLock ? Colors.red : Colors.green,
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
+                        );
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: willLock ? Colors.red : Colors.green,
@@ -351,375 +456,295 @@ class _UserScreenState extends State<UserScreen> {
   late UserDataSource _userDataSource;
 
   @override
-  void initState() {
-    super.initState();
-    _userDataSource = UserDataSource(_userData, this);
-  }
-
-  @override
   Widget build(BuildContext context) {
     final double availableWidth = MediaQuery.of(context).size.width - 2 * 16.0;
-    final bool isSmallScreen = MediaQuery.of(context).size.width < 768;
 
     return Scaffold(
-      body: isSmallScreen
-          ? _buildSmallScreenLayout(availableWidth)
-          : _buildLargeScreenLayout(availableWidth),
+      body: _buildSmallScreenLayout(availableWidth),
     );
   }
 
-  // Layout cho màn hình nhỏ (mobile, tablet nhỏ)
+  // Layout for small screens
   Widget _buildSmallScreenLayout(double availableWidth) {
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
+    return Stack(
       children: [
-        // Tiêu đề trang
-        Text(
-          'Quản lý người dùng',
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 20),
+        ListView(
+          padding: const EdgeInsets.all(16.0),
+          children: [
+            // Page title
+            const Text(
+              'Quản lý người dùng',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
 
-        // --- Controls Area (Search, Filter, Add Button) ---
-        SizedBox(
-          width: availableWidth,
-          child: Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              // Search TextField
-              SizedBox(
-                width: 250,
-                child: TextField(
-                  decoration: const InputDecoration(
-                    hintText: 'Tìm kiếm...',
-                    border: OutlineInputBorder(),
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                    isDense: true,
+            // Search and filter area
+            SizedBox(
+              width: availableWidth,
+              child: Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  // Search TextField
+                  SizedBox(
+                    width: 250,
+                    child: TextField(
+                      decoration: const InputDecoration(
+                        hintText: 'Tìm kiếm theo email...',
+                        border: OutlineInputBorder(),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                        isDense: true,
+                        prefixIcon: Icon(Icons.search),
+                      ),
+                      onChanged: (value) {
+                        _searchUsers(value);
+                      },
+                    ),
                   ),
-                ),
+                ],
               ),
+            ),
+            const SizedBox(height: 20),
 
-              // Filter Dropdown
-              SizedBox(
-                width: 250,
-                child: DropdownButtonFormField<String>(
-                  value: _selectedFilter,
-                  items: _filterOptions.map((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                  onChanged: (newValue) {
-                    setState(() {
-                      _selectedFilter = newValue!;
-                      if (newValue == 'Khoảng thời gian cụ thể') {
-                        _showDateRangePicker();
-                      } else {
-                        print('Selected filter: $newValue');
-                      }
-                    });
-                  },
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                    isDense: true,
-                  ),
-                ),
-              ),
-
-              // Removed Add Button
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-
-        // Header for the table section
-        Text(
-          'Danh sách người dùng',
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 10),
-
-        // Danh sách người dùng
-        ListView.builder(
-          shrinkWrap: true,
-          physics:
-              const NeverScrollableScrollPhysics(), // Disable ListView scrolling
-          itemCount: _paginatedData.length,
-          itemBuilder: (context, index) {
-            final user = _paginatedData[index];
-            return Column(
+            // Header for table section
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Card(
-                  margin: const EdgeInsets.symmetric(vertical: 2),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Phần thông tin người dùng
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
+                const Text(
+                  'Danh sách người dùng',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                if (_searchEmail.isNotEmpty)
+                  TextButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _searchEmail = '';
+                      });
+                      _searchUsers('');
+                    },
+                    icon: const Icon(Icons.clear),
+                    label: const Text('Xóa tìm kiếm'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            if (_isLoading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (_filteredUsers.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: Text(
+                    'Không tìm thấy người dùng nào',
+                    style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic),
+                  ),
+                ),
+              )
+            else
+              // User list
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _paginatedData.length,
+                itemBuilder: (context, index) {
+                  final user = _paginatedData[index];
+                  return Column(
+                    children: [
+                      Card(
+                        margin: const EdgeInsets.symmetric(vertical: 2),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Text(
-                                user['ho_ten'],
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                              // User avatar
+                              CircleAvatar(
+                                radius: 20,
+                                backgroundColor: Colors.grey.shade200,
+                                backgroundImage: user.avatar != null && user.avatar!.isNotEmpty
+                                  ? NetworkImage(_adminUserService.getImageUrl(user.avatar))
+                                  : null,
+                                child: user.avatar == null || user.avatar!.isEmpty
+                                  ? const Icon(Icons.person, color: Colors.grey)
+                                  : null,
+                              ),
+                              const SizedBox(width: 12),
+                              
+                              // User information
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      user.fullName ?? 'Unknown',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      user.email ?? '',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: user.status == 'kich_hoat'
+                                            ? Colors.green.withOpacity(0.1)
+                                            : Colors.red.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        user.status == 'kich_hoat'
+                                            ? 'Đã kích hoạt'
+                                            : 'Đã khóa',
+                                        style: TextStyle(
+                                          color: user.status == 'kich_hoat'
+                                              ? Colors.green
+                                              : Colors.red,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(height: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: user['trang_thai'] == 'kich_hoat'
-                                      ? Colors.green.withOpacity(0.1)
-                                      : Colors.red.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  user['trang_thai'] == 'kich_hoat'
-                                      ? 'Đã kích hoạt'
-                                      : 'Đã khóa',
-                                  style: TextStyle(
-                                    color: user['trang_thai'] == 'kich_hoat'
-                                        ? Colors.green
-                                        : Colors.red,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
+
+                              // Action buttons
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    onPressed: () => _showEditDialog(user),
+                                    icon: const Icon(Icons.edit, size: 18),
+                                    tooltip: 'Chỉnh sửa',
+                                    constraints: const BoxConstraints(
+                                        minWidth: 36, minHeight: 36),
+                                    padding: EdgeInsets.zero,
                                   ),
-                                ),
+                                  IconButton(
+                                    onPressed: () => _toggleUserStatus(user),
+                                    icon: Icon(
+                                      user.status == 'kich_hoat'
+                                          ? Icons.lock
+                                          : Icons.lock_open,
+                                      size: 18,
+                                      color: user.status == 'kich_hoat'
+                                          ? Colors.red
+                                          : Colors.green,
+                                    ),
+                                    tooltip: user.status == 'kich_hoat'
+                                        ? 'Khóa tài khoản'
+                                        : 'Kích hoạt tài khoản',
+                                    constraints: const BoxConstraints(
+                                        minWidth: 36, minHeight: 36),
+                                    padding: EdgeInsets.zero,
+                                  ),
+                                ],
                               ),
                             ],
                           ),
                         ),
+                      ),
+                      if (index < _paginatedData.length - 1)
+                        const Divider(height: 1, thickness: 0.5),
+                    ],
+                  );
+                },
+              ),
 
-                        // Các nút chức năng
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              onPressed: () => _showEditDialog(user),
-                              icon: const Icon(Icons.edit, size: 18),
-                              tooltip: 'Chỉnh sửa',
-                              constraints: const BoxConstraints(
-                                  minWidth: 36, minHeight: 36),
-                              padding: EdgeInsets.zero,
-                            ),
-                            IconButton(
-                              onPressed: () => _toggleUserStatus(user),
-                              icon: Icon(
-                                user['trang_thai'] == 'kich_hoat'
-                                    ? Icons.lock
-                                    : Icons.lock_open,
-                                size: 18,
-                                color: user['trang_thai'] == 'kich_hoat'
-                                    ? Colors.red
-                                    : Colors.green,
-                              ),
-                              tooltip: user['trang_thai'] == 'kich_hoat'
-                                  ? 'Khóa tài khoản'
-                                  : 'Kích hoạt tài khoản',
-                              constraints: const BoxConstraints(
-                                  minWidth: 36, minHeight: 36),
-                              padding: EdgeInsets.zero,
-                            ),
-                          ],
+            // Pagination controls
+            if (_filteredUsers.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                margin: const EdgeInsets.only(top: 8),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  children: [
+                    // Pagination info
+                    Text(
+                      'Hiển thị ${_paginatedData.isEmpty ? 0 : (_currentPage * _rowsPerPage) + 1} - ${(_currentPage * _rowsPerPage) + _paginatedData.length} trên ${_filteredUsers.length}',
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Pagination controls
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.keyboard_arrow_left),
+                          onPressed: _currentPage > 0
+                              ? () {
+                                  setState(() {
+                                    _currentPage--;
+                                  });
+                                }
+                              : null,
+                          tooltip: 'Trang trước',
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Text(
+                            '${_currentPage + 1} / ${_pageCount > 0 ? _pageCount : 1}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.keyboard_arrow_right),
+                          onPressed: _currentPage < _pageCount - 1
+                              ? () {
+                                  setState(() {
+                                    _currentPage++;
+                                  });
+                                }
+                              : null,
+                          tooltip: 'Trang tiếp',
                         ),
                       ],
                     ),
-                  ),
+                  ],
                 ),
-                if (index < _paginatedData.length - 1)
-                  const Divider(height: 1, thickness: 0.5),
-              ],
-            );
-          },
-        ),
-
-        // Phần điều khiển phân trang
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-          margin: const EdgeInsets.only(top: 8),
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Column(
-            children: [
-              // Widget hiển thị thông tin phân trang
-              Text(
-                'Hiển thị ${_paginatedData.isEmpty ? 0 : (_currentPage * _rowsPerPage) + 1} - ${(_currentPage * _rowsPerPage) + _paginatedData.length} trên ${_userData.length}',
-                style: TextStyle(color: Colors.grey[600]),
               ),
-              const SizedBox(height: 8),
-
-              // Nút điều hướng phân trang
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.keyboard_arrow_left),
-                    onPressed: _currentPage > 0
-                        ? () {
-                            setState(() {
-                              _currentPage--;
-                            });
-                          }
-                        : null,
-                    tooltip: 'Trang trước',
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Text(
-                      '${_currentPage + 1} / $_pageCount',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.keyboard_arrow_right),
-                    onPressed: _currentPage < _pageCount - 1
-                        ? () {
-                            setState(() {
-                              _currentPage++;
-                            });
-                          }
-                        : null,
-                    tooltip: 'Trang tiếp',
-                  ),
-                ],
-              ),
-            ],
-          ),
+          ],
         ),
+        
+        // Loading overlay
+        if (_isLoading)
+          Container(
+            color: Colors.black.withOpacity(0.3),
+            child: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
       ],
-    );
-  }
-
-  // Layout cho màn hình lớn (desktop, tablet lớn)
-  Widget _buildLargeScreenLayout(double availableWidth) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Quản lý người dùng',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
-
-          // --- Controls Area ---
-          SizedBox(
-            width: availableWidth,
-            child: Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                // Search TextField
-                SizedBox(
-                  width: 250,
-                  child: TextField(
-                    decoration: const InputDecoration(
-                      hintText: 'Tìm kiếm...',
-                      border: OutlineInputBorder(),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-
-                // Filter Dropdown
-                SizedBox(
-                  width: 250,
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedFilter,
-                    items: _filterOptions.map((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value),
-                      );
-                    }).toList(),
-                    onChanged: (newValue) {
-                      setState(() {
-                        _selectedFilter = newValue!;
-                        if (newValue == 'Khoảng thời gian cụ thể') {
-                          _showDateRangePicker();
-                        } else {
-                          print('Selected filter: $newValue');
-                        }
-                      });
-                    },
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-
-                // Removed Add Button
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Header for the table section
-          Text(
-            'Danh sách người dùng',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-
-          // Table Area
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  scrollDirection: Axis.vertical,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: SizedBox(
-                      width: max(constraints.maxWidth, 800),
-                      child: PaginatedDataTable(
-                        key: ValueKey(_userData.length),
-                        columnSpacing: 20,
-                        horizontalMargin: 10,
-                        columns: const [
-                          DataColumn(label: Text('Họ tên')),
-                          DataColumn(label: Text('Trạng thái')),
-                          DataColumn(label: Text('Chức năng')),
-                        ],
-                        source: _userDataSource,
-                        rowsPerPage: 10,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
 
 class UserDataSource extends DataTableSource {
-  final List<Map<String, dynamic>> _data;
+  final List<UserDTO> _data;
   final _UserScreenState _state;
 
   UserDataSource(this._data, this._state);
@@ -731,21 +756,21 @@ class UserDataSource extends DataTableSource {
     }
     final user = _data[index];
     return DataRow(cells: [
-      DataCell(Text(user['ho_ten'])),
+      DataCell(Text(user.fullName ?? 'Unknown')),
       DataCell(
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: user['trang_thai'] == 'kich_hoat'
+            color: user.status == 'kich_hoat'
                 ? Colors.green.withOpacity(0.1)
                 : Colors.red.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
-            user['trang_thai'] == 'kich_hoat' ? 'Đã kích hoạt' : 'Đã khóa',
+            user.status == 'kich_hoat' ? 'Đã kích hoạt' : 'Đã khóa',
             style: TextStyle(
               color:
-                  user['trang_thai'] == 'kich_hoat' ? Colors.green : Colors.red,
+                  user.status == 'kich_hoat' ? Colors.green : Colors.red,
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
@@ -766,14 +791,14 @@ class UserDataSource extends DataTableSource {
             IconButton(
               onPressed: () => _state._toggleUserStatus(user),
               icon: Icon(
-                user['trang_thai'] == 'kich_hoat'
+                user.status == 'kich_hoat'
                     ? Icons.lock
                     : Icons.lock_open,
-                color: user['trang_thai'] == 'kich_hoat'
+                color: user.status == 'kich_hoat'
                     ? Colors.red
                     : Colors.green,
               ),
-              tooltip: user['trang_thai'] == 'kich_hoat'
+              tooltip: user.status == 'kich_hoat'
                   ? 'Khóa tài khoản'
                   : 'Kích hoạt tài khoản',
               padding: EdgeInsets.zero,

@@ -419,8 +419,8 @@ class ProductService {
     String? search,
     int? categoryId,
     int? brandId,
-    double? minPrice,
-    double? maxPrice,
+    double? minPrice, // Make sure these are nullable
+    double? maxPrice, // Make sure these are nullable
     double? minRating,
     String sortBy = 'createdDate',
     String sortDir = 'desc',
@@ -437,6 +437,7 @@ class ProductService {
     if (categoryId != null)
       queryParameters['categoryId'] = categoryId.toString();
     if (brandId != null) queryParameters['brandId'] = brandId.toString();
+    // Only add price parameters if they are not null
     if (minPrice != null) queryParameters['minPrice'] = minPrice.toString();
     if (maxPrice != null) queryParameters['maxPrice'] = maxPrice.toString();
     if (minRating != null) queryParameters['minRating'] = minRating.toString();

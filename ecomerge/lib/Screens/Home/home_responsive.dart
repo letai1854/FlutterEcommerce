@@ -21,6 +21,7 @@ import 'package:e_commerce_app/widgets/Home/bodyHomeMobile.dart';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/services/user_service.dart';
 import 'package:e_commerce_app/database/services/categories_service.dart';
+import 'package:e_commerce_app/state/Search/SearchStateService.dart';
 
 class ResponsiveHome extends StatefulWidget {
   const ResponsiveHome({super.key});
@@ -40,8 +41,11 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
   bool _showFloatingCategories = false;
   bool _isPanelExpanded = false; // For mobile panel expansion
   int? _selectedCategory;
+    bool _isHoveredTK = false;
+
   final CategoriesService _categoriesService = CategoriesService();
   List<CategoryDTO> _appCategories = [];
+  final SearchStateService _searchService = SearchStateService();
 
   @override
   void initState() {
@@ -217,21 +221,72 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                     Row(
                       children: [
                         Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: TextField(
-                              decoration: InputDecoration(
-                                hintText: 'Thanh tìm kiếm',
-                                border: InputBorder.none,
-                                contentPadding:
-                                    EdgeInsets.symmetric(horizontal: 15),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 13),
+                            child: Container(
+                              height: 53,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(8),
+                                  bottomLeft: Radius.circular(8),
+                                ),
+                              ),
+                              child: TextField(
+                                controller: _searchService.searchController,
+                                decoration: InputDecoration(
+                                  hintText: 'Thanh tìm kiếm',
+                                  border: InputBorder.none,
+                                  hintStyle: TextStyle(fontSize: 14),
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+                                ),
+                                onSubmitted: (value) {
+                                  if (value.trim().isNotEmpty) {
+                                    // Use the centralized executeSearch method with isNewSearch=true
+                                    // This ensures no filters are applied on initial search
+                                    _searchService.executeSearch(isNewSearch: true).then((_) {
+                                      Navigator.pushNamed(context, '/search');
+                                    });
+                                  }
+                                },
                               ),
                             ),
                           ),
                         ),
+                                        MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    onEnter: (_) => setState(() {
+                      _isHoveredTK = true;
+                    }),
+                    onExit: (_) => setState(() {
+                      _isHoveredTK = false;
+                    }),
+                    child: GestureDetector(
+                      onTap: () {
+                        if (_searchService.searchController.text.trim().isNotEmpty) {
+                          // Use the centralized executeSearch method with isNewSearch=true
+                          // This ensures no filters are applied on initial search
+                          _searchService.executeSearch(isNewSearch: true).then((_) {
+                            Navigator.pushNamed(context, '/search');
+                          });
+                        }
+                      },
+                      child: Container(
+                        width: 45,
+                        height: 53, // Giữ nguyên height gốc
+                        decoration: BoxDecoration(
+                          color: _isHoveredTK
+                              ? const Color.fromARGB(255, 255, 48, 1)
+                              : Colors.red,
+                          borderRadius: BorderRadius.only(
+                            topRight: Radius.circular(8),
+                            bottomRight: Radius.circular(8),
+                          ),
+                        ),
+                        child: Icon(Icons.search, color: Colors.white),
+                      ),
+                    ),
+                  ),
                         SizedBox(width: 10),
                         IconButton(
                           icon: Icon(Icons.shopping_cart, color: Colors.white),

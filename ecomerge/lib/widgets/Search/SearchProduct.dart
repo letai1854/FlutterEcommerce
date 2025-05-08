@@ -13,25 +13,25 @@ import 'dart:math';
 class SearchProduct extends StatefulWidget {
   final int current;
   final List<String> imgList;
-  final List<ProductDTO> searchResults; // Changed to ProductDTO
+  final List<ProductDTO> searchResults;
   final GlobalKey<ScaffoldState> scaffoldKey;
   final ScrollController scrollController;
   final Function({
-    required List<int> categories,
-    required List<String> brands,
+    required int? categoryId,
+    required String? brandName,
     required int minPrice,
     required int maxPrice
   }) onFiltersApplied;
   
-  // FilterPanel state variables
-  final Map<int, bool> selectedCategories;
-  final Set<String> selectedBrands;
+  // FilterPanel state variables - updated for single selection
+  final int? selectedCategoryId;
+  final String? selectedBrandName;
   final int minPrice;
   final int maxPrice;
   final TextEditingController minPriceController;
   final TextEditingController maxPriceController;
   final int priceStep;
-  final List<CategoryDTO> catalog; // Changed to CategoryDTO
+  final List<CategoryDTO> catalog;
   final List<String> brands;
   final Function(int) updateMinPrice;
   final Function(int) updateMaxPrice;
@@ -60,8 +60,8 @@ class SearchProduct extends StatefulWidget {
     required this.scaffoldKey,
     required this.scrollController,
     required this.onFiltersApplied,
-    required this.selectedCategories,
-    required this.selectedBrands,
+    required this.selectedCategoryId,
+    required this.selectedBrandName,
     required this.minPrice,
     required this.maxPrice,
     required this.minPriceController,
@@ -73,7 +73,6 @@ class SearchProduct extends StatefulWidget {
     required this.updateMaxPrice,
     required this.formatPrice,
     required this.parsePrice,
-    // Add default values for the missing parameters
     this.isSearching = false,
     this.canLoadMore = false,
     this.searchQuery = '',
@@ -138,14 +137,13 @@ class _SearchProductState extends State<SearchProduct> {
           width: min(size.width * 0.85, 400.0),
           child: FilterPanel(
             onFiltersApplied: widget.onFiltersApplied,
-            selectedCategories: widget.selectedCategories,
-            selectedBrands: widget.selectedBrands,
+            selectedCategoryId: widget.selectedCategoryId,
+            selectedBrandName: widget.selectedBrandName,
             minPrice: widget.minPrice,
             maxPrice: widget.maxPrice,
             minPriceController: widget.minPriceController,
             maxPriceController: widget.maxPriceController,
             priceStep: widget.priceStep,
-            // Convert CategoryDTO list to the expected Map format for FilterPanel
             catalog: widget.catalog.map((category) => {
               'id': category.id ?? -1,
               'name': category.name ?? 'Unknown Category',
@@ -170,14 +168,13 @@ class _SearchProductState extends State<SearchProduct> {
                   width: filterWidth,
                   child: FilterPanel(
                     onFiltersApplied: widget.onFiltersApplied,
-                    selectedCategories: widget.selectedCategories,
-                    selectedBrands: widget.selectedBrands,
+                    selectedCategoryId: widget.selectedCategoryId,
+                    selectedBrandName: widget.selectedBrandName,
                     minPrice: widget.minPrice,
                     maxPrice: widget.maxPrice,
                     minPriceController: widget.minPriceController,
                     maxPriceController: widget.maxPriceController,
                     priceStep: widget.priceStep,
-                    // Convert CategoryDTO list to the expected Map format for FilterPanel
                     catalog: widget.catalog.map((category) => {
                       'id': category.id ?? -1,
                       'name': category.name ?? 'Unknown Category',
