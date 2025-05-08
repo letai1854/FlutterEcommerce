@@ -176,7 +176,7 @@ class CouponService {
         url,
         headers: _getHeaders(
             includeAuth:
-                true), // Assuming auth might be needed, adjust if public
+                true), // Changed to true to include authentication token
       );
 
       if (kDebugMode) {

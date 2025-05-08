@@ -1,4 +1,5 @@
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
+import 'package:e_commerce_app/database/services/coupon_service.dart';
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForTablet.dart';
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
 import 'package:e_commerce_app/widgets/Payment/bodyPayment.dart'; // Đổi tên file nếu cần
@@ -26,6 +27,8 @@ class _PagePaymentState extends State<PagePayment> {
   AddressData? _currentAddress; // Make nullable to handle no addresses case
 
   // --- Voucher State ---
+  // The _availableVouchers list is kept for _validateAndApplyVoucher if manual entry is still desired,
+  // but it's not used for populating VoucherSelector anymore.
   final List<VoucherData> _availableVouchers = [
     // Danh sách voucher khả dụng
     VoucherData(
@@ -434,11 +437,6 @@ class _PagePaymentState extends State<PagePayment> {
 
   void _showVoucherSelectionDialog() {
     print("PagePayment: Opening Voucher Selector Dialog...");
-    // Lọc voucher hợp lệ (ví dụ: còn hạn, đủ điều kiện tối thiểu - có thể lọc trước)
-    final applicableVouchers = _availableVouchers
-        .where((v) => v.expiryDate.isAfter(DateTime.now()))
-        .toList();
-
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -446,18 +444,11 @@ class _PagePaymentState extends State<PagePayment> {
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: VoucherSelector(
-            // Truyền dữ liệu và callbacks xuống VoucherSelector
-            availableVouchers: applicableVouchers, // Chỉ truyền voucher hợp lệ
             currentVoucher: _currentVoucher,
             onVoucherSelected: (selectedVoucher) {
-              // PagePayment nhận voucher được chọn từ dialog
               _updateSelectedVoucher(selectedVoucher);
               Navigator.of(dialogContext).pop(); // Đóng dialog
             },
-            // Có thể thêm callback onApplyCode nếu muốn xử lý mã nhập tay từ dialog ở đây
-            // onApplyCode: (code) {
-            //   _validateAndApplyVoucher(code);
-            // }
           ),
         );
       },
@@ -614,6 +605,7 @@ class VoucherData {
   final DateTime expiryDate;
   final bool isPercent;
   final double minSpend; // Thêm ngưỡng chi tiêu tối thiểu
+  final int? remainingUses;
 
   VoucherData({
     required this.code,
@@ -622,6 +614,7 @@ class VoucherData {
     required this.expiryDate,
     this.isPercent = false,
     this.minSpend = 0.0, // Mặc định không có ngưỡng
+    this.remainingUses,
   });
 
   // String get displayValue {
