@@ -4,6 +4,13 @@ import 'package:e_commerce_app/database/models/CartDTO.dart';
 import 'package:e_commerce_app/database/Storage/CartStorage.dart';
 import 'package:flutter/material.dart';
 
+// Utility function to format numbers with thousands separators
+String formatPrice(double price) {
+  String priceStr = price.toStringAsFixed(0);
+  final pattern = RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))');
+  return priceStr.replaceAllMapped(pattern, (Match m) => '${m[1]}.');
+}
+
 // Create a cached image widget that doesn't rebuild unnecessarily
 class CachedCartImage extends StatefulWidget {
   final String imageUrl;
@@ -202,15 +209,26 @@ class CartItemList extends StatelessWidget {
     final isSelected = selectedItems[item.cartItemId] ?? false;
     
     final imageUrl = item.productVariant?.imageUrl ?? '';
-    final name = item.productVariant?.name ?? 'Unknown product';
+    
+    // Debug: Print the name we're receiving
+    print('Cart item name: ${item.productVariant?.name}');
+    
+    // Make sure we're formatting correctly if the server didn't return a formatted name
+    String name = item.productVariant?.name ?? 'Unknown product';
+    
     final price = item.productVariant?.finalPrice ?? item.productVariant?.price ?? 0;
     final quantity = item.quantity ?? 0;
     final lineTotal = price * quantity;
+    
+    // Check if the item is out of stock
+    final int stockQuantity = item.productVariant?.stockQuantity ?? 0;
+    final bool isOutOfStock = stockQuantity <= 0;
     
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16.0),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+        color: isOutOfStock ? Colors.grey[50] : Colors.transparent,
       ),
       child: Row(
         children: [
@@ -219,9 +237,10 @@ class CartItemList extends StatelessWidget {
             flex: 4,
             child: Row(
               children: [
+                // Disabled checkbox for out-of-stock items
                 Checkbox(
                   value: isSelected,
-                  onChanged: (value) => toggleSelectItem(cartItemId),
+                  onChanged: isOutOfStock ? null : (value) => toggleSelectItem(cartItemId),
                   activeColor: Colors.red,
                 ),
                 Container(
@@ -231,17 +250,53 @@ class CartItemList extends StatelessWidget {
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.grey[300]!),
                   ),
-                  child: CachedCartImage(
-                    imageUrl: imageUrl,
-                    fit: BoxFit.cover,
-                    width: 100,
-                    height: 100,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CachedCartImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.cover,
+                        width: 100,
+                        height: 100,
+                      ),
+                      // Show "Out of Stock" overlay for items with no stock
+                      if (isOutOfStock)
+                        Container(
+                          color: Colors.black.withOpacity(0.5),
+                          child: const Center(
+                            child: Text(
+                              'Hết hàng',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 Expanded(
-                  child: Text(
-                    name,
-                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      if (isOutOfStock)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4.0),
+                          child: Text(
+                            'Sản phẩm tạm hết hàng',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ],
@@ -251,7 +306,7 @@ class CartItemList extends StatelessWidget {
           Expanded(
             flex: 1,
             child: Text(
-              '₫${price.toStringAsFixed(0)}',
+              '${formatPrice(price)} VND',
               textAlign: TextAlign.center,
             ),
           ),
@@ -283,7 +338,7 @@ class CartItemList extends StatelessWidget {
           Expanded(
             flex: 1,
             child: Text(
-              '₫${lineTotal.toStringAsFixed(0)}',
+              '${formatPrice(lineTotal)} VND',
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.red),
             ),
@@ -342,10 +397,17 @@ class CartItemList extends StatelessWidget {
     final isSelected = selectedItems[item.cartItemId] ?? false;
     
     final imageUrl = item.productVariant?.imageUrl ?? '';
-    final name = item.productVariant?.name ?? 'Unknown product';
+    
+    // Make sure we're formatting consistently on mobile too
+    String name = item.productVariant?.name ?? 'Unknown product';
+    
     final price = item.productVariant?.finalPrice ?? item.productVariant?.price ?? 0;
     final quantity = item.quantity ?? 0;
     final lineTotal = price * quantity;
+    
+    // Check if the item is out of stock
+    final int stockQuantity = item.productVariant?.stockQuantity ?? 0;
+    final bool isOutOfStock = stockQuantity <= 0;
     
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
@@ -359,26 +421,46 @@ class CartItemList extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Checkbox
+                  // Disabled checkbox for out-of-stock items
                   Checkbox(
                     value: isSelected,
-                    onChanged: (value) => toggleSelectItem(cartItemId),
+                    onChanged: isOutOfStock ? null : (value) => toggleSelectItem(cartItemId),
                     activeColor: Colors.red,
                   ),
                   
-                  // Product image
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: CachedCartImage(
-                      imageUrl: imageUrl,
-                      fit: BoxFit.cover,
-                      width: 80,
-                      height: 80,
-                    ),
+                  // Product image with out-of-stock overlay
+                  Stack(
+                    children: [
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: CachedCartImage(
+                          imageUrl: imageUrl,
+                          fit: BoxFit.cover,
+                          width: 80,
+                          height: 80,
+                        ),
+                      ),
+                      if (isOutOfStock)
+                        Container(
+                          width: 80,
+                          height: 80,
+                          color: Colors.black.withOpacity(0.5),
+                          child: const Center(
+                            child: Text(
+                              'Hết hàng',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   
                   const SizedBox(width: 12),
@@ -396,9 +478,21 @@ class CartItemList extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${price.toStringAsFixed(0)}vn₫',
+                          '${formatPrice(price)} VND',
                           style: TextStyle(color: Colors.red[700]),
                         ),
+                        if (isOutOfStock)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4.0),
+                            child: Text(
+                              'Sản phẩm tạm hết hàng',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -452,7 +546,7 @@ class CartItemList extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.only(top: 8.0, right: 8.0),
                   child: Text(
-                    'Tổng: ₫${lineTotal.toStringAsFixed(0)}',
+                    'Tổng: ${formatPrice(lineTotal)} VND',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.red[700],

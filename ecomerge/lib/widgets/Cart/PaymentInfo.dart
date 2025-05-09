@@ -54,7 +54,7 @@ class PaymentInfo extends StatelessWidget {
     final double taxAmount = calculateTax();
     final double totalAmount = calculateTotal();
     // Định dạng tiền tệ Việt Nam
-    final formatCurrency = NumberFormat.currency(locale: 'vi_VN', symbol: '₫');
+    final formatCurrency = NumberFormat.currency(locale: 'vi_VN', symbol: 'VND');
     // Định dạng phần trăm
     final formatPercent = NumberFormat.percentPattern(); // Ví dụ: 0.05 -> 5%
 

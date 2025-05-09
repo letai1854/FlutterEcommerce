@@ -70,10 +70,23 @@ class CartProductVariantDTO {
   
   // Deserialize from server JSON
   factory CartProductVariantDTO.fromJson(Map<String, dynamic> json) {
+    // Extract the product name, ensuring we keep the combined format
+    String? productName = json['productName'];
+    
+    // // Log what we're getting from server/local storage
+    // print('CartDTO fromJson - Name from JSON: $productName, variantName: ${json['variantName']}');
+    
+    // // If there's a variantName in the JSON and it's not already included in productName
+    // if (json['variantName'] != null && json['variantName'].toString().isNotEmpty && 
+    //     productName != null && !productName.contains(json['variantName'].toString())) {
+    //   productName = "$productName - ${json['variantName']}";
+    //   print('Combined name in fromJson: $productName');
+    // }
+    
     return CartProductVariantDTO(
       id: json['variantId'],
       productId: json['productId'],
-      name: json['productName'],
+      name: productName,
       description: json['variantDescription'],
       imageUrl: json['imageUrl'],
       price: json['price']?.toDouble(),
@@ -85,10 +98,21 @@ class CartProductVariantDTO {
   
   // Serialize to send to server
   Map<String, dynamic> toJson() {
+    // If name contains a dash, try to split it into product and variant names
+    String? productName = name;
+    String? variantName;
+    
+    if (name != null && name!.contains(' - ')) {
+      final parts = name!.split(' - ');
+      productName = parts[0];
+      variantName = parts.length > 1 ? parts[1] : null;
+    }
+    
     return {
       'variantId': id,
       'productId': productId,
-      'productName': name,
+      'productName': productName,
+      'variantName': variantName,  // Add this to help server side
       'variantDescription': description,
       'imageUrl': imageUrl,
       'price': price,

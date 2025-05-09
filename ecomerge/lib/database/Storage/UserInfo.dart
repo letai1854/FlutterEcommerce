@@ -42,11 +42,11 @@ class UserInfo extends ChangeNotifier {
     }
     
     // First notify listeners that login state has changed
-    notifyListeners();
     
     // Then sync cart data after successful login - with slight delay to ensure auth is properly set
-    await Future.delayed(Duration(milliseconds: 100));
+    // await Future.delayed(Duration(milliseconds: 100));
     await syncCartAfterLogin();
+    notifyListeners();
 
   }
 

@@ -46,7 +46,7 @@ class _PageCartState extends State<PageCart> {
     _scrollController.addListener(_onScroll);
     
     // Load cart data
-    _loadCartData();
+     _loadCartData();
     
     // Check visibility after first layout
     WidgetsBinding.instance.addPostFrameCallback((_) => _updateStickyPaymentVisibility());
@@ -56,7 +56,7 @@ class _PageCartState extends State<PageCart> {
     setState(() => _isLoading = true);
     
     try {
-      await _cartStorage.loadData();
+      // await _cartStorage.loadData();
       
       // Initialize selection state for all items (all unselected by default)
       selectedItems.clear();
@@ -86,7 +86,7 @@ class _PageCartState extends State<PageCart> {
     if (!mounted) return;
 
     // Condition 1: Must have enough items
-    bool hasEnoughItems = _cartStorage.cartItems.length >= 4;
+    bool hasEnoughItems = _cartStorage.cartItems.length >= 5;
 
     // Condition 2: Payment info must be off-screen
     bool isScrollablePaymentInfoOffScreen = false;
@@ -120,6 +120,13 @@ class _PageCartState extends State<PageCart> {
     final index = _cartStorage.cartItems.indexWhere((item) => item.cartItemId == itemId);
     if (index >= 0) {
       var item = _cartStorage.cartItems[index];
+      
+      // Check if the item is out of stock
+      final int stockQuantity = item.productVariant?.stockQuantity ?? 0;
+      if (stockQuantity <= 0) {
+        // Don't allow selection of out-of-stock items
+        return;
+      }
       
       setState(() {
         // Toggle the selection state
@@ -280,14 +287,16 @@ class _PageCartState extends State<PageCart> {
     setState(() {
       _selectedCartItemsList.clear(); // Clear the current selection list
       
-      for (var itemId in selectedItems.keys) {
-        selectedItems[itemId] = value;
-      }
-      
-      // If selecting all, populate the selected items list
-      if (value) {
-        for (var item in _cartStorage.cartItems) {
-          if (item.cartItemId != null) {
+      for (var item in _cartStorage.cartItems) {
+        final int stockQuantity = item.productVariant?.stockQuantity ?? 0;
+        final bool hasStock = stockQuantity > 0;
+        
+        if (item.cartItemId != null) {
+          // Only set checkboxes for in-stock items
+          selectedItems[item.cartItemId] = hasStock ? value : false;
+          
+          // If selecting all and the item has stock, add it to the selected list
+          if (value && hasStock) {
             final model = CartItemModel(
               productId: item.productVariant?.id ?? 0,
               productName: item.productVariant?.name ?? 'Unknown product',
@@ -299,7 +308,10 @@ class _PageCartState extends State<PageCart> {
             _selectedCartItemsList.add(model);
           }
         }
-        print('Selected all ${_selectedCartItemsList.length} items');
+      }
+      
+      if (value) {  
+        print('Selected all in-stock items: ${_selectedCartItemsList.length}');
       } else {  
         print('Cleared all selections');
       }

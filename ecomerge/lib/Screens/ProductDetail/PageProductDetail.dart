@@ -339,6 +339,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
           );
           return;
         }
+        
         final productVariantsList = _productData['productVariants'] as List;
         if (_selectedVariantIndex < 0 ||
             _selectedVariantIndex >= productVariantsList.length) {
@@ -347,7 +348,17 @@ class _PageproductdetailState extends State<Pageproductdetail> {
           );
           return;
         }
+        
+        // Check if stock quantity is zero
         final selectedVariant = productVariantsList[_selectedVariantIndex];
+        final int stockQuantity = selectedVariant['stock'] as int? ?? 0;
+        if (stockQuantity <= 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Sản phẩm đã hết hàng.')),
+          );
+          return;
+        }
+
         String baseProductName = _productData['name'] ?? 'Sản phẩm';
         final String? variantName = selectedVariant['name'] as String?;
         if (variantName != null && variantName.isNotEmpty) {
@@ -363,11 +374,29 @@ class _PageproductdetailState extends State<Pageproductdetail> {
                 '';
 
         try {
-          // Create product variant for CartStorage
+          // Get product name
+          final String baseProductName = _productData['name'] ?? 'Sản phẩm';
+          
+          // Get selected variant name from productVariants list
+          final String? variantName = selectedVariant['name'] as String?;
+          
+          // Create the full product name with variant
+          final String fullProductName;
+          // if (variantName != null && variantName.isNotEmpty) {
+          //   fullProductName = '$baseProductName - $variantName';
+          // } else {
+          //   fullProductName = baseProductName;
+          // }
+          fullProductName = baseProductName;
+
+          
+          print('Creating cart item with productName: $baseProductName, variantName: $variantName, fullName: $fullProductName');
+          
+          // Create product variant for CartStorage with combined name
           final cartProductVariant = CartProductVariantDTO(
             id: selectedVariant['id'] as int?,
             productId: widget.productId,
-            name: baseProductName,
+            name: fullProductName, // Use the combined name format
             description: _productData['shortDescription'] ?? '',
             imageUrl: variantImageUrl,
             price: selectedVariant['price'] as double?,
@@ -376,7 +405,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
             stockQuantity: selectedVariant['stock'] as int?,
           );
           
-          print('Adding item to cart: variant ID=${cartProductVariant.id}, name=${cartProductVariant.name}');
+          print('Adding to cart: ${cartProductVariant.name}, ID: ${cartProductVariant.id}');
           
           // Get cart storage and add item
           final cartStorage = CartStorage();
@@ -421,7 +450,16 @@ class _PageproductdetailState extends State<Pageproductdetail> {
           return;
         }
 
+        // Check if stock quantity is zero
         final selectedVariant = productVariantsList[_selectedVariantIndex];
+        final int stockQuantity = selectedVariant['stock'] as int? ?? 0;
+        if (stockQuantity <= 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Sản phẩm đã hết hàng.')),
+          );
+          return;
+        }
+
         String baseProductName = _productData['name'] ?? 'Sản phẩm';
         final String? variantName = selectedVariant['name'] as String?;
         if (variantName != null && variantName.isNotEmpty) {
