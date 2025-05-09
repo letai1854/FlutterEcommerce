@@ -1,3 +1,4 @@
+import 'package:e_commerce_app/Screens/Payment/PagePayment.dart';
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForTablet.dart';
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
 import 'package:e_commerce_app/widgets/Cart/BodyCart.dart';
@@ -5,6 +6,7 @@ import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
 import 'package:flutter/material.dart';
 import 'package:e_commerce_app/database/Storage/CartStorage.dart';
 import 'package:e_commerce_app/database/models/CartDTO.dart';
+import 'package:e_commerce_app/database/models/cart_item_model.dart';
 
 class PageCart extends StatefulWidget {
   const PageCart({super.key});
@@ -19,6 +21,9 @@ class _PageCartState extends State<PageCart> {
   
   // Selected items tracking
   Map<int?, bool> selectedItems = {};
+  
+  // List to track selected cart items for payment
+  List<CartItemModel> _selectedCartItemsList = [];
   
   // Constants
   final double taxRate = 0.05; // Thuế 5%
@@ -55,6 +60,7 @@ class _PageCartState extends State<PageCart> {
       
       // Initialize selection state for all items (all unselected by default)
       selectedItems.clear();
+      _selectedCartItemsList.clear(); // Clear selected items list
       for (var item in _cartStorage.cartItems) {
         if (item.cartItemId != null) {
           selectedItems[item.cartItemId] = false;
@@ -80,7 +86,7 @@ class _PageCartState extends State<PageCart> {
     if (!mounted) return;
 
     // Condition 1: Must have enough items
-    bool hasEnoughItems = _cartStorage.cartItems.length >= 5;
+    bool hasEnoughItems = _cartStorage.cartItems.length >= 4;
 
     // Condition 2: Payment info must be off-screen
     bool isScrollablePaymentInfoOffScreen = false;
@@ -111,12 +117,54 @@ class _PageCartState extends State<PageCart> {
 
   // Cart item handlers
   void toggleSelectItem(int itemId) {
-    setState(() {
-      if (selectedItems.containsKey(itemId)) {
-        selectedItems[itemId] = !(selectedItems[itemId] ?? false);
-      }
-    });
-    _updateStickyPaymentVisibility();
+    final index = _cartStorage.cartItems.indexWhere((item) => item.cartItemId == itemId);
+    if (index >= 0) {
+      var item = _cartStorage.cartItems[index];
+      
+      setState(() {
+        // Toggle the selection state
+        bool newValue = !(selectedItems[itemId] ?? false);
+        selectedItems[itemId] = newValue;
+        
+        // Update the selected items list
+        if (newValue) {
+          // Use the productVariant.id as variantId to ensure consistent identification
+          final variantId = item.productVariant?.id ?? 0;
+          final model = CartItemModel(
+            productId: variantId, // Use the variant ID consistently
+            productName: item.productVariant?.name ?? 'Unknown product',
+            imageUrl: item.productVariant?.imageUrl ?? '',
+            quantity: item.quantity ?? 0,
+            price: item.productVariant?.finalPrice ?? item.productVariant?.price ?? 0,
+            variantId: variantId, // Use the variant ID consistently
+          );
+          
+          // Check if it's already in the list using variantId for consistency
+          final existingIndex = _selectedCartItemsList.indexWhere(
+            (selectedItem) => selectedItem.variantId == variantId
+          );
+          
+          if (existingIndex >= 0) {
+            // Update the existing item instead of adding a new one
+            _selectedCartItemsList[existingIndex] = model;
+            print('Updated existing item in selection: ${item.productVariant?.name}, quantity: ${item.quantity}');
+          } else {
+            // Add as new item
+            _selectedCartItemsList.add(model);
+            print('Added item to selection: ${item.productVariant?.name}, quantity: ${item.quantity}');
+          }
+        } else {
+          // Remove from selected list
+          _selectedCartItemsList.removeWhere((selected) => 
+              selected.variantId == (item.productVariant?.id ?? 0));
+          print('Removed item from selection: ${item.productVariant?.name}');
+        }
+        
+        print('Item $itemId toggled to: ${selectedItems[itemId]}, quantity: ${item.quantity}');
+        print('Selected items count: ${_selectedCartItemsList.length}');
+      });
+      _updateStickyPaymentVisibility();
+    }
   }
 
   void increaseQuantity(int itemId) async {
@@ -129,7 +177,32 @@ class _PageCartState extends State<PageCart> {
       final success = await _cartStorage.updateItem(itemId, newQuantity);
       
       if (success) {
-        setState(() {}); // Refresh UI
+        setState(() {
+          // Always update the CartStorage item's quantity locally to ensure it's reflected in the UI
+          _cartStorage.cartItems[index].quantity = newQuantity;
+          
+          // Find and update the corresponding item in _selectedCartItemsList if it exists
+          final selectedIndex = _selectedCartItemsList.indexWhere(
+            (selectedItem) => selectedItem.variantId == (item.productVariant?.id ?? 0)
+          );
+          
+          if (selectedIndex >= 0) {
+            // Create a new CartItemModel instance with the updated quantity
+            final updatedItem = CartItemModel(
+              productId: _selectedCartItemsList[selectedIndex].productId,
+              productName: _selectedCartItemsList[selectedIndex].productName,
+              imageUrl: _selectedCartItemsList[selectedIndex].imageUrl,
+              quantity: newQuantity,
+              price: _selectedCartItemsList[selectedIndex].price,
+              variantId: _selectedCartItemsList[selectedIndex].variantId,
+            );
+            
+            // Replace the item in the list
+            _selectedCartItemsList[selectedIndex] = updatedItem;
+            
+            print('Updated quantity in selected items list: ${item.productVariant?.name}, new quantity: $newQuantity');
+          }
+        });
         _updateStickyPaymentVisibility();
       }
     }
@@ -146,7 +219,32 @@ class _PageCartState extends State<PageCart> {
         final success = await _cartStorage.updateItem(itemId, newQuantity);
         
         if (success) {
-          setState(() {}); // Refresh UI
+          setState(() {
+            // Always update the CartStorage item's quantity locally
+            _cartStorage.cartItems[index].quantity = newQuantity;
+            
+            // Find and update the corresponding item in _selectedCartItemsList if it exists
+            final selectedIndex = _selectedCartItemsList.indexWhere(
+              (selectedItem) => selectedItem.variantId == (item.productVariant?.id ?? 0)
+            );
+            
+            if (selectedIndex >= 0) {
+              // Create a new CartItemModel instance with the updated quantity
+              final updatedItem = CartItemModel(
+                productId: _selectedCartItemsList[selectedIndex].productId,
+                productName: _selectedCartItemsList[selectedIndex].productName,
+                imageUrl: _selectedCartItemsList[selectedIndex].imageUrl,
+                quantity: newQuantity,
+                price: _selectedCartItemsList[selectedIndex].price,
+                variantId: _selectedCartItemsList[selectedIndex].variantId,
+              );
+              
+              // Replace the item in the list
+              _selectedCartItemsList[selectedIndex] = updatedItem;
+              
+              print('Updated quantity in selected items list: ${item.productVariant?.name}, new quantity: $newQuantity');
+            }
+          });
           _updateStickyPaymentVisibility();
         }
       }
@@ -154,13 +252,25 @@ class _PageCartState extends State<PageCart> {
   }
 
   void removeItem(int itemId) async {
+    // Get item reference before removal
+    final itemIndex = _cartStorage.cartItems.indexWhere((item) => item.cartItemId == itemId);
+    final itemToRemove = itemIndex >= 0 ? _cartStorage.cartItems[itemIndex] : null;
+    
     // Remove through CartStorage
     final success = await _cartStorage.removeItem(itemId);
     
-    if (success) {
+    if (success && itemToRemove != null) {
       setState(() {
-        // Also remove from selected items
+        // Remove from selected items map
         selectedItems.remove(itemId);
+        
+        // Remove from selected cart items list if present
+        _selectedCartItemsList.removeWhere((selectedItem) => 
+          selectedItem.variantId == (itemToRemove.productVariant?.id ?? 0)
+        );
+        
+        print('Removed item from selected items list: ${itemToRemove.productVariant?.name}');
+        print('Remaining selected items: ${_selectedCartItemsList.length}');
       });
       _updateStickyPaymentVisibility();
     }
@@ -168,8 +278,30 @@ class _PageCartState extends State<PageCart> {
 
   void toggleSelectAll(bool value) {
     setState(() {
+      _selectedCartItemsList.clear(); // Clear the current selection list
+      
       for (var itemId in selectedItems.keys) {
         selectedItems[itemId] = value;
+      }
+      
+      // If selecting all, populate the selected items list
+      if (value) {
+        for (var item in _cartStorage.cartItems) {
+          if (item.cartItemId != null) {
+            final model = CartItemModel(
+              productId: item.productVariant?.id ?? 0,
+              productName: item.productVariant?.name ?? 'Unknown product',
+              imageUrl: item.productVariant?.imageUrl ?? '',
+              quantity: item.quantity ?? 0,
+              price: item.productVariant?.finalPrice ?? item.productVariant?.price ?? 0,
+              variantId: item.productVariant?.id ?? 0,
+            );
+            _selectedCartItemsList.add(model);
+          }
+        }
+        print('Selected all ${_selectedCartItemsList.length} items');
+      } else {  
+        print('Cleared all selections');
       }
     });
     _updateStickyPaymentVisibility();
@@ -180,6 +312,8 @@ class _PageCartState extends State<PageCart> {
       for (var itemId in selectedItems.keys) {
         selectedItems[itemId] = false;
       }
+      _selectedCartItemsList.clear(); // Clear the selected items list
+      print('Unselected all items');
     });
     _updateStickyPaymentVisibility();
   }
@@ -204,6 +338,49 @@ class _PageCartState extends State<PageCart> {
     final subtotal = calculateSubtotal();
     if (subtotal == 0) return 0;
     return subtotal + calculateTax() + shippingFee;
+  }
+
+  // Method to navigate to payment with selected items
+  void proceedToPayment() {
+    if (_selectedCartItemsList.isEmpty) {
+      // If no items are selected, collect all cart items
+      if (_cartStorage.cartItems.isNotEmpty) {
+        for (var item in _cartStorage.cartItems) {
+          if (item.cartItemId != null) {
+            final model = CartItemModel(
+              productId: item.productVariant?.id ?? 0,
+              productName: item.productVariant?.name ?? 'Unknown product',
+              imageUrl: item.productVariant?.imageUrl ?? '',
+              quantity: item.quantity ?? 0, 
+              price: item.productVariant?.finalPrice ?? item.productVariant?.price ?? 0,
+              variantId: item.productVariant?.id ?? 0,
+            );
+            _selectedCartItemsList.add(model);
+          }
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Giỏ hàng của bạn đang trống')),
+        );
+        return;
+      }
+    }
+    
+    // Debug log before navigation
+    print('Navigating to payment with ${_selectedCartItemsList.length} items:');
+    for (var item in _selectedCartItemsList) {
+      print(' - ${item.productName}, Qty: ${item.quantity}, Price: ${item.price}');
+    }
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PagePayment(
+          cartItems: _selectedCartItemsList,
+          sourceCartPage: true,
+        ),
+      ),
+    );
   }
 
   @override
@@ -258,6 +435,7 @@ class _PageCartState extends State<PageCart> {
             calculateSubtotal: calculateSubtotal,
             calculateTax: calculateTax,
             calculateTotal: calculateTotal,
+            onProceedToPayment: proceedToPayment,  // Pass the function to BodyCart
           );
         }
 

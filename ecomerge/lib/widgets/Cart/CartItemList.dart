@@ -4,23 +4,105 @@ import 'package:e_commerce_app/database/models/CartDTO.dart';
 import 'package:e_commerce_app/database/Storage/CartStorage.dart';
 import 'package:flutter/material.dart';
 
-// Cache to prevent rebuilding FutureBuilder unnecessarily
-class _ImageCache {
-  static final Map<String, Future<Uint8List?>> _cache = {};
-  
-  static Future<Uint8List?> getImage(String url) {
-    if (!_cache.containsKey(url)) {
-      _cache[url] = CartStorage().getImage(url);
+// Create a cached image widget that doesn't rebuild unnecessarily
+class CachedCartImage extends StatefulWidget {
+  final String imageUrl;
+  final BoxFit fit;
+  final double width;
+  final double height;
+
+  const CachedCartImage({
+    Key? key,
+    required this.imageUrl,
+    this.fit = BoxFit.cover,
+    this.width = double.infinity,
+    this.height = double.infinity,
+  }) : super(key: key);
+
+  @override
+  State<CachedCartImage> createState() => _CachedCartImageState();
+}
+
+class _CachedCartImageState extends State<CachedCartImage> {
+  Uint8List? _imageData;
+  bool _isLoading = true;
+  bool _hasError = false;
+  final cartStorage = CartStorage();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadImage();
+  }
+
+  @override
+  void didUpdateWidget(CachedCartImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageUrl != widget.imageUrl) {
+      _loadImage();
     }
-    return _cache[url]!;
   }
-  
-  static void invalidate(String url) {
-    _cache.remove(url);
+
+  Future<void> _loadImage() async {
+    if (widget.imageUrl.isEmpty) {
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+
+    try {
+      final imageData = await cartStorage.getImage(widget.imageUrl);
+      if (mounted) {
+        setState(() {
+          _imageData = imageData;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+        });
+      }
+    }
   }
-  
-  static void clear() {
-    _cache.clear();
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return SizedBox(
+        width: widget.width,
+        height: widget.height,
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_hasError || _imageData == null) {
+      return SizedBox(
+        width: widget.width,
+        height: widget.height,
+        child: const Icon(
+          Icons.image_not_supported,
+          size: 40,
+          color: Colors.grey,
+        ),
+      );
+    }
+
+    return Image.memory(
+      _imageData!,
+      fit: widget.fit,
+      width: widget.width,
+      height: widget.height,
+    );
   }
 }
 
@@ -125,9 +207,6 @@ class CartItemList extends StatelessWidget {
     final quantity = item.quantity ?? 0;
     final lineTotal = price * quantity;
     
-    // Use stable keys to prevent unnecessary rebuilding
-    final imageKey = ValueKey('cart_image_${item.cartItemId}_$imageUrl');
-    
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16.0),
       decoration: BoxDecoration(
@@ -152,31 +231,11 @@ class CartItemList extends StatelessWidget {
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.grey[300]!),
                   ),
-                  child: FutureBuilder<Uint8List?>(
-                    key: imageKey,
-                    future: _ImageCache.getImage(imageUrl),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      
-                      if (snapshot.hasData && snapshot.data != null) {
-                        return Image.memory(
-                          snapshot.data!,
-                          fit: BoxFit.cover,
-                        );
-                      }
-                      
-                      return Image.network(
-                        imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => const Icon(
-                          Icons.image_not_supported,
-                          size: 40,
-                          color: Colors.grey,
-                        ),
-                      );
-                    },
+                  child: CachedCartImage(
+                    imageUrl: imageUrl,
+                    fit: BoxFit.cover,
+                    width: 100,
+                    height: 100,
                   ),
                 ),
                 Expanded(
@@ -288,9 +347,6 @@ class CartItemList extends StatelessWidget {
     final quantity = item.quantity ?? 0;
     final lineTotal = price * quantity;
     
-    // Use stable keys to prevent unnecessary rebuilding
-    final imageKey = ValueKey('cart_image_mobile_${item.cartItemId}_$imageUrl');
-    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
       child: Card(
@@ -317,31 +373,11 @@ class CartItemList extends StatelessWidget {
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.grey[300]!),
                     ),
-                    child: FutureBuilder<Uint8List?>(
-                      key: imageKey,
-                      future: _ImageCache.getImage(imageUrl),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
-                        }
-                        
-                        if (snapshot.hasData && snapshot.data != null) {
-                          return Image.memory(
-                            snapshot.data!,
-                            fit: BoxFit.cover,
-                          );
-                        }
-                        
-                        return Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => const Icon(
-                            Icons.image_not_supported,
-                            size: 30,
-                            color: Colors.grey,
-                          ),
-                        );
-                      },
+                    child: CachedCartImage(
+                      imageUrl: imageUrl,
+                      fit: BoxFit.cover,
+                      width: 80,
+                      height: 80,
                     ),
                   ),
                   
@@ -360,7 +396,7 @@ class CartItemList extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '₫${price.toStringAsFixed(0)}',
+                          '${price.toStringAsFixed(0)}vn₫',
                           style: TextStyle(color: Colors.red[700]),
                         ),
                       ],

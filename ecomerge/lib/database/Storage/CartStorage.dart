@@ -95,8 +95,9 @@ class CartStorage {
   
   // Add item to cart
   Future<void> addItemToCart(CartProductVariantDTO productVariant, int quantity) async {
-    // Create a new cart item
+    // Create a new cart item with a unique ID for non-logged in users
     final cartItem = CartItemDTO(
+      cartItemId: UserInfo().isLoggedIn ? null : -DateTime.now().millisecondsSinceEpoch,
       productVariant: productVariant,
       quantity: quantity,
       lineTotal: (productVariant.finalPrice ?? productVariant.price ?? 0) * quantity,
@@ -232,10 +233,17 @@ class CartStorage {
       // Create a new merged list starting with server items
       final mergedItems = List<CartItemDTO>.from(serverItems);
       
+      print('Starting cart merge: ${localItems.length} local items, ${serverItems.length} server items');
+      
       // Process each local item
       for (var localItem in localItems) {
-        // Skip already processed server items (those with IDs)
-        if (localItem.cartItemId != null) continue;
+        // Skip items that already exist on server (positive IDs)
+        if (localItem.cartItemId != null && localItem.cartItemId! > 0) {
+          print('Skipping local item that came from server: ID=${localItem.cartItemId}');
+          continue;
+        }
+        
+        print('Processing local item: variant=${localItem.productVariant?.id}, quantity=${localItem.quantity}');
         
         // Check if this local item exists in server items by product variant ID
         final serverItemIndex = mergedItems.indexWhere(
@@ -246,6 +254,8 @@ class CartStorage {
           // Item exists in both - merge quantities
           final serverItem = mergedItems[serverItemIndex];
           final newQuantity = (serverItem.quantity ?? 0) + (localItem.quantity ?? 0);
+          
+          print('Found matching server item: ID=${serverItem.cartItemId}, current qty=${serverItem.quantity}, new qty=$newQuantity');
           
           // Update the server item with combined quantity
           try {
@@ -268,6 +278,8 @@ class CartStorage {
           // Item exists only locally - add to server
           if (localItem.productVariant?.id != null) {
             try {
+              print('Adding local item to server: variant=${localItem.productVariant?.id}, qty=${localItem.quantity}');
+              
               final newServerItem = await _cartService.addToCart(
                 localItem.productVariant!.id!,
                 localItem.quantity ?? 1
@@ -276,7 +288,7 @@ class CartStorage {
               // Add the server response to merged list
               if (newServerItem != null) {
                 mergedItems.add(newServerItem);
-                print('Added local item to server: ${newServerItem.cartItemId}');
+                print('Added local item to server: New ID=${newServerItem.cartItemId}, variant=${newServerItem.productVariant?.id}');
               }
             } catch (e) {
               print('Failed to add local item to server: $e');
@@ -287,6 +299,7 @@ class CartStorage {
       
       // Replace local cache with merged items
       _cartItems = mergedItems;
+      print('Final merged cart has ${_cartItems!.length} items');
       
       // Save merged cart to local storage
       await _saveToLocalStorage();
@@ -408,7 +421,9 @@ class CartStorage {
       // Add new item
       _cartItems!.add(item);
     }
-    
+    for(var item in _cartItems!) {
+      print('Item added to cart: ${item.productVariant?.id}, Quantity: ${item.quantity}');
+    }
     // Preload the image if available
     if (item.productVariant?.imageUrl != null) {
       getImage(item.productVariant!.imageUrl!);

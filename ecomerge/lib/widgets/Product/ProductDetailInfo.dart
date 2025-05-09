@@ -48,6 +48,9 @@ class ProductDetialInfo extends StatelessWidget {
   // Product ID
   final int productId; // Add this line
 
+  // Image cache function to prevent flickering
+  final Future<Uint8List?> Function(String, ProductService)? imageCache;
+
   const ProductDetialInfo({
     Key? key,
     // Product
@@ -83,6 +86,7 @@ class ProductDetialInfo extends StatelessWidget {
     required this.onAddToCart,
     required this.onBuyNow,
     required this.productId, // Add this line
+    this.imageCache, // Optional parameter with default fallback
   }) : super(key: key);
 
   @override
@@ -90,6 +94,14 @@ class ProductDetialInfo extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     // Create ProductService instance for image loading
     final productService = ProductService();
+
+    // Function to get image with caching
+    Future<Uint8List?> getImage(String imageUrl) {
+      if (imageCache != null) {
+        return imageCache!(imageUrl, productService);
+      }
+      return productService.getImageFromServer(imageUrl);
+    }
 
     return Container(
       color: Colors.grey[200],
@@ -158,12 +170,9 @@ class ProductDetialInfo extends StatelessWidget {
                                       )
                                     // Use FutureBuilder for better image loading and caching
                                     : FutureBuilder<Uint8List?>(
-                                        future:
-                                            productService.getImageFromServer(
-                                                displayedMainImageUrl),
+                                        future: getImage(displayedMainImageUrl),
                                         builder: (context, snapshot) {
-                                          if (snapshot.connectionState ==
-                                                  ConnectionState.done &&
+                                          if (snapshot.connectionState == ConnectionState.done &&
                                               snapshot.hasData &&
                                               snapshot.data != null) {
                                             // Display cached image data with high quality
@@ -666,6 +675,7 @@ class BuildThumbnail extends StatelessWidget {
               borderRadius: BorderRadius.circular(2),
             ),
             child: FutureBuilder<Uint8List?>(
+              key: ValueKey('thumb_$imageUrl'), // Add stable key to prevent rebuilds
               future: productService.getImageFromServer(imageUrl),
               builder: (context, snapshot) {
                 if (snapshot.hasData && snapshot.data != null) {
@@ -767,6 +777,7 @@ class BuildVariantOption extends StatelessWidget {
                             size: 20, color: Colors.grey),
                       )
                     : FutureBuilder<Uint8List?>(
+                        key: ValueKey('variant_$imageUrl'), // Add stable key
                         future: productService.getImageFromServer(imageUrl),
                         builder: (context, snapshot) {
                           if (snapshot.hasData && snapshot.data != null) {
