@@ -124,7 +124,7 @@ class _PagechatState extends State<Pagechat> {
     // Bạn nên lấy thông tin này từ Provider hoặc service xác thực
     final userProvider = UserInfo(); // Giả sử bạn có thể truy cập trực tiếp
     // final bool isAdmin = userProvider.currentUser?.role == UserRole.admin;
-    final bool isAdmin = userProvider.currentUser?.role == UserRole.quan_tri;
+    final bool isAdmin = userProvider.currentUser?.role.toString() == UserRole.quan_tri.name;
 
     // Hoặc final bool isAdmin = Provider.of<UserProvider>(context).currentUser?.role == UserRole.admin;
 
