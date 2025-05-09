@@ -1,4 +1,4 @@
-package demo.com.example.testserver.Chat.model;
+package demo.com.example.testserver.chat.model;
 
 import jakarta.persistence.*;
 import java.util.Date;
