@@ -143,7 +143,8 @@ class _PagePaymentState extends State<PagePayment> {
   }
 
   String _formatCurrency(num amount) {
-    final formatter = NumberFormat("#,###", "vi_VN");
+    final formatter =
+        NumberFormat.decimalPatternDigits(locale: 'vi_VN', decimalDigits: 0);
     return '${formatter.format(amount)} VND';
   }
 
@@ -430,9 +431,12 @@ class _PagePaymentState extends State<PagePayment> {
 
       Map<String, dynamic> paymentSuccessArgs =
           createdOrder.toMapForPaymentSuccess();
-      paymentSuccessArgs['customerName'] = _currentAddress!.name;
-      paymentSuccessArgs['address'] = _currentAddress!.fullAddress;
-      paymentSuccessArgs['phone'] = _currentAddress!.phone;
+
+      // Add customerID from the logged-in user's information
+      paymentSuccessArgs['customerID'] =
+          UserInfo().currentUser?.id?.toString() ??
+              paymentSuccessArgs['customerID'] ??
+              'N/A';
 
       if (mounted) {
         Navigator.pushReplacementNamed(
@@ -444,10 +448,14 @@ class _PagePaymentState extends State<PagePayment> {
     } catch (e) {
       print("PagePayment: Error creating order: $e");
       if (mounted) {
+        String errorMessage;
+        if (e.toString().contains('505')) {
+          errorMessage = 'Đặt hàng không thành công. Vui lòng thử lại sau.';
+        } else {
+          errorMessage = 'Đặt hàng không thành công. Vui lòng thử lại sau.';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Đặt hàng thất bại: ${e.toString()}'),
-              backgroundColor: Colors.red),
+          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
         );
       }
     } finally {
