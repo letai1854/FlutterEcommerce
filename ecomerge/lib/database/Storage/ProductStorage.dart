@@ -1,3 +1,5 @@
+import 'package:e_commerce_app/database/Storage/BrandCategoryService.dart';
+import 'package:e_commerce_app/database/models/brand.dart';
 import 'package:flutter/foundation.dart';
 import 'package:e_commerce_app/database/models/product_dto.dart';
 import 'package:e_commerce_app/database/PageResponse.dart';
@@ -472,13 +474,37 @@ class ProductStorageSingleton extends ChangeNotifier {
   }
   
   // Method to perform initial search
-  Future<void> performSearch(String query) async {
-    // Clear all search-related cache first
-    clearSearchCache();
+  Future<void> performSearch(
+    String query, {
+    int? categoryId,
+    String? brandName,
+    int minPrice = 0,
+    int maxPrice = 10000000,
+    String sortBy = 'createdDate',
+    String sortDir = 'desc',
+    bool clearCache = true,
+    bool skipPriceFilter = false // <-- ADD THIS PARAMETER
+  }) async {
+    // Clear all search-related cache if needed
+    if (clearCache) {
+      if (kDebugMode) print('Explicitly clearing all search-related cache');
+      _searchResults.clear();
+      _searchCurrentPage = -1;
+      _isSearchLoading = false;
+      _canSearchLoadMore = true;
+    }
     
     // Set the new query
     _currentSearchQuery = query;
     _isSearchLoading = true;
+    
+    // Store current filter and sort parameters for pagination
+    _searchCategoryId = categoryId;
+    _searchBrandName = brandName;
+    _searchMinPrice = skipPriceFilter ? null : minPrice; // <-- SET TO NULL IF SKIPPING
+    _searchMaxPrice = skipPriceFilter ? null : maxPrice; // <-- SET TO NULL IF SKIPPING
+    _searchSortBy = sortBy;
+    _searchSortDir = sortDir;
     
     notifyListeners();
     
@@ -486,14 +512,47 @@ class ProductStorageSingleton extends ChangeNotifier {
     await Future.delayed(const Duration(milliseconds: 800));
     
     try {
+      if (kDebugMode) {
+        print('Performing search with parameters:');
+        print('Query: $query');
+        print('Category ID: $categoryId');
+        print('Brand Name: $brandName');
+        if (skipPriceFilter) {
+          print('Price Range: NO PRICE FILTER APPLIED (returning ALL prices)');
+        } else {
+          print('Price Range: $minPrice - $maxPrice');
+        }
+        print('Sort: $sortBy $sortDir');
+      }
+      
+      // Get brand ID from name if provided
+      int? brandId;
+      if (brandName != null && brandName.isNotEmpty) {
+        final brands = AppDataService().brands;
+        final brand = brands.firstWhere(
+          (b) => b.name == brandName, 
+          orElse: () => BrandDTO()
+        );
+        brandId = brand.id;
+        
+        if (kDebugMode) {
+          print('Resolved brand name "$brandName" to ID: $brandId');
+        }
+      }
+      
       final response = await _productService.fetchProducts(
         search: query,
+        categoryId: categoryId,
+        brandId: brandId,
+        minPrice: skipPriceFilter ? null : minPrice.toDouble(), // <-- PASS NULL IF SKIPPING
+        maxPrice: skipPriceFilter ? null : maxPrice.toDouble(), // <-- PASS NULL IF SKIPPING
         page: 0,
         size: 3, // Explicitly set to load only 3 products initially, matching category behavior
-        sortBy: 'createdDate',
-        sortDir: 'desc'
+        sortBy: sortBy,
+        sortDir: sortDir
       );
       
+      _searchResults.clear(); // Clear again in case other search results were added
       _searchResults.addAll(response.content);
       _searchCurrentPage = response.number;
       _searchTotalPages = response.totalPages;
@@ -512,6 +571,14 @@ class ProductStorageSingleton extends ChangeNotifier {
     }
   }
   
+  // Store current search parameters for pagination - update to use nullable types for price
+  int? _searchCategoryId;
+  String? _searchBrandName;
+  int? _searchMinPrice = 0; // <-- CHANGE TO NULLABLE
+  int? _searchMaxPrice = 10000000; // <-- CHANGE TO NULLABLE
+  String _searchSortBy = 'createdDate';
+  String _searchSortDir = 'desc';
+  
   // Method to load next page of search results
   Future<void> loadMoreSearchResults() async {
     if (_isSearchLoading || !_canSearchLoadMore) {
@@ -528,12 +595,37 @@ class ProductStorageSingleton extends ChangeNotifier {
       // Use same loading delay as category browsing for consistency
       await Future.delayed(const Duration(milliseconds: 800));
       
+      // Get brand ID from name if provided
+      int? brandId;
+      if (_searchBrandName != null && _searchBrandName!.isNotEmpty) {
+        final brands = AppDataService().brands;
+        final brand = brands.firstWhere(
+          (b) => b.name == _searchBrandName, 
+          orElse: () => BrandDTO()
+        );
+        brandId = brand.id;
+      }
+      
+      // Check if we're using price filters
+      final bool usingPriceFilter = _searchMinPrice != null && _searchMaxPrice != null;
+      if (kDebugMode) {
+        if (usingPriceFilter) {
+          print('Loading more search results with price filter: $_searchMinPrice - $_searchMaxPrice');
+        } else {
+          print('Loading more search results WITHOUT price filter');
+        }
+      }
+      
       final response = await _productService.fetchProducts(
         search: _currentSearchQuery,
+        categoryId: _searchCategoryId,
+        brandId: brandId,
+        minPrice: _searchMinPrice?.toDouble(), // <-- USE NULL-AWARE OPERATOR
+        maxPrice: _searchMaxPrice?.toDouble(), // <-- USE NULL-AWARE OPERATOR
         page: _searchCurrentPage + 1,
         size: 3, // Consistently use 3 products per page to match category browsing
-        sortBy: 'createdDate',
-        sortDir: 'desc'
+        sortBy: _searchSortBy,
+        sortDir: _searchSortDir
       );
       
       _searchResults.addAll(response.content);

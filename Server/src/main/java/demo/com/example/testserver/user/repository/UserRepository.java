@@ -33,8 +33,8 @@ public interface UserRepository extends JpaRepository<User, Integer> {
         @Param("status") User.UserStatus status
     );
 
-    // Find all users whose status is 'kich_hoat'
-    @Query("SELECT u FROM User u WHERE u.status = demo.com.example.testserver.user.model.User.UserStatus.kich_hoat")
+    // Find all users
+    @Query("SELECT u FROM User u")
     List<User> findAllActiveUsers();
 
     // Find users with pagination and filtering by email and creation date range
@@ -51,4 +51,6 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
     // Potential future methods for password reset tokens:
     Optional<User> findByPasswordResetToken(String token);
+
+    long countByCreatedDateGreaterThanEqual(Date date);
 }

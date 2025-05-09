@@ -77,7 +77,7 @@ CREATE TABLE san_pham (
     min_price DECIMAL(12, 2) NULL DEFAULT NULL,
     max_price DECIMAL(12, 2) NULL DEFAULT NULL,
     average_rating DOUBLE NULL DEFAULT NULL,
-    CHECK (phan_tram_giam_gia IS NULL OR (phan_tram_giam_gia > 0 AND phan_tram_giam_gia <= 50.00)) -- Giới hạn % giảm giá
+    CHECK (phan_tram_giam_gia IS NULL OR (phan_tram_giam_gia >= 0 AND phan_tram_giam_gia <= 50.00)) -- Giới hạn % giảm giá
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ================= Bảng Hình ảnh Sản phẩm (Product Images) =================
@@ -106,7 +106,7 @@ CREATE TABLE bien_the_san_pham (
     ngay_tao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ngay_cap_nhat TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (san_pham_id) REFERENCES san_pham(id) ON DELETE CASCADE ON UPDATE CASCADE, -- Xóa biến thể nếu sản phẩm bị xóa
-    CHECK (phan_tram_giam_gia IS NULL OR (phan_tram_giam_gia > 0 AND phan_tram_giam_gia <= 50.00)) -- Giới hạn % giảm giá
+    CHECK (phan_tram_giam_gia IS NULL OR (phan_tram_giam_gia >= 0 AND phan_tram_giam_gia <= 50.00)) -- Giới hạn % giảm giá
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ================= Bảng Giỏ hàng (Cart) =================

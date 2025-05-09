@@ -231,4 +231,11 @@ class CouponControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNoContent());
     }
+
+    @Test
+    void getAvailableCoupons_unauthenticated_shouldReturnUnauthorized() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/coupons/available")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isUnauthorized());
+    }
 }
