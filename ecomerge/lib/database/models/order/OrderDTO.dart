@@ -52,8 +52,8 @@ class OrderDTO {
   final double? totalAmount;
   final String? paymentMethod;
   final String? paymentStatus;
-  final String? orderStatus;
-  final int? pointsEarned;
+  final String? orderStatus; // Corresponds to Order.OrderStatus enum on backend
+  final int? pointsEarned; // Matches Java BigDecimal (via Integer conversion)
   final String? couponCode;
   final List<OrderDetailItemDTO>? orderDetails;
 
@@ -99,7 +99,7 @@ class OrderDTO {
       paymentMethod: json['paymentMethod'] as String?,
       paymentStatus: json['paymentStatus'] as String?,
       orderStatus: json['orderStatus'] as String?,
-      pointsEarned: json['pointsEarned'] as int?,
+      pointsEarned: (json['pointsEarned'] as num?)?.toInt(),
       couponCode: json['couponCode'] as String?,
       orderDetails: (json['orderDetails'] as List<dynamic>?)
           ?.map((item) =>
@@ -109,11 +109,8 @@ class OrderDTO {
   }
 
   Map<String, dynamic> toMapForPaymentSuccess() {
-    // UserInfo().currentUser?.id is added separately in PagePayment
-    // This map provides data primarily from the order itself.
     return {
       'orderID': id.toString(),
-      // customerID will be added in PagePayment from UserInfo
       'customerName':
           recipientName ?? UserInfo().currentUser?.fullName ?? 'N/A',
       'address': shippingAddress ?? 'N/A',
@@ -123,13 +120,80 @@ class OrderDTO {
       'itemsTotal': subtotal ?? 0.0,
       'shippingFee': shippingFee ?? 0.0,
       'tax': tax ?? 0.0,
-      'discount': couponDiscount ?? 0.0, // Primarily coupon discount
-      // If you want to show pointsDiscount separately, PaymentSuccess.dart needs an update
-      // Or you can sum them: (couponDiscount ?? 0.0) + (pointsDiscount ?? 0.0)
+      'discount': couponDiscount ?? 0.0,
       'totalAmount': totalAmount ?? 0.0,
       'orderStatus': orderStatus ?? 'PENDING',
-      // You can add more fields here if PaymentSuccess.dart needs them
-      // e.g., 'orderDetails': orderDetails?.map((e) => e.toJsonMap()).toList() // If needed
     };
+  }
+}
+
+// New DTO for Order Status History
+class OrderStatusHistoryDTO {
+  final String status;
+  final String? notes;
+  final DateTime timestamp;
+
+  OrderStatusHistoryDTO({
+    required this.status,
+    this.notes,
+    required this.timestamp,
+  });
+
+  factory OrderStatusHistoryDTO.fromJson(Map<String, dynamic> json) {
+    return OrderStatusHistoryDTO(
+      status: json['status'] as String,
+      notes: json['notes'] as String?,
+      timestamp: DateTime.parse(json['timestamp'] as String),
+    );
+  }
+}
+
+// Enum for Order Status (mirroring backend if possible)
+enum OrderStatus {
+  PENDING,
+  PROCESSING,
+  SHIPPED,
+  DELIVERED,
+  CANCELLED,
+  RETURNED
+}
+
+// Helper to convert OrderStatus enum to string for API requests
+String orderStatusToString(OrderStatus status) {
+  return status.toString().split('.').last;
+}
+
+// New class to represent a page of orders from the backend
+class OrderPage {
+  final List<OrderDTO> orders;
+  final int totalPages;
+  final int totalElements;
+  final int currentPage;
+  final int pageSize;
+  final bool isLast;
+  final bool isFirst;
+
+  OrderPage({
+    required this.orders,
+    required this.totalPages,
+    required this.totalElements,
+    required this.currentPage,
+    required this.pageSize,
+    required this.isLast,
+    required this.isFirst,
+  });
+
+  factory OrderPage.fromJson(Map<String, dynamic> json) {
+    return OrderPage(
+      orders: (json['content'] as List<dynamic>)
+          .map((item) => OrderDTO.fromJson(item as Map<String, dynamic>))
+          .toList(),
+      totalPages: json['totalPages'] as int,
+      totalElements: json['totalElements'] as int,
+      currentPage: json['number'] as int,
+      pageSize: json['size'] as int,
+      isLast: json['last'] as bool,
+      isFirst: json['first'] as bool,
+    );
   }
 }
