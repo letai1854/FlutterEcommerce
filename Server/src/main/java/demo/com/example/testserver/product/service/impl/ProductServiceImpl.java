@@ -184,7 +184,11 @@ public class ProductServiceImpl implements ProductService {
         logger.info("Found product with ID: {}. Mapping to DTO.", id);
         ProductDTO productDTO = productMapper.mapToProductDTO(product);
 
-        logger.debug("Mapped ProductDTO: ID={}, Name={}, Variants={}", productDTO.getId(), productDTO.getName(), productDTO.getVariantCount());
+        logger.debug("Mapped ProductDTO: ID={}, Name={}, Variants={}, Reviews={}", 
+                     productDTO.getId(), 
+                     productDTO.getName(), 
+                     productDTO.getVariantCount(),
+                     productDTO.getReviews() != null ? productDTO.getReviews().size() : 0);
 
         return productDTO;
     }

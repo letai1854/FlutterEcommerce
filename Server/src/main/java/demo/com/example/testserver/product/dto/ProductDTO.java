@@ -8,6 +8,7 @@ import java.util.ArrayList; // Import ArrayList
 
 import demo.com.example.testserver.product.model.Product;
 import demo.com.example.testserver.product.model.ProductImage; // Import ProductImage
+import demo.com.example.testserver.product.model.ProductReview; // Import ProductReview
 import demo.com.example.testserver.product.model.ProductVariant; // Import ProductVariant
 
 public class ProductDTO {
@@ -26,6 +27,7 @@ public class ProductDTO {
     private BigDecimal maxPrice; // Calculated max price from variants
     private Integer variantCount; // Added: Number of variants
     private List<ProductVariantDTO> variants; // Added: List of variants
+    private List<ProductReviewDTO> reviews; // Added: List of reviews
 
     // Explicit No-Argument Constructor
     public ProductDTO() {}
@@ -60,10 +62,32 @@ public class ProductDTO {
                                   .map(ProductVariantDTO::new) // Assuming ProductVariantDTO has a constructor accepting ProductVariant
                                   .collect(Collectors.toList());
         }
+        // Map reviews to DTOs
+        if (product.getReviews() != null) {
+            this.reviews = product.getReviews().stream()
+                                  .map(reviewEntity -> { // Manual mapping for ProductReview to ProductReviewDTO
+                                      ProductReviewDTO reviewDTO = new ProductReviewDTO();
+                                      reviewDTO.setId(reviewEntity.getId());
+                                      if (reviewEntity.getUser() != null) {
+                                          reviewDTO.setReviewerName(reviewEntity.getUser().getFullName());
+                                          reviewDTO.setUserId(reviewEntity.getUser().getId().longValue());
+                                      } else {
+                                          reviewDTO.setReviewerName("Anonymous"); // Or from a specific field if anonymous reviews store names
+                                      }
+                                      reviewDTO.setRating(reviewEntity.getRating());
+                                      reviewDTO.setComment(reviewEntity.getComment());
+                                      reviewDTO.setReviewTime(reviewEntity.getReviewTime());
+                                      reviewDTO.setProductId(reviewEntity.getProduct().getId());
+                                      return reviewDTO;
+                                  })
+                                  .collect(Collectors.toList());
+        } else {
+            this.reviews = new ArrayList<>();
+        }
     }
 
     // All-Args Constructor (manually added to replace Lombok's @AllArgsConstructor)
-    public ProductDTO(Long id, String name, String description, String categoryName, String brandName, String mainImageUrl, List<String> imageUrls, BigDecimal discountPercentage, LocalDateTime createdDate, LocalDateTime updatedDate, Double averageRating, BigDecimal minPrice, BigDecimal maxPrice, Integer variantCount, List<ProductVariantDTO> variants) {
+    public ProductDTO(Long id, String name, String description, String categoryName, String brandName, String mainImageUrl, List<String> imageUrls, BigDecimal discountPercentage, LocalDateTime createdDate, LocalDateTime updatedDate, Double averageRating, BigDecimal minPrice, BigDecimal maxPrice, Integer variantCount, List<ProductVariantDTO> variants, List<ProductReviewDTO> reviews) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -79,6 +103,7 @@ public class ProductDTO {
         this.maxPrice = maxPrice;
         this.variantCount = variantCount; // Set variantCount
         this.variants = variants; // Set variants
+        this.reviews = reviews; // Set reviews
     }
 
     // --- Getters ---
@@ -97,6 +122,7 @@ public class ProductDTO {
     public BigDecimal getMaxPrice() { return maxPrice; }
     public Integer getVariantCount() { return variantCount; } // Getter for variantCount
     public List<ProductVariantDTO> getVariants() { return variants; } // Getter for variants
+    public List<ProductReviewDTO> getReviews() { return reviews; } // Getter for reviews
 
     // --- Setters ---
     public void setId(Long id) { this.id = id; }
@@ -114,4 +140,5 @@ public class ProductDTO {
     public void setMaxPrice(BigDecimal maxPrice) { this.maxPrice = maxPrice; }
     public void setVariantCount(Integer variantCount) { this.variantCount = variantCount; } // Setter for variantCount
     public void setVariants(List<ProductVariantDTO> variants) { this.variants = variants; } // Setter for variants
+    public void setReviews(List<ProductReviewDTO> reviews) { this.reviews = reviews; } // Setter for reviews
 }
