@@ -312,7 +312,8 @@ class UserService {
         final responseBody = jsonDecode(response.body);
         setAuthToken(responseBody['token']);
         UserInfo().updateUserInfo(responseBody);
-        print("User logged in successfully--------------------: ${UserInfo().currentUser?.role}");
+        print(
+            "User logged in successfully--------------------: ${UserInfo().currentUser?.role}");
         String? avatarPath = UserInfo().currentUser?.avatar;
         if (avatarPath != null && avatarPath.isNotEmpty) {
           String fullAvatarUrl = getImageUrl(avatarPath);
@@ -342,16 +343,41 @@ class UserService {
     }
   }
 
-  // Enhanced logout method to clear stored credentials
+  // Enhanced logout method to clear stored credentials and call server endpoint
   Future<void> logout() async {
+    final url = Uri.parse('$baseUrl/api/users/logout');
+    try {
+      // Attempt to call the server's logout endpoint
+      // This is often a good practice, even if JWT is stateless on the client,
+      // the server might perform some logging or cleanup.
+      final response = await httpClient.post(
+        url,
+        headers: _getHeaders(includeAuth: true), // Send auth token if available
+      );
+
+      if (response.statusCode == 200) {
+        print('Successfully logged out on server.');
+      } else {
+        print(
+            'Server logout endpoint call failed: ${response.statusCode} ${response.body}');
+        // Continue with local logout procedures regardless of server response
+      }
+    } catch (e) {
+      print('Error calling server logout endpoint: $e');
+      // Continue with local logout procedures regardless of server error
+    }
+
+    // Perform local logout operations
     setAuthToken(null);
     UserInfo().clearUserInfo();
+    UserService.clearAvatarCache(); // Clear avatar cache on logout
 
-    // Clear stored credentials on logout
+    // Clear stored credentials on logout for non-web platforms
     if (!kIsWeb) {
       await clearStoredCredentials();
       print('Cleared stored credentials during logout');
     }
+    print('Local logout completed.');
   }
 
   // Helper method to fetch and cache avatar image

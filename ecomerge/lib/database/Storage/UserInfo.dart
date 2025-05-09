@@ -40,24 +40,24 @@ class UserInfo extends ChangeNotifier {
     if (loginResponse['user'] != null) {
       _currentUser = User.fromMap(loginResponse['user']);
     }
-    
+
     // Sync cart data after successful login
     await syncCartAfterLogin();
-    
+
     notifyListeners(); // Notify listeners about the change
   }
 
   // Enhanced method to sync cart data after login
   Future<void> syncCartAfterLogin() async {
     if (!isLoggedIn) return; // Skip if not logged in
-    
+
     try {
       print('Starting cart synchronization after login...');
       final cartStorage = CartStorage();
-      
+
       // Call the enhanced syncCartWithServer method that handles merging properly
       await cartStorage.syncCartWithServer();
-      
+
       print('Cart data successfully synced and merged after login');
     } catch (e) {
       print('Error syncing cart data after login: $e');
@@ -97,14 +97,9 @@ class UserInfo extends ChangeNotifier {
   }
 
   // Global logout method that can be called from anywhere
-  void logout(BuildContext context) {
-    clearUserInfo();
-
-    // Also clear stored credentials from local storage for non-web platforms
-    if (!kIsWeb) {
-      UserService().clearStoredCredentials();
-      print('Local stored credentials cleared during logout');
-    }
+  Future<void> logout(BuildContext context) async {
+    // Call the UserService logout method which handles server logout and clearing credentials
+    await UserService().logout();
 
     // Navigate to home page and clear navigation stack
     Navigator.pushNamedAndRemoveUntil(
