@@ -12,7 +12,10 @@ class CartStorage {
   static final CartStorage _instance = CartStorage._internal();
   
   // Private constructor
-  CartStorage._internal();
+  CartStorage._internal() {
+    // Initialize image cache
+    _initializeImageCache();
+  }
   
   // Factory constructor to return the same instance
   factory CartStorage() {
@@ -25,8 +28,29 @@ class CartStorage {
   // Image cache map
   final Map<String, Uint8List> _imgCache = {};
   
+  // Track ongoing image fetch requests to avoid duplicate fetches
+  final Map<String, Future<Uint8List?>> _pendingImageFetches = {};
+  
   // Service instance
   final CartService _cartService = CartService();
+  
+  // Initialize image cache
+  Future<void> _initializeImageCache() async {
+    if (kIsWeb) return;
+    
+    try {
+      // Load any persistent cache from storage here if needed
+      await _loadImageCacheFromStorage();
+    } catch (e) {
+      print('Failed to initialize image cache: $e');
+    }
+  }
+  
+  // Load images from persistent storage (implement according to your needs)
+  Future<void> _loadImageCacheFromStorage() async {
+    // This method can be implemented to load previously cached images
+    // from persistent storage when the app starts
+  }
   
   // Check if the cache is available
   bool get hasCache => _cartItems != null;
@@ -286,26 +310,51 @@ class CartStorage {
     }
   }
   
-  // Get image from cache or load from server
+  // Get image from cache or load from server with deduplication
   Future<Uint8List?> getImage(String imagePath) async {
+    // Check if image path is empty
+    if (imagePath.isEmpty) {
+      return null;
+    }
+    
     // Check if image is in local cache
     if (_imgCache.containsKey(imagePath)) {
       return _imgCache[imagePath];
     }
     
-    // If not, use CartService to fetch it
-    final imageData = await _cartService.getImageFromServer(imagePath);
-    
-    // Cache the image if it was successfully fetched
-    if (imageData != null) {
-      _imgCache[imagePath] = imageData;
+    // Check if a fetch is already in progress for this image
+    if (_pendingImageFetches.containsKey(imagePath)) {
+      return _pendingImageFetches[imagePath];
     }
     
-    return imageData;
+    // If not, use CartService to fetch it (with deduplication)
+    try {
+      final fetchFuture = _cartService.getImageFromServer(imagePath);
+      _pendingImageFetches[imagePath] = fetchFuture;
+      
+      final imageData = await fetchFuture;
+      
+      // Cache the image if it was successfully fetched
+      if (imageData != null) {
+        _imgCache[imagePath] = imageData;
+      }
+      
+      // Remove from pending fetches
+      _pendingImageFetches.remove(imagePath);
+      
+      return imageData;
+    } catch (e) {
+      print('Error fetching image: $e');
+      _pendingImageFetches.remove(imagePath);
+      return null;
+    }
   }
   
   // Force reload an image from server
   Future<Uint8List?> reloadImage(String imagePath) async {
+    // Clear any pending fetch for this image
+    _pendingImageFetches.remove(imagePath);
+    
     final imageData = await _cartService.getImageFromServer(imagePath, forceReload: true);
     
     if (imageData != null) {
@@ -318,6 +367,12 @@ class CartStorage {
   // Clear the image cache
   void clearImageCache() {
     _imgCache.clear();
+    _pendingImageFetches.clear();
+  }
+  
+  // Check if image is cached
+  bool isImageCached(String imagePath) {
+    return _imgCache.containsKey(imagePath);
   }
   
   // Set cart items (replace the entire cache)

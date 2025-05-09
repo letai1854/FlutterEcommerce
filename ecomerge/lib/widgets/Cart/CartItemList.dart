@@ -4,6 +4,26 @@ import 'package:e_commerce_app/database/models/CartDTO.dart';
 import 'package:e_commerce_app/database/Storage/CartStorage.dart';
 import 'package:flutter/material.dart';
 
+// Cache to prevent rebuilding FutureBuilder unnecessarily
+class _ImageCache {
+  static final Map<String, Future<Uint8List?>> _cache = {};
+  
+  static Future<Uint8List?> getImage(String url) {
+    if (!_cache.containsKey(url)) {
+      _cache[url] = CartStorage().getImage(url);
+    }
+    return _cache[url]!;
+  }
+  
+  static void invalidate(String url) {
+    _cache.remove(url);
+  }
+  
+  static void clear() {
+    _cache.clear();
+  }
+}
+
 class CartItemList extends StatelessWidget {
   final List<CartItemDTO> cartItems;
   final Map<int?, bool> selectedItems;
@@ -105,8 +125,8 @@ class CartItemList extends StatelessWidget {
     final quantity = item.quantity ?? 0;
     final lineTotal = price * quantity;
     
-    // Use CartStorage to get cached image if available
-    final cartStorage = CartStorage();
+    // Use stable keys to prevent unnecessary rebuilding
+    final imageKey = ValueKey('cart_image_${item.cartItemId}_$imageUrl');
     
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16.0),
@@ -133,7 +153,8 @@ class CartItemList extends StatelessWidget {
                     border: Border.all(color: Colors.grey[300]!),
                   ),
                   child: FutureBuilder<Uint8List?>(
-                    future: cartStorage.getImage(imageUrl),
+                    key: imageKey,
+                    future: _ImageCache.getImage(imageUrl),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
@@ -267,8 +288,8 @@ class CartItemList extends StatelessWidget {
     final quantity = item.quantity ?? 0;
     final lineTotal = price * quantity;
     
-    // Use CartStorage to get cached image if available
-    final cartStorage = CartStorage();
+    // Use stable keys to prevent unnecessary rebuilding
+    final imageKey = ValueKey('cart_image_mobile_${item.cartItemId}_$imageUrl');
     
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
@@ -297,7 +318,8 @@ class CartItemList extends StatelessWidget {
                       border: Border.all(color: Colors.grey[300]!),
                     ),
                     child: FutureBuilder<Uint8List?>(
-                      future: cartStorage.getImage(imageUrl),
+                      key: imageKey,
+                      future: _ImageCache.getImage(imageUrl),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {
                           return const Center(child: CircularProgressIndicator());

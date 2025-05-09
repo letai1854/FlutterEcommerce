@@ -80,7 +80,7 @@ class _PageCartState extends State<PageCart> {
     if (!mounted) return;
 
     // Condition 1: Must have enough items
-    bool hasEnoughItems = _cartStorage.cartItems.length >= 4;
+    bool hasEnoughItems = _cartStorage.cartItems.length >= 5;
 
     // Condition 2: Payment info must be off-screen
     bool isScrollablePaymentInfoOffScreen = false;
