@@ -19,8 +19,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.format.annotation.DateTimeFormat; // Import DateTimeFormat
 
 import java.util.List;
+import java.util.Date; // Import Date
 
 @RestController
 @RequestMapping("/api/orders")
@@ -137,7 +139,7 @@ public class OrderController {
             logger.warn("Failed to cancel order ID {} for user {}: {}", orderId, userDetails.getUsername(), e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         } catch (Exception e) {
-            logger.error("Error cancelling order ID {} for user {}: {}", orderId, userDetails.getUsername(), e.getMessage(), e);
+            logger.error("Error cancelling order ID {} for user {}: {}", orderId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred while cancelling the order.");
         }
     }
@@ -157,6 +159,37 @@ public class OrderController {
         } catch (Exception e) {
             logger.error("Error updating status for order ID {}: {}", orderId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred while updating order status.");
+        }
+    }
+
+    @GetMapping("/admin/search")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> getOrdersForAdmin(
+            @RequestParam(required = false) Integer searchOrderId,
+            @RequestParam(required = false) Order.OrderStatus status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date endDate,
+            @PageableDefault(size = 10, sort = "orderDate,desc") Pageable pageable) {
+        try {
+            // Basic validation for date range
+            if ((startDate != null && endDate == null) || (startDate == null && endDate != null)) {
+                return ResponseEntity.badRequest().body("Both startDate and endDate must be provided for date range filtering, or neither.");
+            }
+            if (startDate != null && endDate != null && startDate.after(endDate)) {
+                return ResponseEntity.badRequest().body("startDate cannot be after endDate.");
+            }
+
+            Page<OrderDTO> orders = orderService.getOrdersForAdmin(searchOrderId, status, startDate, endDate, pageable);
+            if (orders.isEmpty()) {
+                return ResponseEntity.noContent().build();
+            }
+            return ResponseEntity.ok(orders);
+        } catch (IllegalArgumentException e) {
+            logger.warn("Invalid argument for admin order search: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error during admin order search: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred while searching orders.");
         }
     }
 }
