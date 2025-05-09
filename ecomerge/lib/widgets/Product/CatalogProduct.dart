@@ -286,101 +286,109 @@ class _CatalogProductState extends State<CatalogProduct> {
               padding: EdgeInsets.all(spacing),
               child: SingleChildScrollView(
                 controller: widget.scrollController,
-                child: Column(
-                  children: [
-                    // Thanh sắp xếp với nút menu trên mobile
-                    Container(
-                       // Sử dụng double.infinity để nó lấp đầy chiều rộng của Expanded
-                      width: double.infinity,
-                      padding: EdgeInsets.all(spacing/2),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          if (isMobile)
-                            IconButton(
-                              icon: const Icon(Icons.menu),
-                              onPressed: () => widget.scaffoldKey.currentState?.openDrawer(), // Mở drawer trên mobile
+                // Add this to ensure scrolling is always enabled, even when content is small
+                physics: AlwaysScrollableScrollPhysics(),
+                child: ConstrainedBox(
+                  // Force minimum height to be more than screen height to ensure scrollability
+                  constraints: BoxConstraints(
+                    minHeight: MediaQuery.of(context).size.height * 1.1,
+                  ),
+                  child: Column(
+                    children: [
+                      // Thanh sắp xếp với nút menu trên mobile
+                      Container(
+                         // Sử dụng double.infinity để nó lấp đầy chiều rộng của Expanded
+                        width: double.infinity,
+                        padding: EdgeInsets.all(spacing/2),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
                             ),
-                          Expanded( // Cho phép SortingBar chiếm không gian còn lại
-                            child: SortingBar(
-                              width: double.infinity, // Sử dụng double.infinity bên trong Expanded
-                              onSortChanged: widget.updateSortMethod,
-                              currentSortMethod: widget.currentSortMethod,
-                              currentSortDir: widget.currentSortDir, // Pass sort direction
-                              // Pass sort direction indicator builder
-                              buildSortDirectionIndicator: _buildSortDirectionIndicator,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    SizedBox(height: spacing),
-
-                    // Khu vực lưới sản phẩm
-                    SizedBox(
-                      width: double.infinity,
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final double minItemWidth = isMobile ? 160.0 : 200.0;
-                          final int maxColumns = (constraints.maxWidth / minItemWidth).floor();
-                          final int columns = max(2, min(maxColumns, isMobile ? 2 : 4));
-
-                          // Create a stable key that only changes when sort or category changes
-                          // DON'T include filteredProducts.length in the key to prevent rebuilds when loading more
-                          final gridKey = ValueKey('${widget.selectedCategoryId}_${widget.currentSortMethod}');
-                          
-                          // Wrap in RepaintBoundary to prevent repainting when parent rebuilds
-                          return RepaintBoundary(
-                            child: KeyedSubtree(
-                              key: gridKey,
-                              child: PaginatedProductGrid(
-                                productData: widget.filteredProducts,
-                                itemsPerPage: columns * 2, 
-                                gridWidth: constraints.maxWidth,
-                                childAspectRatio: 0.6,
-                                crossAxisCount: columns,
-                                mainSpace: spacing,
-                                crossSpace: spacing,
-                                isProductsLoading: widget.isProductsLoading,
-                                canLoadMoreProducts: widget.canLoadMoreProducts,
-                                isShowingCachedContent: widget.isShowingCachedContent, // Pass this flag
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            if (isMobile)
+                              IconButton(
+                                icon: const Icon(Icons.menu),
+                                onPressed: () => widget.scaffoldKey.currentState?.openDrawer(), // Mở drawer trên mobile
+                              ),
+                            Expanded( // Cho phép SortingBar chiếm không gian còn lại
+                              child: SortingBar(
+                                width: double.infinity, // Sử dụng double.infinity bên trong Expanded
+                                onSortChanged: widget.updateSortMethod,
+                                currentSortMethod: widget.currentSortMethod,
+                                currentSortDir: widget.currentSortDir, // Pass sort direction
+                                // Pass sort direction indicator builder
+                                buildSortDirectionIndicator: _buildSortDirectionIndicator,
                               ),
                             ),
-                          );
-                        },
-                      ),
-                    ),
-
-                    // Remove duplicate loading indicator since it's now handled in PaginatedProductGrid
-                    // The loading indicator in CatalogProduct causes duplicate indicators
-                    
-                    // End of list indicator only if we've loaded some products and can't load more
-                    if (!widget.isProductsLoading && !widget.canLoadMoreProducts && widget.filteredProducts.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16.0),
-                        child: Center(
-                          child: Text(
-                            'Bạn đã xem hết sản phẩm',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
+                          ],
                         ),
                       ),
 
-                  ],
+                      SizedBox(height: spacing),
+
+                      // Khu vực lưới sản phẩm
+                      SizedBox(
+                        width: double.infinity,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final double minItemWidth = isMobile ? 160.0 : 200.0;
+                            final int maxColumns = (constraints.maxWidth / minItemWidth).floor();
+                            final int columns = max(2, min(maxColumns, isMobile ? 2 : 4));
+
+                            // Create a stable key that only changes when sort or category changes
+                            // DON'T include filteredProducts.length in the key to prevent rebuilds when loading more
+                            final gridKey = ValueKey('${widget.selectedCategoryId}_${widget.currentSortMethod}');
+                            
+                            // Wrap in RepaintBoundary to prevent repainting when parent rebuilds
+                            return RepaintBoundary(
+                              child: KeyedSubtree(
+                                key: gridKey,
+                                child: PaginatedProductGrid(
+                                  productData: widget.filteredProducts,
+                                  itemsPerPage: columns * 2, 
+                                  gridWidth: constraints.maxWidth,
+                                  childAspectRatio: 0.6,
+                                  crossAxisCount: columns,
+                                  mainSpace: spacing,
+                                  crossSpace: spacing,
+                                  isProductsLoading: widget.isProductsLoading,
+                                  canLoadMoreProducts: widget.canLoadMoreProducts,
+                                  isShowingCachedContent: widget.isShowingCachedContent, // Pass this flag
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
+                      // Remove duplicate loading indicator since it's now handled in PaginatedProductGrid
+                      // The loading indicator in CatalogProduct causes duplicate indicators
+                      
+                      // End of list indicator only if we've loaded some products and can't load more
+                      if (!widget.isProductsLoading && !widget.canLoadMoreProducts && widget.filteredProducts.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16.0),
+                          child: Center(
+                            child: Text(
+                              'Bạn đã xem hết sản phẩm',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                    ],
+                  ),
                 ),
               ),
             ),

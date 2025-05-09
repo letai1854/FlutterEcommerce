@@ -530,6 +530,7 @@ class ProductService {
     };
     // Add date parameters if provided, formatted as YYYY-MM-DD strings
     // (Giữ nguyên logic này nếu server vẫn mong đợi)
+    print("");
     if (startDate != null)
       queryParameters['startDate'] = startDate.toIso8601String().split('T')[0];
     if (endDate != null)
@@ -558,7 +559,7 @@ class ProductService {
           print('Fetch Categories (Paginated) Response Body: (Empty or 204)');
         }
       }
-
+    print(response.body);
       switch (response.statusCode) {
         case 200:
           final responseBody = jsonDecode(utf8.decode(response.bodyBytes));

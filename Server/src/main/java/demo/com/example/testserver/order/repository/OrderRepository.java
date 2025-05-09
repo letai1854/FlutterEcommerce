@@ -36,4 +36,13 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 
     long countByOrderDateBetween(Date startDate, Date endDate);
 
+    // Methods for Admin order search
+    Page<Order> findById(Integer id, Pageable pageable);
+
+    Page<Order> findByOrderStatus(Order.OrderStatus status, Pageable pageable);
+
+    Page<Order> findByOrderDateGreaterThanEqualAndOrderDateLessThan(Date startDate, Date endDate, Pageable pageable);
+
+    Page<Order> findByOrderStatusAndOrderDateGreaterThanEqualAndOrderDateLessThan(Order.OrderStatus status, Date startDate, Date endDate, Pageable pageable);
+
 }
