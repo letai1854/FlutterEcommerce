@@ -11,6 +11,7 @@ import 'package:e_commerce_app/database/services/categories_service.dart'; // Ad
 import 'package:flutter/foundation.dart';
 import 'package:e_commerce_app/database/models/address_model.dart'; // Add this import for AddressRequest
 import 'package:e_commerce_app/database/models/cart_item_model.dart'; // Add this import
+import 'package:e_commerce_app/Screens/ProductDetail/PageProductDetail.dart'; // Add this import for navigation
 
 class BodyPayment extends StatelessWidget {
   final AddressData? currentAddress;
@@ -27,6 +28,8 @@ class BodyPayment extends StatelessWidget {
   final bool useAccumulatedPoints; // New parameter
   final ValueChanged<bool?> onToggleUseAccumulatedPoints; // New parameter
   final double pointsDiscountAmount; // New parameter for points discount
+  final int? sourceProductId; // Add this parameter for navigation back to product
+  final bool sourceCartPage; // Add this parameter for navigation back to cart
 
   final VoidCallback onChangeAddress;
   final VoidCallback onSelectVoucher;
@@ -60,7 +63,75 @@ class BodyPayment extends StatelessWidget {
     required this.useAccumulatedPoints, // Initialize new parameter
     required this.onToggleUseAccumulatedPoints, // Initialize new parameter
     required this.pointsDiscountAmount, // Initialize new parameter
+    this.sourceProductId, // Initialize the source product ID
+    this.sourceCartPage = false, // Default to false
   }) : super(key: key);
+
+  // Check if we can navigate back to a product
+  bool get canNavigateBackToProduct => sourceProductId != null && !sourceCartPage;
+  
+  // Check if we can navigate back to cart
+  bool get canNavigateBackToCart => sourceCartPage;
+
+  // Back button to return to product
+  Widget _buildBackToProductButton(BuildContext context) {
+    if (!canNavigateBackToProduct) return const SizedBox.shrink();
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20.0),
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.orange.shade100,
+          foregroundColor: Colors.orange.shade800,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          alignment: Alignment.centerLeft,
+        ),
+        icon: const Icon(Icons.arrow_back),
+        label: const Text('Quay lại sản phẩm'),
+        onPressed: () {
+          // Navigate back to product detail page
+          Navigator.of(context).pop(); // First pop current page
+          
+          // If we need to ensure navigation to product page (in case we came through multiple pages)
+          // we can use this more direct approach:
+          /*
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => Pageproductdetail(
+                productId: sourceProductId!,
+              ),
+            ),
+          );
+          */
+        },
+      ),
+    );
+  }
+  
+  // Back button to return to cart
+  Widget _buildBackToCartButton(BuildContext context) {
+    if (!canNavigateBackToCart) return const SizedBox.shrink();
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20.0),
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.orange.shade100,
+          foregroundColor: Colors.orange.shade800,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          alignment: Alignment.centerLeft,
+        ),
+        icon: const Icon(Icons.arrow_back),
+        label: const Text('Quay lại giỏ hàng'),
+        onPressed: () {
+          // Navigate back to cart page
+          Navigator.of(context).pop();
+        },
+      ),
+    );
+  }
 
   Widget _buildAddressDisplay() {
     return AddressDisplay(
@@ -515,6 +586,12 @@ class BodyPayment extends StatelessWidget {
     final bool isMobile = MediaQuery.of(context).size.width < 600;
     final currencyFormatter = NumberFormat("#,###", "vi_VN");
 
+    // Debug output of received products in BodyPayment
+    print('BodyPayment: Received ${products.length} products');
+    for (var item in products) {
+      print(' - Showing product: ${item.productName}, Quantity: ${item.quantity}, Price: ${item.price}');
+    }
+
     return SingleChildScrollView(
       child: Container(
         color: Colors.grey[100],
@@ -539,6 +616,12 @@ class BodyPayment extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Add appropriate back button based on navigation source
+                if (canNavigateBackToProduct)
+                  _buildBackToProductButton(context)
+                else if (canNavigateBackToCart)
+                  _buildBackToCartButton(context),
+                
                 Container(
                   padding: const EdgeInsets.all(16.0),
                   margin: const EdgeInsets.only(bottom: 20),
@@ -557,6 +640,19 @@ class BodyPayment extends StatelessWidget {
                     children: [
                       if (!isMobile) _buildDesktopProductHeader(),
                       if (!isMobile) const Divider(height: 1),
+                      if (products.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24.0),
+                          child: Center(
+                            child: Text(
+                              'Không có sản phẩm nào được chọn',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ),
+                        ),
                       ListView.separated(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
@@ -564,6 +660,7 @@ class BodyPayment extends StatelessWidget {
                         itemBuilder: (context, index) {
                           final productItem =
                               products[index]; // productItem is CartItemModel
+                          print('Rendering product at index $index: ${productItem.productName}');
                           return isMobile
                               ? _buildMobileProductItem(productItem)
                               : _buildDesktopProductItem(productItem);

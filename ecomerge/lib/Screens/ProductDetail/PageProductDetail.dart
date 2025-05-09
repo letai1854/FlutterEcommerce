@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:e_commerce_app/database/models/CartDTO.dart';
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForTablet.dart';
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
@@ -10,6 +12,22 @@ import 'package:e_commerce_app/Screens/Payment/PagePayment.dart';
 // Add new imports for cart functionality
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/Storage/CartStorage.dart';
+
+// Create an in-memory cache for product images to prevent flickering
+class _ProductImageCache {
+  static final Map<String, Future<Uint8List?>> _cache = {};
+  
+  static Future<Uint8List?> getImage(String url, ProductService service) {
+    if (!_cache.containsKey(url)) {
+      _cache[url] = service.getImageFromServer(url);
+    }
+    return _cache[url]!;
+  }
+  
+  static void clear() {
+    _cache.clear();
+  }
+}
 
 class Pageproductdetail extends StatefulWidget {
   final int productId;
@@ -245,9 +263,12 @@ class _PageproductdetailState extends State<Pageproductdetail> {
       _displayedReviews.length < _dummyReviews.length;
 
   void _onQuantityChanged(int newQuantity) {
-    setState(() {
-      _selectedQuantity = newQuantity;
-    });
+    // Prevent entire UI rebuild when only quantity changes
+    if (newQuantity != _selectedQuantity) {
+      setState(() {
+        _selectedQuantity = newQuantity;
+      });
+    }
   }
 
   @override
@@ -305,6 +326,8 @@ class _PageproductdetailState extends State<Pageproductdetail> {
       commentController: _commentController,
       selectedRating: _selectedRating,
       onRatingChanged: _onRatingChanged,
+      // Pass the image cache to prevent flickering
+      imageCache: _ProductImageCache.getImage,
       onAddToCart: () async {
         if (_productData.isEmpty ||
             _productData['productVariants'] == null ||
@@ -316,6 +339,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
           );
           return;
         }
+        
         final productVariantsList = _productData['productVariants'] as List;
         if (_selectedVariantIndex < 0 ||
             _selectedVariantIndex >= productVariantsList.length) {
@@ -324,7 +348,17 @@ class _PageproductdetailState extends State<Pageproductdetail> {
           );
           return;
         }
+        
+        // Check if stock quantity is zero
         final selectedVariant = productVariantsList[_selectedVariantIndex];
+        final int stockQuantity = selectedVariant['stock'] as int? ?? 0;
+        if (stockQuantity <= 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Sản phẩm đã hết hàng.')),
+          );
+          return;
+        }
+
         String baseProductName = _productData['name'] ?? 'Sản phẩm';
         final String? variantName = selectedVariant['name'] as String?;
         if (variantName != null && variantName.isNotEmpty) {
@@ -340,14 +374,38 @@ class _PageproductdetailState extends State<Pageproductdetail> {
                 '';
 
         try {
-          // Create product variant for CartStorage
+          // Get product name
+          final String baseProductName = _productData['name'] ?? 'Sản phẩm';
+          
+          // Get selected variant name from productVariants list
+          final String? variantName = selectedVariant['name'] as String?;
+          
+          // Create the full product name with variant
+          final String fullProductName;
+          // if (variantName != null && variantName.isNotEmpty) {
+          //   fullProductName = '$baseProductName - $variantName';
+          // } else {
+          //   fullProductName = baseProductName;
+          // }
+          fullProductName = baseProductName;
+
+          
+          print('Creating cart item with productName: $baseProductName, variantName: $variantName, fullName: $fullProductName');
+          
+          // Create product variant for CartStorage with combined name
           final cartProductVariant = CartProductVariantDTO(
             id: selectedVariant['id'] as int?,
-            name: baseProductName,
-            price: selectedVariant['price'] as double?,
-            finalPrice: selectedVariant['price'] as double?, // Using regular price as final price
+            productId: widget.productId,
+            name: fullProductName, // Use the combined name format
+            description: _productData['shortDescription'] ?? '',
             imageUrl: variantImageUrl,
+            price: selectedVariant['price'] as double?,
+            discountPercentage: _productData['discountPercentage']?.toDouble(),
+            finalPrice: selectedVariant['price'] as double?, 
+            stockQuantity: selectedVariant['stock'] as int?,
           );
+          
+          print('Adding to cart: ${cartProductVariant.name}, ID: ${cartProductVariant.id}');
           
           // Get cart storage and add item
           final cartStorage = CartStorage();
@@ -392,7 +450,16 @@ class _PageproductdetailState extends State<Pageproductdetail> {
           return;
         }
 
+        // Check if stock quantity is zero
         final selectedVariant = productVariantsList[_selectedVariantIndex];
+        final int stockQuantity = selectedVariant['stock'] as int? ?? 0;
+        if (stockQuantity <= 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Sản phẩm đã hết hàng.')),
+          );
+          return;
+        }
+
         String baseProductName = _productData['name'] ?? 'Sản phẩm';
         final String? variantName = selectedVariant['name'] as String?;
         if (variantName != null && variantName.isNotEmpty) {
@@ -415,10 +482,15 @@ class _PageproductdetailState extends State<Pageproductdetail> {
           price: selectedVariant['price'] as double,
           variantId: selectedVariant['id'] as int,
         );
+        
+        // Pass the product ID to payment page for navigation back
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => PagePayment(cartItems: [buyNowItem]),
+            builder: (context) => PagePayment(
+              cartItems: [buyNowItem],
+              sourceProductId: widget.productId,
+            ),
           ),
         );
       },

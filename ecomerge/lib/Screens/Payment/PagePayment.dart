@@ -16,16 +16,28 @@ import 'package:e_commerce_app/database/models/order/CreateOrderRequestDTO.dart'
 import 'package:e_commerce_app/database/models/order/OrderDetailRequestDTO.dart';
 import 'package:e_commerce_app/database/models/order/OrderDTO.dart';
 
+// Update the constructor to accept sourceProductId
 class PagePayment extends StatefulWidget {
   final List<CartItemModel> cartItems;
+  final int? sourceProductId; // ID of the product page that led here
+  final bool sourceCartPage; // New flag to indicate if coming from cart page
 
-  const PagePayment({super.key, required this.cartItems});
+  const PagePayment({
+    Key? key,
+    required this.cartItems,
+    this.sourceProductId, // Optional parameter
+    this.sourceCartPage = false, // Default to false
+  }) : super(key: key);
 
   @override
   State<PagePayment> createState() => _PagePaymentState();
 }
 
+// Make sure to use this parameter in the state class
 class _PagePaymentState extends State<PagePayment> {
+  int? get sourceProductId => widget.sourceProductId;
+  bool get sourceCartPage => widget.sourceCartPage;
+
   // --- Address State ---
   final List<AddressData> _addresses = [];
   AddressData? _currentAddress;
@@ -571,6 +583,12 @@ class _PagePaymentState extends State<PagePayment> {
     final double total = _calculateTotal();
     Widget appBar;
 
+    // Debug output to verify received items
+    print('PagePayment: Building with ${widget.cartItems.length} items');
+    for (var item in widget.cartItems) {
+      print(' - Item: ${item.productName}, Quantity: ${item.quantity}, Price: ${item.price}');
+    }
+
     Widget body = BodyPayment(
       currentAddress: _currentAddress,
       products: widget.cartItems,
@@ -592,6 +610,8 @@ class _PagePaymentState extends State<PagePayment> {
       onPlaceOrder: _processPayment,
       formatCurrency: _formatCurrency,
       onAddressSelected: _updateSelectedAddress,
+      sourceProductId: widget.sourceProductId,
+      sourceCartPage: widget.sourceCartPage,
     );
 
     return LayoutBuilder(

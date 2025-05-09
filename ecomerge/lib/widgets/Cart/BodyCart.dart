@@ -28,6 +28,8 @@ class BodyCart extends StatelessWidget {
   final double Function() calculateTax;
   final double Function() calculateTotal;
 
+  final VoidCallback onProceedToPayment; // Add this parameter
+
   const BodyCart({
     Key? key,
     required this.cartItems,
@@ -46,6 +48,7 @@ class BodyCart extends StatelessWidget {
     required this.calculateSubtotal,
     required this.calculateTax,
     required this.calculateTotal,
+    required this.onProceedToPayment, // Add this parameter
   }) : super(key: key);
 
   @override
@@ -85,6 +88,7 @@ class BodyCart extends StatelessWidget {
                           toggleSelectAll: toggleSelectAll,
                           unselectAllItems: unselectAllItems,
                           isSticky: false,
+                          onProceedToPayment: onProceedToPayment, // Pass the callback
                        ),
 
                      // --- Footer or bottom spacing ---
@@ -125,6 +129,7 @@ class BodyCart extends StatelessWidget {
               toggleSelectAll: toggleSelectAll,
               unselectAllItems: unselectAllItems,
               isSticky: true,
+              onProceedToPayment: onProceedToPayment, // Pass the callback
             ),
           ),
         ],

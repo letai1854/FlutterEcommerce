@@ -71,6 +71,23 @@ class CartStorage {
         try {
           final items = await _cartService.getCart();
           
+          // Enhanced debugging output
+          print('========= CART ITEMS FROM SERVER =========');
+          print('Total items: ${items.length}');
+          for (int i = 0; i < items.length; i++) {
+            final item = items[i];
+            print('---- Item ${i+1} ----');
+            print('CartItemId: ${item.cartItemId}');
+            print('Product Variant: ${item.productVariant?.name ?? 'No name'} (ID: ${item.productVariant?.id})');
+            print('Product ID: ${item.productVariant?.productId}');
+            print('Quantity: ${item.quantity}');
+            print('Price: ${item.productVariant?.price}');
+            print('Final Price: ${item.productVariant?.finalPrice}');
+            print('Line Total: ${item.lineTotal}');
+            print('Image URL: ${item.productVariant?.imageUrl}');
+          }
+          print('=========================================');
+          
           // If successfully retrieved from server, update cache
           _cartItems = items;
           print('Cart data loaded from server: ${items.length} items');
@@ -95,8 +112,12 @@ class CartStorage {
   
   // Add item to cart
   Future<void> addItemToCart(CartProductVariantDTO productVariant, int quantity) async {
-    // Create a new cart item
+    // Let's see what name is coming in
+    print('Adding to cart: ${productVariant.name}, ID: ${productVariant.id}');
+    
+    // Create a new cart item with a unique ID for non-logged in users
     final cartItem = CartItemDTO(
+      cartItemId: UserInfo().isLoggedIn ? null : -DateTime.now().millisecondsSinceEpoch,
       productVariant: productVariant,
       quantity: quantity,
       lineTotal: (productVariant.finalPrice ?? productVariant.price ?? 0) * quantity,
@@ -232,10 +253,17 @@ class CartStorage {
       // Create a new merged list starting with server items
       final mergedItems = List<CartItemDTO>.from(serverItems);
       
+      print('Starting cart merge: ${localItems.length} local items, ${serverItems.length} server items');
+      
       // Process each local item
       for (var localItem in localItems) {
-        // Skip already processed server items (those with IDs)
-        if (localItem.cartItemId != null) continue;
+        // Skip items that already exist on server (positive IDs)
+        if (localItem.cartItemId != null && localItem.cartItemId! > 0) {
+          print('Skipping local item that came from server: ID=${localItem.cartItemId}');
+          continue;
+        }
+        
+        print('Processing local item: variant=${localItem.productVariant?.id}, quantity=${localItem.quantity}');
         
         // Check if this local item exists in server items by product variant ID
         final serverItemIndex = mergedItems.indexWhere(
@@ -246,6 +274,16 @@ class CartStorage {
           // Item exists in both - merge quantities
           final serverItem = mergedItems[serverItemIndex];
           final newQuantity = (serverItem.quantity ?? 0) + (localItem.quantity ?? 0);
+          
+          // Preserve local name if it contains variant information (has a dash)
+          if (localItem.productVariant?.name != null && 
+              localItem.productVariant!.name!.contains('-') && 
+              !serverItem.productVariant!.name!.contains('-')) {
+            mergedItems[serverItemIndex].productVariant!.name = localItem.productVariant!.name;
+            print('Preserved local name with variant info: ${localItem.productVariant!.name}');
+          }
+          
+          print('Found matching server item: ID=${serverItem.cartItemId}, current qty=${serverItem.quantity}, new qty=$newQuantity');
           
           // Update the server item with combined quantity
           try {
@@ -268,6 +306,8 @@ class CartStorage {
           // Item exists only locally - add to server
           if (localItem.productVariant?.id != null) {
             try {
+              print('Adding local item to server: variant=${localItem.productVariant?.id}, qty=${localItem.quantity}');
+              
               final newServerItem = await _cartService.addToCart(
                 localItem.productVariant!.id!,
                 localItem.quantity ?? 1
@@ -276,7 +316,7 @@ class CartStorage {
               // Add the server response to merged list
               if (newServerItem != null) {
                 mergedItems.add(newServerItem);
-                print('Added local item to server: ${newServerItem.cartItemId}');
+                print('Added local item to server: New ID=${newServerItem.cartItemId}, variant=${newServerItem.productVariant?.id}');
               }
             } catch (e) {
               print('Failed to add local item to server: $e');
@@ -287,6 +327,7 @@ class CartStorage {
       
       // Replace local cache with merged items
       _cartItems = mergedItems;
+      print('Final merged cart has ${_cartItems!.length} items');
       
       // Save merged cart to local storage
       await _saveToLocalStorage();
@@ -400,15 +441,25 @@ class CartStorage {
       // Update existing item instead
       _cartItems![existingIndex].quantity = ((_cartItems![existingIndex].quantity ?? 0) + (item.quantity ?? 0));
       _cartItems![existingIndex].updatedDate = DateTime.now();
+      
+      // ALWAYS preserve the formatted name with variant info from the new item
+      if (item.productVariant?.name != null && item.productVariant!.name!.contains('-')) {
+        _cartItems![existingIndex].productVariant!.name = item.productVariant!.name;
+        print('Preserved formatted name when updating: ${item.productVariant!.name}');
+      }
+      
       // Update line total
       double price = _cartItems![existingIndex].productVariant?.finalPrice ?? 
                       _cartItems![existingIndex].productVariant?.price ?? 0;
       _cartItems![existingIndex].lineTotal = price * (_cartItems![existingIndex].quantity ?? 1);
     } else {
-      // Add new item
+      // Add new item - make sure the name is properly displayed
+      print('Adding new cart item with name: ${item.productVariant?.name}');
       _cartItems!.add(item);
     }
-    
+    for(var item in _cartItems!) {
+      print('Item added to cart: ${item.productVariant?.id}, Quantity: ${item.quantity}');
+    }
     // Preload the image if available
     if (item.productVariant?.imageUrl != null) {
       getImage(item.productVariant!.imageUrl!);
