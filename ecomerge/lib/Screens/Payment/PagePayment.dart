@@ -418,7 +418,7 @@ class _PagePaymentState extends State<PagePayment> {
       paymentMethod: _selectedPaymentMethod,
       pointsToUse: _useAccumulatedPoints && _pointsDiscountAmount > 0
           ? (_pointsDiscountAmount / 1000)
-          : null,
+          : 0,
       shippingFee: _shippingFee,
       tax: _calculateTax(),
     );
@@ -525,6 +525,7 @@ class _PagePaymentState extends State<PagePayment> {
   void _toggleUseAccumulatedPoints(bool? value) {
     if (value == null) return;
 
+    // If UserInfo().currentUser?.customerPoints is null, customerPoints will be 0.
     final double customerPoints = UserInfo().currentUser?.customerPoints ?? 0;
 
     setState(() {

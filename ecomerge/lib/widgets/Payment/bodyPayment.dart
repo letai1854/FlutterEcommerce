@@ -277,7 +277,7 @@ class BodyPayment extends StatelessWidget {
         ),
         onPressed: canPlaceOrder
             ? () {
-                if (isLoggedIn) {
+                if (UserInfo().currentUser != null) {
                   onPlaceOrder();
                 } else {
                   _showEmailLoginDialog(context);
@@ -446,39 +446,66 @@ class BodyPayment extends StatelessWidget {
   Future<bool> _registerGuestUserAndSetAddress(String email) async {
     try {
       final userService = UserService();
+      // userService.registerGuestUser should handle:
+      // 1. Registration with a placeholder address (e.g., "null").
+      // 2. Automatic login (setting auth token).
+      // 3. Cleanup of the placeholder address by the user_service logic.
       final registrationSuccess = await userService.registerGuestUser(email);
 
-      if (registrationSuccess && currentAddress != null) {
-        final addressService = AddressService();
-        final addresses = await addressService.getUserAddresses();
+      if (registrationSuccess) {
+        // User is now registered and logged in.
+        // Auth token should be available for AddressService calls.
 
-        if (addresses.isNotEmpty) {
-          final defaultAddress = addresses.first;
+        if (currentAddress != null) {
+          // If guest had entered an address, save it to their account.
+          final addressService = AddressService();
+          final addressRequest = AddressRequest(
+            recipientName: currentAddress!.name,
+            phoneNumber: currentAddress!.phone,
+            specificAddress:
+                "${currentAddress!.address}, ${currentAddress!.ward}, ${currentAddress!.district}, ${currentAddress!.province}",
+            isDefault: true, // Make this newly added address the default.
+          );
 
-          if (defaultAddress.id != null) {
-            final addressRequest = AddressRequest(
-              recipientName: currentAddress!.name,
-              phoneNumber: currentAddress!.phone,
-              specificAddress:
-                  "${currentAddress!.address}, ${currentAddress!.ward}, ${currentAddress!.district}, ${currentAddress!.province}",
-              isDefault: true,
+          final Address? newlyAddedAddressModel =
+              await addressService.addAddress(addressRequest);
+
+          if (newlyAddedAddressModel != null &&
+              newlyAddedAddressModel.id != null) {
+            // Address successfully added to the backend.
+            // Create an updated AddressData object with the new ID and default status.
+            final AddressData newAddressDataWithId = currentAddress!.copyWith(
+              id: newlyAddedAddressModel.id,
+              isDefault: newlyAddedAddressModel.isDefault,
             );
 
-            final updatedAddress = await addressService.updateAddress(
-              defaultAddress.id!,
-              addressRequest,
-            );
+            // Update PagePayment's _currentAddress with this new AddressData.
+            // This ensures that when onPlaceOrder() is called, it uses the address with the backend ID.
+            onAddressSelected(newAddressDataWithId);
 
-            return updatedAddress != null;
+            print(
+                'Guest address successfully added to backend and PagePayment updated.');
+            return true;
+          } else {
+            // Failed to add the address to the backend.
+            // Registration was successful, but address saving failed.
+            print(
+                'Guest registration successful, but failed to save their address to backend.');
+            // Return false because the full process of setting address failed.
+            return false;
           }
+        } else {
+          // Registration successful, but no currentAddress was provided by the guest.
+          print('Guest registration successful, no address to save.');
+          return true; // Registration itself was successful.
         }
-
-        return true;
+      } else {
+        // Guest registration failed.
+        print('Guest registration failed.');
+        return false;
       }
-
-      return false;
     } catch (e) {
-      print('Error in guest user registration process: $e');
+      print('Error in _registerGuestUserAndSetAddress process: $e');
       return false;
     }
   }

@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:e_commerce_app/widgets/Product/PromotionalProductsList.dart'; // Assuming ProductItem/PromoProductItem is defined or accessible here
-// If PromoProductItem is the actual widget, import its definition.
-// For this example, we'll assume PromotionalProductsList.dart exports/defines the item type or we use a generic type.
-// Let's use PromoProductItem directly as it's the type used in PromotionalProductsList.
-// import 'package:e_commerce_app/widgets/Product/ProductItem.dart'; // This was a type alias
+import 'package:e_commerce_app/database/models/product_dto.dart'; // Added for ProductDTO
 
 // Define a class to hold cached data
 class CachedProductListData {
@@ -20,12 +17,29 @@ class CachedProductListData {
   });
 }
 
+// Define a class to hold cached category-specific product data
+class CachedCategoryProductData {
+  List<ProductDTO> products;
+  int currentPage; // Corresponds to 'number' from PageResponse
+  bool hasMore; // Corresponds to '!last' from PageResponse
+  DateTime lastFetched;
+
+  CachedCategoryProductData({
+    required this.products,
+    required this.currentPage,
+    required this.hasMore,
+    required this.lastFetched,
+  });
+}
+
 class ProductCacheService {
   static final ProductCacheService _instance = ProductCacheService._internal();
   factory ProductCacheService() => _instance;
   ProductCacheService._internal();
 
   final Map<String, CachedProductListData> _cache = {};
+  final Map<String, CachedCategoryProductData> _categoryProductCache =
+      {}; // New cache for category products
 
   CachedProductListData? getData(String key) {
     // Optional: Implement cache expiry logic if needed
@@ -62,6 +76,52 @@ class ProductCacheService {
     }
   }
 
+  // --- Methods for Category Product Cache ---
+
+  String getCategoryCacheKey(int? categoryId) {
+    return "category_products_${categoryId ?? 'all'}";
+  }
+
+  CachedCategoryProductData? getCategoryProducts(String key) {
+    // Optional: Implement cache expiry logic if needed
+    // e.g., if (_categoryProductCache[key]!.lastFetched.isBefore(DateTime.now().subtract(Duration(minutes: 5)))) {
+    //   _categoryProductCache.remove(key);
+    //   return null;
+    // }
+    return _categoryProductCache[key];
+  }
+
+  void storeCategoryProducts(
+      String key, List<ProductDTO> products, int currentPage, bool hasMore) {
+    _categoryProductCache[key] = CachedCategoryProductData(
+      products: List.from(products), // Store a copy
+      currentPage: currentPage,
+      hasMore: hasMore,
+      lastFetched: DateTime.now(),
+    );
+    print(
+        'Category Product Cache stored for key: $key. Items: ${products.length}, CurrentPage: $currentPage, HasMore: $hasMore');
+  }
+
+  void appendCategoryProducts(String key, List<ProductDTO> additionalProducts,
+      int currentPage, bool hasMore) {
+    if (_categoryProductCache.containsKey(key)) {
+      _categoryProductCache[key]!.products.addAll(additionalProducts);
+      _categoryProductCache[key]!.currentPage = currentPage;
+      _categoryProductCache[key]!.hasMore = hasMore;
+      _categoryProductCache[key]!.lastFetched = DateTime.now();
+      print(
+          'Category Product Cache appended for key: $key. Total Items: ${_categoryProductCache[key]!.products.length}, CurrentPage: $currentPage, HasMore: $hasMore');
+    } else {
+      storeCategoryProducts(key, additionalProducts, currentPage, hasMore);
+    }
+  }
+
+  void clearCategoryProductCacheEntry(String key) {
+    _categoryProductCache.remove(key);
+    print('Category Product Cache cleared for key: $key');
+  }
+
   void clearCache(String key) {
     _cache.remove(key);
     print('Cache cleared for key: $key');
@@ -69,6 +129,7 @@ class ProductCacheService {
 
   void clearAllCache() {
     _cache.clear();
+    _categoryProductCache.clear(); // Clear the new cache as well
     print('All product caches cleared.');
   }
 
