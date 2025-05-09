@@ -275,6 +275,7 @@ class _LoggedInAddressSelectorState extends State<LoggedInAddressSelector> {
 
       // Convert from local AddressData to payment.AddressData
       final paymentAddress = payment.AddressData(
+        id: selectedAddress.id, // <<< --- ADD THIS LINE TO PASS THE ID
         name: selectedAddress.name,
         phone: selectedAddress.phone,
         address: selectedAddress.address,

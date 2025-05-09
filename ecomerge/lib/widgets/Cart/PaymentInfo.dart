@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Import để định dạng tiền tệ
 import 'package:e_commerce_app/database/Storage/UserInfo.dart'; // Add import for UserInfo
 import 'package:e_commerce_app/database/models/CartDTO.dart';
+import 'package:e_commerce_app/database/models/cart_item_model.dart';
+import 'package:e_commerce_app/database/services/order_service.dart';
+import 'package:e_commerce_app/database/models/order/CreateOrderRequestDTO.dart';
+import 'package:e_commerce_app/database/models/order/OrderDetailRequestDTO.dart';
+import 'package:e_commerce_app/database/models/order/OrderDTO.dart';
 
 // Thanh Payment Info (có thể là bản cuộn hoặc bản sticky)
 class PaymentInfo extends StatelessWidget {
@@ -41,9 +46,10 @@ class PaymentInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Tính toán các giá trị cần thiết
-    final bool isAllSelected = selectedItems.isNotEmpty && 
-                               selectedItems.values.every((isSelected) => isSelected == true);
-    final int selectedItemCount = selectedItems.values.where((isSelected) => isSelected).length;
+    final bool isAllSelected = selectedItems.isNotEmpty &&
+        selectedItems.values.every((isSelected) => isSelected == true);
+    final int selectedItemCount =
+        selectedItems.values.where((isSelected) => isSelected).length;
     final int totalItems = cartItems.length;
     final double taxAmount = calculateTax();
     final double totalAmount = calculateTotal();
@@ -349,24 +355,94 @@ class PaymentInfo extends StatelessWidget {
   // Add method to register guest user
   Future<bool> _registerGuestUser(BuildContext context, String email) async {
     final userService = UserService();
+    dynamic
+        _currentAddress; // User must ensure this is correctly scoped and typed
+    List<CartItemModel> cartItems =
+        []; // User must ensure this is correctly scoped
+    dynamic _currentVoucher; // User must ensure this is correctly scoped
+    String _selectedPaymentMethod =
+        ''; // User must ensure this is correctly scoped
+    bool _useAccumulatedPoints =
+        false; // User must ensure this is correctly scoped
+    double _pointsDiscountAmount =
+        0.0; // User must ensure this is correctly scoped
+    double _shippingFee = 0.0; // User must ensure this is correctly scoped
+    OrderService _orderService =
+        OrderService(); // User must ensure this is correctly scoped or initialized
+
+    double _calculateTax() {
+      return 0.0;
+    }
 
     try {
       // Register the guest user with random credentials
       final result = await userService.registerGuestUser(email);
 
       if (result) {
-        // Show success message
-        // ScaffoldMessenger.of(context).showSnackBar(
-        //   const SnackBar(
-        //     content: Text('Đã tạo tài khoản tạm thời để mua hàng'),
-        //     backgroundColor: Colors.green,
-        //   ),
-        // );
+        List<OrderDetailRequestDTO> orderDetails = cartItems.map((item) {
+          return OrderDetailRequestDTO(
+            productVariantId: item.variantId,
+            quantity: item.quantity,
+          );
+        }).toList();
+
+        final requestDTO = CreateOrderRequestDTO(
+          addressId: _currentAddress!.id!,
+          orderDetails: orderDetails,
+          couponCode: _currentVoucher?.code,
+          paymentMethod: _selectedPaymentMethod,
+          pointsToUse: _useAccumulatedPoints && _pointsDiscountAmount > 0
+              ? (_pointsDiscountAmount / 1000)
+              : 0,
+          shippingFee: _shippingFee,
+          tax: _calculateTax(),
+        );
+
+        try {
+          final OrderDTO createdOrder =
+              await _orderService.createOrder(requestDTO);
+          print(
+              "PaymentInfo: Order created successfully with ID: ${createdOrder.id}");
+
+          Map<String, dynamic> paymentSuccessArgs =
+              createdOrder.toMapForPaymentSuccess();
+          paymentSuccessArgs['customerName'] = _currentAddress!.name;
+          paymentSuccessArgs['address'] = _currentAddress!.fullAddress;
+          paymentSuccessArgs['phone'] = _currentAddress!.phone;
+
+          if (context.mounted) {
+            Navigator.pushReplacementNamed(
+              context,
+              '/payment_success',
+              arguments: paymentSuccessArgs,
+            );
+          }
+        } catch (e) {
+          print(
+              "PaymentInfo: Error creating order after guest registration: $e");
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content: Text(
+                      'Đặt hàng thất bại sau khi tạo tài khoản khách: ${e.toString()}'),
+                  backgroundColor: Colors.red),
+            );
+          }
+          return false;
+        }
       }
 
       return result;
     } catch (e) {
-      print('Error registering guest user: $e');
+      print('Error during guest user registration: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi tạo tài khoản khách: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
       return false;
     }
   }
