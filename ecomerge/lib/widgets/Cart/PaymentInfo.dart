@@ -23,6 +23,7 @@ class PaymentInfo extends StatelessWidget {
   // Callbacks
   final Function(bool) toggleSelectAll;
   final VoidCallback unselectAllItems; // Callback để bỏ chọn tất cả
+  final VoidCallback onProceedToPayment; // Add this parameter
 
   // Trạng thái
   final bool isSticky; // Xác định đây là bản sticky hay bản cuộn
@@ -38,6 +39,7 @@ class PaymentInfo extends StatelessWidget {
     required this.taxRate,
     required this.toggleSelectAll,
     required this.unselectAllItems,
+    required this.onProceedToPayment, // Add this parameter
     this.isSticky = false, // Mặc định là bản cuộn
   }) : super(key: key);
 
@@ -52,7 +54,7 @@ class PaymentInfo extends StatelessWidget {
     final double taxAmount = calculateTax();
     final double totalAmount = calculateTotal();
     // Định dạng tiền tệ Việt Nam
-    final formatCurrency = NumberFormat.currency(locale: 'vi_VN', symbol: '₫');
+    final formatCurrency = NumberFormat.currency(locale: 'vi_VN', symbol: 'VND');
     // Định dạng phần trăm
     final formatPercent = NumberFormat.percentPattern(); // Ví dụ: 0.05 -> 5%
 
@@ -189,24 +191,8 @@ class PaymentInfo extends StatelessWidget {
 
                         // --- Nút Mua Hàng ---
                         ElevatedButton(
-                          onPressed: selectedItemCount > 0
-                              ? () {
-                                  Navigator.pushNamed(context, '/payment');
-                                  // Check if user is logged in
-                                  // if (UserInfo().currentUser != null) {
-                                  //   // User is logged in, proceed to checkout
-                                  //   print('Proceed to Checkout');
-                                  //   print(
-                                  //       'Selected items: ${cartItems.where((i) => i['isSelected'] == true).map((i) => i['id']).toList()}');
-                                  //   print(
-                                  //       'Total: ${formatCurrency.format(totalAmount)}');
-                                  //   Navigator.pushNamed(context, '/payment');
-                                  // } else {
-                                  //   // User is not logged in, show login dialog
-                                  //   _showEmailLoginDialog(
-                                  //       context, totalAmount, formatCurrency);
-                                  // }
-                                }
+                          onPressed: selectedItemCount > 0 
+                              ? onProceedToPayment // Use the callback
                               : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.deepOrange,

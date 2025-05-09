@@ -48,6 +48,9 @@ class ProductDetialInfo extends StatelessWidget {
   // Product ID
   final int productId; // Add this line
 
+  // Image cache function to prevent flickering
+  final Future<Uint8List?> Function(String, ProductService)? imageCache;
+
   const ProductDetialInfo({
     Key? key,
     // Product
@@ -83,6 +86,7 @@ class ProductDetialInfo extends StatelessWidget {
     required this.onAddToCart,
     required this.onBuyNow,
     required this.productId, // Add this line
+    this.imageCache, // Optional parameter with default fallback
   }) : super(key: key);
 
   @override
@@ -90,6 +94,14 @@ class ProductDetialInfo extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     // Create ProductService instance for image loading
     final productService = ProductService();
+
+    // Function to get image with caching
+    Future<Uint8List?> getImage(String imageUrl) {
+      if (imageCache != null) {
+        return imageCache!(imageUrl, productService);
+      }
+      return productService.getImageFromServer(imageUrl);
+    }
 
     return Container(
       color: Colors.grey[200],
@@ -158,12 +170,9 @@ class ProductDetialInfo extends StatelessWidget {
                                       )
                                     // Use FutureBuilder for better image loading and caching
                                     : FutureBuilder<Uint8List?>(
-                                        future:
-                                            productService.getImageFromServer(
-                                                displayedMainImageUrl),
+                                        future: getImage(displayedMainImageUrl),
                                         builder: (context, snapshot) {
-                                          if (snapshot.connectionState ==
-                                                  ConnectionState.done &&
+                                          if (snapshot.connectionState == ConnectionState.done &&
                                               snapshot.hasData &&
                                               snapshot.data != null) {
                                             // Display cached image data with high quality
@@ -530,8 +539,29 @@ class ProductDetialInfo extends StatelessWidget {
                               ),
                             const SizedBox(height: 16),
                             // Stock Display
-                            Text('Kho: $currentStock',
-                                style: textTheme.titleMedium),
+                            Row(
+                              children: [
+                                Text('Kho: $currentStock',
+                                    style: textTheme.titleMedium),
+                                if (currentStock <= 0)
+                                  Container(
+                                    margin: const EdgeInsets.only(left: 10),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.shade100,
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: Colors.red.shade300),
+                                    ),
+                                    child: const Text(
+                                      'Hết hàng',
+                                      style: TextStyle(
+                                        color: Colors.red,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
                             const SizedBox(
                                 height:
                                     16), // Added space before quantity selector
@@ -550,23 +580,23 @@ class ProductDetialInfo extends StatelessWidget {
                               children: [
                                 ElevatedButton.icon(
                                     style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.orange.shade100,
-                                        foregroundColor: Colors.orange.shade800,
+                                        backgroundColor: currentStock > 0 ? Colors.orange.shade100 : Colors.grey.shade200,
+                                        foregroundColor: currentStock > 0 ? Colors.orange.shade800 : Colors.grey,
                                         side: BorderSide(
-                                            color: Colors.orange.shade300),
+                                            color: currentStock > 0 ? Colors.orange.shade300 : Colors.grey.shade300),
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 16, vertical: 12),
                                         shape: RoundedRectangleBorder(
                                             borderRadius:
                                                 BorderRadius.circular(8))),
-                                    onPressed: onAddToCart,
+                                    onPressed: currentStock > 0 ? onAddToCart : null,
                                     icon: const Icon(
                                         Icons.add_shopping_cart_outlined,
                                         size: 18),
                                     label: const Text('Thêm vào giỏ hàng')),
                                 ElevatedButton.icon(
                                     style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red.shade700,
+                                        backgroundColor: currentStock > 0 ? Colors.red.shade700 : Colors.grey.shade400,
                                         foregroundColor: Colors.white,
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 24, vertical: 14),
@@ -574,8 +604,8 @@ class ProductDetialInfo extends StatelessWidget {
                                           borderRadius:
                                               BorderRadius.circular(8),
                                         ),
-                                        elevation: 2),
-                                    onPressed: onBuyNow,
+                                        elevation: currentStock > 0 ? 2 : 0),
+                                    onPressed: currentStock > 0 ? onBuyNow : null,
                                     icon: const Icon(Icons.flash_on_outlined,
                                         size: 18),
                                     label: const Text('Mua ngay')),
@@ -666,6 +696,7 @@ class BuildThumbnail extends StatelessWidget {
               borderRadius: BorderRadius.circular(2),
             ),
             child: FutureBuilder<Uint8List?>(
+              key: ValueKey('thumb_$imageUrl'), // Add stable key to prevent rebuilds
               future: productService.getImageFromServer(imageUrl),
               builder: (context, snapshot) {
                 if (snapshot.hasData && snapshot.data != null) {
@@ -767,6 +798,7 @@ class BuildVariantOption extends StatelessWidget {
                             size: 20, color: Colors.grey),
                       )
                     : FutureBuilder<Uint8List?>(
+                        key: ValueKey('variant_$imageUrl'), // Add stable key
                         future: productService.getImageFromServer(imageUrl),
                         builder: (context, snapshot) {
                           if (snapshot.hasData && snapshot.data != null) {
@@ -846,6 +878,57 @@ class BuildQuantitySelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // If out of stock, show disabled quantity selector
+    if (maxQuantity <= 0) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('Số lượng:', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(width: 16),
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(8),
+              color: Colors.grey.shade100,
+            ),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.remove, size: 20, color: Colors.grey),
+                  onPressed: null,
+                  splashRadius: 20,
+                  constraints: const BoxConstraints(),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  constraints: const BoxConstraints(minWidth: 40),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    border: Border.symmetric(
+                      vertical: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    color: Colors.grey.shade200,
+                  ),
+                  child: const Text(
+                    '0',
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add, size: 20, color: Colors.grey),
+                  onPressed: null,
+                  splashRadius: 20,
+                  constraints: const BoxConstraints(),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [

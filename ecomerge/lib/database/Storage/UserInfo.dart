@@ -40,11 +40,14 @@ class UserInfo extends ChangeNotifier {
     if (loginResponse['user'] != null) {
       _currentUser = User.fromMap(loginResponse['user']);
     }
-
-    // Sync cart data after successful login
+    
+    // First notify listeners that login state has changed
+    
+    // Then sync cart data after successful login - with slight delay to ensure auth is properly set
+    // await Future.delayed(Duration(milliseconds: 100));
     await syncCartAfterLogin();
+    notifyListeners();
 
-    notifyListeners(); // Notify listeners about the change
   }
 
   // Enhanced method to sync cart data after login
