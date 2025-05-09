@@ -16,13 +16,12 @@ class bodySuccessPayment extends StatefulWidget {
 }
 
 class _bodySuccessPaymentState extends State<bodySuccessPayment> {
-
   // --- Thêm hàm _formatCurrency vào đây vì nó được sử dụng ở đây ---
   String _formatCurrency(num amount) {
     // Đảm bảo amount không phải null, nếu là null thì trả về chuỗi rỗng hoặc giá trị mặc định
-    if (amount == null) return '₫0';
-    final formatter = NumberFormat("#,###", "vi_VN");
-    return '₫${formatter.format(amount)}';
+    if (amount == null) return '0 VND'; // Changed null return
+    final formatter = NumberFormat("#,##0", "vi_VN"); // Changed pattern
+    return '${formatter.format(amount)} VND'; // Changed prefix and added suffix
   }
 
   @override
@@ -46,7 +45,6 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
     final num tax = orderData['tax'] ?? 0;
     final num discount = orderData['discount'] ?? 0;
     final num totalAmount = orderData['totalAmount'] ?? 0;
-
 
     return SingleChildScrollView(
       child: Container(
@@ -114,12 +112,14 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
                   SizedBox(height: 32),
 
                   // Order information
-                  _buildOrderInfoSection(isMobile, orderData), // Truyền orderData vào hàm helper
+                  _buildOrderInfoSection(
+                      isMobile, orderData), // Truyền orderData vào hàm helper
 
                   SizedBox(height: 32),
 
                   // Payment summary
-                  _buildPaymentSummarySection(isMobile, orderData), // Truyền orderData vào hàm helper
+                  _buildPaymentSummarySection(
+                      isMobile, orderData), // Truyền orderData vào hàm helper
 
                   SizedBox(height: 32),
 
@@ -139,7 +139,10 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
                     ),
                     onPressed: () {
                       // Navigate back to home or order history
-                      Navigator.of(context).pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false); // Quay về home và xóa các trang trước đó
+                      Navigator.of(context).pushNamedAndRemoveUntil(
+                          '/',
+                          (Route<dynamic> route) =>
+                              false); // Quay về home và xóa các trang trước đó
                     },
                     child: Text(
                       'Quay về trang chủ',
@@ -161,7 +164,7 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
   // Build order information section
   // *** Sửa đổi hàm để nhận orderData ***
   Widget _buildOrderInfoSection(bool isMobile, Map<String, dynamic> orderData) {
-     // Lấy dữ liệu từ tham số, thêm kiểm tra null nếu cần
+    // Lấy dữ liệu từ tham số, thêm kiểm tra null nếu cần
     final String customerID = orderData['customerID'] ?? 'N/A';
     final String customerName = orderData['customerName'] ?? 'N/A';
     final String address = orderData['address'] ?? 'N/A';
@@ -201,7 +204,9 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
           _buildInfoRow(
             'Thời gian tạo:',
             // Đảm bảo createdTime không null trước khi format
-            createdTime != null ? DateFormat('dd/MM/yyyy HH:mm:ss').format(createdTime) : 'N/A',
+            createdTime != null
+                ? DateFormat('dd/MM/yyyy HH:mm:ss').format(createdTime)
+                : 'N/A',
             isMobile,
           ),
           _buildInfoRow('Phương thức thanh toán:', paymentMethod, isMobile),
@@ -212,7 +217,8 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
 
   // Build payment summary section
   // *** Sửa đổi hàm để nhận orderData ***
-  Widget _buildPaymentSummarySection(bool isMobile, Map<String, dynamic> orderData) {
+  Widget _buildPaymentSummarySection(
+      bool isMobile, Map<String, dynamic> orderData) {
     // Lấy dữ liệu từ tham số, thêm kiểm tra null nếu cần
     final num itemsTotal = orderData['itemsTotal'] ?? 0;
     final num shippingFee = orderData['shippingFee'] ?? 0;
@@ -243,10 +249,13 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
           SizedBox(height: 16),
 
           // Payment info
-          _buildPaymentRow('Tổng tiền hàng:', _formatCurrency(itemsTotal), isMobile),
-          _buildPaymentRow('Phí vận chuyển:', _formatCurrency(shippingFee), isMobile),
+          _buildPaymentRow(
+              'Tổng tiền hàng:', _formatCurrency(itemsTotal), isMobile),
+          _buildPaymentRow(
+              'Phí vận chuyển:', _formatCurrency(shippingFee), isMobile),
           _buildPaymentRow('Thuế VAT (10%):', _formatCurrency(tax), isMobile),
-          _buildPaymentRow('Giảm giá voucher:', _formatCurrency(discount), isMobile),
+          _buildPaymentRow(
+              'Giảm giá voucher:', _formatCurrency(discount), isMobile),
 
           Divider(height: 32),
 
@@ -263,7 +272,8 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
   }
 
   // Helper method to build information row
-  Widget _buildInfoRow(String label, String value, bool isMobile, {bool isMultiLine = false}) {
+  Widget _buildInfoRow(String label, String value, bool isMobile,
+      {bool isMultiLine = false}) {
     // Đảm bảo value không null
     value = value ?? 'N/A';
     return Padding(
@@ -317,8 +327,9 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
   }
 
   // Helper method to build payment row
-  Widget _buildPaymentRow(String label, String value, bool isMobile, {bool isTotal = false}) {
-     // Đảm bảo value không null
+  Widget _buildPaymentRow(String label, String value, bool isMobile,
+      {bool isTotal = false}) {
+    // Đảm bảo value không null
     value = value ?? '₫0';
     final TextStyle labelStyle = isTotal
         ? TextStyle(
