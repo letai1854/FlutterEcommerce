@@ -52,7 +52,7 @@ class OrderDTO {
   final double? totalAmount;
   final String? paymentMethod;
   final String? paymentStatus;
-  final String? orderStatus; // Corresponds to Order.OrderStatus enum on backend
+  final OrderStatus? orderStatus; // Changed type from String? to OrderStatus?
   final int? pointsEarned; // Matches Java BigDecimal (via Integer conversion)
   final String? couponCode;
   final List<OrderDetailItemDTO>? orderDetails;
@@ -72,7 +72,7 @@ class OrderDTO {
     this.totalAmount,
     this.paymentMethod,
     this.paymentStatus,
-    this.orderStatus,
+    this.orderStatus, // Updated constructor
     this.pointsEarned,
     this.couponCode,
     this.orderDetails,
@@ -98,7 +98,8 @@ class OrderDTO {
       totalAmount: (json['totalAmount'] as num?)?.toDouble(),
       paymentMethod: json['paymentMethod'] as String?,
       paymentStatus: json['paymentStatus'] as String?,
-      orderStatus: json['orderStatus'] as String?,
+      orderStatus: orderStatusFromString(
+          json['orderStatus'] as String?), // Use helper to parse
       pointsEarned: (json['pointsEarned'] as num?)?.toInt(),
       couponCode: json['couponCode'] as String?,
       orderDetails: (json['orderDetails'] as List<dynamic>?)
@@ -122,7 +123,10 @@ class OrderDTO {
       'tax': tax ?? 0.0,
       'discount': couponDiscount ?? 0.0,
       'totalAmount': totalAmount ?? 0.0,
-      'orderStatus': orderStatus ?? 'PENDING',
+      'orderStatus': orderStatus != null
+          ? orderStatusToString(orderStatus!)
+          : orderStatusToString(
+              OrderStatus.CHO_XU_LY), // Use helper and default
     };
   }
 }
@@ -150,17 +154,31 @@ class OrderStatusHistoryDTO {
 
 // Enum for Order Status (mirroring backend if possible)
 enum OrderStatus {
-  PENDING,
-  PROCESSING,
-  SHIPPED,
-  DELIVERED,
-  CANCELLED,
-  RETURNED
+  CHO_XU_LY, // cho_xu_ly
+  DA_XAC_NHAN, // da_xac_nhan
+  DANG_GIAO, // dang_giao
+  DA_GIAO, // da_giao
+  DA_HUY // da_huy
 }
 
 // Helper to convert OrderStatus enum to string for API requests
 String orderStatusToString(OrderStatus status) {
-  return status.toString().split('.').last;
+  return status.toString().split('.').last.toLowerCase();
+}
+
+// Helper to convert string to OrderStatus enum
+OrderStatus? orderStatusFromString(String? statusString) {
+  if (statusString == null) return null;
+  try {
+    return OrderStatus.values.firstWhere(
+      (e) =>
+          e.toString().split('.').last.toLowerCase() ==
+          statusString.toLowerCase(),
+    );
+  } catch (e) {
+    print('Warning: Unknown order status string "$statusString" received.');
+    return null;
+  }
 }
 
 // New class to represent a page of orders from the backend
