@@ -1,4 +1,4 @@
-package demo.com.example.testserver.Chat.model;
+package demo.com.example.testserver.chat.model;
 
 import jakarta.persistence.*;
 import java.util.Date;
@@ -17,10 +17,6 @@ public class Conversation {
     @ManyToOne(fetch = FetchType.LAZY) // Relationship to User (customer)
     @JoinColumn(name = "nguoi_dung_id", nullable = false) // Map to correct column name
     private User customer;
-
-    @ManyToOne(fetch = FetchType.LAZY) // Relationship to User (admin)
-    @JoinColumn(name = "admin_id") // Map to correct column name
-    private User admin;
 
     @Column(name = "tieu_de") // Map to correct column name
     private String title;
@@ -75,14 +71,6 @@ public class Conversation {
 
     public void setCustomer(User customer) {
         this.customer = customer;
-    }
-
-    public User getAdmin() {
-        return admin;
-    }
-
-    public void setAdmin(User admin) {
-        this.admin = admin;
     }
 
     public String getTitle() {

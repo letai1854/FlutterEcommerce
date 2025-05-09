@@ -162,7 +162,7 @@ CREATE TABLE don_hang (
     -- Thanh toán và Trạng thái
     phuong_thuc_thanh_toan VARCHAR(50) NULL,
     trang_thai_thanh_toan ENUM('chua_thanh_toan', 'da_thanh_toan', 'loi_thanh_toan') NOT NULL DEFAULT 'chua_thanh_toan',
-    trang_thai_don_hang ENUM('cho_xac_nhan', 'da_xac_nhan', 'dang_dong_goi', 'dang_giao', 'da_giao', 'da_huy', 'yeu_cau_tra_hang', 'da_tra_hang') NOT NULL DEFAULT 'cho_xac_nhan',
+    trang_thai_don_hang ENUM('cho_xu_ly', 'da_xac_nhan', 'dang_giao', 'da_giao', 'da_huy') NOT NULL DEFAULT 'cho_xu_ly',
 
     -- Loyalty
     diem_tich_luy DECIMAL(10, 2) NOT NULL DEFAULT 0.00, -- Điểm kiếm được từ đơn hàng này
@@ -194,7 +194,7 @@ CREATE TABLE chi_tiet_don_hang (
 CREATE TABLE lich_su_trang_thai_don_hang (
     id INT AUTO_INCREMENT PRIMARY KEY,
     don_hang_id INT NOT NULL,
-    trang_thai ENUM('cho_xac_nhan', 'da_xac_nhan', 'dang_dong_goi', 'dang_giao', 'da_giao', 'da_huy', 'yeu_cau_tra_hang', 'da_tra_hang') NOT NULL,
+    trang_thai ENUM('cho_xu_ly', 'da_xac_nhan', 'dang_giao', 'da_giao', 'da_huy') NOT NULL,
     ghi_chu TEXT NULL, -- Ghi chú thêm nếu cần (vd: lý do hủy)
     thoi_gian_cap_nhat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (don_hang_id) REFERENCES don_hang(id) ON DELETE CASCADE ON UPDATE CASCADE
@@ -221,13 +221,11 @@ CREATE TABLE danh_gia_san_pham (
 CREATE TABLE cuoc_hoi_thoai (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nguoi_dung_id INT NOT NULL, -- Khách hàng bắt đầu chat
-    admin_id INT NULL, -- Admin xử lý (có thể gán sau)
     tieu_de VARCHAR(255) NULL, -- Chủ đề cuộc chat (nếu có)
     trang_thai ENUM('moi', 'dang_xu_ly', 'da_dong') NOT NULL DEFAULT 'moi',
     ngay_tao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ngay_cap_nhat TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (nguoi_dung_id) REFERENCES nguoi_dung(id) ON DELETE CASCADE ON UPDATE CASCADE,
-    FOREIGN KEY (admin_id) REFERENCES nguoi_dung(id) ON DELETE SET NULL ON UPDATE CASCADE -- Chỉ mất liên kết admin nếu admin bị xóa
+    FOREIGN KEY (nguoi_dung_id) REFERENCES nguoi_dung(id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ================= Bảng Tin nhắn Hỗ trợ (Support Messages) =================

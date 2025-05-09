@@ -5,8 +5,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import demo.com.example.testserver.Chat.model.Conversation;
-import demo.com.example.testserver.Chat.model.Message;
+import demo.com.example.testserver.chat.model.Conversation;
+import demo.com.example.testserver.chat.model.Message;
 import demo.com.example.testserver.cart.model.CartItem; // Assuming CartItem is in this package
 import demo.com.example.testserver.order.model.Order; // Assuming Order is in this package
 import demo.com.example.testserver.product.model.ProductReview; // Assuming ProductReview is in this package
@@ -87,9 +87,6 @@ public class User {
 
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL)
     private List<Conversation> customerConversations;
-
-    @OneToMany(mappedBy = "admin", cascade = CascadeType.ALL)
-    private List<Conversation> adminConversations;
 
     @OneToMany(mappedBy = "sender", cascade = CascadeType.ALL)
     private List<Message> sentMessages;
@@ -264,14 +261,6 @@ public class User {
 
     public void setCustomerConversations(List<Conversation> customerConversations) {
         this.customerConversations = customerConversations;
-    }
-
-    public List<Conversation> getAdminConversations() {
-        return adminConversations;
-    }
-
-    public void setAdminConversations(List<Conversation> adminConversations) {
-        this.adminConversations = adminConversations;
     }
 
     public List<Message> getSentMessages() {

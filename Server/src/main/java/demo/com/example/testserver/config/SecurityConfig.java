@@ -44,6 +44,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(authz -> authz
                 // Public endpoints
                 .requestMatchers("/api/users/ping").permitAll() // Keep ping public
+                // WebSocket handshake endpoint
+                .requestMatchers("/ws/**").permitAll() // Changed from /ws-chat/** to /ws/**
                 // --- Authentication Endpoints (under /api/users) ---
                 .requestMatchers(HttpMethod.POST, "/api/users/login").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/users/register").permitAll()
@@ -100,6 +102,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/cart/**").authenticated()
                 // Admin Dashboard Management
                 .requestMatchers("/api/admin/dashboard/**").hasRole("ADMIN") // Secure all admin dashboard endpoints
+                // Chat API - specific rules handled by @PreAuthorize, base path requires authentication
+                .requestMatchers("/api/chat/**").authenticated()
                 // Secure all other requests
                 .anyRequest().authenticated()
             );
