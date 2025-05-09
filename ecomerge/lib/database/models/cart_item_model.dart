@@ -5,7 +5,7 @@ class CartItemModel {
       imageUrl; // URL or local path to the product image (will store variant image)
   final int quantity;
   final double price;
-  final int? variantId; // ID of the selected variant
+  final int variantId; // ID of the selected variant - Changed to non-nullable
 
   CartItemModel({
     required this.productId,
@@ -13,7 +13,7 @@ class CartItemModel {
     required this.imageUrl,
     required this.quantity,
     required this.price,
-    this.variantId, // Added variantId
+    required this.variantId, // Changed to required and non-nullable
   });
 
   // Optional: Add toJson and fromJson methods if you need to serialize/deserialize
@@ -24,7 +24,7 @@ class CartItemModel {
       'imageUrl': imageUrl,
       'quantity': quantity,
       'price': price,
-      'variantId': variantId, // Added variantId
+      'variantId': variantId, // Remains non-nullable
     };
   }
 
@@ -35,7 +35,7 @@ class CartItemModel {
       imageUrl: json['imageUrl'] as String,
       quantity: json['quantity'] as int,
       price: (json['price'] as num).toDouble(),
-      variantId: json['variantId'] as int?, // Added variantId
+      variantId: json['variantId'] as int, // Changed to non-nullable cast
     );
   }
 
@@ -46,7 +46,7 @@ class CartItemModel {
     String? imageUrl,
     int? quantity,
     double? price,
-    int? variantId, // Added variantId
+    int? variantId, // Parameter can be nullable for optional update
   }) {
     return CartItemModel(
       productId: productId ?? this.productId,
@@ -54,7 +54,7 @@ class CartItemModel {
       imageUrl: imageUrl ?? this.imageUrl,
       quantity: quantity ?? this.quantity,
       price: price ?? this.price,
-      variantId: variantId ?? this.variantId, // Added variantId
+      variantId: variantId ?? this.variantId, // Uses existing if not provided
     );
   }
 }
