@@ -126,7 +126,7 @@ class OrderDTO {
       'orderStatus': orderStatus != null
           ? orderStatusToString(orderStatus!)
           : orderStatusToString(
-              OrderStatus.CHO_XU_LY), // Use helper and default
+              OrderStatus.cho_xu_ly), // Use helper and default
     };
   }
 }
@@ -154,11 +154,11 @@ class OrderStatusHistoryDTO {
 
 // Enum for Order Status (mirroring backend if possible)
 enum OrderStatus {
-  CHO_XU_LY, // cho_xu_ly
-  DA_XAC_NHAN, // da_xac_nhan
-  DANG_GIAO, // dang_giao
-  DA_GIAO, // da_giao
-  DA_HUY // da_huy
+  cho_xu_ly, // cho_xu_ly
+  da_xac_nhan, // da_xac_nhan
+  dang_giao, // dang_giao
+  da_giao, // da_giao
+  da_huy, // da_huy
 }
 
 // Helper to convert OrderStatus enum to string for API requests
@@ -173,7 +173,9 @@ OrderStatus? orderStatusFromString(String? statusString) {
     return OrderStatus.values.firstWhere(
       (e) =>
           e.toString().split('.').last.toLowerCase() ==
-          statusString.toLowerCase(),
+          statusString
+              .toLowerCase()
+              .replaceAll(' ', '_'), // Allow for spaces from some inputs
     );
   } catch (e) {
     print('Warning: Unknown order status string "$statusString" received.');
