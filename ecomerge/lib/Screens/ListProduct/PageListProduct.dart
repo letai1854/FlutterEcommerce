@@ -6,6 +6,7 @@ import 'package:e_commerce_app/database/services/product_service.dart'; // Impor
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForTablet.dart';
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
 import 'package:e_commerce_app/widgets/Product/CatalogProduct.dart';
+import 'package:e_commerce_app/widgets/Product/PaginatedProductGrid.dart';
 import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // Import kDebugMode
@@ -110,17 +111,28 @@ class _PageListProductState extends State<PageListProduct> {
   }
 
   void _onScroll() {
-
-    if (mounted && AppDataService().isInitialized && _scrollController.position.maxScrollExtent > 0 &&
-        _scrollController.position.extentAfter < 250.0) {
-      if (_isConfigInitialized && _canLoadMore && !_isCurrentlyLoadingNextPage) {
-        if (kDebugMode) print("Scroll near bottom (extentAfter < 300.0), attempting to load next page.");
-        _loadNextPage();
-      } else {
-         if (kDebugMode) {
+    // First check if ScrollController has attached clients to avoid errors
+    if (!_scrollController.hasClients) return;
+    
+    try {
+      // More reliable scroll detection with proper bounds checking
+      if (mounted && 
+          AppDataService().isInitialized && 
+          _scrollController.position.maxScrollExtent > 0 &&
+          _scrollController.position.extentAfter < 250.0) {
+            
+        if (_isConfigInitialized && _canLoadMore && !_isCurrentlyLoadingNextPage) {
+          if (kDebugMode) print("Scroll near bottom (extentAfter < 200.0), attempting to load next page.");
+          _loadNextPage();
+        } else {
+          if (kDebugMode) {
             print("Scroll near bottom, but cannot load next page. Config Initialized: $_isConfigInitialized, Can Load More: $_canLoadMore, Currently Loading: $_isCurrentlyLoadingNextPage");
-         }
+          }
+        }
       }
+    } catch (e) {
+      // Catch any scrolling-related errors that might occur
+      if (kDebugMode) print("Error in scroll detection: $e");
     }
   }
 
@@ -162,12 +174,19 @@ class _PageListProductState extends State<PageListProduct> {
     // Will automatically use cached data if available
     _loadInitialProducts();
 
-    // Scroll to top when category changes
-    _scrollController.animateTo(
-      0,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-    );
+    // Safely scroll to top when category changes - use post-frame callback
+    // to ensure the scroll view is built and controller is attached
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      } else if (kDebugMode) {
+        print('ScrollController not attached yet, skipping scroll to top');
+      }
+    });
   }
 
   // Modify isInitialLoading to respect cache status
@@ -311,7 +330,6 @@ class _PageListProductState extends State<PageListProduct> {
             });
         }
     }
-
 
     return LayoutBuilder(
       builder: (context, constraints) {

@@ -186,18 +186,18 @@ public class OrderServiceImpl implements OrderService {
 
         logger.info("Order created successfully with ID: {}", savedOrder.getId());
 
-        // Send order confirmation email
-        try {
-            emailService.sendOrderConfirmationEmail(
-                    user.getEmail(),
-                    user.getFullName(),
-                    savedOrder.getId(),
-                    savedOrder.getTotalAmount()
-            );
-        } catch (Exception e) {
-            logger.error("Failed to send order confirmation email for order ID {}: {}", savedOrder.getId(), e.getMessage(), e);
-            // Do not fail the order creation if email sending fails, just log it.
-        }
+        // // Send order confirmation email
+        // try {
+        //     emailService.sendOrderConfirmationEmail(
+        //             user.getEmail(),
+        //             user.getFullName(),
+        //             savedOrder.getId(),
+        //             savedOrder.getTotalAmount()
+        //     );
+        // } catch (Exception e) {
+        //     logger.error("Failed to send order confirmation email for order ID {}: {}", savedOrder.getId(), e.getMessage(), e);
+        //     // Do not fail the order creation if email sending fails, just log it.
+        // }
 
         return modelMapper.map(savedOrder, OrderDTO.class);
     }
