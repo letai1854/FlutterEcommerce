@@ -202,6 +202,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
         if (screenWidth < 600) {
           if (isMobile) {
             return Scaffold(
+
               body: NavbarFormobile(
                 body: _buildHomeContent(
                   screenWidth,

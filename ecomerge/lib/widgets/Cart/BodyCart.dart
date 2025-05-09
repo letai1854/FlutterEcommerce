@@ -1,17 +1,19 @@
+import 'package:e_commerce_app/database/models/CartDTO.dart';
 import 'package:e_commerce_app/widgets/Cart/CartItemList.dart';
 import 'package:e_commerce_app/widgets/Cart/PaymentInfo.dart';
-import 'package:e_commerce_app/widgets/footer.dart'; // Đảm bảo import Footer nếu bạn có
-import 'package:flutter/foundation.dart'; // For kIsWeb
+import 'package:e_commerce_app/widgets/footer.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class BodyCart extends StatelessWidget {
   // Data and State
-  final List<Map<String, dynamic>> cartItems;
+  final List<CartItemDTO> cartItems;
+  final Map<int?, bool> selectedItems; // Track selection state
   final double taxRate;
   final double shippingFee;
-  final ScrollController scrollController; // Controls the main scroll view
-  final ValueNotifier<bool> isPaymentInfoBottomVisible; // Controls sticky bar visibility
-  final GlobalKey paymentInfoKey; // Key to track the scrollable PaymentInfo
+  final ScrollController scrollController;
+  final ValueNotifier<bool> isPaymentInfoBottomVisible;
+  final GlobalKey paymentInfoKey;
 
   // Callbacks for Cart Actions
   final Function(int) toggleSelectItem;
@@ -19,7 +21,7 @@ class BodyCart extends StatelessWidget {
   final Function(int) decreaseQuantity;
   final Function(int) removeItem;
   final Function(bool) toggleSelectAll;
-  final Function() unselectAllItems; // Callback to unselect all
+  final Function() unselectAllItems;
 
   // Calculation Functions
   final double Function() calculateSubtotal;
@@ -29,6 +31,7 @@ class BodyCart extends StatelessWidget {
   const BodyCart({
     Key? key,
     required this.cartItems,
+    required this.selectedItems,
     required this.taxRate,
     required this.shippingFee,
     required this.scrollController,
@@ -48,33 +51,32 @@ class BodyCart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Đặt màu nền chung nếu muốn, ví dụ: màu xám nhạt
-      // backgroundColor: Colors.grey.shade100,
       body: Stack(
         children: [
           // --- Main Scrollable Content ---
-          CustomScrollView( // Sử dụng CustomScrollView để linh hoạt hơn
+          CustomScrollView(
             controller: scrollController,
             slivers: [
               SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // --- Danh sách sản phẩm trong giỏ hàng ---
+                    // --- Cart item list ---
                     CartItemList(
                       cartItems: cartItems,
+                      selectedItems: selectedItems,
                       toggleSelectItem: toggleSelectItem,
                       increaseQuantity: increaseQuantity,
                       decreaseQuantity: decreaseQuantity,
                       removeItem: removeItem,
                     ),
 
-                    // --- Thanh PaymentInfo cuộn theo nội dung ---
-                    // Chỉ hiển thị khi giỏ hàng không trống
+                    // --- Scrollable payment info ---
                     if (cartItems.isNotEmpty)
                        PaymentInfo(
-                          key: paymentInfoKey, // Gắn key để theo dõi vị trí
+                          key: paymentInfoKey,
                           cartItems: cartItems,
+                          selectedItems: selectedItems,
                           calculateTax: calculateTax,
                           calculateTotal: calculateTotal,
                           calculateSubtotal: calculateSubtotal,
@@ -82,34 +84,29 @@ class BodyCart extends StatelessWidget {
                           taxRate: taxRate,
                           toggleSelectAll: toggleSelectAll,
                           unselectAllItems: unselectAllItems,
-                          isSticky: false, // Đánh dấu đây là bản cuộn
+                          isSticky: false,
                        ),
 
-                     // --- Footer hoặc Khoảng trống dưới cùng ---
-                     // Hiển thị Footer trên web khi có item, hoặc thêm khoảng trống
+                     // --- Footer or bottom spacing ---
                      if (kIsWeb && cartItems.isNotEmpty)
-                       const Footer() // Giả sử bạn có widget Footer
+                       const Footer()
                      else if (cartItems.isEmpty)
-                       // Nếu giỏ hàng trống, tạo khoảng trống đủ để nội dung không bị quá ngắn
-                       Container(height: MediaQuery.of(context).size.height * 0.3) // Ví dụ: 30% chiều cao màn hình
+                       Container(height: MediaQuery.of(context).size.height * 0.3)
                      else
-                       // Nếu có item, tạo khoảng trống đủ để không bị che bởi thanh sticky
-                       SizedBox(height: 90), // Chiều cao đủ lớn hơn thanh sticky dự kiến
+                       const SizedBox(height: 90),
                   ],
                 ),
               ),
             ],
           ),
 
-          // --- Thanh PaymentInfo Sticky ở dưới cùng ---
+          // --- Sticky payment info at bottom ---
           ValueListenableBuilder<bool>(
-            valueListenable: isPaymentInfoBottomVisible, // Lắng nghe thay đổi visibility
+            valueListenable: isPaymentInfoBottomVisible,
             builder: (context, isVisible, child) {
-              // Chỉ hiển thị nếu isVisible là true VÀ giỏ hàng không trống
               if (!isVisible || cartItems.isEmpty) {
-                 return const SizedBox.shrink(); // Không hiển thị gì cả
+                 return const SizedBox.shrink();
               }
-              // Nếu điều kiện thỏa mãn, hiển thị child (là PaymentInfo sticky)
               return Positioned(
                 left: 0,
                 right: 0,
@@ -117,10 +114,9 @@ class BodyCart extends StatelessWidget {
                 child: child!,
               );
             },
-            // Widget PaymentInfo sticky được tạo một lần và truyền vào builder
             child: PaymentInfo(
-              // Không cần key cho bản sticky
               cartItems: cartItems,
+              selectedItems: selectedItems,
               calculateTax: calculateTax,
               calculateTotal: calculateTotal,
               calculateSubtotal: calculateSubtotal,
@@ -128,7 +124,7 @@ class BodyCart extends StatelessWidget {
               taxRate: taxRate,
               toggleSelectAll: toggleSelectAll,
               unselectAllItems: unselectAllItems,
-              isSticky: true, // Đánh dấu đây là bản sticky
+              isSticky: true,
             ),
           ),
         ],

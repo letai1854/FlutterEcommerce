@@ -1,11 +1,11 @@
 import 'package:e_commerce_app/database/PageResponse.dart';
-import 'package:e_commerce_app/widgets/Product/ProductItem.dart';
 import 'package:flutter/material.dart';
 import 'package:e_commerce_app/database/models/paginated_response.dart';
 import 'package:e_commerce_app/database/models/product_dto.dart';
 import 'package:e_commerce_app/database/services/product_service.dart';
 import 'package:e_commerce_app/Screens/ProductDetail/PageProductDetail.dart';
 import 'package:flutter/foundation.dart';
+import 'package:e_commerce_app/services/product_cache_service.dart';
 
 // PromoProductItem displays a single promotional product
 class PromoProductItem extends StatefulWidget {
@@ -317,14 +317,15 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
     with AutomaticKeepAliveClientMixin {
   final ProductService _productService = ProductService();
   final ScrollController _scrollController = ScrollController();
+  final ProductCacheService _cacheService = ProductCacheService();
+  late String _cacheKey;
 
-  List<ProductItem> _displayedProducts = [];
+  List<PromoProductItem> _displayedProducts = [];
   bool _isLoading = true;
   bool _isLoadingMore = false;
   String? _errorMessage;
   int _nextPageToRequest = 0;
   bool _hasMorePages = true;
-  int _totalPagesFromAPI = 0;
   bool _isScrollingToEnd = false;
   bool _isButtonTriggeredLoading = false;
 
@@ -334,6 +335,8 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
   @override
   void initState() {
     super.initState();
+    _cacheKey = _cacheService
+        .getKeyFromProductListKey(widget.productListKey ?? widget.key);
     _loadInitialProducts();
     _scrollController.addListener(_onScroll);
   }
@@ -342,80 +345,13 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
-    _productService.dispose();
     super.dispose();
   }
 
-  Future<void> _loadInitialProducts() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      _nextPageToRequest = 0;
-      _displayedProducts.clear();
-    });
-
-    try {
-      PageResponse<ProductDTO> response;
-      final String keyString = widget.productListKey.toString();
-
-      if (keyString.contains('newProducts')) {
-        if (kDebugMode) {
-          print(
-              'PromotionalProductsList (Newest): Fetching newest products page $_nextPageToRequest, size ${widget.itemsPerPage}');
-        }
-        response = await _productService.fetchProducts(
-          page: _nextPageToRequest,
-          size: widget.itemsPerPage,
-          sortBy: 'createdDate',
-          sortDir: 'desc',
-        );
-      } else if (keyString.contains('bestSeller')) {
-        if (kDebugMode) {
-          print(
-              'PromotionalProductsList (Top Selling): Fetching top selling products page $_nextPageToRequest, size ${widget.itemsPerPage}');
-        }
-        response = await _productService.getTopSellingProducts(
-          page: _nextPageToRequest,
-          size: widget.itemsPerPage,
-        );
-      } else {
-        if (kDebugMode) {
-          print(
-              'PromotionalProductsList (Top Selling): Fetching top selling products page $_nextPageToRequest, size ${widget.itemsPerPage}');
-        }
-        response = await _productService.getTopDiscountedProducts(
-          page: _nextPageToRequest,
-          size: widget.itemsPerPage,
-        );
-      }
-
-      if (kDebugMode) {
-        print(
-            'Loaded initial products. Page: ${response.number}, Total: ${response.content.length}, Is Last: ${response.last}, Total Pages: ${response.totalPages}');
-      }
-
-      _createProductItems(response.content);
-
-      setState(() {
-        _hasMorePages = !response.last;
-        _totalPagesFromAPI = response.totalPages;
-        _nextPageToRequest = response.number + 1;
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error loading initial products: $e');
-      }
-      setState(() {
-        _errorMessage = 'Không thể tải sản phẩm: ${e.toString()}';
-        _isLoading = false;
-      });
-    }
-  }
-
-  void _createProductItems(List<ProductDTO> products) {
-    final items = products
-        .map((product) => ProductItem(
+  List<PromoProductItem> _mapProductDTOsToItems(List<ProductDTO> products) {
+    return products
+        .map((product) => PromoProductItem(
+              key: ValueKey('${_cacheKey}_product_${product.id}'),
               productId: product.id ?? 0,
               imageUrl: product.mainImageUrl,
               title: product.name,
@@ -425,9 +361,75 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
               rating: product.averageRating ?? 0.0,
             ))
         .toList();
+  }
+
+  Future<void> _loadInitialProducts() async {
+    final cachedData = _cacheService.getData(_cacheKey);
+
+    if (cachedData != null) {
+      setState(() {
+        _displayedProducts = List.from(cachedData.products);
+        _nextPageToRequest = cachedData.nextPageToRequest;
+        _hasMorePages = cachedData.hasMorePages;
+        _isLoading = false;
+        _errorMessage = null;
+      });
+      return;
+    }
+
     setState(() {
-      _displayedProducts = items;
+      _isLoading = true;
+      _errorMessage = null;
+      _nextPageToRequest = 0;
+      _displayedProducts.clear();
     });
+
+    try {
+      PageResponse<ProductDTO> response;
+
+      if (_cacheKey == 'newProducts') {
+        response = await _productService.fetchProducts(
+          page: _nextPageToRequest,
+          size: widget.itemsPerPage,
+          sortBy: 'createdDate',
+          sortDir: 'desc',
+        );
+      } else if (_cacheKey == 'bestSeller') {
+        response = await _productService.getTopSellingProducts(
+          page: _nextPageToRequest,
+          size: widget.itemsPerPage,
+        );
+      } else {
+        response = await _productService.getTopDiscountedProducts(
+          page: _nextPageToRequest,
+          size: widget.itemsPerPage,
+        );
+      }
+
+      final newItems = _mapProductDTOsToItems(response.content);
+      _cacheService.storeData(
+          _cacheKey, newItems, response.number + 1, !response.last);
+
+      final freshCacheData = _cacheService.getData(_cacheKey);
+      if (freshCacheData != null) {
+        setState(() {
+          _displayedProducts = List.from(freshCacheData.products);
+          _nextPageToRequest = freshCacheData.nextPageToRequest;
+          _hasMorePages = freshCacheData.hasMorePages;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = "Failed to update cache.";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Không thể tải sản phẩm: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _loadMoreProducts() async {
@@ -443,77 +445,50 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
     try {
       final int itemsToFetch = widget.itemsPerPage;
       PageResponse<ProductDTO> response;
-      final String keyString = widget.productListKey.toString();
 
-      if (keyString.contains('newProducts')) {
-        if (kDebugMode) {
-          print(
-              'PromotionalProductsList (Newest): Loading more newest products page $_nextPageToRequest with $itemsToFetch items per page');
-        }
+      if (_cacheKey == 'newProducts') {
         response = await _productService.fetchProducts(
           page: _nextPageToRequest,
           size: itemsToFetch,
           sortBy: 'createdDate',
           sortDir: 'desc',
         );
-      } else if (keyString.contains('bestSeller')) {
-        if (kDebugMode) {
-          print(
-              'PromotionalProductsList (Top Selling): Fetching top selling products page $_nextPageToRequest, size ${widget.itemsPerPage}');
-        }
+      } else if (_cacheKey == 'bestSeller') {
         response = await _productService.getTopSellingProducts(
           page: _nextPageToRequest,
           size: widget.itemsPerPage,
         );
       } else {
-        if (kDebugMode) {
-          print(
-              'PromotionalProductsList (Top Selling): Loading more top selling products page $_nextPageToRequest with $itemsToFetch items per page');
-        }
         response = await _productService.getTopDiscountedProducts(
           page: _nextPageToRequest,
           size: widget.itemsPerPage,
         );
       }
 
-      if (kDebugMode) {
-        print(
-            'Loaded more products page ${response.number}. Total items: ${response.content.length}, Is Last: ${response.last}, Total Pages: ${response.totalPages}');
+      if (response.content.isEmpty && !response.last) {
+        _cacheService.appendData(_cacheKey, [], response.number + 1, false);
+      } else {
+        final additionalItems = _mapProductDTOsToItems(response.content);
+        _cacheService.appendData(
+            _cacheKey, additionalItems, response.number + 1, !response.last);
       }
 
-      if (response.content.isEmpty && !response.last) {
+      final updatedCacheData = _cacheService.getData(_cacheKey);
+      if (updatedCacheData != null) {
         setState(() {
-          _hasMorePages = false;
+          _displayedProducts = List.from(updatedCacheData.products);
+          _nextPageToRequest = updatedCacheData.nextPageToRequest;
+          _hasMorePages = updatedCacheData.hasMorePages;
           _isLoadingMore = false;
           _isScrollingToEnd = false;
         });
-        return;
+      } else {
+        setState(() {
+          _isLoadingMore = false;
+          _isScrollingToEnd = false;
+        });
       }
-
-      final newItems = response.content
-          .map((product) => ProductItem(
-                productId: product.id ?? 0,
-                imageUrl: product.mainImageUrl,
-                title: product.name,
-                describe: product.description,
-                price: product.minPrice ?? 0.0,
-                discount: product.discountPercentage?.toInt(),
-                rating: product.averageRating ?? 0.0,
-              ))
-          .toList();
-
-      setState(() {
-        _displayedProducts.addAll(newItems);
-        _hasMorePages = !response.last;
-        _totalPagesFromAPI = response.totalPages;
-        _nextPageToRequest = response.number + 1;
-        _isLoadingMore = false;
-        _isScrollingToEnd = false;
-      });
     } catch (e) {
-      if (kDebugMode) {
-        print('Error loading more promotional products: $e');
-      }
       setState(() {
         _isLoadingMore = false;
         _isScrollingToEnd = false;
@@ -544,10 +519,6 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
 
     if (maxScroll > 0 && currentScroll >= (maxScroll - loadTriggerOffset)) {
       if (!_isLoadingMore && _hasMorePages) {
-        if (kDebugMode) {
-          print(
-              "PromotionalProductsList: Scroll near end detected. Attempting to load more. Next Page: $_nextPageToRequest");
-        }
         _loadMoreProducts();
       }
     }
@@ -595,11 +566,6 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
         maxOffset > 0 && targetOffset >= maxOffset - (widget.gridWidth * 0.3);
 
     if (approachingEnd && _hasMorePages && !_isLoadingMore) {
-      if (kDebugMode) {
-        print(
-            'Approaching end while scrolling right. Loading more data from page $_nextPageToRequest');
-      }
-
       setState(() {
         _isButtonTriggeredLoading = true;
       });

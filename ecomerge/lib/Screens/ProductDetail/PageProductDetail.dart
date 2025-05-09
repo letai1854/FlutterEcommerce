@@ -1,3 +1,4 @@
+import 'package:e_commerce_app/database/models/CartDTO.dart';
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForTablet.dart';
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
 import 'package:e_commerce_app/widgets/Product/ProductDetailInfo.dart';
@@ -6,6 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:e_commerce_app/database/services/product_service.dart';
 import 'package:e_commerce_app/database/models/cart_item_model.dart';
 import 'package:e_commerce_app/Screens/Payment/PagePayment.dart';
+// Add new imports for cart functionality
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
+import 'package:e_commerce_app/database/Storage/CartStorage.dart';
 
 class Pageproductdetail extends StatefulWidget {
   final int productId;
@@ -301,7 +305,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
       commentController: _commentController,
       selectedRating: _selectedRating,
       onRatingChanged: _onRatingChanged,
-      onAddToCart: () {
+      onAddToCart: () async {
         if (_productData.isEmpty ||
             _productData['productVariants'] == null ||
             (_productData['productVariants'] as List).isEmpty) {
@@ -335,18 +339,38 @@ class _PageproductdetailState extends State<Pageproductdetail> {
                     orElse: () => '') ??
                 '';
 
-        final cartItem = CartItemModel(
-          productId: widget.productId,
-          productName: baseProductName,
-          imageUrl: variantImageUrl,
-          quantity: _selectedQuantity,
-          price: selectedVariant['price'] as double,
-          variantId: selectedVariant['id'] as int,
-        );
+        try {
+          // Create product variant for CartStorage
+          final cartProductVariant = CartProductVariantDTO(
+            id: selectedVariant['id'] as int?,
+            name: baseProductName,
+            price: selectedVariant['price'] as double?,
+            finalPrice: selectedVariant['price'] as double?, // Using regular price as final price
+            imageUrl: variantImageUrl,
+          );
+          
+          // Get cart storage and add item
+          final cartStorage = CartStorage();
+          await cartStorage.addItemToCart(cartProductVariant, _selectedQuantity);
+          
+          // Check if user is logged in for debug info
+          final bool isLoggedIn = UserInfo().currentUser != null;
+          print('Item added to cart. User logged in: $isLoggedIn');
+          
+          // Show success message with action to view cart
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Đã thêm "$baseProductName" vào giỏ hàng!'),
+              
+            ),
+          );
+        } catch (e) {
+          print('Error adding item to cart: $e');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Không thể thêm vào giỏ hàng: $e')),
+          );
+        }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Đã thêm "$baseProductName" vào giỏ hàng!')),
-        );
       },
       onBuyNow: () {
         if (_productData.isEmpty ||
@@ -391,7 +415,6 @@ class _PageproductdetailState extends State<Pageproductdetail> {
           price: selectedVariant['price'] as double,
           variantId: selectedVariant['id'] as int,
         );
-
         Navigator.push(
           context,
           MaterialPageRoute(
