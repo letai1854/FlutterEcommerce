@@ -56,6 +56,7 @@ class _AddressDisplayState extends State<AddressDisplay> {
 
         // Convert to AddressData format
         final addressData = AddressData(
+          id: defaultAddress.id, // Add this line to pass the id
           name: defaultAddress.recipientName,
           phone: defaultAddress.phoneNumber,
           address: _extractAddress(defaultAddress.specificAddress),
@@ -161,15 +162,6 @@ class _AddressDisplayState extends State<AddressDisplay> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Địa Chỉ Nhận Hàng',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16.0,
-              color: Colors.grey.shade800,
-            ),
-          ),
-          const SizedBox(height: 8),
           Row(
             children: [
               Text(
@@ -195,22 +187,13 @@ class _AddressDisplayState extends State<AddressDisplay> {
       );
     }
 
-    // Otherwise show the default message
+    // Otherwise show the default message if no address is available
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Địa Chỉ Nhận Hàng',
+        const Text(
+          'Vui lòng thêm địa chỉ nhận hàng',
           style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16.0,
-            color: Colors.grey.shade800,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          isLoggedIn ? '' : 'Vui lòng thêm địa chỉ nhận hàng',
-          style: const TextStyle(
             color: Colors.red,
             fontWeight: FontWeight.w500,
           ),

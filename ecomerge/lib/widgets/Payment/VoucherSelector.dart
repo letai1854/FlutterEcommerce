@@ -346,18 +346,14 @@ class _VoucherSelectorState extends State<VoucherSelector> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            voucher.displayCondition(),
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.orange.shade800,
-                                fontWeight: FontWeight.w500),
-                          ),
-                          Text(
-                            voucher.displayExpiry(),
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.grey.shade600),
-                          ),
+                          if (voucher.displayCondition().isNotEmpty)
+                            Text(
+                              voucher.displayCondition(),
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.orange.shade800,
+                                  fontWeight: FontWeight.w500),
+                            ),
                         ],
                       ),
                     ],

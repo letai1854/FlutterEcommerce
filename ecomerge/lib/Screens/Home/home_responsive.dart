@@ -202,15 +202,16 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
         if (screenWidth < 600) {
           if (isMobile) {
             return Scaffold(
-                body: NavbarFormobile(
-                  body:  _buildHomeContent(
-                    screenWidth,
-                    isMobile: isMobileView,
-                    isTablet: screenWidth < 1100 && screenWidth >= 600,
-                    isDesktop: screenWidth >= 1100,
-          ),
+
+              body: NavbarFormobile(
+                body: _buildHomeContent(
+                  screenWidth,
+                  isMobile: isMobileView,
+                  isTablet: screenWidth < 1100 && screenWidth >= 600,
+                  isDesktop: screenWidth >= 1100,
                 ),
-                );
+              ),
+            );
           }
 
           // Web mobile-style layout

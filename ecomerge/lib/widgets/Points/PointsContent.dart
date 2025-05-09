@@ -1,3 +1,4 @@
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:flutter/material.dart';
 
 class PointsContent extends StatelessWidget {
@@ -67,7 +68,7 @@ class PointsContent extends StatelessWidget {
                 Icon(Icons.star, color: Colors.amber, size: 28),
                 SizedBox(width: 8),
                 Text(
-                  "Điểm thưởng của bạn",
+                  "Điểm tích lũy của bạn",
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -76,11 +77,11 @@ class PointsContent extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
-            const Row(
+            Row(
               children: [
                 Text(
-                  "0",
-                  style: TextStyle(
+                  UserInfo().currentUser?.customerPoints.toString() ?? "0",
+                  style: const TextStyle(
                     fontSize: 36,
                     fontWeight: FontWeight.bold,
                     color: Colors.red,
@@ -110,7 +111,7 @@ class PointsContent extends StatelessWidget {
                   Expanded(
                     // Use Expanded to prevent overflow on small screens
                     child: Text(
-                      "Mỗi 100 điểm có thể đổi thành 10,000đ khi thanh toán",
+                      "Điểm tích lũy sẽ được tính 10% cho mỗi đơn hàng thành công",
                       style: TextStyle(color: Colors.blue),
                     ),
                   ),

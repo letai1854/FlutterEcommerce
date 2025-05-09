@@ -370,6 +370,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
             SnackBar(content: Text('Không thể thêm vào giỏ hàng: $e')),
           );
         }
+
       },
       onBuyNow: () {
         if (_productData.isEmpty ||
@@ -412,7 +413,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
           imageUrl: variantImageUrl,
           quantity: _selectedQuantity,
           price: selectedVariant['price'] as double,
-          variantId: selectedVariant['id'] as int?,
+          variantId: selectedVariant['id'] as int,
         );
         Navigator.push(
           context,
