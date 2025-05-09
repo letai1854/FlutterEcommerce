@@ -22,6 +22,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
         // Broker for broadcasting messages to clients subscribed to specific topics
+        // Dòng này cho phép broker xử lý các destinations bắt đầu bằng "/topic" (như "/topic/product/{productId}/reviews")
+        // và "/queue" (thường dùng cho tin nhắn user-specific).
         config.enableSimpleBroker("/topic", "/queue");
         // Prefix for messages bound for @MessageMapping annotated methods in controllers
         config.setApplicationDestinationPrefixes("/app");

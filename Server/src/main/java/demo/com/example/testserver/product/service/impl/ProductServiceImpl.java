@@ -26,8 +26,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -72,6 +74,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate; // Added for WebSocket broadcasting
 
     @Override
     public Page<ProductDTO> findProducts(
@@ -179,7 +184,11 @@ public class ProductServiceImpl implements ProductService {
         logger.info("Found product with ID: {}. Mapping to DTO.", id);
         ProductDTO productDTO = productMapper.mapToProductDTO(product);
 
-        logger.debug("Mapped ProductDTO: ID={}, Name={}, Variants={}", productDTO.getId(), productDTO.getName(), productDTO.getVariantCount());
+        logger.debug("Mapped ProductDTO: ID={}, Name={}, Variants={}, Reviews={}", 
+                     productDTO.getId(), 
+                     productDTO.getName(), 
+                     productDTO.getVariantCount(),
+                     productDTO.getReviews() != null ? productDTO.getReviews().size() : 0);
 
         return productDTO;
     }
@@ -327,30 +336,35 @@ public class ProductServiceImpl implements ProductService {
         ProductReview review = new ProductReview();
         review.setProduct(product);
 
-        if (userEmail != null) { // Authenticated user
+        if (userEmail != null) {
             User user = userRepository.findByEmail(userEmail)
-                    .orElseThrow(() -> new EntityNotFoundException("User not found with email: " + userEmail));
+                    .orElseThrow(() -> new EntityNotFoundException("User not found with email: " + userEmail + " for review submission."));
             review.setUser(user);
+            // review.setReviewerName(user.getFullName()); // Set reviewer name from user
+            // Rating is mandatory for logged-in users
+            if (reviewDTO.getRating() == null || reviewDTO.getRating() < 1 || reviewDTO.getRating() > 5) {
+                throw new IllegalArgumentException("Rating must be between 1 and 5 for logged-in users.");
+            }
+            review.setRating(reviewDTO.getRating());
+        } else {
+            // Anonymous user
+            // review.setReviewerName(StringUtils.hasText(reviewDTO.getReviewerName()) ? reviewDTO.getReviewerName() : "Anonymous");
+            // Rating is optional for anonymous, but if provided, must be valid
             if (reviewDTO.getRating() != null) {
+                if (reviewDTO.getRating() < 1 || reviewDTO.getRating() > 5) {
+                    throw new IllegalArgumentException("If rating is provided for anonymous review, it must be between 1 and 5.");
+                }
                 review.setRating(reviewDTO.getRating());
             }
-        } else { // Anonymous user
-            if (reviewDTO.getRating() != null) {
-                throw new IllegalArgumentException("Anonymous users cannot submit ratings.");
-            }
-            if (reviewDTO.getComment() == null || reviewDTO.getComment().trim().isEmpty()) {
-                 throw new IllegalArgumentException("Anonymous users must provide a comment.");
-            }
-            review.setAnonymousReviewerName(reviewDTO.getAnonymousReviewerName());
         }
 
-        if (reviewDTO.getComment() != null && !reviewDTO.getComment().trim().isEmpty()) {
+        if (StringUtils.hasText(reviewDTO.getComment())) {
             review.setComment(reviewDTO.getComment().trim());
         }
         
         // Ensure either rating (for logged-in) or comment is present
         if (review.getRating() == null && (review.getComment() == null || review.getComment().trim().isEmpty())) {
-            throw new IllegalArgumentException("Review must contain either a rating (for logged-in users) or a comment.");
+            throw new IllegalArgumentException("A review must have at least a rating (for logged-in users) or a comment.");
         }
 
 
@@ -366,19 +380,23 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new EntityNotFoundException("Product not found after denormalization for ID: " + productId));
 
 
-        try {
-            if (productElasticsearchService != null) {
+        if (productElasticsearchService != null) {
+            try {
                 productElasticsearchService.saveProduct(updatedProduct);
-            } else {
-                fallbackProductElasticsearchService.saveProduct(updatedProduct);
+                logger.info("Product ID {} re-indexed in Elasticsearch after review addition.", productId);
+            } catch (Exception e) {
+                logger.error("Failed to re-index product ID {} in Elasticsearch after review: {}", productId, e.getMessage(), e);
+                // Continue, as the primary operation (DB save) was successful
             }
-            logger.info("Product ID: {} re-indexed in Elasticsearch after review.", productId);
-        } catch (Exception e) {
-            logger.error("Failed to process product {} with Elasticsearch/fallback after review submission: {}", productId, e.getMessage(), e);
         }
         
-        // TODO: Implement WebSocket push for real-time review updates if desired
+        ProductReviewDTO savedReviewDTO = productMapper.toProductReviewDTO(savedReview);
 
-        return productMapper.toProductReviewDTO(savedReview);
+        // Broadcast the new review via WebSocket
+        String destination = "/topic/product/" + productId + "/reviews";
+        messagingTemplate.convertAndSend(destination, savedReviewDTO);
+        logger.info("Broadcasted new review ID {} to WebSocket destination: {}", savedReviewDTO.getId(), destination);
+        
+        return savedReviewDTO;
     }
 }

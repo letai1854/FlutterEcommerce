@@ -1,10 +1,9 @@
-
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForTablet.dart'; // Giả sử đường dẫn đúng
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart'; // Giả sử đường dẫn đúng
 import 'package:e_commerce_app/widgets/Payment/PaymentSuccess.dart';
 import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart'; // Giả sử đường dẫn đúng
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Import intl ở đây nếu cần format trước khi truyền (không cần nữa)
+// import 'package:intl/intl.dart'; // Comment out or remove if not used by other parts of this file
 
 class Pagesuccesspayment extends StatefulWidget {
   const Pagesuccesspayment({super.key});
@@ -14,29 +13,44 @@ class Pagesuccesspayment extends StatefulWidget {
 }
 
 class _PagesuccesspaymentState extends State<Pagesuccesspayment> {
-  // --- Di chuyển orderData ra ngoài build để có thể truy cập dễ dàng ---
-  // Dữ liệu đơn hàng giả lập
-  final Map<String, dynamic> orderData = {
-    'customerID': 'KH12345678',
-    'customerName': 'Tuấn Tú',
-    'address': 'Gần Nhà Thờ An Phú An Giang, Thị Trấn An Phú, Huyện An Phú, An Giang',
-    'phone': '(+84) 583541716',
-    'orderID': 'SHOP2024061500123',
-    'createdTime': DateTime.now(),
-    'paymentMethod': 'Thanh toán khi nhận hàng',
-    'itemsTotal': 42000,
-    'shippingFee': 30000,
-    'tax': 4200, // 10% của itemsTotal
-    'discount': 0,
-    'totalAmount': 76200, // itemsTotal + shippingFee + tax - discount
-  };
-
   @override
   Widget build(BuildContext context) {
-    // --- Không cần _formatCurrency ở đây nữa ---
-    // String _formatCurrency(num amount) {
-    //   final formatter = NumberFormat("#,###", "vi_VN");
-    //   return '₫${formatter.format(amount)}';
+    // --- Retrieve orderData from arguments ---
+    final Map<String, dynamic>? routeArgs =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+    // Provide default empty map or handle error if args are null/incorrect
+    final Map<String, dynamic> orderData = routeArgs ?? {};
+
+    // Fallback for critical data if not present, though ideally, they should always be.
+    // This is more for robustness during development or unexpected issues.
+    orderData.putIfAbsent('customerID', () => 'N/A');
+    orderData.putIfAbsent('customerName', () => 'N/A');
+    orderData.putIfAbsent('address', () => 'N/A');
+    orderData.putIfAbsent('phone', () => 'N/A');
+    orderData.putIfAbsent('orderID', () => 'N/A');
+    orderData.putIfAbsent('createdTime', () => DateTime.now());
+    orderData.putIfAbsent('paymentMethod', () => 'N/A');
+    orderData.putIfAbsent('itemsTotal', () => 0.0);
+    orderData.putIfAbsent('shippingFee', () => 0.0);
+    orderData.putIfAbsent('tax', () => 0.0);
+    orderData.putIfAbsent('discount', () => 0.0);
+    orderData.putIfAbsent('totalAmount', () => 0.0);
+
+    // --- Currency values will be passed as num; formatting should be done in bodySuccessPayment ---
+    // final currencyFormatter = NumberFormat("#,##0", "vi_VN");
+    // final List<String> currencyKeys = [
+    //   'itemsTotal',
+    //   'shippingFee',
+    //   'tax',
+    //   'discount',
+    //   'totalAmount'
+    // ];
+
+    // for (String key in currencyKeys) {
+    //   if (orderData[key] is num) {
+    //     orderData[key] = '${currencyFormatter.format(orderData[key])} VND';
+    //   }
     // }
 
     return LayoutBuilder(
@@ -51,21 +65,24 @@ class _PagesuccesspaymentState extends State<Pagesuccesspayment> {
 
         if (screenWidth < 768) {
           // Mobile layout
-          return NavbarFormobile( // Giả sử NavbarFixmobile là Scaffold chứa AppBar và body
+          return NavbarFormobile(
+            // Giả sử NavbarFixmobile là Scaffold chứa AppBar và body
             body: body,
             // title: 'Thanh toán', // Có thể thêm title cho AppBar
           );
         } else if (screenWidth < 1100) {
           // Tablet layout
-          return NavbarForTablet( // Giả sử NavbarFixTablet tương tự
+          return NavbarForTablet(
+            // Giả sử NavbarFixTablet tương tự
             body: body,
-             // title: 'Thanh toán',
+            // title: 'Thanh toán',
           );
         } else {
           // Desktop layout
           appBar = PreferredSize(
             preferredSize: Size.fromHeight(130),
-            child: Navbarhomedesktop(), // Giả sử Navbarhomedesktop là widget bạn đã tạo
+            child:
+                Navbarhomedesktop(), // Giả sử Navbarhomedesktop là widget bạn đã tạo
           );
           return Scaffold(
             appBar: appBar as PreferredSize,
@@ -76,5 +93,3 @@ class _PagesuccesspaymentState extends State<Pagesuccesspayment> {
     );
   }
 }
-
-
