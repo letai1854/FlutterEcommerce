@@ -4,8 +4,10 @@ class CartItemModel {
   final String
       imageUrl; // URL or local path to the product image (will store variant image)
   final int quantity;
-  final double price;
+  final double
+      price; // This should be the original price before product-specific discount
   final int variantId; // ID of the selected variant - Changed to non-nullable
+  final double? discountPercentage; // Product-specific discount percentage
 
   CartItemModel({
     required this.productId,
@@ -14,6 +16,7 @@ class CartItemModel {
     required this.quantity,
     required this.price,
     required this.variantId, // Changed to required and non-nullable
+    this.discountPercentage, // Optional
   });
 
   // Optional: Add toJson and fromJson methods if you need to serialize/deserialize
@@ -24,7 +27,8 @@ class CartItemModel {
       'imageUrl': imageUrl,
       'quantity': quantity,
       'price': price,
-      'variantId': variantId, // Remains non-nullable
+      'variantId': variantId, // Ensure variantId is included
+      'discountPercentage': discountPercentage,
     };
   }
 
@@ -35,7 +39,8 @@ class CartItemModel {
       imageUrl: json['imageUrl'] as String,
       quantity: json['quantity'] as int,
       price: (json['price'] as num).toDouble(),
-      variantId: json['variantId'] as int, // Changed to non-nullable cast
+      variantId: json['variantId'] as int, // Ensure variantId is parsed
+      discountPercentage: (json['discountPercentage'] as num?)?.toDouble(),
     );
   }
 
@@ -47,6 +52,7 @@ class CartItemModel {
     int? quantity,
     double? price,
     int? variantId, // Parameter can be nullable for optional update
+    double? discountPercentage,
   }) {
     return CartItemModel(
       productId: productId ?? this.productId,
@@ -54,7 +60,8 @@ class CartItemModel {
       imageUrl: imageUrl ?? this.imageUrl,
       quantity: quantity ?? this.quantity,
       price: price ?? this.price,
-      variantId: variantId ?? this.variantId, // Uses existing if not provided
+      variantId: variantId ?? this.variantId,
+      discountPercentage: discountPercentage ?? this.discountPercentage,
     );
   }
 }

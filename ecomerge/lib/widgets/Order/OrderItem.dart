@@ -1,5 +1,7 @@
 import 'package:e_commerce_app/widgets/Order/OrderStatusHistoryPage.dart';
 import 'package:flutter/material.dart';
+import 'dart:typed_data'; // Add this import
+import 'package:e_commerce_app/database/services/categories_service.dart'; // Add this import
 
 class OrderItem extends StatefulWidget {
   final String orderId;
@@ -28,6 +30,8 @@ class OrderItem extends StatefulWidget {
 class _OrderItemState extends State<OrderItem> {
   bool _expanded = false;
   bool _isHovering = false;
+  final CategoriesService _categoriesService =
+      CategoriesService(); // Add this line
 
   // Modified to handle both int and double types
   String _formatCurrency(dynamic amount) {
@@ -308,15 +312,43 @@ class _OrderItemState extends State<OrderItem> {
       child: Row(
         children: [
           // Product image
-          Container(
+          SizedBox(
             width: 80,
             height: 80,
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: NetworkImage(item["image"]),
-                fit: BoxFit.cover,
-              ),
-              borderRadius: BorderRadius.circular(4),
+            child: FutureBuilder<Uint8List?>(
+              future: _categoriesService
+                  .getImageFromServer(item["image"] as String?),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2));
+                } else if (snapshot.hasError ||
+                    !snapshot.hasData ||
+                    snapshot.data == null) {
+                  return Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade200),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Icon(Icons.error_outline, color: Colors.grey),
+                  );
+                } else {
+                  return Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade200),
+                      borderRadius: BorderRadius.circular(4),
+                      image: DecorationImage(
+                        image: MemoryImage(snapshot.data!),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  );
+                }
+              },
             ),
           ),
           const SizedBox(width: 16),
