@@ -6,6 +6,7 @@ import demo.com.example.testserver.order.dto.CreateOrderRequestDTO;
 import demo.com.example.testserver.order.dto.OrderDetailRequestDTO;
 import demo.com.example.testserver.order.dto.OrderDTO;
 import demo.com.example.testserver.order.dto.OrderStatusHistoryDTO;
+import demo.com.example.testserver.order.service.OrderMapper;
 import demo.com.example.testserver.order.model.Order;
 import demo.com.example.testserver.order.model.OrderDetail;
 import demo.com.example.testserver.order.model.OrderStatusHistory;
@@ -63,6 +64,9 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private OrderMapper orderMapper; // Add the OrderMapper
+
     @Override
     @Transactional
     public OrderDTO createOrder(String userEmail, CreateOrderRequestDTO requestDTO) {
@@ -83,7 +87,6 @@ public class OrderServiceImpl implements OrderService {
         // Initialize lists
         order.setOrderDetails(new ArrayList<>());
         order.setStatusHistory(new ArrayList<>());
-
 
         BigDecimal subtotal = BigDecimal.ZERO;
 
@@ -199,7 +202,7 @@ public class OrderServiceImpl implements OrderService {
         //     // Do not fail the order creation if email sending fails, just log it.
         // }
 
-        return modelMapper.map(savedOrder, OrderDTO.class);
+        return orderMapper.toOrderDTO(savedOrder); // Use orderMapper instead of modelMapper
     }
 
     @Override
@@ -216,7 +219,7 @@ public class OrderServiceImpl implements OrderService {
             orderPage = orderRepository.findByUser(user, pageable);
         }
 
-        return orderPage.map(order -> modelMapper.map(order, OrderDTO.class));
+        return orderPage.map(order -> orderMapper.toOrderDTO(order)); // Use orderMapper
     }
 
     @Override
@@ -228,7 +231,7 @@ public class OrderServiceImpl implements OrderService {
 
         Order order = orderRepository.findByIdAndUser(orderId, user)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with ID: " + orderId + " for user: " + userEmail));
-        return modelMapper.map(order, OrderDTO.class);
+        return orderMapper.toOrderDTO(order); // Use orderMapper
     }
 
     @Override
@@ -242,7 +245,7 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with ID: " + orderId + " for user: " + userEmail));
 
         return order.getStatusHistory().stream()
-                .map(history -> modelMapper.map(history, OrderStatusHistoryDTO.class))
+                .map(history -> orderMapper.toOrderStatusHistoryDTO(history)) // Use orderMapper
                 .collect(Collectors.toList());
     }
 
@@ -286,7 +289,7 @@ public class OrderServiceImpl implements OrderService {
 
         Order updatedOrder = orderRepository.save(order);
         logger.info("Order ID: {} status updated to {} by admin.", orderId, newStatus);
-        return modelMapper.map(updatedOrder, OrderDTO.class);
+        return orderMapper.toOrderDTO(updatedOrder); // Use orderMapper
     }
 
     @Override
@@ -319,7 +322,7 @@ public class OrderServiceImpl implements OrderService {
 
         Order updatedOrder = orderRepository.save(order);
         logger.info("Order ID: {} cancelled successfully for user: {}", orderId, userEmail);
-        return modelMapper.map(updatedOrder, OrderDTO.class);
+        return orderMapper.toOrderDTO(updatedOrder); // Use orderMapper
     }
 
     @Override
@@ -371,13 +374,13 @@ public class OrderServiceImpl implements OrderService {
             
             List<Order> pageContent = (start < end) ? filteredList.subList(start, end) : new ArrayList<>();
             return new org.springframework.data.domain.PageImpl<>(
-                    pageContent.stream().map(order -> modelMapper.map(order, OrderDTO.class)).collect(Collectors.toList()),
+                    pageContent.stream().map(order -> orderMapper.toOrderDTO(order)).collect(Collectors.toList()),
                     pageable,
                     filteredList.size()
             );
         }
         
         // If no date filtering, return the original page
-        return orderPage.map(order -> modelMapper.map(order, OrderDTO.class));
+        return orderPage.map(order -> orderMapper.toOrderDTO(order)); // Use orderMapper
     }
 }
