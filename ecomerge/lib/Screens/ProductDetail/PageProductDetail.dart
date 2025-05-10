@@ -351,6 +351,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
         
         // Check if stock quantity is zero
         final selectedVariant = productVariantsList[_selectedVariantIndex];
+        print('selectedVariant: $selectedVariant');
         final int stockQuantity = selectedVariant['stock'] as int? ?? 0;
         if (stockQuantity <= 0) {
           ScaffoldMessenger.of(context).showSnackBar(
