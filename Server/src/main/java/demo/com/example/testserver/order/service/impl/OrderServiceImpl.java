@@ -90,6 +90,7 @@ public class OrderServiceImpl implements OrderService {
 
         BigDecimal subtotal = BigDecimal.ZERO;
 
+        // Step 1: Calculate subtotal based on product prices, quantities, and individual product discounts
         for (OrderDetailRequestDTO itemDTO : requestDTO.getOrderDetails()) {
             ProductVariant variant = productVariantRepository.findById(itemDTO.getProductVariantId())
                     .orElseThrow(() -> new EntityNotFoundException("ProductVariant not found with ID: " + itemDTO.getProductVariantId()));
@@ -111,14 +112,15 @@ public class OrderServiceImpl implements OrderService {
             BigDecimal lineTotal = discountedPrice.multiply(new BigDecimal(orderDetail.getQuantity()));
             orderDetail.setLineTotal(lineTotal);
 
-            subtotal = subtotal.add(lineTotal);
+            subtotal = subtotal.add(lineTotal); // Accumulate to subtotal
             order.getOrderDetails().add(orderDetail);
 
             variant.setStockQuantity(variant.getStockQuantity() - itemDTO.getQuantity());
             productVariantRepository.save(variant);
         }
-        order.setSubtotal(subtotal);
+        order.setSubtotal(subtotal); // Set calculated subtotal
 
+        // Step 2: Apply coupon discount, if any
         BigDecimal couponDiscountValue = BigDecimal.ZERO;
         if (requestDTO.getCouponCode() != null && !requestDTO.getCouponCode().trim().isEmpty()) {
             Coupon coupon = couponRepository.findByCode(requestDTO.getCouponCode())
@@ -129,11 +131,12 @@ public class OrderServiceImpl implements OrderService {
             }
             couponDiscountValue = coupon.getDiscountValue(); // Assuming fixed value discount
             order.setCoupon(coupon);
-            order.setCouponDiscount(couponDiscountValue);
+            order.setCouponDiscount(couponDiscountValue); // Set coupon discount
             coupon.setUsageCount(coupon.getUsageCount() + 1);
             couponRepository.save(coupon);
         }
 
+        // Step 3: Apply points discount, if any
         BigDecimal numPointsToUse = requestDTO.getPointsToUse() != null ? requestDTO.getPointsToUse() : BigDecimal.ZERO;
         numPointsToUse = numPointsToUse.setScale(0, RoundingMode.DOWN); // Ensure whole points are used
 
@@ -152,7 +155,7 @@ public class OrderServiceImpl implements OrderService {
             pointsUsed = true;
         }
 
-        // Calculate potential points earned for this order and store them in the order.
+        // Step 4: Calculate points earned for this order
         // Points will be actually awarded to the user when the order is marked as 'da_giao'.
         BigDecimal pointsEarned = subtotal.multiply(POINTS_EARNED_RATE).setScale(0, RoundingMode.DOWN);
         order.setPointsEarned(pointsEarned); // Store number of points earned in this order
@@ -167,6 +170,7 @@ public class OrderServiceImpl implements OrderService {
         order.setShippingFee(requestDTO.getShippingFee() != null ? requestDTO.getShippingFee() : BigDecimal.ZERO); // Or fetch from config/logic
         order.setTax(requestDTO.getTax() != null ? requestDTO.getTax() : BigDecimal.ZERO); // Or fetch from config/logic
 
+        // Step 5: Calculate final total amount
         BigDecimal totalAmount = subtotal
                 .subtract(couponDiscountValue)
                 .subtract(pointsDiscountAmount)
@@ -231,6 +235,9 @@ public class OrderServiceImpl implements OrderService {
 
         Order order = orderRepository.findByIdAndUser(orderId, user)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with ID: " + orderId + " for user: " + userEmail));
+        // The returned OrderDTO contains values (subtotal, discounts, totalAmount, etc.)
+        // that were calculated and stored during the order creation process.
+        // This method retrieves these stored values, it does not re-calculate them.
         return orderMapper.toOrderDTO(order); // Use orderMapper
     }
 
@@ -285,6 +292,15 @@ public class OrderServiceImpl implements OrderService {
                 historyEntry.setNotes( (currentNotes != null ? currentNotes : "") + " Points awarded: " + order.getPointsEarned().setScale(0, RoundingMode.DOWN));
             }
         }
+
+        // Update payment status if order is marked as delivered and payment was pending
+        if (newStatus == Order.OrderStatus.da_giao && order.getPaymentStatus() == Order.PaymentStatus.chua_thanh_toan) {
+            order.setPaymentStatus(Order.PaymentStatus.da_thanh_toan);
+            logger.info("Order ID: {} payment status updated to {} as order is delivered.", orderId, Order.PaymentStatus.da_thanh_toan);
+            String currentNotes = historyEntry.getNotes();
+            historyEntry.setNotes( (currentNotes != null ? currentNotes : "") + " Payment status updated to 'da_thanh_toan'.");
+        }
+
         // TODO: Implement other side effects of status changes (e.g., payment processing, notifications)
 
         Order updatedOrder = orderRepository.save(order);
