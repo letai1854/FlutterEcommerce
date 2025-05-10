@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Optional;
 
 @Service
 public class ChatServiceImpl implements ChatService {
@@ -38,6 +40,9 @@ public class ChatServiceImpl implements ChatService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     @Override
     @Transactional
@@ -68,7 +73,13 @@ public class ChatServiceImpl implements ChatService {
             conversationRepository.save(savedConversation);
         }
 
-        return convertToConversationDTO(savedConversation);
+        ConversationDTO conversationDTO = convertToConversationDTO(savedConversation);
+
+        // Notify admin clients about the new conversation
+        messagingTemplate.convertAndSend("/topic/admin/conversations/new", conversationDTO);
+        logger.info("Broadcasted new conversation ID {} to /topic/admin/conversations/new", conversationDTO.getId());
+
+        return conversationDTO;
     }
 
     @Override
@@ -104,18 +115,19 @@ public class ChatServiceImpl implements ChatService {
         logger.info("Message ID {} sent by {} to conversation ID {}", savedMessage.getId(), senderEmail, conversation.getId());
         return convertToMessageDTO(savedMessage);
     }
-
+    
     @Override
     @Transactional(readOnly = true)
-    public Page<ConversationDTO> getUserConversations(String userEmail, Pageable pageable) {
+    public ConversationDTO getUserConversations(String userEmail) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with email: " + userEmail));
         if (user.getRole() == User.UserRole.quan_tri) {
-            logger.warn("Admin {} attempting to use getUserConversations. They should use getAdminConversations.", userEmail);
-            return Page.empty(pageable);
+            logger.warn("Admin {} attempting to use getUserConversations. This method is for customers.", userEmail);
+            // Admins should use getAdminConversations or getConversationDetails
+            return null; 
         }
-        Page<Conversation> conversations = conversationRepository.findByCustomerOrderByUpdatedDateDesc(user, pageable);
-        return conversations.map(this::convertToConversationDTO);
+        Optional<Conversation> conversationOptional = conversationRepository.findTopByCustomerOrderByUpdatedDateDesc(user);
+        return conversationOptional.map(this::convertToConversationDTO).orElse(null);
     }
 
     @Override

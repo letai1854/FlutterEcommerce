@@ -14,7 +14,7 @@ public interface ChatService {
 
     MessageDTO sendMessage(String senderEmail, SendMessageRequestDTO requestDTO);
 
-    Page<ConversationDTO> getUserConversations(String userEmail, Pageable pageable);
+    ConversationDTO getUserConversations(String userEmail);
 
     Page<ConversationDTO> getAdminConversations(String adminEmail, Conversation.ConversationStatus status, Pageable pageable);
 

@@ -17,4 +17,6 @@ public interface ConversationRepository extends JpaRepository<Conversation, Inte
     Optional<Conversation> findByIdAndCustomer(Integer id, User customer);
 
     Page<Conversation> findByStatusOrderByUpdatedDateDesc(Conversation.ConversationStatus status, Pageable pageable);
+
+    Optional<Conversation> findTopByCustomerOrderByUpdatedDateDesc(User customer);
 }
