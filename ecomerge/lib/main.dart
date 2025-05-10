@@ -27,6 +27,16 @@ import 'package:e_commerce_app/providers/signup_form_provider.dart';
 import 'package:e_commerce_app/providers/login_form_provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+// Add this class
+class MyHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
+  }
+}
+
 Future<void> initApp() async {
   WidgetsFlutterBinding.ensureInitialized();
   setPathUrlStrategy();
@@ -53,6 +63,10 @@ Future<void> initApp() async {
 }
 
 void main() async {
+  // Add this block for HttpOverrides
+  if (!kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isLinux || Platform.isMacOS || Platform.isWindows)) {
+    HttpOverrides.global = MyHttpOverrides();
+  }
   await initApp();
   runApp(
     MultiProvider(

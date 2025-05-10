@@ -225,6 +225,8 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
     final num tax = orderData['tax'] ?? 0;
     final num discount = orderData['discount'] ?? 0;
     final num totalAmount = orderData['totalAmount'] ?? 0;
+    // Thêm giảm giá sản phẩm từ orderData
+    final num productDiscount = orderData['productDiscount'] ?? 0;
 
     return Container(
       width: double.infinity,
@@ -251,6 +253,10 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
           // Payment info
           _buildPaymentRow(
               'Tổng tiền hàng:', _formatCurrency(itemsTotal), isMobile),
+          // Thêm dòng giảm giá sản phẩm
+          if (productDiscount > 0)
+            _buildPaymentRow('Giảm giá sản phẩm:', _formatCurrency(productDiscount), isMobile, 
+                isDiscount: true),
           _buildPaymentRow(
               'Phí vận chuyển:', _formatCurrency(shippingFee), isMobile),
           _buildPaymentRow('Thuế VAT (10%):', _formatCurrency(tax), isMobile),
@@ -328,7 +334,7 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
 
   // Helper method to build payment row
   Widget _buildPaymentRow(String label, String value, bool isMobile,
-      {bool isTotal = false}) {
+      {bool isTotal = false, bool isDiscount = false}) {
     // Đảm bảo value không null
     value = value ?? '₫0';
     final TextStyle labelStyle = isTotal
@@ -350,6 +356,8 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
           )
         : TextStyle(
             fontSize: 15,
+            // Thêm màu xanh lá cây cho các dòng giảm giá
+            color: isDiscount ? Colors.green : null,
           );
 
     return Padding(

@@ -16,14 +16,14 @@ import 'package:e_commerce_app/database/Storage/CartStorage.dart';
 // Create an in-memory cache for product images to prevent flickering
 class _ProductImageCache {
   static final Map<String, Future<Uint8List?>> _cache = {};
-  
+
   static Future<Uint8List?> getImage(String url, ProductService service) {
     if (!_cache.containsKey(url)) {
       _cache[url] = service.getImageFromServer(url);
     }
     return _cache[url]!;
   }
-  
+
   static void clear() {
     _cache.clear();
   }
@@ -89,7 +89,8 @@ class _PageproductdetailState extends State<Pageproductdetail> {
           'name': product.name,
           'brand': product.brandName ?? "N/A",
           'averageRating': product.averageRating ?? 0.0,
-          'ratingCount': product.variantCount ?? 0,
+          'ratingCount': product.variantCount ??
+              0, // Assuming variantCount is total ratings
           'shortDescription': product.description,
           'illustrationImages': allImages,
           'productVariants': product.variants
@@ -103,16 +104,31 @@ class _PageproductdetailState extends State<Pageproductdetail> {
                             product.mainImageUrl ??
                             '',
                         'stock': variant.stockQuantity ?? 0,
-                        'price': variant.price ?? product.minPrice ?? 0.0,
+                        // Prioritize variant.price, fallback to 0.0 if null
+                        'price': variant.price ?? 0.0,
                       })
                   .toList() ??
               [],
-          'minPrice': product.minPrice,
-          'maxPrice': product.maxPrice,
+          'minPrice': product.minPrice, // Still useful for other contexts
+          'maxPrice': product.maxPrice, // Still useful for other contexts
           'discountPercentage': product.discountPercentage,
         };
 
-        if (product.mainImageUrl != null) {
+        if (_productData['productVariants'] != null &&
+            (_productData['productVariants'] as List).isNotEmpty) {
+          // Set initial displayed image based on the first variant or main product image
+          final firstVariant = (_productData['productVariants'] as List).first;
+          if (firstVariant['mainImage'] != null &&
+              (firstVariant['mainImage'] as String).isNotEmpty) {
+            _displayedMainImageUrl = firstVariant['mainImage'] as String;
+          } else if (product.mainImageUrl != null &&
+              product.mainImageUrl!.isNotEmpty) {
+            _displayedMainImageUrl = product.mainImageUrl!;
+          } else if (allImages.isNotEmpty) {
+            _displayedMainImageUrl = allImages.first;
+          }
+        } else if (product.mainImageUrl != null &&
+            product.mainImageUrl!.isNotEmpty) {
           _displayedMainImageUrl = product.mainImageUrl!;
         } else if (allImages.isNotEmpty) {
           _displayedMainImageUrl = allImages.first;
@@ -298,7 +314,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
       );
     }
 
-    Widget body = ProductDetialInfo(
+    Widget productInfoSection = ProductDetialInfo(
       productId: widget.productId,
       productName: _productData['name'] ?? 'N/A',
       brandName: _productData['brand'] ?? 'N/A',
@@ -328,6 +344,8 @@ class _PageproductdetailState extends State<Pageproductdetail> {
       onRatingChanged: _onRatingChanged,
       // Pass the image cache to prevent flickering
       imageCache: _ProductImageCache.getImage,
+      discountPercentage:
+          (_productData['discountPercentage'] as num?)?.toDouble(),
       onAddToCart: () async {
         if (_productData.isEmpty ||
             _productData['productVariants'] == null ||
@@ -339,7 +357,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
           );
           return;
         }
-        
+
         final productVariantsList = _productData['productVariants'] as List;
         if (_selectedVariantIndex < 0 ||
             _selectedVariantIndex >= productVariantsList.length) {
@@ -348,7 +366,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
           );
           return;
         }
-        
+
         // Check if stock quantity is zero
         final selectedVariant = productVariantsList[_selectedVariantIndex];
         print('selectedVariant: $selectedVariant');
@@ -377,22 +395,17 @@ class _PageproductdetailState extends State<Pageproductdetail> {
         try {
           // Get product name
           final String baseProductName = _productData['name'] ?? 'Sản phẩm';
-          
+
           // Get selected variant name from productVariants list
           final String? variantName = selectedVariant['name'] as String?;
-          
+
           // Create the full product name with variant
           final String fullProductName;
-          // if (variantName != null && variantName.isNotEmpty) {
-          //   fullProductName = '$baseProductName - $variantName';
-          // } else {
-          //   fullProductName = baseProductName;
-          // }
           fullProductName = baseProductName;
 
-          
-          print('Creating cart item with productName: $baseProductName, variantName: $variantName, fullName: $fullProductName');
-          
+          print(
+              'Creating cart item with productName: $baseProductName, variantName: $variantName, fullName: $fullProductName');
+
           // Create product variant for CartStorage with combined name
           final cartProductVariant = CartProductVariantDTO(
             id: selectedVariant['id'] as int?,
@@ -402,25 +415,27 @@ class _PageproductdetailState extends State<Pageproductdetail> {
             imageUrl: variantImageUrl,
             price: selectedVariant['price'] as double?,
             discountPercentage: _productData['discountPercentage']?.toDouble(),
-            finalPrice: selectedVariant['price'] as double?, 
+            finalPrice: selectedVariant['price'] as double?,
             stockQuantity: selectedVariant['stock'] as int?,
+            
           );
-          
-          print('Adding to cart: ${cartProductVariant.name}, ID: ${cartProductVariant.id}');
-          
+
+          print(
+              'Adding to cart: ${cartProductVariant.name}, ID: ${cartProductVariant.id}');
+
           // Get cart storage and add item
           final cartStorage = CartStorage();
-          await cartStorage.addItemToCart(cartProductVariant, _selectedQuantity);
-          
+          await cartStorage.addItemToCart(
+              cartProductVariant, _selectedQuantity);
+
           // Check if user is logged in for debug info
           final bool isLoggedIn = UserInfo().currentUser != null;
           print('Item added to cart. User logged in: $isLoggedIn');
-          
+
           // Show success message with action to view cart
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Đã thêm "$baseProductName" vào giỏ hàng!'),
-              
             ),
           );
         } catch (e) {
@@ -429,7 +444,6 @@ class _PageproductdetailState extends State<Pageproductdetail> {
             SnackBar(content: Text('Không thể thêm vào giỏ hàng: $e')),
           );
         }
-
       },
       onBuyNow: () {
         if (_productData.isEmpty ||
@@ -480,10 +494,13 @@ class _PageproductdetailState extends State<Pageproductdetail> {
           productName: baseProductName,
           imageUrl: variantImageUrl,
           quantity: _selectedQuantity,
-          price: selectedVariant['price'] as double,
+          price: (selectedVariant['price'] as num?)?.toDouble() ??
+              0.0, // Ensure price is double
           variantId: selectedVariant['id'] as int,
+          discountPercentage: (_productData['discountPercentage'] as num?)
+              ?.toDouble(), // Pass discount
         );
-        
+
         // Pass the product ID to payment page for navigation back
         Navigator.push(
           context,
@@ -495,6 +512,15 @@ class _PageproductdetailState extends State<Pageproductdetail> {
           ),
         );
       },
+    );
+
+    Widget bodyScaffoldContent = SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          productInfoSection,
+        ],
+      ),
     );
 
     return LayoutBuilder(
@@ -511,7 +537,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
                   alignment: Alignment.centerLeft,
                   child: backButton,
                 ),
-                Expanded(child: body),
+                Expanded(child: bodyScaffoldContent),
               ],
             ),
           );
@@ -525,7 +551,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
                   alignment: Alignment.centerLeft,
                   child: backButton,
                 ),
-                Expanded(child: body),
+                Expanded(child: bodyScaffoldContent),
               ],
             ),
           );
@@ -565,7 +591,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
                     ],
                   ),
                 ),
-                Expanded(child: body),
+                Expanded(child: bodyScaffoldContent),
               ],
             ),
           );

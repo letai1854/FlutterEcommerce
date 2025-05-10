@@ -144,6 +144,7 @@ class _PageCartState extends State<PageCart> {
             quantity: item.quantity ?? 0,
             price: item.productVariant?.finalPrice ?? item.productVariant?.price ?? 0,
             variantId: variantId, // Use the variant ID consistently
+            discountPercentage: item.productVariant?.discountPercentage,
           );
           
           // Check if it's already in the list using variantId for consistency
@@ -202,6 +203,7 @@ class _PageCartState extends State<PageCart> {
               quantity: newQuantity,
               price: _selectedCartItemsList[selectedIndex].price,
               variantId: _selectedCartItemsList[selectedIndex].variantId,
+              discountPercentage: _selectedCartItemsList[selectedIndex].discountPercentage
             );
             
             // Replace the item in the list
@@ -244,6 +246,7 @@ class _PageCartState extends State<PageCart> {
                 quantity: newQuantity,
                 price: _selectedCartItemsList[selectedIndex].price,
                 variantId: _selectedCartItemsList[selectedIndex].variantId,
+                discountPercentage: _selectedCartItemsList[selectedIndex].discountPercentage,
               );
               
               // Replace the item in the list
@@ -304,6 +307,7 @@ class _PageCartState extends State<PageCart> {
               quantity: item.quantity ?? 0,
               price: item.productVariant?.finalPrice ?? item.productVariant?.price ?? 0,
               variantId: item.productVariant?.id ?? 0,
+              discountPercentage: item.productVariant?.discountPercentage
             );
             _selectedCartItemsList.add(model);
           }
@@ -366,6 +370,7 @@ class _PageCartState extends State<PageCart> {
               quantity: item.quantity ?? 0, 
               price: item.productVariant?.finalPrice ?? item.productVariant?.price ?? 0,
               variantId: item.productVariant?.id ?? 0,
+              discountPercentage: item.productVariant?.discountPercentage
             );
             _selectedCartItemsList.add(model);
           }

@@ -28,7 +28,8 @@ class BodyPayment extends StatelessWidget {
   final bool useAccumulatedPoints; // New parameter
   final ValueChanged<bool?> onToggleUseAccumulatedPoints; // New parameter
   final double pointsDiscountAmount; // New parameter for points discount
-  final int? sourceProductId; // Add this parameter for navigation back to product
+  final int?
+      sourceProductId; // Add this parameter for navigation back to product
   final bool sourceCartPage; // Add this parameter for navigation back to cart
 
   final VoidCallback onChangeAddress;
@@ -68,15 +69,16 @@ class BodyPayment extends StatelessWidget {
   }) : super(key: key);
 
   // Check if we can navigate back to a product
-  bool get canNavigateBackToProduct => sourceProductId != null && !sourceCartPage;
-  
+  bool get canNavigateBackToProduct =>
+      sourceProductId != null && !sourceCartPage;
+
   // Check if we can navigate back to cart
   bool get canNavigateBackToCart => sourceCartPage;
 
   // Back button to return to product
   Widget _buildBackToProductButton(BuildContext context) {
     if (!canNavigateBackToProduct) return const SizedBox.shrink();
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 20.0),
       width: double.infinity,
@@ -92,7 +94,7 @@ class BodyPayment extends StatelessWidget {
         onPressed: () {
           // Navigate back to product detail page
           Navigator.of(context).pop(); // First pop current page
-          
+
           // If we need to ensure navigation to product page (in case we came through multiple pages)
           // we can use this more direct approach:
           /*
@@ -108,11 +110,11 @@ class BodyPayment extends StatelessWidget {
       ),
     );
   }
-  
+
   // Back button to return to cart
   Widget _buildBackToCartButton(BuildContext context) {
     if (!canNavigateBackToCart) return const SizedBox.shrink();
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 20.0),
       width: double.infinity,
@@ -584,13 +586,32 @@ class BodyPayment extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isMobile = MediaQuery.of(context).size.width < 600;
-    final currencyFormatter = NumberFormat("#,###", "vi_VN");
 
-    // Debug output of received products in BodyPayment
-    print('BodyPayment: Received ${products.length} products');
+    // Calculate sum of original item prices and total product-specific discount
+    double sumOfOriginalItemPrices = 0.0;
+    double totalProductSpecificDiscount = 0.0;
+
     for (var item in products) {
-      print(' - Showing product: ${item.productName}, Quantity: ${item.quantity}, Price: ${item.price}');
+      double originalItemTotal = item.price * item.quantity;
+      sumOfOriginalItemPrices += originalItemTotal;
+
+      if (item.discountPercentage != null && item.discountPercentage! > 0) {
+        totalProductSpecificDiscount +=
+            originalItemTotal * (item.discountPercentage! / 100);
+      }
     }
+
+    // Calculate the subtotal after product-specific discounts
+    // This should align with the 'subtotal' parameter if calculated correctly by the parent.
+    final subtotalAfterProductDiscounts =
+        sumOfOriginalItemPrices - totalProductSpecificDiscount;
+
+    // Calculate the final displayed total based on the components shown in this widget
+    final displayedTotalAmount = subtotalAfterProductDiscounts +
+        shippingFee +
+        taxAmount -
+        discountAmount - // Voucher discount
+        pointsDiscountAmount;
 
     return SingleChildScrollView(
       child: Container(
@@ -621,7 +642,7 @@ class BodyPayment extends StatelessWidget {
                   _buildBackToProductButton(context)
                 else if (canNavigateBackToCart)
                   _buildBackToCartButton(context),
-                
+
                 Container(
                   padding: const EdgeInsets.all(16.0),
                   margin: const EdgeInsets.only(bottom: 20),
@@ -660,7 +681,8 @@ class BodyPayment extends StatelessWidget {
                         itemBuilder: (context, index) {
                           final productItem =
                               products[index]; // productItem is CartItemModel
-                          print('Rendering product at index $index: ${productItem.productName}');
+                          print(
+                              'Rendering product at index $index: ${productItem.productName}');
                           return isMobile
                               ? _buildMobileProductItem(productItem)
                               : _buildDesktopProductItem(productItem);
@@ -692,22 +714,12 @@ class BodyPayment extends StatelessWidget {
                           runSpacing: 12,
                           alignment: WrapAlignment.center,
                           children: [
-                            // _buildPaymentOption(
-                            //   'Ngân hàng',
-                            //   Icons.account_balance_wallet_outlined,
-                            //   selectedPaymentMethod == 'Ngân hàng',
-                            // ),
                             _buildPaymentOption(
                               'Thanh toán khi nhận hàng',
                               Icons.local_shipping_outlined,
                               selectedPaymentMethod ==
                                   'Thanh toán khi nhận hàng',
                             ),
-                            // _buildPaymentOption(
-                            //   'Ví điện tử',
-                            //   Icons.wallet_giftcard,
-                            //   selectedPaymentMethod == 'Ví điện tử',
-                            // ),
                           ],
                         ),
                         const SizedBox(height: 16.0),
@@ -729,14 +741,21 @@ class BodyPayment extends StatelessWidget {
                       children: [
                         const SizedBox(height: 10),
                         _buildSummaryRow(
-                            'Tổng tiền hàng:', formatCurrency(subtotal)),
+                            'Tổng tiền hàng:',
+                            formatCurrency(
+                                sumOfOriginalItemPrices)), // Display sum of original prices
+                        if (totalProductSpecificDiscount >
+                            0) // Display product-specific discount if any
+                          _buildSummaryRow('Giảm giá sản phẩm:',
+                              '-${formatCurrency(totalProductSpecificDiscount)}',
+                              isDiscount: true),
                         _buildSummaryRow(
                             'Phí vận chuyển:', formatCurrency(shippingFee)),
                         if (taxAmount > 0)
                           _buildSummaryRow(
                               'Thuế VAT (${(taxRate * 100).toStringAsFixed(0)}%):',
                               formatCurrency(taxAmount)),
-                        if (discountAmount > 0)
+                        if (discountAmount > 0) // Voucher discount
                           _buildSummaryRow('Giảm giá voucher:',
                               '-${formatCurrency(discountAmount)}',
                               isDiscount: true),
@@ -756,7 +775,8 @@ class BodyPayment extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              formatCurrency(totalAmount),
+                              formatCurrency(
+                                  displayedTotalAmount), // Use locally calculated total for display
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 19.0,
@@ -887,7 +907,20 @@ class BodyPayment extends StatelessWidget {
   }
 
   Widget _buildDesktopProductItem(CartItemModel product) {
-    // Change parameter type
+    double displayPrice = product.price;
+    double originalPrice = product.price; // Keep original price for display
+    double lineTotal = product.price * product.quantity;
+    bool hasDiscount =
+        product.discountPercentage != null && product.discountPercentage! > 0;
+
+    if (hasDiscount) {
+      displayPrice = product.price * (1 - product.discountPercentage! / 100);
+      lineTotal = displayPrice * product.quantity;
+    } else {
+      originalPrice =
+          displayPrice; // If no discount, original is same as display
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
       child: Row(
@@ -944,9 +977,25 @@ class BodyPayment extends StatelessWidget {
           Expanded(
             flex: 2,
             child: Center(
-              child: Text(
-                formatCurrency(product.price), // Use product.price
-                style: const TextStyle(fontSize: 14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  if (hasDiscount)
+                    Text(
+                      formatCurrency(originalPrice), // Show original price
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                        decoration: TextDecoration.lineThrough,
+                      ),
+                    ),
+                  Text(
+                    formatCurrency(
+                        displayPrice), // Display discounted unit price
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ],
               ),
             ),
           ),
@@ -964,8 +1013,7 @@ class BodyPayment extends StatelessWidget {
             child: Align(
               alignment: Alignment.centerRight,
               child: Text(
-                formatCurrency(product.price *
-                    product.quantity), // Use product.price and product.quantity
+                formatCurrency(lineTotal), // Use calculated lineTotal
                 style: TextStyle(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w500,
@@ -980,7 +1028,20 @@ class BodyPayment extends StatelessWidget {
   }
 
   Widget _buildMobileProductItem(CartItemModel product) {
-    // Change parameter type
+    double displayPrice = product.price;
+    double originalPrice = product.price; // Keep original price for display
+    double lineTotal = product.price * product.quantity;
+    bool hasDiscount =
+        product.discountPercentage != null && product.discountPercentage! > 0;
+
+    if (hasDiscount) {
+      displayPrice = product.price * (1 - product.discountPercentage! / 100);
+      lineTotal = displayPrice * product.quantity;
+    } else {
+      originalPrice =
+          displayPrice; // If no discount, original is same as display
+    }
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
       elevation: 0.5,
@@ -1055,15 +1116,17 @@ class BodyPayment extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildMobilePriceColumn('Đơn giá',
-                    formatCurrency(product.price)), // Use product.price
+                _buildMobilePriceColumn(
+                  'Đơn giá',
+                  formatCurrency(displayPrice), // Display discounted unit price
+                  originalPrice: hasDiscount
+                      ? formatCurrency(originalPrice)
+                      : null, // Show original if discounted
+                ),
                 _buildMobilePriceColumn('Số lượng',
                     'x ${product.quantity}'), // Use product.quantity
-                _buildMobilePriceColumn(
-                    'Thành tiền',
-                    formatCurrency(product.price *
-                        product
-                            .quantity), // Use product.price and product.quantity
+                _buildMobilePriceColumn('Thành tiền',
+                    formatCurrency(lineTotal), // Use calculated lineTotal
                     isTotal: true),
               ],
             ),
@@ -1074,7 +1137,7 @@ class BodyPayment extends StatelessWidget {
   }
 
   Widget _buildMobilePriceColumn(String label, String value,
-      {bool isTotal = false}) {
+      {bool isTotal = false, String? originalPrice}) {
     return Column(
       crossAxisAlignment:
           isTotal ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -1087,6 +1150,15 @@ class BodyPayment extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
+        if (originalPrice != null)
+          Text(
+            originalPrice,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[500],
+              decoration: TextDecoration.lineThrough,
+            ),
+          ),
         Text(
           value,
           style: TextStyle(

@@ -1,59 +1,110 @@
-import 'package:e_commerce_app/Models/ChatMessage.dart';
+import 'package:e_commerce_app/models/chat/chat_message_ui.dart'; // Changed import
+import 'package:e_commerce_app/services/chat_service.dart'; 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Thêm intl để định dạng thời gian
+import 'package:intl/intl.dart'; // For formatting time
 
 class ChatBubble extends StatelessWidget {
-  const ChatBubble({Key? key, required this.message}) : super(key: key);
+  const ChatBubble({
+    Key? key,
+    required this.message, // Will be ChatMessageUI
+    required this.isMe,
+    required this.chatService, 
+  }) : super(key: key);
 
-  final ChatMessage message;
+  final ChatMessageUI message; // Changed from MessageDTO to ChatMessageUI
+  final bool isMe;
+  final ChatService chatService; // Still needed if ChatMessageUI.imageUrl is relative, or for future uses
 
   @override
   Widget build(BuildContext context) {
-    // Định dạng thời gian (ví dụ: 10:30)
-    final timeFormat = DateFormat('HH:mm');
+    final bubbleColor = isMe ? Colors.blue[100] : Colors.grey[200];
+    final alignment = isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start;
+    final bubbleAlignment = isMe ? Alignment.centerRight : Alignment.centerLeft;
+    final textColor = Colors.black87;
+    final timeColor = Colors.black54;
 
-    // Xác định màu sắc và căn chỉnh dựa trên người gửi
-    final bubbleColor = message.isMe ? Colors.blue[100] : Colors.grey[200]; // Màu nhạt hơn
-    final alignment = message.isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start;
-    final bubbleAlignment = message.isMe ? Alignment.centerRight : Alignment.centerLeft;
-    final textColor = message.isMe ? Colors.black87 : Colors.black87;
-    final timeColor = message.isMe ? Colors.black54 : Colors.black54;
-
-    // Radius bo góc
     final borderRadius = BorderRadius.only(
-      topLeft: Radius.circular(16),
-      topRight: Radius.circular(16),
-      // Bo góc dưới khác nhau tùy người gửi
-      bottomLeft: Radius.circular(message.isMe ? 16 : 0),
-      bottomRight: Radius.circular(message.isMe ? 0 : 16),
+      topLeft: const Radius.circular(16),
+      topRight: const Radius.circular(16),
+      bottomLeft: Radius.circular(isMe ? 16 : 0),
+      bottomRight: Radius.circular(isMe ? 0 : 16),
     );
 
+    // Helper to format time from ChatMessageUI's sendTime
+    String getFormattedSendTime(DateTime dt) {
+      return DateFormat('hh:mm a').format(dt.toLocal());
+    }
+
+    Widget messageContent;
+    // ChatMessageUI.imageUrl should already be the full URL if processed by messageDtoToChatMessageUI
+    if (message.imageUrl != null && message.imageUrl!.isNotEmpty) {
+      messageContent = Container(
+        constraints: BoxConstraints(
+          maxHeight: 200, 
+          maxWidth: MediaQuery.of(context).size.width * 0.6, 
+        ),
+        child: ClipRRect(
+          borderRadius: borderRadius, 
+          child: Image.network(
+            message.imageUrl!, // Directly use imageUrl from ChatMessageUI
+            fit: BoxFit.cover,
+            loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                      : null,
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 50),
+          ),
+        ),
+      );
+    } else {
+      messageContent = Text(
+        message.text ?? '', // Use message.text from ChatMessageUI
+        style: TextStyle(fontSize: 15, color: textColor),
+      );
+    }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), // Giảm vertical padding
-      alignment: bubbleAlignment, // Căn cả container bubble sang trái hoặc phải
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      alignment: bubbleAlignment,
       child: Container(
         constraints: BoxConstraints(
-          // Giới hạn chiều rộng của bubble
-          maxWidth: MediaQuery.of(context).size.width * 0.7, // Tối đa 70% chiều rộng màn hình
+          maxWidth: MediaQuery.of(context).size.width * 0.7,
         ),
         decoration: BoxDecoration(
-          color: bubbleColor,
+          // Use message.imageUrl from ChatMessageUI
+          color: message.imageUrl != null && message.imageUrl!.isNotEmpty ? Colors.transparent : bubbleColor, 
           borderRadius: borderRadius,
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), // Padding bên trong bubble
+        // Use message.imageUrl and message.text from ChatMessageUI
+        padding: message.imageUrl != null && message.imageUrl!.isNotEmpty && message.text == null
+            ? EdgeInsets.zero 
+            : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Column(
-          crossAxisAlignment: alignment, // Căn text và thời gian bên trong bubble
-          mainAxisSize: MainAxisSize.min, // Chỉ chiếm không gian cần thiết
+          crossAxisAlignment: alignment,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              message.text,
-              style: TextStyle(fontSize: 15, color: textColor), // Cỡ chữ 15
-            ),
-            SizedBox(height: 4), // Khoảng cách nhỏ
-            Text(
-              timeFormat.format(message.timestamp), // Hiển thị thời gian đã định dạng
-              style: TextStyle(fontSize: 10, color: timeColor),
-            ),
+            messageContent,
+            // Use message.text and message.imageUrl from ChatMessageUI
+            if (message.text != null && message.imageUrl != null) 
+              const SizedBox(height: 4),
+            // Use message.text and message.imageUrl from ChatMessageUI
+            if (message.text != null || (message.imageUrl != null && message.text == null)) 
+              Padding(
+                // Use message.imageUrl and message.text from ChatMessageUI
+                padding: message.imageUrl != null && message.imageUrl!.isNotEmpty && message.text == null
+                  ? const EdgeInsets.only(top: 4.0) 
+                  : EdgeInsets.zero,
+                child: Text(
+                  getFormattedSendTime(message.sendTime), // Format sendTime from ChatMessageUI
+                  style: TextStyle(fontSize: 10, color: timeColor),
+                ),
+              ),
           ],
         ),
       ),

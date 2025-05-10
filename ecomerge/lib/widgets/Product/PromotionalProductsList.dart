@@ -349,18 +349,27 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
   }
 
   List<PromoProductItem> _mapProductDTOsToItems(List<ProductDTO> products) {
-    return products
-        .map((product) => PromoProductItem(
-              key: ValueKey('${_cacheKey}_product_${product.id}'),
-              productId: product.id ?? 0,
-              imageUrl: product.mainImageUrl,
-              title: product.name,
-              describe: product.description,
-              price: product.minPrice ?? 0.0,
-              discount: product.discountPercentage?.toInt(),
-              rating: product.averageRating ?? 0.0,
-            ))
-        .toList();
+    return products.map((product) {
+      double price = 0.0;
+      if (product.variants != null &&
+          product.variants!.isNotEmpty &&
+          product.variants![0].price != null) {
+        price = product.variants![0].price!;
+      } else {
+        price = product.minPrice ?? 0.0;
+      }
+
+      return PromoProductItem(
+        key: ValueKey('${_cacheKey}_product_${product.id}'),
+        productId: product.id ?? 0,
+        imageUrl: product.mainImageUrl,
+        title: product.name,
+        describe: product.description,
+        price: price, // Use the determined price
+        discount: product.discountPercentage?.toInt(),
+        rating: product.averageRating ?? 0.0,
+      );
+    }).toList();
   }
 
   Future<void> _loadInitialProducts() async {

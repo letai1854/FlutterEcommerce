@@ -441,7 +441,7 @@ class CartStorage {
       // Update existing item instead
       _cartItems![existingIndex].quantity = ((_cartItems![existingIndex].quantity ?? 0) + (item.quantity ?? 0));
       _cartItems![existingIndex].updatedDate = DateTime.now();
-      
+      _cartItems![existingIndex].productVariant?.discountPercentage= item.productVariant?.discountPercentage;
       // ALWAYS preserve the formatted name with variant info from the new item
       if (item.productVariant?.name != null && item.productVariant!.name!.contains('-')) {
         _cartItems![existingIndex].productVariant!.name = item.productVariant!.name;

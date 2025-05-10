@@ -216,9 +216,18 @@ class CartItemList extends StatelessWidget {
     // Make sure we're formatting correctly if the server didn't return a formatted name
     String name = item.productVariant?.name ?? 'Unknown product';
     
-    final price = item.productVariant?.finalPrice ?? item.productVariant?.price ?? 0;
+    // Get discount percentage and prices
+    final double? discountPercentage = item.productVariant?.discountPercentage;
+    final bool hasDiscount = discountPercentage != null && discountPercentage > 0;
+    
+    // Get final price (after discount) and original price
+    final double finalPrice = item.productVariant?.finalPrice ?? item.productVariant?.price ?? 0;
+    final double originalPrice = hasDiscount 
+        ? finalPrice / (1 - (discountPercentage / 100))  // Calculate original price if discounted
+        : finalPrice;
+        
     final quantity = item.quantity ?? 0;
-    final lineTotal = price * quantity;
+    final lineTotal = finalPrice * quantity;
     
     // Check if the item is out of stock
     final int stockQuantity = item.productVariant?.stockQuantity ?? 0;
@@ -273,6 +282,29 @@ class CartItemList extends StatelessWidget {
                             ),
                           ),
                         ),
+                      // Show discount badge if product has discount
+                      if (hasDiscount)
+                        Positioned(
+                          top: 0,
+                          left: 0,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade600,
+                              borderRadius: const BorderRadius.only(
+                                bottomRight: Radius.circular(8),
+                              ),
+                            ),
+                            child: Text(
+                              '-${discountPercentage!.toStringAsFixed(0)}%',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -302,12 +334,31 @@ class CartItemList extends StatelessWidget {
               ],
             ),
           ),
-          // Unit price
+          // Unit price with discount info
           Expanded(
             flex: 1,
-            child: Text(
-              '${formatPrice(price)} VND',
-              textAlign: TextAlign.center,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (hasDiscount)
+                  Text(
+                    '${formatPrice(originalPrice)} VND',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      decoration: TextDecoration.lineThrough,
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                  ),
+                Text(
+                  '${formatPrice(finalPrice)} VND',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: hasDiscount ? Colors.red : null,
+                    fontWeight: hasDiscount ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              ],
             ),
           ),
           // Quantity control
@@ -401,9 +452,18 @@ class CartItemList extends StatelessWidget {
     // Make sure we're formatting consistently on mobile too
     String name = item.productVariant?.name ?? 'Unknown product';
     
-    final price = item.productVariant?.finalPrice ?? item.productVariant?.price ?? 0;
+    // Get discount percentage and prices
+    final double? discountPercentage = item.productVariant?.discountPercentage;
+    final bool hasDiscount = discountPercentage != null && discountPercentage > 0;
+    
+    // Get final price (after discount) and original price
+    final double finalPrice = item.productVariant?.finalPrice ?? item.productVariant?.price ?? 0;
+    final double originalPrice = hasDiscount 
+        ? finalPrice / (1 - (discountPercentage! / 100))  // Calculate original price if discounted
+        : finalPrice;
+        
     final quantity = item.quantity ?? 0;
-    final lineTotal = price * quantity;
+    final lineTotal = finalPrice * quantity;
     
     // Check if the item is out of stock
     final int stockQuantity = item.productVariant?.stockQuantity ?? 0;
@@ -460,12 +520,35 @@ class CartItemList extends StatelessWidget {
                             ),
                           ),
                         ),
+                      // Show discount badge if product has discount
+                      if (hasDiscount)
+                        Positioned(
+                          top: 0,
+                          left: 0,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade600,
+                              borderRadius: const BorderRadius.only(
+                                bottomRight: Radius.circular(8),
+                              ),
+                            ),
+                            child: Text(
+                              '-${discountPercentage!.toStringAsFixed(0)}%',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                   
                   const SizedBox(width: 12),
                   
-                  // Product details
+                  // Product details with discount info
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -477,9 +560,45 @@ class CartItemList extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          '${formatPrice(price)} VND',
-                          style: TextStyle(color: Colors.red[700]),
+                        if (hasDiscount) ...[
+                          Text(
+                            '${formatPrice(originalPrice)} VND',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                        ],
+                        Row(
+                          children: [
+                            Text(
+                              '${formatPrice(finalPrice)} VND',
+                              style: TextStyle(
+                                color: Colors.red[700],
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (hasDiscount) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade100,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                                child: Text(
+                                  '-${discountPercentage!.toStringAsFixed(0)}%',
+                                  style: TextStyle(
+                                    color: Colors.red.shade700,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                         if (isOutOfStock)
                           Padding(

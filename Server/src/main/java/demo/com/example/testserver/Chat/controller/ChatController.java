@@ -45,12 +45,15 @@ public class ChatController {
     // Endpoint for a user (customer or admin) to get their conversations
     @GetMapping("/conversations/me")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Page<ConversationDTO>> getUserConversations(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @PageableDefault(size = 15, sort = "updatedDate", direction = Sort.Direction.DESC) Pageable pageable) {
-        logger.info("User {} fetching their conversations, page: {}", userDetails.getUsername(), pageable.getPageNumber());
-        Page<ConversationDTO> conversations = chatService.getUserConversations(userDetails.getUsername(), pageable);
-        return ResponseEntity.ok(conversations);
+    public ResponseEntity<ConversationDTO> getUserConversations(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        logger.info("User {} fetching their conversation", userDetails.getUsername());
+        ConversationDTO conversation = chatService.getUserConversations(userDetails.getUsername());
+        if (conversation != null) {
+            return ResponseEntity.ok(conversation);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
     
     // Endpoint for an admin to get conversations (all, by status)

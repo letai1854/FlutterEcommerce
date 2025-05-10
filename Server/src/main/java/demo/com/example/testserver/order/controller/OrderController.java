@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort; // Import Sort
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -60,7 +61,7 @@ public class OrderController {
     public ResponseEntity<?> getCurrentUserOrders(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam(required = false) Order.OrderStatus status,
-            @PageableDefault(size = 10, sort = "orderDate,desc") Pageable pageable) {
+            @PageableDefault(size = 10, sort = "orderDate", direction = Sort.Direction.DESC) Pageable pageable) {
         if (userDetails == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated.");
         }
@@ -169,7 +170,7 @@ public class OrderController {
             @RequestParam(required = false) Order.OrderStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date endDate,
-            @PageableDefault(size = 10, sort = "orderDate,desc") Pageable pageable) {
+            @PageableDefault(size = 10, sort = "orderDate", direction = Sort.Direction.DESC) Pageable pageable) {
         try {
             // Basic validation for date range
             if ((startDate != null && endDate == null) || (startDate == null && endDate != null)) {
