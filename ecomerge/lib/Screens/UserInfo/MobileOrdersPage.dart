@@ -119,6 +119,7 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
         "image": d.imageUrl ?? "https://via.placeholder.com/80",
         "price": d.priceAtPurchase,
         "quantity": d.quantity,
+        "discountPercentage": d.productDiscountPercentage ?? 0.0,
       };
     }).toList();
   }
@@ -305,6 +306,16 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
                                         ),
                                       );
                                     },
+                                    subtotal: order.subtotal ?? 0.0,
+                                    shippingFee: order.shippingFee ?? 0.0,
+                                    tax: order.tax ?? 0.0,
+                                    totalAmount: order.totalAmount ?? 0.0,
+                                    couponDiscount: order.couponDiscount,
+                                    pointsDiscount:
+                                        order.pointsDiscount?.toDouble(),
+                                    pointsEarned:
+                                        order.pointsEarned?.toDouble(),
+                                    isSmallScreen: true,
                                   ),
                                 );
                               },
