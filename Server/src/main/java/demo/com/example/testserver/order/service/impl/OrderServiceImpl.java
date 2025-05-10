@@ -12,6 +12,7 @@ import demo.com.example.testserver.order.model.OrderDetail;
 import demo.com.example.testserver.order.model.OrderStatusHistory;
 import demo.com.example.testserver.order.repository.OrderRepository;
 import demo.com.example.testserver.order.service.OrderService;
+import demo.com.example.testserver.product.model.Product;
 import demo.com.example.testserver.product.model.ProductVariant;
 import demo.com.example.testserver.product.repository.ProductVariantRepository;
 import demo.com.example.testserver.user.model.Address;
@@ -99,46 +100,67 @@ public class OrderServiceImpl implements OrderService {
                 throw new IllegalArgumentException("Insufficient stock for ProductVariant ID: " + variant.getId() + ". Requested: " + itemDTO.getQuantity() + ", Available: " + variant.getStockQuantity());
             }
 
+            Product product = variant.getProduct();
+            if (product == null) {
+                throw new IllegalStateException("Product not found for ProductVariant ID: " + variant.getId());
+            }
+
+            BigDecimal mainProductDiscount = product.getDiscountPercentage();
+            BigDecimal discountToApply = BigDecimal.ZERO; // Default to zero discount
+
+            if (mainProductDiscount != null && mainProductDiscount.compareTo(BigDecimal.ZERO) > 0) {
+                discountToApply = mainProductDiscount;
+            }
+
             OrderDetail orderDetail = new OrderDetail();
             orderDetail.setOrder(order);
             orderDetail.setProductVariant(variant);
             orderDetail.setQuantity(itemDTO.getQuantity());
-            orderDetail.setPriceAtPurchase(variant.getPrice()); // Assuming ProductVariant has getPrice()
-            orderDetail.setProductDiscountPercentage(variant.getDiscountPercentage()); // Assuming ProductVariant has getDiscountPercentage()
+            orderDetail.setPriceAtPurchase(variant.getPrice()); 
+            orderDetail.setProductDiscountPercentage(discountToApply); // Store the discount from the main product
 
-            BigDecimal discountedPrice = orderDetail.getPriceAtPurchase().multiply(
-                BigDecimal.ONE.subtract(orderDetail.getProductDiscountPercentage().divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP))
-            );
-            BigDecimal lineTotal = discountedPrice.multiply(new BigDecimal(orderDetail.getQuantity()));
+            BigDecimal unitPrice = orderDetail.getPriceAtPurchase();
+            BigDecimal currentItemDiscountPercentage = orderDetail.getProductDiscountPercentage();
+
+            BigDecimal discountedUnitPrice;
+            if (currentItemDiscountPercentage != null && currentItemDiscountPercentage.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal discountRate = currentItemDiscountPercentage.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
+                BigDecimal effectivePriceFactor = BigDecimal.ONE.subtract(discountRate);
+                discountedUnitPrice = unitPrice.multiply(effectivePriceFactor);
+            } else {
+                discountedUnitPrice = unitPrice;
+            }
+            
+            BigDecimal lineTotal = discountedUnitPrice.multiply(new BigDecimal(orderDetail.getQuantity()))
+                                                  .setScale(2, RoundingMode.HALF_UP);
             orderDetail.setLineTotal(lineTotal);
 
-            subtotal = subtotal.add(lineTotal); // Accumulate to subtotal
+            subtotal = subtotal.add(lineTotal);
             order.getOrderDetails().add(orderDetail);
 
             variant.setStockQuantity(variant.getStockQuantity() - itemDTO.getQuantity());
             productVariantRepository.save(variant);
         }
-        order.setSubtotal(subtotal); // Set calculated subtotal
+        order.setSubtotal(subtotal);
 
         // Step 2: Apply coupon discount, if any
         BigDecimal couponDiscountValue = BigDecimal.ZERO;
         if (requestDTO.getCouponCode() != null && !requestDTO.getCouponCode().trim().isEmpty()) {
             Coupon coupon = couponRepository.findByCode(requestDTO.getCouponCode())
                     .orElseThrow(() -> new EntityNotFoundException("Coupon not found with code: " + requestDTO.getCouponCode()));
-            // TODO: Add more coupon validation (expiry, usage limits, applicability)
             if (coupon.getUsageCount() >= coupon.getMaxUsageCount()) {
                 throw new IllegalArgumentException("Coupon " + requestDTO.getCouponCode() + " has reached its maximum usage limit.");
             }
-            couponDiscountValue = coupon.getDiscountValue(); // Assuming fixed value discount
+            couponDiscountValue = coupon.getDiscountValue();
             order.setCoupon(coupon);
-            order.setCouponDiscount(couponDiscountValue); // Set coupon discount
+            order.setCouponDiscount(couponDiscountValue);
             coupon.setUsageCount(coupon.getUsageCount() + 1);
             couponRepository.save(coupon);
         }
 
         // Step 3: Apply points discount, if any
         BigDecimal numPointsToUse = requestDTO.getPointsToUse() != null ? requestDTO.getPointsToUse() : BigDecimal.ZERO;
-        numPointsToUse = numPointsToUse.setScale(0, RoundingMode.DOWN); // Ensure whole points are used
+        numPointsToUse = numPointsToUse.setScale(0, RoundingMode.DOWN);
 
         BigDecimal pointsDiscountAmount = BigDecimal.ZERO;
         boolean pointsUsed = false;
@@ -149,64 +171,43 @@ public class OrderServiceImpl implements OrderService {
                         (user.getCustomerPoints() != null ? user.getCustomerPoints().setScale(0, RoundingMode.DOWN) : BigDecimal.ZERO) +
                         ", Requested: " + numPointsToUse);
             }
-            pointsDiscountAmount = numPointsToUse.multiply(ONE_POINT_VALUE_IN_VND); // Convert number of points to VND value
-            user.setCustomerPoints(user.getCustomerPoints().subtract(numPointsToUse)); // Deduct number of points
-            order.setPointsDiscount(pointsDiscountAmount); // Set monetary discount on order
+            pointsDiscountAmount = numPointsToUse.multiply(ONE_POINT_VALUE_IN_VND);
+            user.setCustomerPoints(user.getCustomerPoints().subtract(numPointsToUse));
+            order.setPointsDiscount(pointsDiscountAmount);
             pointsUsed = true;
         }
 
-        // Step 4: Calculate points earned for this order
-        // Points will be actually awarded to the user when the order is marked as 'da_giao'.
         BigDecimal pointsEarned = subtotal.multiply(POINTS_EARNED_RATE).setScale(0, RoundingMode.DOWN);
-        order.setPointsEarned(pointsEarned); // Store number of points earned in this order
+        order.setPointsEarned(pointsEarned);
         
-        // Save user only if points were used (or other user-specific modifications occurred).
-        // Earned points are not added to user's balance at this stage.
         if (pointsUsed) {
             userRepository.save(user); 
         }
 
-        // Assuming shippingFee and tax are fixed or calculated simply for now
-        order.setShippingFee(requestDTO.getShippingFee() != null ? requestDTO.getShippingFee() : BigDecimal.ZERO); // Or fetch from config/logic
-        order.setTax(requestDTO.getTax() != null ? requestDTO.getTax() : BigDecimal.ZERO); // Or fetch from config/logic
+        order.setShippingFee(requestDTO.getShippingFee() != null ? requestDTO.getShippingFee() : BigDecimal.ZERO);
+        order.setTax(requestDTO.getTax() != null ? requestDTO.getTax() : BigDecimal.ZERO);
 
-        // Step 5: Calculate final total amount
         BigDecimal totalAmount = subtotal
                 .subtract(couponDiscountValue)
                 .subtract(pointsDiscountAmount)
                 .add(order.getShippingFee())
                 .add(order.getTax());
-        order.setTotalAmount(totalAmount.max(BigDecimal.ZERO)); // Ensure total is not negative
+        order.setTotalAmount(totalAmount.max(BigDecimal.ZERO));
 
         order.setOrderStatus(Order.OrderStatus.cho_xu_ly);
-        // TODO: Set payment status based on payment method (e.g., COD -> chua_thanh_toan, Online -> pending/success)
-        order.setPaymentStatus(Order.PaymentStatus.chua_thanh_toan); // Default
+        order.setPaymentStatus(Order.PaymentStatus.chua_thanh_toan);
 
         OrderStatusHistory initialHistory = new OrderStatusHistory();
         initialHistory.setOrder(order);
         initialHistory.setStatus(order.getOrderStatus());
         initialHistory.setNotes("Order created successfully.");
-        // Timestamp will be set by @PrePersist in OrderStatusHistory
         order.getStatusHistory().add(initialHistory);
         
-        Order savedOrder = orderRepository.save(order); // Cascades to OrderDetail and OrderStatusHistory
+        Order savedOrder = orderRepository.save(order);
 
         logger.info("Order created successfully with ID: {}", savedOrder.getId());
 
-        // // Send order confirmation email
-        // try {
-        //     emailService.sendOrderConfirmationEmail(
-        //             user.getEmail(),
-        //             user.getFullName(),
-        //             savedOrder.getId(),
-        //             savedOrder.getTotalAmount()
-        //     );
-        // } catch (Exception e) {
-        //     logger.error("Failed to send order confirmation email for order ID {}: {}", savedOrder.getId(), e.getMessage(), e);
-        //     // Do not fail the order creation if email sending fails, just log it.
-        // }
-
-        return orderMapper.toOrderDTO(savedOrder); // Use orderMapper instead of modelMapper
+        return orderMapper.toOrderDTO(savedOrder);
     }
 
     @Override
@@ -223,7 +224,7 @@ public class OrderServiceImpl implements OrderService {
             orderPage = orderRepository.findByUser(user, pageable);
         }
 
-        return orderPage.map(order -> orderMapper.toOrderDTO(order)); // Use orderMapper
+        return orderPage.map(order -> orderMapper.toOrderDTO(order));
     }
 
     @Override
@@ -235,10 +236,7 @@ public class OrderServiceImpl implements OrderService {
 
         Order order = orderRepository.findByIdAndUser(orderId, user)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with ID: " + orderId + " for user: " + userEmail));
-        // The returned OrderDTO contains values (subtotal, discounts, totalAmount, etc.)
-        // that were calculated and stored during the order creation process.
-        // This method retrieves these stored values, it does not re-calculate them.
-        return orderMapper.toOrderDTO(order); // Use orderMapper
+        return orderMapper.toOrderDTO(order);
     }
 
     @Override
@@ -252,7 +250,7 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with ID: " + orderId + " for user: " + userEmail));
 
         return order.getStatusHistory().stream()
-                .map(history -> orderMapper.toOrderStatusHistoryDTO(history)) // Use orderMapper
+                .map(history -> orderMapper.toOrderStatusHistoryDTO(history))
                 .collect(Collectors.toList());
     }
 
@@ -270,30 +268,25 @@ public class OrderServiceImpl implements OrderService {
         historyEntry.setOrder(order);
         historyEntry.setStatus(newStatus);
         historyEntry.setNotes(adminNotes != null ? adminNotes : "Order status updated by admin.");
-        // Timestamp will be set by @PrePersist
 
         if (order.getStatusHistory() == null) {
             order.setStatusHistory(new ArrayList<>());
         }
         order.getStatusHistory().add(historyEntry);
 
-        // Award points if order is marked as delivered and wasn't already delivered
         if (newStatus == Order.OrderStatus.da_giao && oldStatus != Order.OrderStatus.da_giao) {
             User orderUser = order.getUser();
-            // Ensure pointsEarned is not null and user's current points are initialized
             if (orderUser != null && order.getPointsEarned() != null && order.getPointsEarned().compareTo(BigDecimal.ZERO) > 0) {
                 BigDecimal currentPoints = orderUser.getCustomerPoints() != null ? orderUser.getCustomerPoints() : BigDecimal.ZERO;
                 orderUser.setCustomerPoints(currentPoints.add(order.getPointsEarned()));
                 userRepository.save(orderUser);
                 logger.info("Awarded {} points to user {} for order {}. New total points: {}",
                         order.getPointsEarned(), orderUser.getEmail(), orderId, orderUser.getCustomerPoints());
-                // Append to notes that points were awarded
                 String currentNotes = historyEntry.getNotes();
                 historyEntry.setNotes( (currentNotes != null ? currentNotes : "") + " Points awarded: " + order.getPointsEarned().setScale(0, RoundingMode.DOWN));
             }
         }
 
-        // Update payment status if order is marked as delivered and payment was pending
         if (newStatus == Order.OrderStatus.da_giao && order.getPaymentStatus() == Order.PaymentStatus.chua_thanh_toan) {
             order.setPaymentStatus(Order.PaymentStatus.da_thanh_toan);
             logger.info("Order ID: {} payment status updated to {} as order is delivered.", orderId, Order.PaymentStatus.da_thanh_toan);
@@ -301,11 +294,9 @@ public class OrderServiceImpl implements OrderService {
             historyEntry.setNotes( (currentNotes != null ? currentNotes : "") + " Payment status updated to 'da_thanh_toan'.");
         }
 
-        // TODO: Implement other side effects of status changes (e.g., payment processing, notifications)
-
         Order updatedOrder = orderRepository.save(order);
         logger.info("Order ID: {} status updated to {} by admin.", orderId, newStatus);
-        return orderMapper.toOrderDTO(updatedOrder); // Use orderMapper
+        return orderMapper.toOrderDTO(updatedOrder);
     }
 
     @Override
@@ -318,7 +309,6 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findByIdAndUser(orderId, user)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found with ID: " + orderId + " for user: " + userEmail));
 
-        // Check if order is in a cancellable state
         if (!(order.getOrderStatus() == Order.OrderStatus.cho_xu_ly || order.getOrderStatus() == Order.OrderStatus.da_xac_nhan)) {
             throw new IllegalArgumentException("Order cannot be cancelled. Current status: " + order.getOrderStatus());
         }
@@ -329,7 +319,7 @@ public class OrderServiceImpl implements OrderService {
         historyEntry.setOrder(order);
         historyEntry.setStatus(Order.OrderStatus.da_huy);
         historyEntry.setNotes("Order cancelled by user.");
-        historyEntry.setTimestamp(new Date()); // Or let @PrePersist handle it if configured in OrderStatusHistory
+        historyEntry.setTimestamp(new Date());
 
         if (order.getStatusHistory() == null) {
             order.setStatusHistory(new ArrayList<>());
@@ -338,7 +328,7 @@ public class OrderServiceImpl implements OrderService {
 
         Order updatedOrder = orderRepository.save(order);
         logger.info("Order ID: {} cancelled successfully for user: {}", orderId, userEmail);
-        return orderMapper.toOrderDTO(updatedOrder); // Use orderMapper
+        return orderMapper.toOrderDTO(updatedOrder);
     }
 
     @Override
@@ -347,10 +337,8 @@ public class OrderServiceImpl implements OrderService {
         logger.info("Admin fetching orders with filters - userId: {}, status: {}, startDate: {}, endDate: {}", 
                 userId, status, startDate, endDate);
         
-        // Use a simpler approach without relying on complex repository methods
         Page<Order> orderPage;
         
-        // Start with the basic query
         if (userId != null) {
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new EntityNotFoundException("User not found with ID: " + userId));
@@ -366,23 +354,19 @@ public class OrderServiceImpl implements OrderService {
             orderPage = orderRepository.findAll(pageable);
         }
         
-        // Filter results in-memory if date range is provided
         if (startDate != null && endDate != null) {
-            // Convert page to list for filtering
             List<Order> filteredList = orderPage.getContent().stream()
                     .filter(order -> {
-                        Date orderDate = order.getOrderDate(); // Adjust field name if needed
+                        Date orderDate = order.getOrderDate();
                         return orderDate != null && 
                                (orderDate.after(startDate) || orderDate.equals(startDate)) && 
                                (orderDate.before(endDate) || orderDate.equals(endDate));
                     })
                     .collect(Collectors.toList());
             
-            // Return filtered results (Note: This is a simplified approach and loses pagination accuracy)
             int start = (int) pageable.getOffset();
             int end = Math.min((start + pageable.getPageSize()), filteredList.size());
             
-            // Safety check for start and end indices
             if (start > filteredList.size()) {
                 start = 0;
                 end = 0;
@@ -396,7 +380,6 @@ public class OrderServiceImpl implements OrderService {
             );
         }
         
-        // If no date filtering, return the original page
-        return orderPage.map(order -> orderMapper.toOrderDTO(order)); // Use orderMapper
+        return orderPage.map(order -> orderMapper.toOrderDTO(order));
     }
 }
