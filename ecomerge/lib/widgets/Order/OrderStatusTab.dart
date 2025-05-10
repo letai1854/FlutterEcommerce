@@ -25,8 +25,6 @@ class OrderStatusTab extends StatelessWidget {
         return "Đã giao";
       case 4:
         return "Đã hủy";
-      case 5:
-        return "Trả hàng";
       default:
         return "Chờ xử lý";
     }

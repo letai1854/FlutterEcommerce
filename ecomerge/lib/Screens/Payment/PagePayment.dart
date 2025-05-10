@@ -146,12 +146,24 @@ class _PagePaymentState extends State<PagePayment> {
   }
 
   double _calculateTotal() {
-    double subtotal = _calculateSubtotal();
+    double subtotalAfterProductDiscounts = _calculateSubtotal();
     double discount = _calculateDiscount();
     double tax = _calculateTax();
-    double total =
-        subtotal + _shippingFee + tax - discount - _pointsDiscountAmount;
+    double total = subtotalAfterProductDiscounts +
+        _shippingFee +
+        tax -
+        discount -
+        _pointsDiscountAmount;
     return total < 0 ? 0 : total;
+  }
+
+  double _calculateSumOfOriginalItemPrices() {
+    return widget.cartItems
+        .fold(0.0, (sum, item) => sum + (item.price * item.quantity));
+  }
+
+  double _calculateTotalProductSpecificDiscount() {
+    return _calculateSumOfOriginalItemPrices() - _calculateSubtotal();
   }
 
   String _formatCurrency(num amount) {
@@ -444,11 +456,16 @@ class _PagePaymentState extends State<PagePayment> {
       Map<String, dynamic> paymentSuccessArgs =
           createdOrder.toMapForPaymentSuccess();
 
-      // Add customerID from the logged-in user's information
       paymentSuccessArgs['customerID'] =
           UserInfo().currentUser?.id?.toString() ??
               paymentSuccessArgs['customerID'] ??
               'N/A';
+
+      paymentSuccessArgs['sumOriginalItemPrices'] =
+          _calculateSumOfOriginalItemPrices();
+      paymentSuccessArgs['totalProductSpecificDiscount'] =
+          _calculateTotalProductSpecificDiscount();
+      paymentSuccessArgs['taxRate'] = _taxRate; // Pass the tax rate
 
       if (mounted) {
         Navigator.pushReplacementNamed(
@@ -594,7 +611,8 @@ class _PagePaymentState extends State<PagePayment> {
     // Debug output to verify received items
     print('PagePayment: Building with ${widget.cartItems.length} items');
     for (var item in widget.cartItems) {
-      print(' - Item: ${item.productName}, Quantity: ${item.quantity}, Price: ${item.price}');
+      print(
+          ' - Item: ${item.productName}, Quantity: ${item.quantity}, Price: ${item.price}');
     }
 
     Widget body = BodyPayment(

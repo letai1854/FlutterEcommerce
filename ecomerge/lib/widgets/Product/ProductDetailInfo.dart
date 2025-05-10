@@ -50,6 +50,7 @@ class ProductDetialInfo extends StatelessWidget {
 
   // Image cache function to prevent flickering
   final Future<Uint8List?> Function(String, ProductService)? imageCache;
+  final double? discountPercentage; // Add this parameter
 
   const ProductDetialInfo({
     Key? key,
@@ -87,7 +88,65 @@ class ProductDetialInfo extends StatelessWidget {
     required this.onBuyNow,
     required this.productId, // Add this line
     this.imageCache, // Optional parameter with default fallback
+    this.discountPercentage, // Initialize new parameter
   }) : super(key: key);
+
+  Widget _buildPriceDisplay(BuildContext context) {
+    if (productVariants.isEmpty ||
+        selectedVariantIndex < 0 ||
+        selectedVariantIndex >= productVariants.length) {
+      return const SizedBox.shrink(); // No variants or invalid selection
+    }
+
+    final selectedVariant = productVariants[selectedVariantIndex];
+    final dynamic currentPriceDynamic = selectedVariant['price'];
+
+    final double currentPrice = (currentPriceDynamic is int)
+        ? currentPriceDynamic.toDouble()
+        : (currentPriceDynamic is double ? currentPriceDynamic : 0.0);
+
+    bool hasDiscount = discountPercentage != null && discountPercentage! > 0;
+    double finalPrice = currentPrice;
+
+    if (hasDiscount) {
+      finalPrice = currentPrice * (1 - (discountPercentage! / 100));
+    }
+
+    String formatCurrency(double amount) {
+      final format = amount.toStringAsFixed(0).replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.');
+      return '$format đ';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 16.0, bottom: 24.0), // Add padding
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start, // Align to start
+        crossAxisAlignment: CrossAxisAlignment.baseline, // Align text baselines
+        textBaseline: TextBaseline.alphabetic, // Specify baseline for alignment
+        children: [
+          if (hasDiscount)
+            Text(
+              formatCurrency(currentPrice),
+              style: TextStyle(
+                fontSize: 18, // Slightly smaller for original price
+                color: Colors.grey[600],
+                decoration: TextDecoration.lineThrough,
+              ),
+            ),
+          if (hasDiscount) const SizedBox(width: 10), // Space between prices
+          Text(
+            formatCurrency(finalPrice),
+            style: TextStyle(
+              fontSize: 26, // Larger font for final price
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).primaryColor, // Use theme color
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -172,7 +231,8 @@ class ProductDetialInfo extends StatelessWidget {
                                     : FutureBuilder<Uint8List?>(
                                         future: getImage(displayedMainImageUrl),
                                         builder: (context, snapshot) {
-                                          if (snapshot.connectionState == ConnectionState.done &&
+                                          if (snapshot.connectionState ==
+                                                  ConnectionState.done &&
                                               snapshot.hasData &&
                                               snapshot.data != null) {
                                             // Display cached image data with high quality
@@ -546,11 +606,13 @@ class ProductDetialInfo extends StatelessWidget {
                                 if (currentStock <= 0)
                                   Container(
                                     margin: const EdgeInsets.only(left: 10),
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 4),
                                     decoration: BoxDecoration(
                                       color: Colors.red.shade100,
                                       borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(color: Colors.red.shade300),
+                                      border: Border.all(
+                                          color: Colors.red.shade300),
                                     ),
                                     child: const Text(
                                       'Hết hàng',
@@ -572,7 +634,9 @@ class ProductDetialInfo extends StatelessWidget {
                               maxQuantity: currentStock,
                               onChanged: onQuantityChanged,
                             ),
-                            const SizedBox(height: 24),
+                            // --- Price Display ---
+                            _buildPriceDisplay(
+                                context), // Add price display here
                             // Action Buttons
                             Wrap(
                               spacing: 12,
@@ -580,23 +644,32 @@ class ProductDetialInfo extends StatelessWidget {
                               children: [
                                 ElevatedButton.icon(
                                     style: ElevatedButton.styleFrom(
-                                        backgroundColor: currentStock > 0 ? Colors.orange.shade100 : Colors.grey.shade200,
-                                        foregroundColor: currentStock > 0 ? Colors.orange.shade800 : Colors.grey,
+                                        backgroundColor: currentStock > 0
+                                            ? Colors.orange.shade100
+                                            : Colors.grey.shade200,
+                                        foregroundColor: currentStock > 0
+                                            ? Colors.orange.shade800
+                                            : Colors.grey,
                                         side: BorderSide(
-                                            color: currentStock > 0 ? Colors.orange.shade300 : Colors.grey.shade300),
+                                            color: currentStock > 0
+                                                ? Colors.orange.shade300
+                                                : Colors.grey.shade300),
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 16, vertical: 12),
                                         shape: RoundedRectangleBorder(
                                             borderRadius:
                                                 BorderRadius.circular(8))),
-                                    onPressed: currentStock > 0 ? onAddToCart : null,
+                                    onPressed:
+                                        currentStock > 0 ? onAddToCart : null,
                                     icon: const Icon(
                                         Icons.add_shopping_cart_outlined,
                                         size: 18),
                                     label: const Text('Thêm vào giỏ hàng')),
                                 ElevatedButton.icon(
                                     style: ElevatedButton.styleFrom(
-                                        backgroundColor: currentStock > 0 ? Colors.red.shade700 : Colors.grey.shade400,
+                                        backgroundColor: currentStock > 0
+                                            ? Colors.red.shade700
+                                            : Colors.grey.shade400,
                                         foregroundColor: Colors.white,
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 24, vertical: 14),
@@ -605,7 +678,8 @@ class ProductDetialInfo extends StatelessWidget {
                                               BorderRadius.circular(8),
                                         ),
                                         elevation: currentStock > 0 ? 2 : 0),
-                                    onPressed: currentStock > 0 ? onBuyNow : null,
+                                    onPressed:
+                                        currentStock > 0 ? onBuyNow : null,
                                     icon: const Icon(Icons.flash_on_outlined,
                                         size: 18),
                                     label: const Text('Mua ngay')),
@@ -696,7 +770,8 @@ class BuildThumbnail extends StatelessWidget {
               borderRadius: BorderRadius.circular(2),
             ),
             child: FutureBuilder<Uint8List?>(
-              key: ValueKey('thumb_$imageUrl'), // Add stable key to prevent rebuilds
+              key: ValueKey(
+                  'thumb_$imageUrl'), // Add stable key to prevent rebuilds
               future: productService.getImageFromServer(imageUrl),
               builder: (context, snapshot) {
                 if (snapshot.hasData && snapshot.data != null) {
@@ -898,10 +973,12 @@ class BuildQuantitySelector extends StatelessWidget {
                   onPressed: null,
                   splashRadius: 20,
                   constraints: const BoxConstraints(),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   constraints: const BoxConstraints(minWidth: 40),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
@@ -920,7 +997,8 @@ class BuildQuantitySelector extends StatelessWidget {
                   onPressed: null,
                   splashRadius: 20,
                   constraints: const BoxConstraints(),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
               ],
             ),
