@@ -40,19 +40,35 @@ public class CartMapper {
         }
         Product product = variant.getProduct();
         BigDecimal finalPrice = variant.getPrice();
+        BigDecimal appliedDiscountPercentage = BigDecimal.ZERO;
+
+        // Check variant's discount percentage
         if (variant.getDiscountPercentage() != null && variant.getDiscountPercentage().compareTo(BigDecimal.ZERO) > 0) {
-            BigDecimal discount = variant.getPrice().multiply(variant.getDiscountPercentage().divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP));
+            appliedDiscountPercentage = variant.getDiscountPercentage();
+        } 
+        // If variant's discount is not applicable, check product's discount percentage
+        else if (product != null && product.getDiscountPercentage() != null && product.getDiscountPercentage().compareTo(BigDecimal.ZERO) > 0) {
+            appliedDiscountPercentage = product.getDiscountPercentage();
+        }
+
+        if (appliedDiscountPercentage.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal discount = variant.getPrice().multiply(appliedDiscountPercentage.divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP));
             finalPrice = variant.getPrice().subtract(discount);
         }
 
         String imageUrl = null;
-        if (product != null && product.getImages() != null && !product.getImages().isEmpty()) {
-            imageUrl = product.getImages().get(0).getImageUrl(); // Get the first image as a default
+        // Try variant image first
+        if (variant.getVariantImageUrl() != null && !variant.getVariantImageUrl().isEmpty()) {
+            imageUrl = variant.getVariantImageUrl();
+        } 
+        // Then product main image
+        else if (product != null && product.getMainImageUrl() != null && !product.getMainImageUrl().isEmpty()) {
+            imageUrl = product.getMainImageUrl();
+        } 
+        // Then first product image if available
+        else if (product != null && product.getImages() != null && !product.getImages().isEmpty()) {
+            imageUrl = product.getImages().get(0).getImageUrl(); 
         }
-        // You might want to get a specific variant image if available
-        // if (variant.getVariantImages() != null && !variant.getVariantImages().isEmpty()) {
-        //     imageUrl = variant.getVariantImages().get(0).getImageUrl();
-        // }
 
         CartProductVariantDTO dto = new CartProductVariantDTO();
         dto.setVariantId(variant.getId().longValue());
@@ -61,7 +77,7 @@ public class CartMapper {
         dto.setVariantDescription(variant.getName());
         dto.setImageUrl(imageUrl);
         dto.setPrice(variant.getPrice());
-        dto.setDiscountPercentage(variant.getDiscountPercentage());
+        dto.setDiscountPercentage(appliedDiscountPercentage); // Use the determined discount percentage
         dto.setFinalPrice(finalPrice);
         dto.setStockQuantity(variant.getStockQuantity());
         return dto;
