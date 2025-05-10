@@ -29,19 +29,38 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
   bool _isLoading = true;
   String? _errorMessage;
 
+  final ScrollController _scrollController = ScrollController();
+  int _currentPage = 0;
+  final int _pageSize = 10;
+  bool _hasMore = true;
+  bool _isLoadingMore = false;
+
   @override
   void initState() {
     super.initState();
     _selectedOrderTab = widget.initialTab < 0 ? 0 : widget.initialTab;
     _orderService = OrderService();
     _fetchOrders();
+    _scrollController.addListener(_scrollListener);
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     _orderService.dispose();
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollListener() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoadingMore &&
+        _hasMore &&
+        _searchQuery.isEmpty) {
+      _loadMoreOrders();
+    }
   }
 
   OrderStatus? _mapTabIndexToOrderStatus(int tabIndex) {
@@ -67,14 +86,23 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
       _errorMessage = null;
       _allFetchedOrders = [];
       _displayedOrders = [];
+      _currentPage = 0;
+      _hasMore = true;
+      _isLoadingMore = false;
     });
     try {
       final status = _mapTabIndexToOrderStatus(_selectedOrderTab);
-      final orderPage =
-          await _orderService.getCurrentUserOrders(status: status);
+      final orderPage = await _orderService.getCurrentUserOrders(
+        status: status,
+        page: _currentPage,
+        size: _pageSize,
+      );
       setState(() {
         _allFetchedOrders = orderPage.orders;
-        _displayedOrders = _allFetchedOrders;
+        _hasMore = !orderPage.isLast;
+        if (_hasMore) {
+          _currentPage++;
+        }
         _isLoading = false;
         _filterOrdersForDisplay();
       });
@@ -82,6 +110,36 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
       setState(() {
         _isLoading = false;
         _errorMessage = e.toString();
+      });
+    }
+  }
+
+  Future<void> _loadMoreOrders() async {
+    if (_isLoadingMore || !_hasMore || _searchQuery.isNotEmpty) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final status = _mapTabIndexToOrderStatus(_selectedOrderTab);
+      final orderPage = await _orderService.getCurrentUserOrders(
+        status: status,
+        page: _currentPage,
+        size: _pageSize,
+      );
+      setState(() {
+        _allFetchedOrders.addAll(orderPage.orders);
+        _hasMore = !orderPage.isLast;
+        if (_hasMore) {
+          _currentPage++;
+        }
+        _isLoadingMore = false;
+        _filterOrdersForDisplay();
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingMore = false;
       });
     }
   }
@@ -237,7 +295,6 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
                       _buildMobileTab(_getShortStatusName(2), 2),
                       _buildMobileTab(_getShortStatusName(3), 3),
                       _buildMobileTab(_getShortStatusName(4), 4),
-                      // _buildMobileTab(_getShortStatusName(5), 5),
                     ],
                   ),
                 ),
@@ -251,17 +308,36 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
                       ? Center(
                           child: Text("Lỗi: $_errorMessage",
                               style: const TextStyle(color: Colors.red)))
-                      : _displayedOrders.isEmpty
+                      : _displayedOrders.isEmpty &&
+                              (_searchQuery.isNotEmpty || !_hasMore)
                           ? Center(
                               child: Text(_searchQuery.isNotEmpty
                                   ? "Không tìm thấy đơn hàng nào với từ khóa \"$_searchQuery\" trong mục '${_getShortStatusName(_selectedOrderTab)}'."
                                   : "Không có đơn hàng nào trong mục '${_getShortStatusName(_selectedOrderTab)}'."))
                           : ListView.separated(
+                              controller: _scrollController,
                               padding: EdgeInsets.zero,
-                              itemCount: _displayedOrders.length,
+                              itemCount: _displayedOrders.length +
+                                  ((_hasMore && _searchQuery.isEmpty) ? 1 : 0),
                               separatorBuilder: (context, index) =>
                                   const SizedBox(height: 16),
                               itemBuilder: (context, index) {
+                                if (index == _displayedOrders.length &&
+                                    _searchQuery.isEmpty &&
+                                    _hasMore) {
+                                  return _isLoadingMore
+                                      ? const Center(
+                                          child: Padding(
+                                            padding: EdgeInsets.all(16.0),
+                                            child: CircularProgressIndicator(),
+                                          ),
+                                        )
+                                      : const SizedBox.shrink();
+                                }
+                                if (index >= _displayedOrders.length) {
+                                  return const SizedBox.shrink();
+                                }
+
                                 final order = _displayedOrders[index];
                                 final items =
                                     _mapOrderDetailsToItems(order.orderDetails);
