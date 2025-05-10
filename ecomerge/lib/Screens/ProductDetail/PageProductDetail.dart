@@ -450,8 +450,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
             _productData['productVariants'] == null ||
             (_productData['productVariants'] as List).isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Thông tin sản phẩm không có sẵn để mua.')),
+            const SnackBar(content: Text('Thông tin sản phẩm không có sẵn để mua.')),
           );
           return;
         }
@@ -489,16 +488,25 @@ class _PageproductdetailState extends State<Pageproductdetail> {
                     orElse: () => '') ??
                 '';
 
+        // Get the original price and discount percentage
+        double originalPrice = (selectedVariant['price'] as num?)?.toDouble() ?? 0.0;
+        double discountPercentage = (_productData['discountPercentage'] as num?)?.toDouble() ?? 0.0;
+        
+        // Calculate the final price after discount
+        double finalPrice = originalPrice;
+        if (discountPercentage > 0) {
+          finalPrice = originalPrice * (1 - (discountPercentage / 100));
+        }
+
+        // Create CartItemModel with the FINAL price (after discount)
         final buyNowItem = CartItemModel(
           productId: widget.productId,
           productName: baseProductName,
           imageUrl: variantImageUrl,
           quantity: _selectedQuantity,
-          price: (selectedVariant['price'] as num?)?.toDouble() ??
-              0.0, // Ensure price is double
+          price: finalPrice, // Use the discounted price
           variantId: selectedVariant['id'] as int,
-          discountPercentage: (_productData['discountPercentage'] as num?)
-              ?.toDouble(), // Pass discount
+          discountPercentage: discountPercentage, // Pass discount percentage for display purposes
         );
 
         // Pass the product ID to payment page for navigation back

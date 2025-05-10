@@ -1,14 +1,17 @@
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Cần import intl ở đây
 
 class bodySuccessPayment extends StatefulWidget {
   // *** Thêm trường final để lưu trữ orderData ***
   final Map<String, dynamic> orderData;
+  final double totalDiscount; // Change from nullable to non-nullable
 
-  // *** Sửa đổi constructor để yêu cầu orderData ***
+  // *** Sửa đổi constructor để yêu cầu orderData và totalDiscount ***
   const bodySuccessPayment({
     super.key,
-    required this.orderData, // Thêm required parameter
+    required this.orderData,
+    required this.totalDiscount,
   });
 
   @override
@@ -219,14 +222,24 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
   // *** Sửa đổi hàm để nhận orderData ***
   Widget _buildPaymentSummarySection(
       bool isMobile, Map<String, dynamic> orderData) {
-    // Lấy dữ liệu từ tham số, thêm kiểm tra null nếu cần
-    final num itemsTotal = orderData['itemsTotal'] ?? 0;
+    // Get data from orderData with proper defaults
+    final num originalItemsTotal = orderData['sumOriginalItemPrices'] ?? orderData['itemsTotal'] ?? 0;
     final num shippingFee = orderData['shippingFee'] ?? 0;
     final num tax = orderData['tax'] ?? 0;
     final num discount = orderData['discount'] ?? 0;
-    final num totalAmount = orderData['totalAmount'] ?? 0;
-    // Thêm giảm giá sản phẩm từ orderData
-    final num productDiscount = orderData['productDiscount'] ?? 0;
+    final num pointsDiscount = orderData['pointsDiscount'] ?? 0;
+    final num usedPoints = orderData['usedPoints'] ?? 0;
+    final num productDiscount = widget.totalDiscount;
+    final num updatedPointsBalance = orderData['updatedPointsBalance'] ?? UserInfo().currentUser?.customerPoints ?? 0;
+    
+    // Make sure we correctly calculate the true original total by adding back the product discount
+    final num trueOriginalTotal = originalItemsTotal + productDiscount;
+    
+    // Recalculate the total amount correctly with all discounts
+    final num calculatedTotal = trueOriginalTotal - productDiscount + shippingFee + tax - discount - pointsDiscount;
+    
+    // Use our calculated total instead of the one from orderData which might not include all discounts
+    final num displayTotal = calculatedTotal > 0 ? calculatedTotal : 0;
 
     return Container(
       width: double.infinity,
@@ -250,25 +263,53 @@ class _bodySuccessPaymentState extends State<bodySuccessPayment> {
 
           SizedBox(height: 16),
 
-          // Payment info
+          // Show the TRUE original price before ANY discounts
           _buildPaymentRow(
-              'Tổng tiền hàng:', _formatCurrency(itemsTotal), isMobile),
-          // Thêm dòng giảm giá sản phẩm
+              'Tổng tiền hàng:', _formatCurrency(trueOriginalTotal), isMobile),
+              
+          // Show product discount (if any)
           if (productDiscount > 0)
-            _buildPaymentRow('Giảm giá sản phẩm:', _formatCurrency(productDiscount), isMobile, 
+            _buildPaymentRow('Giảm giá sản phẩm:', _formatCurrency(-productDiscount), isMobile, 
                 isDiscount: true),
+                
           _buildPaymentRow(
               'Phí vận chuyển:', _formatCurrency(shippingFee), isMobile),
+              
           _buildPaymentRow('Thuế VAT (10%):', _formatCurrency(tax), isMobile),
-          _buildPaymentRow(
-              'Giảm giá voucher:', _formatCurrency(discount), isMobile),
+          
+          // Format voucher discount with negative sign
+          if (discount > 0)
+            _buildPaymentRow(
+                'Giảm giá voucher:', _formatCurrency(-discount), isMobile,
+                isDiscount: true),
+                
+          // Add points discount row
+          if (pointsDiscount > 0)
+            _buildPaymentRow(
+                'Sử dụng điểm tích lũy (${usedPoints.toInt()} điểm):', 
+                _formatCurrency(-pointsDiscount), isMobile,
+                isDiscount: true),
+                
+          // Show updated points balance if points were used
+          if (pointsDiscount > 0)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 4.0),
+              child: Text(
+                'Điểm tích lũy còn lại: ${updatedPointsBalance.toStringAsFixed(0)} điểm',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey[600],
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
 
           Divider(height: 32),
 
-          // Total amount
+          // Total amount - use our recalculated total
           _buildPaymentRow(
             'Tổng thanh toán:',
-            _formatCurrency(totalAmount),
+            _formatCurrency(displayTotal),
             isMobile,
             isTotal: true,
           ),

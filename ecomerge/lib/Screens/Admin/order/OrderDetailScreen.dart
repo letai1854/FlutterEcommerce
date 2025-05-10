@@ -362,7 +362,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const Divider(),
-              _buildDetailRow('Tổng tiền hàng gốc', NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0).format(order.subtotal ?? 0)),
+              _buildDetailRow('Tổng tiền hàng', NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0).format(order.subtotal ?? 0)),
               _buildDetailRow('Tiền giảm giá Coupon', NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0).format(order.couponDiscount ?? 0)),
               _buildDetailRow('Tiền sử dụng điểm', NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0).format(order.pointsDiscount ?? 0)),
               _buildDetailRow('Phí vận chuyển', NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0).format(order.shippingFee ?? 0)),
