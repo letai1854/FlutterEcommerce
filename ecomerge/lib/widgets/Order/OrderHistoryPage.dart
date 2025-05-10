@@ -30,6 +30,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
             "image": "https://via.placeholder.com/80",
             "price": 15000000,
             "quantity": 1,
+            "discountPercentage": 10.0, // Example discount
           },
           if (index % 2 == 0)
             {
@@ -37,8 +38,18 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
               "image": "https://via.placeholder.com/80",
               "price": 450000,
               "quantity": 2,
+              "discountPercentage": 0.0, // Example discount
             },
-        ]
+        ],
+        "subtotal": (index % 2 == 0) ? 15900000.0 : 15000000.0,
+        "shippingFee": 50000.0,
+        "tax": ((index % 2 == 0) ? 15900000.0 : 15000000.0) * 0.05, // 5% tax
+        "totalAmount": ((index % 2 == 0) ? 15900000.0 : 15000000.0) +
+            50000.0 +
+            (((index % 2 == 0) ? 15900000.0 : 15000000.0) * 0.05),
+        "couponDiscount": (index % 3 == 0) ? 100000.0 : 0.0,
+        "pointsDiscount": (index % 4 == 0) ? 20000.0 : 0.0,
+        "pointsEarned": (index % 2 == 0) ? 159.0 : 150.0,
       },
     );
   }
@@ -223,6 +234,18 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                                     ),
                                   );
                                 },
+                                subtotal: order["subtotal"] as double,
+                                shippingFee: order["shippingFee"] as double,
+                                tax: order["tax"] as double,
+                                totalAmount: order["totalAmount"] as double,
+                                couponDiscount:
+                                    order["couponDiscount"] as double?,
+                                pointsDiscount:
+                                    order["pointsDiscount"] as double?,
+                                pointsEarned: order["pointsEarned"] as double?,
+                                isSmallScreen:
+                                    MediaQuery.of(context).size.width <
+                                        600, // Example, adjust as needed
                               ),
                             ),
                           );

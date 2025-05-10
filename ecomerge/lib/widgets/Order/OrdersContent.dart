@@ -95,6 +95,7 @@ class _OrdersContentState extends State<OrdersContent> {
         "image": d.imageUrl ?? "https://via.placeholder.com/80",
         "price": d.priceAtPurchase,
         "quantity": d.quantity,
+        "discountPercentage": d.productDiscountPercentage ?? 0.0,
       };
     }).toList();
   }
@@ -171,8 +172,6 @@ class _OrdersContentState extends State<OrdersContent> {
                         _getShortStatusName(3), 3, isSmallScreen),
                     _buildResponsiveTab(
                         _getShortStatusName(4), 4, isSmallScreen),
-                    // _buildResponsiveTab(
-                    //     _getShortStatusName(5), 5, isSmallScreen),
                   ],
                 ),
               ),
@@ -239,6 +238,14 @@ class _OrdersContentState extends State<OrdersContent> {
                                   );
                                 },
                                 isSmallScreen: isSmallScreen,
+                                subtotal: order.subtotal ?? 0.0,
+                                shippingFee: order.shippingFee ?? 0.0,
+                                tax: order.tax ?? 0.0,
+                                totalAmount: order.totalAmount ?? 0.0,
+                                couponDiscount: order.couponDiscount,
+                                pointsDiscount:
+                                    order.pointsDiscount?.toDouble(),
+                                pointsEarned: order.pointsEarned?.toDouble(),
                               ),
                             ),
                           );
