@@ -6,6 +6,7 @@ import demo.com.example.testserver.order.dto.CreateOrderRequestDTO;
 import demo.com.example.testserver.order.dto.OrderDetailRequestDTO;
 import demo.com.example.testserver.order.dto.OrderDTO;
 import demo.com.example.testserver.order.dto.OrderStatusHistoryDTO;
+import demo.com.example.testserver.order.service.OrderMapper;
 import demo.com.example.testserver.order.model.Order;
 import demo.com.example.testserver.order.model.OrderDetail;
 import demo.com.example.testserver.order.model.OrderStatusHistory;
@@ -63,6 +64,9 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private OrderMapper orderMapper; // Add the OrderMapper
+
     @Override
     @Transactional
     public OrderDTO createOrder(String userEmail, CreateOrderRequestDTO requestDTO) {
@@ -84,9 +88,9 @@ public class OrderServiceImpl implements OrderService {
         order.setOrderDetails(new ArrayList<>());
         order.setStatusHistory(new ArrayList<>());
 
-
         BigDecimal subtotal = BigDecimal.ZERO;
 
+        // Step 1: Calculate subtotal based on product prices, quantities, and individual product discounts
         for (OrderDetailRequestDTO itemDTO : requestDTO.getOrderDetails()) {
             ProductVariant variant = productVariantRepository.findById(itemDTO.getProductVariantId())
                     .orElseThrow(() -> new EntityNotFoundException("ProductVariant not found with ID: " + itemDTO.getProductVariantId()));
@@ -108,14 +112,15 @@ public class OrderServiceImpl implements OrderService {
             BigDecimal lineTotal = discountedPrice.multiply(new BigDecimal(orderDetail.getQuantity()));
             orderDetail.setLineTotal(lineTotal);
 
-            subtotal = subtotal.add(lineTotal);
+            subtotal = subtotal.add(lineTotal); // Accumulate to subtotal
             order.getOrderDetails().add(orderDetail);
 
             variant.setStockQuantity(variant.getStockQuantity() - itemDTO.getQuantity());
             productVariantRepository.save(variant);
         }
-        order.setSubtotal(subtotal);
+        order.setSubtotal(subtotal); // Set calculated subtotal
 
+        // Step 2: Apply coupon discount, if any
         BigDecimal couponDiscountValue = BigDecimal.ZERO;
         if (requestDTO.getCouponCode() != null && !requestDTO.getCouponCode().trim().isEmpty()) {
             Coupon coupon = couponRepository.findByCode(requestDTO.getCouponCode())
@@ -126,11 +131,12 @@ public class OrderServiceImpl implements OrderService {
             }
             couponDiscountValue = coupon.getDiscountValue(); // Assuming fixed value discount
             order.setCoupon(coupon);
-            order.setCouponDiscount(couponDiscountValue);
+            order.setCouponDiscount(couponDiscountValue); // Set coupon discount
             coupon.setUsageCount(coupon.getUsageCount() + 1);
             couponRepository.save(coupon);
         }
 
+        // Step 3: Apply points discount, if any
         BigDecimal numPointsToUse = requestDTO.getPointsToUse() != null ? requestDTO.getPointsToUse() : BigDecimal.ZERO;
         numPointsToUse = numPointsToUse.setScale(0, RoundingMode.DOWN); // Ensure whole points are used
 
@@ -149,7 +155,7 @@ public class OrderServiceImpl implements OrderService {
             pointsUsed = true;
         }
 
-        // Calculate potential points earned for this order and store them in the order.
+        // Step 4: Calculate points earned for this order
         // Points will be actually awarded to the user when the order is marked as 'da_giao'.
         BigDecimal pointsEarned = subtotal.multiply(POINTS_EARNED_RATE).setScale(0, RoundingMode.DOWN);
         order.setPointsEarned(pointsEarned); // Store number of points earned in this order
@@ -164,6 +170,7 @@ public class OrderServiceImpl implements OrderService {
         order.setShippingFee(requestDTO.getShippingFee() != null ? requestDTO.getShippingFee() : BigDecimal.ZERO); // Or fetch from config/logic
         order.setTax(requestDTO.getTax() != null ? requestDTO.getTax() : BigDecimal.ZERO); // Or fetch from config/logic
 
+        // Step 5: Calculate final total amount
         BigDecimal totalAmount = subtotal
                 .subtract(couponDiscountValue)
                 .subtract(pointsDiscountAmount)
@@ -199,7 +206,7 @@ public class OrderServiceImpl implements OrderService {
         //     // Do not fail the order creation if email sending fails, just log it.
         // }
 
-        return modelMapper.map(savedOrder, OrderDTO.class);
+        return orderMapper.toOrderDTO(savedOrder); // Use orderMapper instead of modelMapper
     }
 
     @Override
@@ -216,7 +223,7 @@ public class OrderServiceImpl implements OrderService {
             orderPage = orderRepository.findByUser(user, pageable);
         }
 
-        return orderPage.map(order -> modelMapper.map(order, OrderDTO.class));
+        return orderPage.map(order -> orderMapper.toOrderDTO(order)); // Use orderMapper
     }
 
     @Override
@@ -228,7 +235,10 @@ public class OrderServiceImpl implements OrderService {
 
         Order order = orderRepository.findByIdAndUser(orderId, user)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with ID: " + orderId + " for user: " + userEmail));
-        return modelMapper.map(order, OrderDTO.class);
+        // The returned OrderDTO contains values (subtotal, discounts, totalAmount, etc.)
+        // that were calculated and stored during the order creation process.
+        // This method retrieves these stored values, it does not re-calculate them.
+        return orderMapper.toOrderDTO(order); // Use orderMapper
     }
 
     @Override
@@ -242,7 +252,7 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with ID: " + orderId + " for user: " + userEmail));
 
         return order.getStatusHistory().stream()
-                .map(history -> modelMapper.map(history, OrderStatusHistoryDTO.class))
+                .map(history -> orderMapper.toOrderStatusHistoryDTO(history)) // Use orderMapper
                 .collect(Collectors.toList());
     }
 
@@ -282,11 +292,20 @@ public class OrderServiceImpl implements OrderService {
                 historyEntry.setNotes( (currentNotes != null ? currentNotes : "") + " Points awarded: " + order.getPointsEarned().setScale(0, RoundingMode.DOWN));
             }
         }
+
+        // Update payment status if order is marked as delivered and payment was pending
+        if (newStatus == Order.OrderStatus.da_giao && order.getPaymentStatus() == Order.PaymentStatus.chua_thanh_toan) {
+            order.setPaymentStatus(Order.PaymentStatus.da_thanh_toan);
+            logger.info("Order ID: {} payment status updated to {} as order is delivered.", orderId, Order.PaymentStatus.da_thanh_toan);
+            String currentNotes = historyEntry.getNotes();
+            historyEntry.setNotes( (currentNotes != null ? currentNotes : "") + " Payment status updated to 'da_thanh_toan'.");
+        }
+
         // TODO: Implement other side effects of status changes (e.g., payment processing, notifications)
 
         Order updatedOrder = orderRepository.save(order);
         logger.info("Order ID: {} status updated to {} by admin.", orderId, newStatus);
-        return modelMapper.map(updatedOrder, OrderDTO.class);
+        return orderMapper.toOrderDTO(updatedOrder); // Use orderMapper
     }
 
     @Override
@@ -319,7 +338,7 @@ public class OrderServiceImpl implements OrderService {
 
         Order updatedOrder = orderRepository.save(order);
         logger.info("Order ID: {} cancelled successfully for user: {}", orderId, userEmail);
-        return modelMapper.map(updatedOrder, OrderDTO.class);
+        return orderMapper.toOrderDTO(updatedOrder); // Use orderMapper
     }
 
     @Override
@@ -371,13 +390,13 @@ public class OrderServiceImpl implements OrderService {
             
             List<Order> pageContent = (start < end) ? filteredList.subList(start, end) : new ArrayList<>();
             return new org.springframework.data.domain.PageImpl<>(
-                    pageContent.stream().map(order -> modelMapper.map(order, OrderDTO.class)).collect(Collectors.toList()),
+                    pageContent.stream().map(order -> orderMapper.toOrderDTO(order)).collect(Collectors.toList()),
                     pageable,
                     filteredList.size()
             );
         }
         
         // If no date filtering, return the original page
-        return orderPage.map(order -> modelMapper.map(order, OrderDTO.class));
+        return orderPage.map(order -> orderMapper.toOrderDTO(order)); // Use orderMapper
     }
 }
