@@ -1,8 +1,9 @@
 // Orders Content widget
+import 'package:e_commerce_app/database/models/order/OrderDTO.dart';
+import 'package:e_commerce_app/database/services/order_service.dart';
 import 'package:e_commerce_app/widgets/Order/OrderDetailPage.dart';
 import 'package:e_commerce_app/widgets/Order/OrderHistoryPage.dart';
 import 'package:e_commerce_app/widgets/Order/OrderItem.dart';
-import 'package:e_commerce_app/widgets/Order/OrderStatusTab.dart';
 import 'package:flutter/material.dart';
 
 class OrdersContent extends StatefulWidget {
@@ -20,7 +21,84 @@ class OrdersContent extends StatefulWidget {
 }
 
 class _OrdersContentState extends State<OrdersContent> {
-  // Keep the shorter status names as requested
+  late OrderService _orderService;
+  List<OrderDTO> _orders = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _orderService = OrderService();
+    _fetchOrders();
+  }
+
+  @override
+  void didUpdateWidget(covariant OrdersContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selectedTab != oldWidget.selectedTab) {
+      _fetchOrders();
+    }
+  }
+
+  @override
+  void dispose() {
+    _orderService.dispose();
+    super.dispose();
+  }
+
+  OrderStatus? _mapTabIndexToOrderStatus(int tabIndex) {
+    switch (tabIndex) {
+      case 0:
+        return OrderStatus.cho_xu_ly;
+      case 1:
+        return OrderStatus.da_xac_nhan;
+      case 2:
+        return OrderStatus.dang_giao;
+      case 3:
+        return OrderStatus.da_giao;
+      case 4:
+        return OrderStatus.da_huy;
+      default:
+        return null;
+    }
+  }
+
+  Future<void> _fetchOrders() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _orders = [];
+    });
+    try {
+      final status = _mapTabIndexToOrderStatus(widget.selectedTab);
+      final orderPage =
+          await _orderService.getCurrentUserOrders(status: status);
+      setState(() {
+        _orders = orderPage.orders;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString();
+      });
+    }
+  }
+
+  List<Map<String, dynamic>> _mapOrderDetailsToItems(
+      List<OrderDetailItemDTO>? details) {
+    if (details == null) return [];
+    return details.map((d) {
+      return {
+        "name": d.productName ?? 'N/A',
+        "image": d.imageUrl ?? "https://via.placeholder.com/80",
+        "price": d.priceAtPurchase,
+        "quantity": d.quantity,
+      };
+    }).toList();
+  }
+
   String _getShortStatusName(int tabIndex) {
     switch (tabIndex) {
       case 0:
@@ -40,7 +118,6 @@ class _OrdersContentState extends State<OrdersContent> {
 
   @override
   Widget build(BuildContext context) {
-    // Improve responsive detection with more granular breakpoints
     final screenWidth = MediaQuery.of(context).size.width;
     final isVerySmallScreen = screenWidth < 360;
     final isSmallScreen = screenWidth < 600;
@@ -57,7 +134,6 @@ class _OrdersContentState extends State<OrdersContent> {
             ),
             TextButton.icon(
               onPressed: () {
-                // Navigate to order history page
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -71,8 +147,6 @@ class _OrdersContentState extends State<OrdersContent> {
           ],
         ),
         const SizedBox(height: 24),
-
-        // Order status tabs - optimized for mobile with better spacing
         Container(
           height: 50,
           decoration: BoxDecoration(
@@ -82,11 +156,9 @@ class _OrdersContentState extends State<OrdersContent> {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Container(
-                // Add padding to prevent tabs from touching screen edges
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Row(
-                  mainAxisSize:
-                      MainAxisSize.min, // Force row to take minimum space
+                  mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     _buildResponsiveTab(
@@ -99,80 +171,83 @@ class _OrdersContentState extends State<OrdersContent> {
                         _getShortStatusName(3), 3, isSmallScreen),
                     _buildResponsiveTab(
                         _getShortStatusName(4), 4, isSmallScreen),
+                    // _buildResponsiveTab(
+                    //     _getShortStatusName(5), 5, isSmallScreen),
                   ],
                 ),
               ),
             ),
           ),
         ),
-
         const SizedBox(height: 24),
+        _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _errorMessage != null
+                ? Center(
+                    child: Text("Lỗi: $_errorMessage",
+                        style: const TextStyle(color: Colors.red)))
+                : _orders.isEmpty
+                    ? Center(
+                        child: Text(
+                            "Không có đơn hàng nào trong mục '${_getShortStatusName(widget.selectedTab)}'."))
+                    : ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _orders.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 16),
+                        itemBuilder: (context, index) {
+                          final order = _orders[index];
+                          final items =
+                              _mapOrderDetailsToItems(order.orderDetails);
 
-        // Order list
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: 2, // Example with 2 orders
-          separatorBuilder: (context, index) => const SizedBox(height: 16),
-          itemBuilder: (context, index) {
-            // Create dummy items for the order
-            final items = [
-              {
-                "name": "Laptop Asus XYZ",
-                "image": "https://via.placeholder.com/80",
-                "price": 15000000.0,
-                "quantity": 1,
-              },
-              if (index == 0)
-                {
-                  "name": "Chuột không dây Logitech",
-                  "image": "https://via.placeholder.com/80",
-                  "price": 450000.0,
-                  "quantity": 2,
-                },
-            ];
-
-            final orderId = "DH123${456 + index}";
-            final orderDate = "01/05/2023";
-            final status = _getShortStatusName(
-                widget.selectedTab); // Use short status name
-
-            return MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: () {
-                  // Navigate to the OrderDetailPage when tapped
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => OrderDetailPage(
-                        orderId: orderId,
-                        orderDate: orderDate,
-                        items: items,
-                        status: status,
+                          return MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => OrderDetailPage(
+                                      orderId: order.id.toString(),
+                                      orderDate: order.orderDate
+                                              ?.toIso8601String()
+                                              .split('T')[0] ??
+                                          'N/A',
+                                      items: items,
+                                      status: _getShortStatusName(
+                                          widget.selectedTab),
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: OrderItem(
+                                orderId: order.id.toString(),
+                                date: order.orderDate
+                                        ?.toIso8601String()
+                                        .split('T')[0] ??
+                                    'N/A',
+                                items: items,
+                                status: _getShortStatusName(widget.selectedTab),
+                                isClickable: true,
+                                onViewHistory: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => OrderHistoryPage(),
+                                    ),
+                                  );
+                                },
+                                isSmallScreen: isSmallScreen,
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    ),
-                  );
-                },
-                child: OrderItem(
-                  orderId: orderId,
-                  date: orderDate,
-                  items: items,
-                  status: status,
-                  isClickable: true,
-                  onViewHistory: () {},
-                  isSmallScreen:
-                      isSmallScreen, // Pass screen size info to OrderItem
-                ),
-              ),
-            );
-          },
-        ),
       ],
     );
   }
 
-  // Improved responsive tab with optimized spacing
   Widget _buildResponsiveTab(String title, int index, bool isSmallScreen) {
     final isSelected = widget.selectedTab == index;
 
@@ -181,11 +256,8 @@ class _OrdersContentState extends State<OrdersContent> {
         widget.onTabChanged(index);
       },
       child: Container(
-        // More compact width calculation
         width: isSmallScreen ? (title.length > 9 ? 90 : 75) : null,
-        // Reduced horizontal padding
         padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 4 : 12),
-        // Small margin between tabs
         margin: const EdgeInsets.symmetric(horizontal: 2),
         alignment: Alignment.center,
         decoration: BoxDecoration(
@@ -201,7 +273,7 @@ class _OrdersContentState extends State<OrdersContent> {
           style: TextStyle(
             color: isSelected ? Colors.blue : Colors.black,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            fontSize: isSmallScreen ? 12 : 14, // Slightly smaller font
+            fontSize: isSmallScreen ? 12 : 14,
           ),
           textAlign: TextAlign.center,
           overflow: TextOverflow.visible,

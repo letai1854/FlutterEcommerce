@@ -1,3 +1,5 @@
+import 'package:e_commerce_app/database/models/order/OrderDTO.dart';
+import 'package:e_commerce_app/database/services/order_service.dart';
 import 'package:flutter/material.dart';
 import 'package:e_commerce_app/widgets/Order/OrderDetailPage.dart';
 import 'package:e_commerce_app/widgets/Order/OrderHistoryPage.dart';
@@ -21,19 +23,106 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
   String _searchQuery = '';
   bool _isSearchVisible = false;
 
+  late OrderService _orderService;
+  List<OrderDTO> _allFetchedOrders = [];
+  List<OrderDTO> _displayedOrders = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
   @override
   void initState() {
     super.initState();
     _selectedOrderTab = widget.initialTab < 0 ? 0 : widget.initialTab;
+    _orderService = OrderService();
+    _fetchOrders();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _orderService.dispose();
     super.dispose();
   }
 
-  // Add this method to get the short status names
+  OrderStatus? _mapTabIndexToOrderStatus(int tabIndex) {
+    switch (tabIndex) {
+      case 0:
+        return OrderStatus.cho_xu_ly;
+      case 1:
+        return OrderStatus.da_xac_nhan;
+      case 2:
+        return OrderStatus.dang_giao;
+      case 3:
+        return OrderStatus.da_giao;
+      case 4:
+        return OrderStatus.da_huy;
+      default:
+        return null;
+    }
+  }
+
+  Future<void> _fetchOrders() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _allFetchedOrders = [];
+      _displayedOrders = [];
+    });
+    try {
+      final status = _mapTabIndexToOrderStatus(_selectedOrderTab);
+      final orderPage =
+          await _orderService.getCurrentUserOrders(status: status);
+      setState(() {
+        _allFetchedOrders = orderPage.orders;
+        _displayedOrders = _allFetchedOrders;
+        _isLoading = false;
+        _filterOrdersForDisplay();
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString();
+      });
+    }
+  }
+
+  void _filterOrdersForDisplay() {
+    if (_searchQuery.isEmpty) {
+      _displayedOrders = List.from(_allFetchedOrders);
+    } else {
+      _displayedOrders = _allFetchedOrders.where((order) {
+        final query = _searchQuery.toLowerCase();
+        bool matches = order.id.toString().toLowerCase().contains(query);
+        if (matches) return true;
+
+        if (order.orderDetails != null) {
+          for (var item in order.orderDetails!) {
+            if (item.productName != null &&
+                item.productName!.toLowerCase().contains(query)) {
+              matches = true;
+              break;
+            }
+          }
+        }
+        return matches;
+      }).toList();
+    }
+    setState(() {});
+  }
+
+  List<Map<String, dynamic>> _mapOrderDetailsToItems(
+      List<OrderDetailItemDTO>? details) {
+    if (details == null) return [];
+    return details.map((d) {
+      return {
+        "name": d.productName ?? 'N/A',
+        "image": d.imageUrl ?? "https://via.placeholder.com/80",
+        "price": d.priceAtPurchase,
+        "quantity": d.quantity,
+      };
+    }).toList();
+  }
+
   String _getShortStatusName(int tabIndex) {
     switch (tabIndex) {
       case 0:
@@ -53,7 +142,6 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Detect very small screens for even more compact display
     final screenWidth = MediaQuery.of(context).size.width;
     final isVerySmallScreen = screenWidth < 360;
 
@@ -71,6 +159,7 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
                 onChanged: (value) {
                   setState(() {
                     _searchQuery = value;
+                    _filterOrdersForDisplay();
                   });
                 },
                 autofocus: true,
@@ -84,7 +173,6 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
               ),
         backgroundColor: Colors.red,
         actions: [
-          // Toggle search icon
           IconButton(
             icon: Icon(_isSearchVisible ? Icons.close : Icons.search),
             onPressed: () {
@@ -93,11 +181,11 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
                 if (!_isSearchVisible) {
                   _searchQuery = '';
                   _searchController.clear();
+                  _filterOrdersForDisplay();
                 }
               });
             },
           ),
-          // Chat icon
           IconButton(
             icon: const Icon(Icons.chat),
             onPressed: () {},
@@ -109,7 +197,6 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top row with history button - matches OrdersContent.dart
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -133,8 +220,6 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
               ],
             ),
             const SizedBox(height: 24),
-
-            // Order status tabs - fixed to use shorter names and prevent ellipsis
             Container(
               height: 50,
               decoration: BoxDecoration(
@@ -151,84 +236,79 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
                       _buildMobileTab(_getShortStatusName(2), 2),
                       _buildMobileTab(_getShortStatusName(3), 3),
                       _buildMobileTab(_getShortStatusName(4), 4),
+                      // _buildMobileTab(_getShortStatusName(5), 5),
                     ],
                   ),
                 ),
               ),
             ),
-
             const SizedBox(height: 24),
-
-            // Order list - search or default list
             Expanded(
-              child: _searchQuery.isNotEmpty
-                  ? _buildSearchResults()
-                  : ListView.separated(
-                      padding: EdgeInsets.zero,
-                      itemCount:
-                          2, // Example with 2 orders like in OrdersContent
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 16),
-                      itemBuilder: (context, index) {
-                        // Create dummy items for the order - same as OrdersContent.dart
-                        final items = [
-                          {
-                            "name": "Laptop Asus XYZ",
-                            "image": "https://via.placeholder.com/80",
-                            "price": 15000000.0,
-                            "quantity": 1,
-                          },
-                          if (index == 0)
-                            {
-                              "name": "Chuột không dây Logitech",
-                              "image": "https://via.placeholder.com/80",
-                              "price": 450000.0,
-                              "quantity": 2,
-                            },
-                        ];
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                      ? Center(
+                          child: Text("Lỗi: $_errorMessage",
+                              style: const TextStyle(color: Colors.red)))
+                      : _displayedOrders.isEmpty
+                          ? Center(
+                              child: Text(_searchQuery.isNotEmpty
+                                  ? "Không tìm thấy đơn hàng nào với từ khóa \"$_searchQuery\" trong mục '${_getShortStatusName(_selectedOrderTab)}'."
+                                  : "Không có đơn hàng nào trong mục '${_getShortStatusName(_selectedOrderTab)}'."))
+                          : ListView.separated(
+                              padding: EdgeInsets.zero,
+                              itemCount: _displayedOrders.length,
+                              separatorBuilder: (context, index) =>
+                                  const SizedBox(height: 16),
+                              itemBuilder: (context, index) {
+                                final order = _displayedOrders[index];
+                                final items =
+                                    _mapOrderDetailsToItems(order.orderDetails);
+                                final statusText =
+                                    _getShortStatusName(_selectedOrderTab);
 
-                        final orderId = "DH123${456 + index}";
-                        final orderDate = "01/05/2023";
-                        final status =
-                            OrderStatusTab.getStatusText(_selectedOrderTab);
-
-                        return GestureDetector(
-                          onTap: () {
-                            // Navigate to the OrderDetailPage when tapped
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => OrderDetailPage(
-                                  orderId: orderId,
-                                  orderDate: orderDate,
-                                  items: items,
-                                  status: status,
-                                ),
-                              ),
-                            );
-                          },
-                          child: OrderItem(
-                            orderId: orderId,
-                            date: orderDate,
-                            items: items,
-                            status: status,
-                            isClickable: true,
-                            onViewHistory: () {
-                              // Navigate to order status history
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => OrderStatusHistoryPage(
-                                    orderId: orderId,
-                                    currentStatus: status,
+                                return GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => OrderDetailPage(
+                                          orderId: order.id.toString(),
+                                          orderDate: order.orderDate
+                                                  ?.toIso8601String()
+                                                  .split('T')[0] ??
+                                              'N/A',
+                                          items: items,
+                                          status: statusText,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: OrderItem(
+                                    orderId: order.id.toString(),
+                                    date: order.orderDate
+                                            ?.toIso8601String()
+                                            .split('T')[0] ??
+                                        'N/A',
+                                    items: items,
+                                    status: statusText,
+                                    isClickable: true,
+                                    onViewHistory: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              OrderStatusHistoryPage(
+                                            orderId: order.id.toString(),
+                                            currentStatus: statusText,
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
-                                ),
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    ),
+                                );
+                              },
+                            ),
             ),
           ],
         ),
@@ -236,22 +316,26 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
     );
   }
 
-  // Fix the _buildMobileTab method that was missing
   Widget _buildMobileTab(String title, int index) {
     final isSelected = _selectedOrderTab == index;
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 500;
+    double tabWidth = isSmallScreen ? (title.length > 8 ? 100 : 80) : 120;
+    if (title == "Trả hàng" && isSmallScreen) tabWidth = 90;
 
     return GestureDetector(
       onTap: () {
         setState(() {
           _selectedOrderTab = index;
+          _searchQuery = '';
+          _searchController.clear();
+          _fetchOrders();
         });
       },
       child: Container(
-        // Increased width to fit content
-        width: isSmallScreen ? (title.length > 8 ? 110 : 90) : null,
-        padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 8 : 12),
+        width: tabWidth,
+        padding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 6 : 10, vertical: 12),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           border: Border(
@@ -269,133 +353,9 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
             fontSize: isSmallScreen ? 13 : 14,
           ),
           textAlign: TextAlign.center,
-          overflow: TextOverflow.visible, // Changed from ellipsis to visible
+          overflow: TextOverflow.visible,
         ),
       ),
     );
-  }
-
-  // Implement the search results builder that was missing
-  Widget _buildSearchResults() {
-    final allOrders = _generateAllOrders();
-
-    // Filter orders by search query
-    final filteredOrders = allOrders.where((order) {
-      // Check order ID
-      if (order["orderId"]
-          .toString()
-          .toLowerCase()
-          .contains(_searchQuery.toLowerCase())) {
-        return true;
-      }
-
-      // Check item names
-      for (var item in order["items"] as List<Map<String, dynamic>>) {
-        if (item["name"]
-            .toString()
-            .toLowerCase()
-            .contains(_searchQuery.toLowerCase())) {
-          return true;
-        }
-      }
-
-      return false;
-    }).toList();
-
-    if (filteredOrders.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              "Không tìm thấy đơn hàng nào với từ khóa \"$_searchQuery\"",
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.separated(
-      padding: EdgeInsets.zero,
-      itemCount: filteredOrders.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 16),
-      itemBuilder: (context, index) {
-        final order = filteredOrders[index];
-
-        return GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => OrderDetailPage(
-                  orderId: order["orderId"],
-                  orderDate: order["date"],
-                  items: order["items"],
-                  status: order["status"],
-                ),
-              ),
-            );
-          },
-          child: OrderItem(
-            orderId: order["orderId"],
-            date: order["date"],
-            items: order["items"],
-            status: order["status"],
-            isClickable: true,
-            onViewHistory: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => OrderStatusHistoryPage(
-                    orderId: order["orderId"],
-                    currentStatus: order["status"],
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-
-  // Implement the orders generator method
-  List<Map<String, dynamic>> _generateAllOrders() {
-    final List<Map<String, dynamic>> allOrders = [];
-
-    // Add orders for each status type
-    for (int statusIndex = 0; statusIndex < 5; statusIndex++) {
-      final status = OrderStatusTab.getStatusText(statusIndex);
-
-      // Add 2 orders per status
-      for (int i = 0; i < 2; i++) {
-        allOrders.add({
-          "orderId": "DH${123450 + (statusIndex * 10) + i}",
-          "date": "01/05/2023",
-          "status": status,
-          "items": <Map<String, dynamic>>[
-            {
-              "name": "Laptop Asus XYZ",
-              "image": "https://via.placeholder.com/80",
-              "price": 15000000.0,
-              "quantity": 1,
-            },
-            if (i % 2 == 0)
-              {
-                "name": "Chuột không dây Logitech",
-                "image": "https://via.placeholder.com/80",
-                "price": 450000.0,
-                "quantity": 2,
-              },
-          ]
-        });
-      }
-    }
-
-    return allOrders;
   }
 }
