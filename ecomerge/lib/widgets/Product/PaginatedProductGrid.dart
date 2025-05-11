@@ -109,7 +109,10 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
         if (kDebugMode) print('Using cached search widget for product ${product.id}');
         return _searchProductCache[searchKey]!;
       }
-      
+         double price = 0.0;
+      if (product.variants != null && product.variants!.isNotEmpty && product.variants![0].price != null) {
+        price = product.variants![0].price!;
+      } 
       // Create new widget for this product in current search session
       if (kDebugMode) print('Creating new search widget for product ${product.id}');
       final productWidget = ProductItem(
@@ -118,7 +121,7 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
         imageUrl: product.mainImageUrl,
         title: product.name,
         describe: product.description,
-        price: product.minPrice ?? 0,
+        price: price,
         discount: product.discountPercentage?.toInt(),
         rating: product.averageRating ?? 0,
         isFromCache: false,
@@ -142,7 +145,10 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
       // For cached widgets, we still need to update the isFromCache flag
       // Get the existing widget
       final existingWidget = _globalProductCache[key] as ProductItem;
-      
+         double price = 0.0;
+      if (product.variants != null && product.variants!.isNotEmpty && product.variants![0].price != null) {
+        price = product.variants![0].price!;
+      } 
       // Create a new widget with updated isFromCache flag if needed
       if (widget.isShowingCachedContent && isImageCached) {
         final updatedWidget = ProductItem(
@@ -151,7 +157,7 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
           imageUrl: product.mainImageUrl,
           title: product.name,
           describe: product.description,
-          price: product.minPrice ?? 0,
+          price: price,
           discount: product.discountPercentage?.toInt(),
           rating: product.averageRating ?? 0,
           isFromCache: true, // Use proper flag based on image cache status
@@ -167,13 +173,17 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
     
     // Create and cache new widget
     if (kDebugMode) print('Creating new widget for product ${product.id}');
+       double price = 0.0;
+      if (product.variants != null && product.variants!.isNotEmpty && product.variants![0].price != null) {
+        price = product.variants![0].price!;
+      } 
     final productWidget = ProductItem(
       key: ValueKey(key),
       productId: product.id ?? 0,
       imageUrl: product.mainImageUrl,
       title: product.name,
       describe: product.description,
-      price: product.minPrice ?? 0,
+      price: price,
       discount: product.discountPercentage?.toInt(),
       rating: product.averageRating ?? 0,
       isFromCache: widget.isShowingCachedContent && isImageCached, // Only true if both category is cached AND image is cached

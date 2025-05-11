@@ -3,6 +3,7 @@ import 'package:e_commerce_app/Constants/productTest.dart';
 import 'package:e_commerce_app/constants.dart';
 import 'package:e_commerce_app/database/Storage/BrandCategoryService.dart';
 import 'package:e_commerce_app/database/models/categories.dart';
+import 'package:e_commerce_app/database/services/product_service.dart';
 import 'package:e_commerce_app/widgets/Product/CategoriesSection.dart';
 import 'package:e_commerce_app/widgets/Product/CategoryFilteredProductGrid.dart';
 import 'package:e_commerce_app/widgets/Product/ProductItem.dart'
@@ -742,6 +743,9 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
   Widget _buildVerticalCategoryItem(CategoryDTO category, int itemIndex) {
     bool isSelected = _selectedCategory == itemIndex;
     String fullImageUrl = _categoriesService.getImageUrl(category.imageUrl);
+    
+    // Create a product service instance for using getImageFromServer
+    final productService = ProductService();
 
     return GestureDetector(
       onTap: () {
@@ -756,31 +760,57 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
         child: Row(
           children: [
             Container(
-              child: fullImageUrl.isNotEmpty
+              child: category.imageUrl != null && category.imageUrl!.isNotEmpty
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(15.0),
-                      child: Image.network(
-                        fullImageUrl,
-                        fit: BoxFit.cover,
-                        height: 30,
-                        width: 30,
-                        errorBuilder: (context, error, stackTrace) => Icon(
-                            Icons.category,
-                            size: 20,
-                            color: Colors.grey[400]),
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Center(
-                            child: SizedBox(
-                              width: 15,
-                              height: 15,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 1.5,
-                                color: Colors.grey[400],
-                              ),
-                            ),
+                      child: Builder(
+                        builder: (context) {
+                          // First check if image is in cache
+                          final cachedImage = productService.getImageFromCache(category.imageUrl);
+                          
+                          // If we already have the image in cache, show it immediately
+                          if (cachedImage != null) {
+                            return Image.memory(
+                              cachedImage,
+                              fit: BoxFit.cover,
+                              height: 30,
+                              width: 30,
+                            );
+                          }
+                          
+                          // If not in cache, load it using FutureBuilder
+                          return FutureBuilder<Uint8List?>(
+                            future: productService.getImageFromServer(category.imageUrl),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return SizedBox(
+                                  width: 30,
+                                  height: 30,
+                                  child: Center(
+                                    child: SizedBox(
+                                      width: 15,
+                                      height: 15,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 1.5,
+                                        color: Colors.grey[400],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              } else if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
+                                return Icon(Icons.category, size: 20, color: Colors.grey[400]);
+                              } else {
+                                // Display image loaded from server
+                                return Image.memory(
+                                  snapshot.data!,
+                                  fit: BoxFit.cover,
+                                  height: 30,
+                                  width: 30,
+                                );
+                              }
+                            },
                           );
-                        },
+                        }
                       ),
                     )
                   : Icon(Icons.category, size: 20, color: Colors.grey[400]),

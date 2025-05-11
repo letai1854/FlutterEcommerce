@@ -1,10 +1,9 @@
 import 'package:e_commerce_app/Screens/Admin/order/OrderDetailScreen.dart';
+import 'package:e_commerce_app/database/models/order/OrderDTO.dart';
+import 'package:e_commerce_app/database/services/order_service.dart';
 import 'package:flutter/material.dart';
-import 'dart:math';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:io';
-
 
 class OrderScreen extends StatefulWidget {
   const OrderScreen({Key? key}) : super(key: key);
@@ -24,192 +23,168 @@ class _OrderScreenState extends State<OrderScreen> {
     'Khoảng thời gian cụ thể',
   ];
 
-  final List<String> _orderStatuses = const [
-    'cho_xac_nhan', 'da_xac_nhan', 'dang_dong_goi',
-    'dang_giao', 'da_giao', 'da_huy',
-    'yeu_cau_tra_hang', 'da_tra_hang',
-  ];
-
-   final Map<String, String> _orderStatusDisplay = const {
-      'cho_xac_nhan': 'Chờ xác nhận', 'da_xac_nhan': 'Đã xác nhận',
-      'dang_dong_goi': 'Đang đóng gói', 'dang_giao': 'Đang giao',
-      'da_giao': 'Đã giao', 'da_huy': 'Đã hủy',
-      'yeu_cau_tra_hang': 'Yêu cầu trả hàng', 'da_tra_hang': 'Đã trả hàng',
-   };
-
+  // Add a ScrollController to maintain scroll position
+  final ScrollController _scrollController = ScrollController();
+  double? _previousScrollOffset;
+  
   DateTimeRange? _customDateRange;
   int _currentPage = 0;
-  final int _rowsPerPage = 20; // 20 items per page
+  final int _rowsPerPage = 20; // Matches the API page size
 
-  late final List<Map<String, dynamic>> _orderData;
+  // Replace mock data with API state variables
+  bool _isLoading = false;
+  String _errorMessage = '';
+  List<OrderDTO> _orders = [];
+  int _totalElements = 0;
+  int _totalPages = 0;
+  
+  // Add service instance
+  final OrderService _orderService = OrderService();
+
+  // Create a mapping from OrderStatus to display names
+  final Map<String, String> _orderStatusDisplay = {
+    'cho_xu_ly': 'Chờ xử lý',
+    'da_xac_nhan': 'Đã xác nhận',
+    'dang_giao': 'Đang giao',
+    'da_giao': 'Đã giao',
+    'da_huy': 'Đã hủy',
+  };
+  
+  // Add mapping from PaymentStatus to display names
+  final Map<String, String> _paymentStatusDisplay = {
+    'chua_thanh_toan': 'Chưa thanh toán',
+    'da_thanh_toan': 'Đã thanh toán',
+    'loi_thanh_toan': 'Lỗi thanh toán',
+  };
 
   @override
   void initState() {
     super.initState();
-     _orderData = List.generate(
-        55, (index) {
-           final basePrice = (index + 1) * 50000.0;
-           final itemQty1 = max(1, index % 4);
-           final itemQty2 = max(1, (index + 1) % 3);
-           final itemQty3 = max(1, (index + 2) % 2);
-           final itemPrice1 = basePrice;
-           final itemPrice2 = basePrice * 1.1;
-           final itemPrice3 = basePrice * 0.9;
-           final itemDiscountPercent1 = (index % 5) * 2.0;
-           final itemDiscountPercent2 = ((index+1) % 5) * 2.0;
-           final itemDiscountPercent3 = ((index+2) % 5) * 2.0;
-           final itemSubtotal1 = itemPrice1 * itemQty1 * (1 - itemDiscountPercent1 / 100.0);
-           final itemSubtotal2 = itemPrice2 * itemQty2 * (1 - itemDiscountPercent2 / 100.0);
-           final itemSubtotal3 = itemPrice3 * itemQty3 * (1 - itemDiscountPercent3 / 100.0);
-           final coupon = index % 5 == 0 ? 50000.0 : 0.0;
-           final points = index % 7 == 0 ? 20000.0 : 0.0;
-           final shipping = index % 4 == 0 ? 30000.0 : 0.0;
-           final totalBeforeDiscountsAndFees = itemSubtotal1 + itemSubtotal2 + itemSubtotal3;
-           final taxAmount = totalBeforeDiscountsAndFees > 0 ? totalBeforeDiscountsAndFees * 0.1 : 0.0;
-           final orderTotal = totalBeforeDiscountsAndFees - coupon - points + shipping + taxAmount;
-
-          return {
-              'id': index + 1, 'order_id': 'ORDER${1000 + index + 1}',
-              'nguoi_dung_id': (index % 10) + 1, 'ma_giam_gia_id': index % 5 == 0 ? (index ~/ 5) + 1 : null,
-              'ten_nguoi_nhan': 'Người nhận ${index + 1}', 'so_dien_thoai_nguoi_nhan': '09${index.toString().padLeft(8, '0')}',
-              'dia_chi_giao_hang': 'Số nhà ${index * 7}, Đường ${String.fromCharCode(65 + index % 26)}, Phường ${index % 10}, Quận ${index % 5 + 1}, TP. Hồ Chí Minh. Đây là một địa chỉ rất dài để kiểm tra xuống dòng.',
-              'tong_tien_hang_goc': itemPrice1 * itemQty1 + itemPrice2 * itemQty2 + itemPrice3 * itemQty3,
-              'tien_giam_gia_coupon': coupon, 'tien_su_dung_diem': points,
-              'phi_van_chuyen': shipping, 'thue': max(0.0, taxAmount),
-              'tong_thanh_toan': max(0.0, orderTotal),
-              'phuong_thuc_thanh_toan': index % 3 == 0 ? 'Chuyển khoản' : (index % 3 == 1 ? 'Tiền mặt' : 'Ví điện tử'),
-              'trang_thai_thanh_toan': index % 4 == 0 ? 'da_thanh_toan' : (index % 4 == 1 ? 'loi_thanh_toan' : 'chua_thanh_toan'),
-              'trang_thai_don_hang': _orderStatuses[index % _orderStatuses.length],
-              'diem_tich_luy': max(0.0, orderTotal > 0 ? orderTotal * 0.1 : 0.0),
-              'ngay_dat_hang': DateTime.now().subtract(Duration(days: index * 2, minutes: index)),
-              'ngay_cap_nhat': DateTime.now().subtract(Duration(days: index * 2, minutes: index % 3)),
-
-              'chi_tiet': [
-                  {
-                      'bien_the_san_pham_id': (index % 100) + 1, 'ten_bien_the': 'Sản phẩm ${index % 5 + 1} - Biến thể ${index % 3 + 1}',
-                      'so_luong': itemQty1, 'gia_tai_thoi_diem_mua': itemPrice1,
-                      'phan_tram_giam_gia_san_pham': itemDiscountPercent1, 'thanh_tien': itemSubtotal1,
-                      'anh_bien_the': 'assets/variant${((index + 0) % 3) + 1}.jpg',
-                  }, {
-                      'bien_the_san_pham_id': (index % 100) + 2, 'ten_bien_the': 'Sản phẩm ${index % 5 + 2} - Biến thể ${index % 3 + 2}',
-                      'so_luong': itemQty2, 'gia_tai_thoi_diem_mua': itemPrice2,
-                      'phan_tram_giam_gia_san_pham': itemDiscountPercent2, 'thanh_tien': itemSubtotal2,
-                      'anh_bien_the': 'assets/variant${((index + 1) % 3) + 1}.jpg',
-                  }, if (index % 2 == 0) {
-                      'bien_the_san_pham_id': (index % 100) + 3, 'ten_bien_the': 'Sản phẩm ${index % 5 + 3} - Biến thể ${index % 3 + 3}',
-                      'so_luong': itemQty3, 'gia_tai_thoi_diem_mua': itemPrice3,
-                      'phan_tram_giam_gia_san_pham': itemDiscountPercent3, 'thanh_tien': itemSubtotal3,
-                      'anh_bien_the': 'assets/variant${((index + 2) % 3) + 1}.jpg',
-                  },
-              ].where((item) => (item['so_luong'] as num? ?? 0) > 0).toList(),
-          };
-        }
-      );
-
-     _orderData.sort((a, b) => (b['ngay_dat_hang'] as DateTime).compareTo(a['ngay_dat_hang'] as DateTime));
+    // Load orders immediately
+    _loadOrders();
   }
 
+  @override
+  void dispose() {
+    _scrollController.dispose(); // Dispose the ScrollController
+    _orderService.dispose();
+    super.dispose();
+  }
 
-   List<Map<String, dynamic>> get _filteredAndPaginatedData {
-        List<Map<String, dynamic>> filteredData = _orderData;
-        if (_selectedFilter == 'Khoảng thời gian cụ thể' && _customDateRange != null) {
-            filteredData = _orderData.where((order) {
-                final orderDate = order['ngay_dat_hang'] as DateTime;
-                return orderDate.isAfter(_customDateRange!.start.subtract(const Duration(seconds: 1)))
-                       && orderDate.isBefore(_customDateRange!.end.add(const Duration(days: 1)).subtract(const Duration(seconds: 1)));
-            }).toList();
-        } else if (_selectedFilter != 'Tất cả') {
-            final now = DateTime.now();
-            filteredData = _orderData.where((order) {
-                 final orderDate = order['ngay_dat_hang'] as DateTime;
-                 final startOfToday = DateTime(now.year, now.month, now.day);
-                 final endOfToday = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+  // Convert OrderStatus enum to display name
+  String _getOrderStatusDisplay(OrderStatus? status) {
+    if (status == null) return 'N/A';
+    final statusString = orderStatusToString(status);
+    return _orderStatusDisplay[statusString] ?? statusString;
+  }
+  
+  // Add helper method for payment status display
+  String _getPaymentStatusDisplay(String? status) {
+    if (status == null || status.isEmpty) return 'N/A';
+    return _paymentStatusDisplay[status.toLowerCase()] ?? status;
+  }
 
-                 if (_selectedFilter == 'Hôm nay') {
-                      return orderDate.isAfter(startOfToday.subtract(const Duration(seconds: 1))) && orderDate.isBefore(endOfToday.add(const Duration(seconds: 1)));
-                 } else if (_selectedFilter == 'Hôm qua') {
-                      final yesterday = now.subtract(const Duration(days: 1));
-                      final startOfYesterday = DateTime(yesterday.year, yesterday.month, yesterday.day);
-                      final endOfYesterday = DateTime(yesterday.year, yesterday.month, yesterday.day, 23, 59, 59, 999);
-                      return orderDate.isAfter(startOfYesterday.subtract(const Duration(seconds: 1))) && orderDate.isBefore(endOfYesterday.add(const Duration(seconds: 1)));
-                 } else if (_selectedFilter == 'Tuần này') {
-                     final startOfThisWeek = now.subtract(Duration(days: now.weekday - 1));
-                     final startOfThisWeekMidnight = DateTime(startOfThisWeek.year, startOfThisWeek.month, startOfThisWeek.day);
-                     return orderDate.isAfter(startOfThisWeekMidnight.subtract(const Duration(seconds: 1))) && orderDate.isBefore(endOfToday.add(const Duration(seconds: 1)));
-                 } else if (_selectedFilter == 'Tháng này') {
-                     final startOfThisMonth = DateTime(now.year, now.month, 1);
-                     return orderDate.isAfter(startOfThisMonth.subtract(const Duration(seconds: 1))) && orderDate.isBefore(endOfToday.add(const Duration(seconds: 1)));
-                 }
-                 return true;
-             }).toList();
+  // Updated method to load orders from API
+  Future<void> _loadOrders() async {
+    // Save current scroll position if available
+    if (_scrollController.hasClients) {
+      _previousScrollOffset = _scrollController.offset;
+    }
+    
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = '';
+      });
+    }
+
+    try {
+      // Get date range based on filter
+      DateTime? startDate;
+      DateTime? endDate;
+
+      if (_selectedFilter == 'Khoảng thời gian cụ thể' && _customDateRange != null) {
+        startDate = _customDateRange!.start;
+        // Set end date to end of day
+        endDate = DateTime(_customDateRange!.end.year, _customDateRange!.end.month, _customDateRange!.end.day, 23, 59, 59);
+      } else if (_selectedFilter != 'Tất cả') {
+        final now = DateTime.now();
+        final endOfToday = DateTime(now.year, now.month, now.day, 23, 59, 59);
+        
+        if (_selectedFilter == 'Hôm nay') {
+          startDate = DateTime(now.year, now.month, now.day);
+          endDate = endOfToday;
+        } else if (_selectedFilter == 'Hôm qua') {
+          final yesterday = now.subtract(const Duration(days: 1));
+          startDate = DateTime(yesterday.year, yesterday.month, yesterday.day);
+          endDate = DateTime(yesterday.year, yesterday.month, yesterday.day, 23, 59, 59);
+        } else if (_selectedFilter == 'Tuần này') {
+          // Get first day of week (assuming Monday is first day)
+          startDate = now.subtract(Duration(days: now.weekday - 1));
+          startDate = DateTime(startDate.year, startDate.month, startDate.day);
+          endDate = endOfToday;
+        } else if (_selectedFilter == 'Tháng này') {
+          startDate = DateTime(now.year, now.month, 1);
+          endDate = endOfToday;
         }
+      }
 
-        final startIndex = _currentPage * _rowsPerPage;
-        if (startIndex >= filteredData.length) {
-             if (filteredData.isNotEmpty) {
-                 WidgetsBinding.instance.addPostFrameCallback((_) {
-                     setState(() {
-                         _currentPage = max(0, (filteredData.length / _rowsPerPage).ceil() - 1);
-                     });
-                 });
-             } else {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                     setState(() {
-                        _currentPage = 0;
-                     });
-                  });
-             }
-             return [];
+      // Call API with filters
+      final result = await _orderService.getOrdersForAdmin(
+        page: _currentPage,
+        size: _rowsPerPage,
+        startDate: startDate,
+        endDate: endDate,
+      );
+
+      if (mounted) {
+        setState(() {
+          _orders = result.content;
+          _totalElements = result.totalElements;
+          _totalPages = result.totalPages;
+          _isLoading = false;
+        });
+        
+        // Restore scroll position after the frame is rendered
+        if (_previousScrollOffset != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_scrollController.hasClients) {
+              _scrollController.jumpTo(
+                _previousScrollOffset!.clamp(
+                  0.0, 
+                  _scrollController.position.maxScrollExtent
+                )
+              );
+            }
+          });
         }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString();
+        });
+      }
+    }
+  }
 
-        final endIndex = min(startIndex + _rowsPerPage, filteredData.length);
-        return filteredData.sublist(startIndex, endIndex);
-   }
-
-
-   int get _totalFilteredItems {
-       return _orderData.where((order) {
-           if (_selectedFilter == 'Khoảng thời gian cụ thể' && _customDateRange != null) {
-               final orderDate = order['ngay_dat_hang'] as DateTime;
-                return orderDate.isAfter(_customDateRange!.start.subtract(const Duration(seconds: 1)))
-                       && orderDate.isBefore(_customDateRange!.end.add(const Duration(days: 1)).subtract(const Duration(seconds: 1)));
-           } else if (_selectedFilter != 'Tất cả') {
-               final now = DateTime.now();
-               if (_selectedFilter == 'Hôm nay') {
-                    final startOfToday = DateTime(now.year, now.month, now.day);
-                    final endOfToday = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
-                    final orderDate = order['ngay_dat_hang'] as DateTime;
-                    return orderDate.isAfter(startOfToday.subtract(const Duration(seconds: 1))) && orderDate.isBefore(endOfToday.add(const Duration(seconds: 1)));
-               } else if (_selectedFilter == 'Hôm qua') {
-                    final yesterday = now.subtract(const Duration(days: 1));
-                    final startOfYesterday = DateTime(yesterday.year, yesterday.month, yesterday.day);
-                    final endOfYesterday = DateTime(yesterday.year, yesterday.month, yesterday.day, 23, 59, 59, 999);
-                     final orderDate = order['ngay_dat_hang'] as DateTime;
-                    return orderDate.isAfter(startOfYesterday.subtract(const Duration(seconds: 1))) && orderDate.isBefore(endOfYesterday.add(const Duration(seconds: 1)));
-               } else if (_selectedFilter == 'Tuần này') {
-                   final startOfThisWeek = now.subtract(Duration(days: now.weekday - 1));
-                   final startOfThisWeekMidnight = DateTime(startOfThisWeek.year, startOfThisWeek.month, startOfThisWeek.day);
-                   final endOfToday = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
-                    final orderDate = order['ngay_dat_hang'] as DateTime;
-                   return orderDate.isAfter(startOfThisWeekMidnight.subtract(const Duration(seconds: 1))) && orderDate.isBefore(endOfToday.add(const Duration(seconds: 1)));
-               } else if (_selectedFilter == 'Tháng này') {
-                   final startOfThisMonth = DateTime(now.year, now.month, 1);
-                   final endOfToday = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
-                    final orderDate = order['ngay_dat_hang'] as DateTime;
-                   return orderDate.isAfter(startOfThisMonth.subtract(const Duration(seconds: 1))) && orderDate.isBefore(endOfToday.add(const Duration(seconds: 1)));
-               }
-               return true;
-           }
-           return true;
-       }).length;
-   }
-
-  int get _filteredPageCount {
-       final totalItems = _totalFilteredItems;
-       if (totalItems == 0) return 1;
-       return (totalItems / _rowsPerPage).ceil();
-   }
-
+  // Method to update order status with API call
+  Future<void> _updateOrderStatus(int orderId, OrderStatus newStatus) async {
+    try {
+      await _orderService.updateOrderStatusByAdmin(orderId, newStatus, null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Đã cập nhật trạng thái đơn hàng thành công')),
+      );
+      // Reload orders to reflect changes
+      _loadOrders();
+    } catch (e) {
+      print('Error updating order status: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi cập nhật trạng thái đơn hàng: $e')),
+      );
+    }
+  }
 
   void _showDateRangePicker() async {
     final DateTimeRange? picked = await showDateRangePicker(
@@ -220,10 +195,10 @@ class _OrderScreenState extends State<OrderScreen> {
         start: DateTime.now().subtract(const Duration(days: 7)),
         end: DateTime.now(),
       ),
-       helpText: 'Chọn khoảng thời gian',
-       cancelText: 'Hủy',
-       confirmText: 'Xác nhận',
-       locale: const Locale('vi', 'VN'), // Locale is set here
+      helpText: 'Chọn khoảng thời gian',
+      cancelText: 'Hủy',
+      confirmText: 'Xác nhận',
+      locale: const Locale('vi', 'VN'),
     );
     if (picked != null && picked != _customDateRange) {
       setState(() {
@@ -231,77 +206,45 @@ class _OrderScreenState extends State<OrderScreen> {
         _selectedFilter = 'Khoảng thời gian cụ thể';
         _currentPage = 0;
       });
+      _loadOrders(); // Reload with new date range
     } else if (picked == null && _selectedFilter == 'Khoảng thời gian cụ thể') {
-        if (_customDateRange != null) {
-             setState(() {
-                 _selectedFilter = 'Tất cả';
-                 _customDateRange = null;
-                 _currentPage = 0;
-             });
-        }
+      if (_customDateRange != null) {
+        setState(() {
+          _selectedFilter = 'Tất cả';
+          _customDateRange = null;
+          _currentPage = 0;
+        });
+        _loadOrders(); // Reload with cleared filter
+      }
     }
   }
-
-  void _updateOrderStatus(String orderId, String newStatus) {
-      final order = _orderData.firstWhere((order) => order['order_id'] == orderId, orElse: () => {});
-      if (order.isNotEmpty && order['trang_thai_don_hang'] == newStatus) {
-           print('Status for order $orderId is already $newStatus');
-           return;
-      }
-
-      setState(() {
-          try {
-              final orderIndex = _orderData.indexWhere((order) => order['order_id'] == orderId);
-              if (orderIndex != -1) {
-                  Map<String, dynamic> updatedOrder = Map.from(_orderData[orderIndex]);
-                  updatedOrder['trang_thai_don_hang'] = newStatus;
-                  updatedOrder['ngay_cap_nhat'] = DateTime.now();
-
-                  _orderData[orderIndex] = updatedOrder;
-
-                   print('Updated status for order $orderId to $newStatus');
-                   ScaffoldMessenger.of(context).showSnackBar(
-                       SnackBar(content: Text('Cập nhật trạng thái đơn hàng $orderId thành "${_orderStatusDisplay[newStatus] ?? newStatus}"')),
-                   );
-              }
-          } catch (e) {
-              print('Error updating order status locally: $e');
-              ScaffoldMessenger.of(context).showSnackBar(
-                       SnackBar(content: Text('Lỗi cập nhật trạng thái đơn hàng $orderId')),
-                   );
-          }
-      });
-  }
-
 
   @override
   Widget build(BuildContext context) {
     final double availableWidth = MediaQuery.of(context).size.width - 2 * 16.0;
 
     return Scaffold(
-       appBar: AppBar(
-         title: const Text('Quản lý Đơn hàng'),
-         automaticallyImplyLeading: false,
-       ),
-      body: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: _buildScreenLayout(availableWidth),
-              ),
-            ),
+      appBar: AppBar(
+        title: const Text('Quản lý Đơn hàng'),
+        automaticallyImplyLeading: false,
+      ),
+      body: RefreshIndicator(
+        onRefresh: _loadOrders,
+        child: SingleChildScrollView(
+          controller: _scrollController, // Attach the ScrollController
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: _buildScreenLayout(availableWidth),
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildScreenLayout(double availableWidth) {
-    final paginatedFilteredData = _filteredAndPaginatedData;
-    final totalFilteredItems = _totalFilteredItems;
-    final totalFilteredPages = _filteredPageCount;
-
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-
         SizedBox(
           width: availableWidth,
           child: Wrap(
@@ -309,18 +252,6 @@ class _OrderScreenState extends State<OrderScreen> {
             runSpacing: 10,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              SizedBox(
-                width: 250,
-                child: TextField(
-                  decoration: const InputDecoration(
-                    hintText: 'Tìm kiếm...',
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                    isDense: true,
-                  ),
-                ),
-              ),
-
               SizedBox(
                 width: 250,
                 child: DropdownButtonFormField<String>(
@@ -333,15 +264,16 @@ class _OrderScreenState extends State<OrderScreen> {
                   }).toList(),
                   onChanged: (newValue) {
                     if (newValue != null) {
-                       setState(() {
-                          _selectedFilter = newValue;
-                          if (newValue == 'Khoảng thời gian cụ thể') {
-                            _showDateRangePicker();
-                          } else {
-                            _customDateRange = null;
-                            _currentPage = 0;
-                          }
-                       });
+                      setState(() {
+                        _selectedFilter = newValue;
+                        if (newValue == 'Khoảng thời gian cụ thể') {
+                          _showDateRangePicker();
+                        } else {
+                          _customDateRange = null;
+                          _currentPage = 0;
+                        }
+                      });
+                      _loadOrders(); // Reload with new filter
                     }
                   },
                   decoration: const InputDecoration(
@@ -356,249 +288,285 @@ class _OrderScreenState extends State<OrderScreen> {
         ),
         const SizedBox(height: 20),
 
-        Text(
-          'Danh sách đơn hàng',
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Danh sách đơn hàng',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            if (_selectedFilter == 'Khoảng thời gian cụ thể' && _customDateRange != null)
+              Text(
+                '${DateFormat('dd/MM/yyyy').format(_customDateRange!.start)} - ${DateFormat('dd/MM/yyyy').format(_customDateRange!.end)}',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+          ],
         ),
         const SizedBox(height: 10),
 
-         paginatedFilteredData.isEmpty && _totalFilteredItems > 0
-             ? const Center(child: Text('Không có đơn hàng nào trên trang này.'))
-             : paginatedFilteredData.isEmpty && _totalFilteredItems == 0
-                 ? const Center(child: Text('Không có đơn hàng nào được tìm thấy.'))
-                 : ListView.builder(
+        // Show loading, error or data
+        _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage.isNotEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 60, color: Colors.red),
+                      SizedBox(height: 16),
+                      Text(_errorMessage, textAlign: TextAlign.center),
+                      SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadOrders,
+                        child: Text('Thử lại'),
+                      ),
+                    ],
+                  ),
+                )
+              : _orders.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          Text(
+                            "Không tìm thấy đơn hàng nào",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: paginatedFilteredData.length,
+                      itemCount: _orders.length,
                       itemBuilder: (context, index) {
-                        final order = paginatedFilteredData[index];
-                        final orderDate = order['ngay_dat_hang'] as DateTime?;
-                        final updatedDate = order['ngay_cap_nhat'] as DateTime?;
-                        final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
-
-                        final currentStatus = order['trang_thai_don_hang']?.toString() ?? 'N/A';
-
-
+                        final order = _orders[index];
+                        
                         return Card(
-                          key: ValueKey(order['order_id']),
+                          key: ValueKey(order.id),
                           margin: const EdgeInsets.symmetric(vertical: 4),
                           elevation: 2,
                           child: InkWell(
-                             onTap: () {
-                                if (order.isNotEmpty) {
-                                    Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                            builder: (context) => OrderDetailScreen(order: order),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => OrderDetailScreen(
+                                    orderId: order.id,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          'Mã ĐH: #${order.id}',
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                    );
-                                }
-                             },
-                             child: Padding(
-                               padding: const EdgeInsets.all(12.0),
-                               child: Column(
-                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                 children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            'Mã ĐH: ${order['order_id'] ?? 'N/A'}',
-                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      // Status dropdown
+                                      GestureDetector(
+                                        onTap: () {},
+                                        behavior: HitTestBehavior.opaque,
+                                        child: SizedBox(
+                                          width: 150,
+                                          child: DropdownButtonFormField<OrderStatus>(
+                                            isDense: true,
+                                            decoration: InputDecoration(
+                                              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
+                                              isCollapsed: true,
+                                            ),
+                                            value: order.orderStatus,
+                                            items: OrderStatus.values.map((OrderStatus status) {
+                                              return DropdownMenuItem<OrderStatus>(
+                                                value: status,
+                                                child: Text(
+                                                  _getOrderStatusDisplay(status),
+                                                  style: TextStyle(fontSize: 13),
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              );
+                                            }).toList(),
+                                            onChanged: (OrderStatus? newValue) {
+                                              if (newValue != null) {
+                                                _updateOrderStatus(order.id, newValue);
+                                              }
+                                            },
+                                            hint: Text('Trạng thái'),
                                           ),
                                         ),
-                                        const SizedBox(width: 8),
-                                         // --- BỌC DropdownButtonFormField BẰNG GestureDetector ---
-                                         GestureDetector(
-                                            onTap: () {},
-                                            behavior: HitTestBehavior.opaque,
-                                            child: SizedBox(
-                                              width: 150,
-                                              child: DropdownButtonFormField<String>(
-                                                isDense: true,
-                                                decoration: InputDecoration(
-                                                   contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
-                                                   isCollapsed: true,
-                                                ),
-                                                value: _orderStatuses.contains(currentStatus) ? currentStatus : null,
-                                                items: _orderStatuses.map((String statusValue) {
-                                                  return DropdownMenuItem<String>(
-                                                    value: statusValue,
-                                                    child: Text(
-                                                      _orderStatusDisplay[statusValue] ?? statusValue,
-                                                      style: TextStyle(fontSize: 13),
-                                                       overflow: TextOverflow.ellipsis,
-                                                    ),
-                                                  );
-                                                }).toList(),
-                                                onChanged: (String? newValue) {
-                                                  if (newValue != null && order['order_id'] != null) {
-                                                    _updateOrderStatus(order['order_id'], newValue);
-                                                  }
-                                                },
-                                                validator: (value) {
-                                                   if (value == null || value.isEmpty) {
-                                                        return 'Chọn trạng thái';
-                                                   }
-                                                   return null;
-                                                },
-                                                hint: Text('Trạng thái'),
-                                             ),
-                                           ),
-                                         ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
 
-                                    LayoutBuilder(
-                                       builder: (context, constraints) {
-                                           if (constraints.maxWidth < 350) {
-                                               return Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                      Text('Người nhận: ${order['ten_nguoi_nhan'] ?? 'N/A'}', style: TextStyle(fontSize: 13)),
-                                                      Text('SĐT: ${order['so_dien_thoai_nguoi_nhan'] ?? 'N/A'}', style: TextStyle(fontSize: 13)),
-                                                  ],
-                                               );
-                                           } else {
-                                               return Row(
-                                                 children: [
-                                                    Expanded(
-                                                        flex: 1,
-                                                        child: Text('Người nhận: ${order['ten_nguoi_nhan'] ?? 'N/A'}', style: TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
-                                                    Expanded(
-                                                       flex: 1,
-                                                       child: Text('SĐT: ${order['so_dien_thoai_nguoi_nhan'] ?? 'N/A'}', style: TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
-                                                 ],
-                                               );
-                                           }
-                                       }
-                                    ),
-                                    const SizedBox(height: 4),
+                                  LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      if (constraints.maxWidth < 350) {
+                                        return Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text('Người nhận: ${order.recipientName ?? 'N/A'}', style: TextStyle(fontSize: 13)),
+                                            Text('SĐT: ${order.recipientPhoneNumber ?? 'N/A'}', style: TextStyle(fontSize: 13)),
+                                          ],
+                                        );
+                                      } else {
+                                        return Row(
+                                          children: [
+                                            Expanded(
+                                              flex: 1,
+                                              child: Text('Người nhận: ${order.recipientName ?? 'N/A'}', style: TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)
+                                            ),
+                                            Expanded(
+                                              flex: 1,
+                                              child: Text('SĐT: ${order.recipientPhoneNumber ?? 'N/A'}', style: TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)
+                                            ),
+                                          ],
+                                        );
+                                      }
+                                    }
+                                  ),
+                                  const SizedBox(height: 4),
 
-                                     Text('Địa chỉ: ${order['dia_chi_giao_hang'] ?? 'N/A'}', style: TextStyle(fontSize: 13)),
-                                     const SizedBox(height: 4),
+                                  Text('Địa chỉ: ${order.shippingAddress ?? 'N/A'}', style: TextStyle(fontSize: 13)),
+                                  const SizedBox(height: 4),
 
-                                     LayoutBuilder(
-                                        builder: (context, constraints) {
-                                           if (constraints.maxWidth < 350) {
-                                                return Column(
-                                                   crossAxisAlignment: CrossAxisAlignment.start,
-                                                   children: [
-                                                       Text('Tổng tiền: ${NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0).format(order['tong_thanh_toan'] ?? 0)}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                                                       Text('TT TT: ${order['trang_thai_thanh_toan'] ?? 'N/A'}', style: TextStyle(fontSize: 13)),
-                                                   ],
-                                                );
-                                           } else {
-                                               return Row(
-                                                 children: [
-                                                     Expanded(
-                                                         flex: 1,
-                                                          child: Text('Tổng tiền: ${NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0).format(order['tong_thanh_toan'] ?? 0)}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
-                                                     Expanded(
-                                                          flex: 1,
-                                                          child: Text('TT TT: ${order['trang_thai_thanh_toan'] ?? 'N/A'}', style: TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
-                                                 ],
-                                               );
-                                           }
-                                        }
-                                     ),
-                                     const SizedBox(height: 4),
+                                  LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      if (constraints.maxWidth < 350) {
+                                        return Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text('Tổng tiền: ${NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0).format(order.totalAmount ?? 0)}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                                            Text('TT TT: ${_getPaymentStatusDisplay(order.paymentStatus)}', style: TextStyle(fontSize: 13)),
+                                          ],
+                                        );
+                                      } else {
+                                        return Row(
+                                          children: [
+                                            Expanded(
+                                              flex: 1,
+                                              child: Text('Tổng tiền: ${NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0).format(order.totalAmount ?? 0)}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)
+                                            ),
+                                            Expanded(
+                                              flex: 1,
+                                              child: Text('TT TT: ${_getPaymentStatusDisplay(order.paymentStatus)}', style: TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)
+                                            ),
+                                          ],
+                                        );
+                                      }
+                                    }
+                                  ),
+                                  const SizedBox(height: 4),
 
-                                     LayoutBuilder(
-                                        builder: (context, constraints) {
-                                           if (constraints.maxWidth < 350) {
-                                                return Column(
-                                                   crossAxisAlignment: CrossAxisAlignment.start,
-                                                   children: [
-                                                       Text('Đặt hàng: ${orderDate != null ? dateFormat.format(orderDate.toLocal()) : 'N/A'}', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-                                                        Text('Cập nhật: ${updatedDate != null ? dateFormat.format(updatedDate.toLocal()) : 'N/A'}', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-                                                   ],
-                                                );
-                                           } else {
-                                               return Row(
-                                                 children: [
-                                                     Expanded(
-                                                         flex: 1,
-                                                          child: Text('Đặt hàng: ${orderDate != null ? dateFormat.format(orderDate.toLocal()) : 'N/A'}', style: TextStyle(fontSize: 12, color: Colors.grey[700]), overflow: TextOverflow.ellipsis)),
-                                                     Expanded(
-                                                          flex: 1,
-                                                         child: Text('Cập nhật: ${updatedDate != null ? dateFormat.format(updatedDate.toLocal()) : 'N/A'}', style: TextStyle(fontSize: 12, color: Colors.grey[700]), overflow: TextOverflow.ellipsis)),
-                                                 ],
-                                               );
-                                           }
-                                        }
-                                     ),
-
-                                 ],
-                               ),
-                             ),
+                                  LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      if (constraints.maxWidth < 350) {
+                                        return Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text('Đặt hàng: ${order.orderDate != null ? DateFormat('dd/MM/yyyy HH:mm').format(order.orderDate!) : 'N/A'}', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+                                            Text('Cập nhật: ${order.updatedDate != null ? DateFormat('dd/MM/yyyy HH:mm').format(order.updatedDate!) : 'N/A'}', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+                                          ],
+                                        );
+                                      } else {
+                                        return Row(
+                                          children: [
+                                            Expanded(
+                                              flex: 1,
+                                              child: Text('Đặt hàng: ${order.orderDate != null ? DateFormat('dd/MM/yyyy HH:mm').format(order.orderDate!) : 'N/A'}', style: TextStyle(fontSize: 12, color: Colors.grey[700]), overflow: TextOverflow.ellipsis)
+                                            ),
+                                            Expanded(
+                                              flex: 1,
+                                              child: Text('Cập nhật: ${order.updatedDate != null ? DateFormat('dd/MM/yyyy HH:mm').format(order.updatedDate!) : 'N/A'}', style: TextStyle(fontSize: 12, color: Colors.grey[700]), overflow: TextOverflow.ellipsis)
+                                            ),
+                                          ],
+                                        );
+                                      }
+                                    }
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         );
                       },
-                   ),
+                    ),
 
         const SizedBox(height: 20),
 
-         if (_orderData.isNotEmpty)
-         Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-          margin: const EdgeInsets.only(top: 8),
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Column(
-            children: [
-              Text(
-                'Hiển thị ${paginatedFilteredData.isEmpty ? 0 : (_currentPage * _rowsPerPage) + 1} - ${(_currentPage * _rowsPerPage) + paginatedFilteredData.length} trên ${totalFilteredItems}',
-                style: TextStyle(color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 8),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.keyboard_arrow_left),
-                    onPressed: _currentPage > 0 && totalFilteredItems > 0
-                        ? () {
-                            setState(() {
-                              _currentPage--;
-                            });
-                          }
-                        : null,
-                    tooltip: 'Trang trước',
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Text(
-                      '${_currentPage + 1} / ${totalFilteredPages > 0 ? totalFilteredPages : 1}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+        // Pagination controls
+        if (_orders.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+            margin: const EdgeInsets.only(top: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  'Hiển thị ${_orders.isEmpty ? 0 : (_currentPage * _rowsPerPage) + 1} - ${(_currentPage * _rowsPerPage) + _orders.length} trên $_totalElements',
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 8),
+                
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.keyboard_arrow_left),
+                      onPressed: _currentPage > 0 && _totalElements > 0
+                          ? () {
+                              setState(() {
+                                _currentPage--;
+                              });
+                              _loadOrders();
+                            }
+                          : null,
+                      tooltip: 'Trang trước',
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.keyboard_arrow_right),
-                    onPressed: _currentPage < totalFilteredPages - 1 && totalFilteredItems > 0
-                        ? () {
-                            setState(() {
-                              _currentPage++;
-                            });
-                          }
-                        : null,
-                    tooltip: 'Trang tiếp',
-                  ),
-                ],
-              ),
-            ],
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Text(
+                        '${_currentPage + 1} / ${_totalPages > 0 ? _totalPages : 1}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.keyboard_arrow_right),
+                      onPressed: _currentPage < _totalPages - 1 && _totalElements > 0
+                          ? () {
+                              setState(() {
+                                _currentPage++;
+                              });
+                              _loadOrders();
+                            }
+                          : null,
+                      tooltip: 'Trang tiếp',
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
-         const SizedBox(height: 24),
+        const SizedBox(height: 24),
       ],
     );
   }

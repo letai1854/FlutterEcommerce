@@ -587,24 +587,33 @@ class BodyPayment extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isMobile = MediaQuery.of(context).size.width < 600;
 
-    // Calculate sum of original item prices and total product-specific discount
-    double sumOfOriginalItemPrices = 0.0;
+    // Calculate sum of original item prices and total product-specific discount correctly
+    double sumOriginalItemPrices = 0.0;
     double totalProductSpecificDiscount = 0.0;
 
     for (var item in products) {
-      double originalItemTotal = item.price * item.quantity;
-      sumOfOriginalItemPrices += originalItemTotal;
-
+      double finalPrice = item.price; // This is already the discounted price
+      double originalPrice = finalPrice; // Default to same as final price if no discount
+      
+      // If there's a discount, calculate the original price from the discounted price
       if (item.discountPercentage != null && item.discountPercentage! > 0) {
-        totalProductSpecificDiscount +=
-            originalItemTotal * (item.discountPercentage! / 100);
+        // Original price = discounted price / (1 - discount percentage/100)
+        originalPrice = finalPrice / (1 - (item.discountPercentage! / 100));
       }
+      
+      // Calculate totals
+      double originalItemTotal = originalPrice * item.quantity;
+      double discountedItemTotal = finalPrice * item.quantity;
+      double itemDiscount = originalItemTotal - discountedItemTotal;
+      
+      // Add to running totals
+      sumOriginalItemPrices += originalItemTotal;
+      totalProductSpecificDiscount += itemDiscount;
     }
 
     // Calculate the subtotal after product-specific discounts
     // This should align with the 'subtotal' parameter if calculated correctly by the parent.
-    final subtotalAfterProductDiscounts =
-        sumOfOriginalItemPrices - totalProductSpecificDiscount;
+    final subtotalAfterProductDiscounts = sumOriginalItemPrices - totalProductSpecificDiscount;
 
     // Calculate the final displayed total based on the components shown in this widget
     final displayedTotalAmount = subtotalAfterProductDiscounts +
@@ -743,7 +752,7 @@ class BodyPayment extends StatelessWidget {
                         _buildSummaryRow(
                             'Tổng tiền hàng:',
                             formatCurrency(
-                                sumOfOriginalItemPrices)), // Display sum of original prices
+                                sumOriginalItemPrices)), // Display sum of original prices before discounts
                         if (totalProductSpecificDiscount >
                             0) // Display product-specific discount if any
                           _buildSummaryRow('Giảm giá sản phẩm:',
@@ -759,10 +768,12 @@ class BodyPayment extends StatelessWidget {
                           _buildSummaryRow('Giảm giá voucher:',
                               '-${formatCurrency(discountAmount)}',
                               isDiscount: true),
-                        if (pointsDiscountAmount > 0) // Display points discount
-                          _buildSummaryRow('Giảm giá điểm tích lũy:',
-                              '-${formatCurrency(pointsDiscountAmount)}',
-                              isDiscount: true),
+                        if (pointsDiscountAmount > 0) // Missing opening and closing brackets here
+                          _buildSummaryRow(
+                            'Sử dụng điểm tích lũy (${(pointsDiscountAmount / 1000).toInt()} điểm):',
+                            '-${formatCurrency(pointsDiscountAmount)}',
+                            isDiscount: true
+                          ),
                         const Divider(height: 24, thickness: 1),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -882,8 +893,7 @@ class BodyPayment extends StatelessWidget {
     );
   }
 
-  Widget _buildSummaryRow(String label, String value,
-      {bool isDiscount = false}) {
+  Widget _buildSummaryRow(String label, String value, {bool isDiscount = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: Row(
@@ -891,7 +901,11 @@ class BodyPayment extends StatelessWidget {
         children: [
           Text(
             label,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+            style: TextStyle(
+              fontSize: 14, 
+              color: Colors.grey.shade700,
+              fontWeight: label.contains('Điểm tích lũy') ? FontWeight.w600 : FontWeight.normal,
+            ),
           ),
           Text(
             value,
@@ -907,20 +921,17 @@ class BodyPayment extends StatelessWidget {
   }
 
   Widget _buildDesktopProductItem(CartItemModel product) {
-    double displayPrice = product.price;
-    double originalPrice = product.price; // Keep original price for display
-    double lineTotal = product.price * product.quantity;
-    bool hasDiscount =
-        product.discountPercentage != null && product.discountPercentage! > 0;
-
+    // Get the prices correctly
+    double finalPrice = product.price; // This is already the discounted price
+    double originalPrice = finalPrice; // Default to same as final price
+    double lineTotal = finalPrice * product.quantity;
+    bool hasDiscount = product.discountPercentage != null && product.discountPercentage! > 0;
+    
     if (hasDiscount) {
-      displayPrice = product.price * (1 - product.discountPercentage! / 100);
-      lineTotal = displayPrice * product.quantity;
-    } else {
-      originalPrice =
-          displayPrice; // If no discount, original is same as display
+      // Calculate original price from final price and discount percentage
+      originalPrice = finalPrice / (1 - (product.discountPercentage! / 100));
     }
-
+    
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
       child: Row(
@@ -992,7 +1003,7 @@ class BodyPayment extends StatelessWidget {
                     ),
                   Text(
                     formatCurrency(
-                        displayPrice), // Display discounted unit price
+                        finalPrice), // Display discounted unit price
                     style: const TextStyle(fontSize: 14),
                   ),
                 ],
@@ -1028,20 +1039,17 @@ class BodyPayment extends StatelessWidget {
   }
 
   Widget _buildMobileProductItem(CartItemModel product) {
-    double displayPrice = product.price;
-    double originalPrice = product.price; // Keep original price for display
-    double lineTotal = product.price * product.quantity;
-    bool hasDiscount =
-        product.discountPercentage != null && product.discountPercentage! > 0;
-
+    // Get the prices correctly
+    double finalPrice = product.price; // This is already the discounted price
+    double originalPrice = finalPrice; // Default to same as final price  
+    double lineTotal = finalPrice * product.quantity;
+    bool hasDiscount = product.discountPercentage != null && product.discountPercentage! > 0;
+    
     if (hasDiscount) {
-      displayPrice = product.price * (1 - product.discountPercentage! / 100);
-      lineTotal = displayPrice * product.quantity;
-    } else {
-      originalPrice =
-          displayPrice; // If no discount, original is same as display
+      // Calculate original price from final price and discount percentage
+      originalPrice = finalPrice / (1 - (product.discountPercentage! / 100));
     }
-
+    
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
       elevation: 0.5,
@@ -1118,7 +1126,7 @@ class BodyPayment extends StatelessWidget {
               children: [
                 _buildMobilePriceColumn(
                   'Đơn giá',
-                  formatCurrency(displayPrice), // Display discounted unit price
+                  formatCurrency(finalPrice), // Display discounted unit price
                   originalPrice: hasDiscount
                       ? formatCurrency(originalPrice)
                       : null, // Show original if discounted

@@ -1,4 +1,5 @@
-import 'package:e_commerce_app/database/Storage/UserInfo.dart'; // For UserInfo access
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
+import 'package:e_commerce_app/database/services/order_service.dart'; // For UserInfo access
 
 // Define OrderDetailItemDTO if you need to parse and use orderDetails deeply
 class OrderDetailItemDTO {
@@ -153,13 +154,7 @@ class OrderStatusHistoryDTO {
 }
 
 // Enum for Order Status (mirroring backend if possible)
-enum OrderStatus {
-  cho_xu_ly, // cho_xu_ly
-  da_xac_nhan, // da_xac_nhan
-  dang_giao, // dang_giao
-  da_giao, // da_giao
-  da_huy, // da_huy
-}
+
 
 // Helper to convert OrderStatus enum to string for API requests
 String orderStatusToString(OrderStatus status) {
