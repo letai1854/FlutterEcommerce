@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 String formatPrice(double price) {
   String priceStr = price.toStringAsFixed(0);
   final pattern = RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))');
-  return priceStr.replaceAllMapped(pattern, (Match m) => '${m[1]}.');
+  return priceStr.replaceAllMapped(pattern, (Match m) => '${m[1]},');
 }
 
 // Create a cached image widget that doesn't rebuild unnecessarily
@@ -342,7 +342,7 @@ class CartItemList extends StatelessWidget {
               children: [
                 if (hasDiscount)
                   Text(
-                    '${formatPrice(originalPrice)} VND',
+                    '${formatPrice(originalPrice)} đ',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       decoration: TextDecoration.lineThrough,
@@ -351,7 +351,7 @@ class CartItemList extends StatelessWidget {
                     ),
                   ),
                 Text(
-                  '${formatPrice(finalPrice)} VND',
+                  '${formatPrice(finalPrice)} đ',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: hasDiscount ? Colors.red : null,
@@ -389,7 +389,7 @@ class CartItemList extends StatelessWidget {
           Expanded(
             flex: 1,
             child: Text(
-              '${formatPrice(lineTotal)} VND',
+              '${formatPrice(lineTotal)} đ',
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.red),
             ),
@@ -562,7 +562,7 @@ class CartItemList extends StatelessWidget {
                         const SizedBox(height: 4),
                         if (hasDiscount) ...[
                           Text(
-                            '${formatPrice(originalPrice)} VND',
+                            '${formatPrice(originalPrice)} đ',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey,
@@ -574,7 +574,7 @@ class CartItemList extends StatelessWidget {
                         Row(
                           children: [
                             Text(
-                              '${formatPrice(finalPrice)} VND',
+                              '${formatPrice(finalPrice)} đ',
                               style: TextStyle(
                                 color: Colors.red[700],
                                 fontWeight: FontWeight.w600,
@@ -665,7 +665,7 @@ class CartItemList extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.only(top: 8.0, right: 8.0),
                   child: Text(
-                    'Tổng: ${formatPrice(lineTotal)} VND',
+                    'Tổng: ${formatPrice(lineTotal)} đ',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.red[700],

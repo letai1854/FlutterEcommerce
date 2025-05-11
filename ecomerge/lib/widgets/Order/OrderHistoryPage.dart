@@ -1,3 +1,5 @@
+import 'package:e_commerce_app/database/models/order/OrderDTO.dart';
+import 'package:e_commerce_app/database/services/order_service.dart';
 import 'package:e_commerce_app/widgets/Order/OrderDetailPage.dart';
 import 'package:e_commerce_app/widgets/Order/OrderItem.dart';
 import 'package:e_commerce_app/widgets/Order/OrderStatusHistoryPage.dart';
@@ -11,234 +13,213 @@ class OrderHistoryPage extends StatefulWidget {
 }
 
 class _OrderHistoryPageState extends State<OrderHistoryPage> {
-  // For pagination
-  int _currentPage = 1;
-  final int _itemsPerPage = 5;
-  final int _totalItems = 15; // Example total, would come from API
+  final OrderService _orderService = OrderService();
+  List<OrderDTO> _orders = [];
+  final ScrollController _scrollController = ScrollController();
+  int _apiCurrentPage = 0;
+  final int _apiPageSize = 10; // Number of items to fetch per page
+  bool _hasMore = true; // True if there are more items to load
+  bool _isLoading = true; // For initial full page load
+  bool _isLoadingMore = false; // True when loading more items
+  String? _errorMessage;
+  bool _childPageCausedChange =
+      false; // Flag to indicate refresh needed for parent
 
-  List<Map<String, dynamic>> _getDummyOrders() {
-    // This would be replaced with actual data from an API
-    return List.generate(
-      _totalItems,
-      (index) => {
-        "orderId": "DH${123450 + index}",
-        "date": "${(index % 30) + 1}/05/2023",
-        "status": _getRandomStatus(),
-        "items": [
-          {
-            "name": "Laptop Asus XYZ",
-            "image": "https://via.placeholder.com/80",
-            "price": 15000000,
-            "quantity": 1,
-          },
-          if (index % 2 == 0)
-            {
-              "name": "Chuột không dây Logitech",
-              "image": "https://via.placeholder.com/80",
-              "price": 450000,
-              "quantity": 2,
-            },
-        ]
-      },
-    );
+  @override
+  void initState() {
+    super.initState();
+    _fetchInitialOrders();
+    _scrollController.addListener(_scrollListener);
   }
 
-  String _getRandomStatus() {
-    final statuses = [
-      "Chờ xử lý",
-      "Đã xác nhận",
-      "Đang giao",
-      "Đã giao",
-      "Đã hủy",
-      "Trả hàng"
-    ];
-    return statuses[DateTime.now().microsecond % statuses.length];
+  @override
+  void dispose() {
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
+    _orderService.dispose();
+    super.dispose();
   }
 
-  List<Map<String, dynamic>> _getPaginatedOrders() {
-    final allOrders = _getDummyOrders();
-    final startIndex = (_currentPage - 1) * _itemsPerPage;
-    final endIndex = startIndex + _itemsPerPage;
-
-    if (startIndex >= allOrders.length) {
-      return [];
+  void _scrollListener() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoadingMore &&
+        _hasMore) {
+      _loadMoreOrders();
     }
-
-    return allOrders.sublist(
-      startIndex,
-      endIndex > allOrders.length ? allOrders.length : endIndex,
-    );
   }
 
-  int get _pageCount => (_totalItems / _itemsPerPage).ceil();
+  Future<void> _fetchInitialOrders() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _orders = []; // Reset orders list
+      _apiCurrentPage = 0; // Reset current page
+      _hasMore = true; // Assume there's more data initially
+    });
+
+    try {
+      final orderPage = await _orderService.getCurrentUserOrders(
+        page: _apiCurrentPage,
+        size: _apiPageSize,
+        // No status is passed to fetch all orders
+      );
+      if (mounted) {
+        setState(() {
+          _orders = orderPage.orders;
+          _hasMore = !orderPage.isLast;
+          if (_hasMore) {
+            _apiCurrentPage++;
+          }
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        String displayError;
+        bool is404 = e.toString().toLowerCase().contains('(status: 404)');
+        if (is404) {
+          displayError = "Chưa có đơn hàng nào.";
+        } else {
+          displayError = "Chưa có đơn hàng nào.";
+          // Optionally, log the original error for debugging if needed
+          // print("Error fetching initial orders: ${e.toString()}");
+        }
+        setState(() {
+          _isLoading = false;
+          _errorMessage = displayError;
+          if (is404) {
+            _orders = []; // Ensure orders list is empty
+            _hasMore = false; // No more data to fetch
+          }
+        });
+      }
+    }
+  }
+
+  Future<void> _loadMoreOrders() async {
+    if (_isLoadingMore || !_hasMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final orderPage = await _orderService.getCurrentUserOrders(
+        page: _apiCurrentPage,
+        size: _apiPageSize,
+      );
+      setState(() {
+        _orders.addAll(orderPage.orders);
+        _hasMore = !orderPage.isLast;
+        if (_hasMore) {
+          _apiCurrentPage++;
+        }
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingMore = false;
+        // Optionally set an error message for loading more, or log it
+      });
+    }
+  }
+
+  List<Map<String, dynamic>> _mapOrderDetailsToOrderItemItems(
+      List<OrderDetailItemDTO>? details) {
+    if (details == null) return [];
+    return details.map((d) {
+      return {
+        "name": d.productName ?? 'N/A',
+        "image":
+            d.imageUrl ?? "https://via.placeholder.com/80", // Fallback image
+        "price": d.priceAtPurchase,
+        "quantity": d.quantity,
+        "discountPercentage": d.productDiscountPercentage ?? 0.0,
+      };
+    }).toList();
+  }
+
+  String _getDisplayStatus(OrderStatus? status) {
+    if (status == null) return "Không xác định";
+    switch (status) {
+      case OrderStatus.cho_xu_ly:
+        return "Chờ xử lý";
+      case OrderStatus.da_xac_nhan:
+        return "Đã xác nhận";
+      case OrderStatus.dang_giao:
+        return "Đang giao";
+      case OrderStatus.da_giao:
+        return "Đã giao";
+      case OrderStatus.da_huy:
+        return "Đã hủy";
+      default:
+        return "Không xác định";
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final paginatedOrders = _getPaginatedOrders();
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final backgroundColor = isDarkMode ? Colors.grey[900] : Colors.grey[100];
     final headingColor = isDarkMode ? Colors.white : Colors.red[800];
 
-    return Scaffold(
-      backgroundColor: backgroundColor,
-      appBar: AppBar(
-        title: const Text(
-          "Lịch sử đơn hàng",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            fontSize: 20,
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pop(context, _childPageCausedChange);
+        return false; // We've handled the pop, so prevent default system pop.
+      },
+      child: Scaffold(
+        backgroundColor: backgroundColor,
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              Navigator.pop(context, _childPageCausedChange);
+            },
           ),
-        ),
-        backgroundColor: Colors.red,
-        elevation: 4,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(15)),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              backgroundColor!,
-              Colors.white,
-            ],
-            stops: const [0.0, 0.4],
+          title: const Text(
+            "Lịch sử đơn hàng",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              fontSize: 20,
+            ),
           ),
+          backgroundColor: Colors.red,
+          elevation: 4,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(15)),
+          ),
+          iconTheme: const IconThemeData(color: Colors.white),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // History info text with decorative elements
-              Container(
-                margin: const EdgeInsets.only(bottom: 20, top: 10),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                decoration: BoxDecoration(
-                  border: Border(
-                    left: BorderSide(color: Colors.red[700]!, width: 5),
-                  ),
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.2),
-                      spreadRadius: 1,
-                      blurRadius: 3,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.history, color: headingColor, size: 24),
-                    const SizedBox(width: 10),
-                    Text(
-                      "Thông tin tất cả đơn hàng của bạn",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: headingColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Orders list with enhanced styling
-              Expanded(
-                child: paginatedOrders.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.shopping_bag_outlined,
-                              size: 80,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              "Không có đơn hàng nào",
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView.separated(
-                        itemCount: paginatedOrders.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(height: 16),
-                        itemBuilder: (context, index) {
-                          final order = paginatedOrders[index];
-                          return GestureDetector(
-                            onTap: () {
-                              // Navigate to the OrderDetailPage when tapped
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => OrderDetailPage(
-                                    orderId: order["orderId"],
-                                    orderDate: order["date"],
-                                    items: order["items"],
-                                    status: order["status"],
-                                  ),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.grey.withOpacity(0.2),
-                                    spreadRadius: 1,
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: OrderItem(
-                                orderId: order["orderId"],
-                                date: order["date"],
-                                items: order["items"],
-                                status: order["status"],
-                                onViewHistory: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          OrderStatusHistoryPage(
-                                        orderId: order["orderId"],
-                                        currentStatus: order["status"],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-              ),
-
-              // Enhanced pagination controls
-              if (paginatedOrders.isNotEmpty)
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                backgroundColor!,
+                Colors.white,
+              ],
+              stops: const [0.0, 0.4],
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // History info text with decorative elements
                 Container(
-                  margin: const EdgeInsets.only(top: 20),
+                  margin: const EdgeInsets.only(bottom: 20, top: 10),
                   padding:
-                      const EdgeInsets.symmetric(vertical: 10, horizontal: 5),
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                   decoration: BoxDecoration(
+                    border: Border(
+                      left: BorderSide(color: Colors.red[700]!, width: 5),
+                    ),
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.grey.withOpacity(0.2),
@@ -249,70 +230,148 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                     ],
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back_ios, size: 18),
-                        color: _currentPage > 1 ? Colors.red : Colors.grey[400],
-                        onPressed: _currentPage > 1
-                            ? () {
-                                setState(() {
-                                  _currentPage--;
-                                });
-                              }
-                            : null,
-                      ),
-                      for (int i = 1; i <= _pageCount; i++)
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          margin: const EdgeInsets.symmetric(horizontal: 5.0),
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _currentPage == i
-                                  ? Colors.red
-                                  : Colors.grey[200],
-                              foregroundColor: _currentPage == i
-                                  ? Colors.white
-                                  : Colors.black87,
-                              elevation: _currentPage == i ? 4 : 0,
-                              minimumSize: const Size(45, 45),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(25),
-                              ),
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _currentPage = i;
-                              });
-                            },
-                            child: Text(
-                              i.toString(),
-                              style: TextStyle(
-                                fontWeight: _currentPage == i
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
+                      Icon(Icons.history, color: headingColor, size: 24),
+                      const SizedBox(width: 10),
+                      Text(
+                        "Thông tin tất cả đơn hàng của bạn",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: headingColor,
                         ),
-                      IconButton(
-                        icon: const Icon(Icons.arrow_forward_ios, size: 18),
-                        color: _currentPage < _pageCount
-                            ? Colors.red
-                            : Colors.grey[400],
-                        onPressed: _currentPage < _pageCount
-                            ? () {
-                                setState(() {
-                                  _currentPage++;
-                                });
-                              }
-                            : null,
                       ),
                     ],
                   ),
                 ),
-            ],
+
+                // Orders list with enhanced styling
+                Expanded(
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _errorMessage != null
+                          ? Center(
+                              child: Text(" $_errorMessage",
+                                  style: const TextStyle(color: Colors.black)))
+                          : _orders.isEmpty && !_hasMore
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.receipt_long_outlined,
+                                        size: 80,
+                                        color: Colors.grey[400],
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        "Không có lịch sử đơn hàng nào",
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : ListView.separated(
+                                  controller: _scrollController,
+                                  itemCount:
+                                      _orders.length + (_hasMore ? 1 : 0),
+                                  separatorBuilder: (context, index) =>
+                                      const SizedBox(height: 16),
+                                  itemBuilder: (context, index) {
+                                    if (index == _orders.length) {
+                                      return _isLoadingMore
+                                          ? const Center(
+                                              child: Padding(
+                                              padding: EdgeInsets.all(16.0),
+                                              child:
+                                                  CircularProgressIndicator(),
+                                            ))
+                                          : const SizedBox.shrink();
+                                    }
+
+                                    final order = _orders[index];
+                                    final orderItemsForDisplay =
+                                        _mapOrderDetailsToOrderItemItems(
+                                            order.orderDetails);
+                                    final displayStatus =
+                                        _getDisplayStatus(order.orderStatus);
+
+                                    return GestureDetector(
+                                      onTap: () async {
+                                        final result = await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                OrderDetailPage(
+                                              orderId: order.id.toString(),
+                                            ),
+                                          ),
+                                        );
+                                        if (result == true && mounted) {
+                                          _childPageCausedChange =
+                                              true; // Set flag
+                                          _fetchInitialOrders();
+                                        }
+                                      },
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color:
+                                                  Colors.grey.withOpacity(0.2),
+                                              spreadRadius: 1,
+                                              blurRadius: 6,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: OrderItem(
+                                          orderId: order.id.toString(),
+                                          date: order.orderDate
+                                                  ?.toIso8601String()
+                                                  .split('T')[0] ??
+                                              'N/A',
+                                          items: orderItemsForDisplay,
+                                          status: displayStatus,
+                                          onViewHistory: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    OrderStatusHistoryPage(
+                                                  orderId: order.id.toString(),
+                                                  currentStatus: displayStatus,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          subtotal: order.subtotal ?? 0.0,
+                                          shippingFee: order.shippingFee ?? 0.0,
+                                          tax: order.tax ?? 0.0,
+                                          totalAmount: order.totalAmount ?? 0.0,
+                                          couponDiscount: order.couponDiscount,
+                                          pointsDiscount:
+                                              order.pointsDiscount?.toDouble(),
+                                          pointsEarned:
+                                              order.pointsEarned?.toDouble(),
+                                          isSmallScreen: MediaQuery.of(context)
+                                                  .size
+                                                  .width <
+                                              600,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
