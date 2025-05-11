@@ -1,8 +1,40 @@
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:flutter/material.dart';
 
-class PointsContent extends StatelessWidget {
+class PointsContent extends StatefulWidget {
   const PointsContent({Key? key}) : super(key: key);
+
+  @override
+  State<PointsContent> createState() => _PointsContentState();
+}
+
+class _PointsContentState extends State<PointsContent> {
+  final UserInfo _userInfo = UserInfo();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPoints();
+    _userInfo.addListener(_onUserInfoChanged);
+  }
+
+  @override
+  void dispose() {
+    _userInfo.removeListener(_onUserInfoChanged);
+    super.dispose();
+  }
+
+  void _onUserInfoChanged() {
+    if (mounted) {
+      setState(() {
+        // UserInfo has changed, rebuild the widget
+      });
+    }
+  }
+
+  Future<void> _fetchPoints() async {
+    await _userInfo.refreshCustomerPoints();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,15 +54,6 @@ class PointsContent extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // // Points history section with transactions
-            // const Text(
-            //   "Lịch sử điểm",
-            //   style: TextStyle(
-            //     fontSize: 18,
-            //     fontWeight: FontWeight.bold,
-            //   ),
-            // ),
-
             const SizedBox(height: 16),
 
             // Use ListView.builder instead of Column for a list of transactions
@@ -43,7 +66,6 @@ class PointsContent extends StatelessWidget {
               itemCount: _getPointsTransactions().length,
               itemBuilder: (context, index) {
                 final transaction = _getPointsTransactions()[index];
-                // return _buildTransactionItem(transaction, isSmallScreen);
               },
             ),
           ],
@@ -80,7 +102,8 @@ class PointsContent extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  UserInfo().currentUser?.customerPoints.toString() ?? "0",
+                  _userInfo.currentUser?.customerPoints.toStringAsFixed(0) ??
+                      "0",
                   style: const TextStyle(
                     fontSize: 36,
                     fontWeight: FontWeight.bold,

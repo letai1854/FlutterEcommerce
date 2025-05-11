@@ -620,13 +620,24 @@ class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
               final isLast = index == _statusHistory.length - 1;
               final String formattedTime = DateFormat('dd/MM/yyyy HH:mm')
                   .format(statusItem.timestamp.toLocal());
-              final String translatedStatus =
+              final String translatedDisplayStatus =
                   _translateStatusToVietnamese(statusItem.status);
-              final String translatedNotes =
-                  _translateNotesToVietnamese(statusItem.notes);
+
+              String translatedNotes;
+              final String apiStatus = statusItem.status.toUpperCase();
+
+              if (apiStatus == 'DA_GIAO') {
+                // For "DA_GIAO" status, always show this specific note.
+                translatedNotes = _commonPhrases[
+                        'Order status updated by admin'] ??
+                    'Trạng thái đơn hàng đã được cập nhật bởi quản trị viên';
+              } else {
+                // For other statuses, use the normal translation.
+                translatedNotes = _translateNotesToVietnamese(statusItem.notes);
+              }
 
               return TimelineEntry(
-                status: translatedStatus,
+                status: translatedDisplayStatus,
                 time: formattedTime,
                 description: translatedNotes,
                 isLast: isLast,
