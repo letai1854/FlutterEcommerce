@@ -1,9 +1,11 @@
 import 'dart:typed_data';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../database/models/user_model.dart';
 import '../services/user_service.dart';
-import '../Storage/CartStorage.dart'; // Add import for CartStorage
+import '../Storage/CartStorage.dart';
 
 class UserInfo extends ChangeNotifier {
   // Singleton instance
@@ -18,11 +20,18 @@ class UserInfo extends ChangeNotifier {
   }
 
   // Internal constructor
-  UserInfo._internal();
+  UserInfo._internal() {
+    // Load saved user data when instance is created
+    loadUserData();
+  }
 
   // Properties to store user data and token
   User? _currentUser;
   String? _authToken = "";
+
+  // Keys for SharedPreferences
+  static const String _userKey = 'current_user';
+  static const String _tokenKey = 'auth_token';
 
   // Getters for the stored data
   User? get currentUser => _currentUser;
@@ -31,6 +40,51 @@ class UserInfo extends ChangeNotifier {
 
   // Public getter for the avatar cache
   static Map<String, Uint8List> get avatarCache => _avatarCache;
+
+  // Method to load user data from SharedPreferences
+  Future<void> loadUserData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userJson = prefs.getString(_userKey);
+      final token = prefs.getString(_tokenKey);
+      
+      if (userJson != null) {
+        _currentUser = User.fromMap(jsonDecode(userJson));
+      }
+      
+      if (token != null) {
+        _authToken = token;
+      }
+      
+      notifyListeners();
+      print('User data loaded from local storage');
+    } catch (e) {
+      print('Error loading user data: $e');
+    }
+  }
+
+  // Method to save user data to SharedPreferences
+  Future<void> saveUserData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      if (_currentUser != null) {
+        await prefs.setString(_userKey, jsonEncode(_currentUser!.toMap()));
+      } else {
+        await prefs.remove(_userKey);
+      }
+      
+      if (_authToken != null) {
+        await prefs.setString(_tokenKey, _authToken!);
+      } else {
+        await prefs.remove(_tokenKey);
+      }
+      
+      print('User data saved to local storage');
+    } catch (e) {
+      print('Error saving user data: $e');
+    }
+  }
 
   // Method to update user info after login
   void updateUserInfo(Map<String, dynamic> loginResponse) async {
@@ -41,13 +95,14 @@ class UserInfo extends ChangeNotifier {
       _currentUser = User.fromMap(loginResponse['user']);
     }
     
-    // First notify listeners that login state has changed
+    // Save user data to local storage after updating
+    await saveUserData();
     
-    // Then sync cart data after successful login - with slight delay to ensure auth is properly set
-    // await Future.delayed(Duration(milliseconds: 100));
-    await syncCartAfterLogin();
+    // First notify listeners that login state has changed
     notifyListeners();
-
+    
+    // Then sync cart data after successful login
+    await syncCartAfterLogin();
   }
 
   // Enhanced method to sync cart data after login
@@ -90,6 +145,9 @@ class UserInfo extends ChangeNotifier {
       }
       notifyListeners(); // Notify listeners about the change
     }
+    
+    // Save changes to local storage
+    saveUserData();
   }
 
   // Update customer points and notify listeners
@@ -109,12 +167,19 @@ class UserInfo extends ChangeNotifier {
       print('Updated customer points to: $newPoints');
       notifyListeners(); // Notify listeners about the change
     }
+    
+    // Save changes to local storage
+    saveUserData();
   }
 
   // Method to clear user info on logout
   void clearUserInfo() {
     _currentUser = null;
     _authToken = null;
+    
+    // Clear saved data from local storage
+    saveUserData();
+    
     notifyListeners(); // Notify listeners about the change
   }
 

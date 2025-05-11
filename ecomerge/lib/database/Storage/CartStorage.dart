@@ -538,4 +538,22 @@ class CartStorage {
     
     return false;
   }
+  
+  // Comprehensive method to clear all cart data (memory, local storage, and images)
+  Future<void> clearAllCart() async {
+    try {
+      // Clear in-memory cart items
+      _cartItems = [];
+      
+      // Clear local storage cart data
+      await clearLocalCart();
+      
+      // Clear image cache
+      clearImageCache();
+      
+      print('All cart data cleared successfully');
+    } catch (e) {
+      print('Error clearing all cart data: $e');
+    }
+  }
 }
