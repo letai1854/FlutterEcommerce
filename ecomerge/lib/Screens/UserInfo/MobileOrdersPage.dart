@@ -264,13 +264,16 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 TextButton.icon(
-                  onPressed: () {
-                    Navigator.push(
+                  onPressed: () async {
+                    final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => const OrderHistoryPage(),
                       ),
                     );
+                    if (result == true && mounted) {
+                      _fetchOrders();
+                    }
                   },
                   icon: const Icon(Icons.history),
                   label: const Text("Lịch sử đơn hàng"),

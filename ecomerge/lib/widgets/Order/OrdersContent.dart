@@ -4,6 +4,7 @@ import 'package:e_commerce_app/database/services/order_service.dart';
 import 'package:e_commerce_app/widgets/Order/OrderDetailPage.dart';
 import 'package:e_commerce_app/widgets/Order/OrderHistoryPage.dart';
 import 'package:e_commerce_app/widgets/Order/OrderItem.dart';
+import 'package:e_commerce_app/widgets/Order/OrderStatusHistoryPage.dart';
 import 'package:flutter/material.dart';
 
 // Define the animation wrapper widget
@@ -270,12 +271,15 @@ class _OrdersContentState extends State<OrdersContent> {
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             TextButton.icon(
-              onPressed: () {
-                Navigator.push(
+              onPressed: () async {
+                final result = await Navigator.push(
                   context,
                   MaterialPageRoute(
                       builder: (context) => const OrderHistoryPage()),
                 );
+                if (result == true && mounted) {
+                  _fetchOrders();
+                }
               },
               icon: const Icon(Icons.history),
               label: const Text("Lịch sử đơn hàng"),
@@ -356,8 +360,8 @@ class _OrdersContentState extends State<OrdersContent> {
                               child: MouseRegion(
                                 cursor: SystemMouseCursors.click,
                                 child: GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
+                                  onTap: () async {
+                                    final result = await Navigator.push(
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) => OrderDetailPage(
@@ -365,6 +369,9 @@ class _OrdersContentState extends State<OrdersContent> {
                                         ),
                                       ),
                                     );
+                                    if (result == true && mounted) {
+                                      _fetchOrders();
+                                    }
                                   },
                                   child: OrderItem(
                                     orderId: order.id.toString(),
@@ -382,7 +389,11 @@ class _OrdersContentState extends State<OrdersContent> {
                                         context,
                                         MaterialPageRoute(
                                           builder: (context) =>
-                                              OrderHistoryPage(),
+                                              OrderStatusHistoryPage(
+                                            orderId: order.id.toString(),
+                                            currentStatus: _getShortStatusName(
+                                                widget.selectedTab),
+                                          ),
                                         ),
                                       );
                                     },

@@ -115,9 +115,13 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           backgroundColor: Colors.green,
         ),
       );
-      // Optionally, refresh the entire page or navigate back
-      _fetchOrderDetails(
-          showLoading: false); // Refresh data without full loading spinner
+      // Refresh data without full loading spinner for the current page
+      _fetchOrderDetails(showLoading: false);
+
+      // Pop with true to indicate success and trigger refresh on the previous page
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
     } catch (e) {
       setState(() {
         _isCancelling = false;
