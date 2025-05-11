@@ -4,12 +4,13 @@ import java.util.Date;
 
 public class ProductReviewDTO {
     private Integer id;
-    private String reviewerName; // User's full name or anonymous name
+    private String reviewerName;
     private Byte rating;
     private String comment;
     private Date reviewTime;
     private Long userId; // Null if anonymous
     private Long productId;
+    private String reviewerAvatarUrl;
 
     // Getters and Setters
     public Integer getId() {
@@ -66,5 +67,13 @@ public class ProductReviewDTO {
 
     public void setProductId(Long productId) {
         this.productId = productId;
+    }
+
+    public String getReviewerAvatarUrl() {
+        return reviewerAvatarUrl;
+    }
+
+    public void setReviewerAvatarUrl(String reviewerAvatarUrl) {
+        this.reviewerAvatarUrl = reviewerAvatarUrl;
     }
 }

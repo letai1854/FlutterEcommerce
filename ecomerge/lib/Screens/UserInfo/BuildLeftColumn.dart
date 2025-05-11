@@ -28,29 +28,50 @@ class BuildLeftColumn extends StatefulWidget {
 }
 
 class _BuildLeftColumnState extends State<BuildLeftColumn> {
+  Future<Uint8List?>? _avatarFuture;
+  String?
+      _fetchedAvatarUrl; // To track the URL for which _avatarFuture was created
+
   @override
   void initState() {
     super.initState();
-    // Listen for UserInfo changes and trigger rebuild
+    _updateAvatarFutureBasedOnUserInfo();
     UserInfo().addListener(_onUserInfoChanged);
   }
 
   @override
   void dispose() {
-    // Remove listener when disposed
     UserInfo().removeListener(_onUserInfoChanged);
     super.dispose();
   }
 
   void _onUserInfoChanged() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      final newAvatarUrl = UserInfo().currentUser?.avatar;
+      if (newAvatarUrl != _fetchedAvatarUrl) {
+        _updateAvatarFutureBasedOnUserInfo();
+      }
+      setState(
+          () {}); // Rebuild to reflect changes (e.g., username or new avatar future)
+    }
+  }
+
+  void _updateAvatarFutureBasedOnUserInfo() {
+    final currentUrl = UserInfo().currentUser?.avatar;
+    _fetchedAvatarUrl = currentUrl; // Update the tracking URL
+
+    if (currentUrl != null && currentUrl.isNotEmpty) {
+      _avatarFuture = UserService().getAvatarBytes(currentUrl);
+    } else {
+      _avatarFuture = Future.value(null); // Use a completed future with null
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Get the current user info
     final currentUser = UserInfo().currentUser;
-    final String? avatarUrl = currentUser?.avatar;
+    final String? currentActualAvatarUrl =
+        currentUser?.avatar; // Get the most current URL for display logic
     final String userName = currentUser?.fullName ?? 'user';
 
     return Column(
@@ -60,13 +81,14 @@ class _BuildLeftColumnState extends State<BuildLeftColumn> {
         Center(
           child: Column(
             children: [
-              // Wrap CircleAvatar with FutureBuilder for cached image
-              avatarUrl != null && avatarUrl.isNotEmpty
+              (currentActualAvatarUrl != null &&
+                      currentActualAvatarUrl.isNotEmpty)
                   ? FutureBuilder<Uint8List?>(
-                      future: UserService().getAvatarBytes(avatarUrl),
+                      future: _avatarFuture, // Use the stored future
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
+                                ConnectionState.waiting &&
+                            _avatarFuture != null) {
                           return CircleAvatar(
                             radius: 50,
                             backgroundColor: Colors.grey[200],
@@ -77,18 +99,30 @@ class _BuildLeftColumnState extends State<BuildLeftColumn> {
                             ),
                           );
                         } else if (snapshot.hasData && snapshot.data != null) {
-                          // Use cached image
                           return CircleAvatar(
                             radius: 50,
                             backgroundImage: MemoryImage(snapshot.data!),
                           );
                         } else {
-                          // Fall back to network image or default
+                          // Fallback to NetworkImage if future failed or has no data,
+                          // using the currentActualAvatarUrl.
+                          // This branch is also hit if _avatarFuture was Future.value(null)
+                          if (currentActualAvatarUrl != null &&
+                              currentActualAvatarUrl.isNotEmpty) {
+                            return CircleAvatar(
+                              radius: 50,
+                              backgroundColor: Colors.grey[200],
+                              backgroundImage: NetworkImage(
+                                  currentActualAvatarUrl), // Use currentActualAvatarUrl
+                              onBackgroundImageError: (_, __) {},
+                            );
+                          }
+                          // If all else fails
                           return CircleAvatar(
                             radius: 50,
                             backgroundColor: Colors.grey[200],
-                            backgroundImage: NetworkImage(avatarUrl),
-                            onBackgroundImageError: (_, __) {},
+                            child: const Icon(Icons.person,
+                                size: 50, color: Colors.grey),
                           );
                         }
                       },
@@ -183,18 +217,19 @@ class _BuildLeftColumnState extends State<BuildLeftColumn> {
             widget.onMainSectionChanged(MainSection.points);
           },
         ),
-        if (UserInfo().currentUser != null &&UserInfo().currentUser!.role.toString() == UserRole.quan_tri.name)
-        ListTile(
-          leading: const Icon(Icons.admin_panel_settings),
-          title: const Text('Admin'),
-          selected: widget.selectedMainSection ==
-              MainSection.admin, // Use correct section
-          selectedTileColor: Colors.blue.withOpacity(0.1),
-          onTap: () {
-            // Navigate to admin page
-            Navigator.pushNamed(context, '/admin');
-          },
-        ),
+        if (UserInfo().currentUser != null &&
+            UserInfo().currentUser!.role.toString() == UserRole.quan_tri.name)
+          ListTile(
+            leading: const Icon(Icons.admin_panel_settings),
+            title: const Text('Admin'),
+            selected: widget.selectedMainSection ==
+                MainSection.admin, // Use correct section
+            selectedTileColor: Colors.blue.withOpacity(0.1),
+            onTap: () {
+              // Navigate to admin page
+              Navigator.pushNamed(context, '/admin');
+            },
+          ),
       ],
     );
   }

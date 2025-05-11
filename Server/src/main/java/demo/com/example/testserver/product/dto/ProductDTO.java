@@ -30,7 +30,11 @@ public class ProductDTO {
     private List<ProductReviewDTO> reviews; // Added: List of reviews
 
     // Explicit No-Argument Constructor
-    public ProductDTO() {}
+    public ProductDTO() {
+        this.imageUrls = new ArrayList<>();
+        this.variants = new ArrayList<>();
+        this.reviews = new ArrayList<>(); // Initialize reviews
+    }
 
     // Constructor to map from Product entity (basic example)
     // You might need a more sophisticated mapping logic, potentially in the service layer
@@ -61,29 +65,11 @@ public class ProductDTO {
             this.variants = product.getVariants().stream()
                                   .map(ProductVariantDTO::new) // Assuming ProductVariantDTO has a constructor accepting ProductVariant
                                   .collect(Collectors.toList());
-        }
-        // Map reviews to DTOs
-        if (product.getReviews() != null) {
-            this.reviews = product.getReviews().stream()
-                                  .map(reviewEntity -> { // Manual mapping for ProductReview to ProductReviewDTO
-                                      ProductReviewDTO reviewDTO = new ProductReviewDTO();
-                                      reviewDTO.setId(reviewEntity.getId());
-                                      if (reviewEntity.getUser() != null) {
-                                          reviewDTO.setReviewerName(reviewEntity.getUser().getFullName());
-                                          reviewDTO.setUserId(reviewEntity.getUser().getId().longValue());
-                                      } else {
-                                          reviewDTO.setReviewerName("Anonymous"); // Or from a specific field if anonymous reviews store names
-                                      }
-                                      reviewDTO.setRating(reviewEntity.getRating());
-                                      reviewDTO.setComment(reviewEntity.getComment());
-                                      reviewDTO.setReviewTime(reviewEntity.getReviewTime());
-                                      reviewDTO.setProductId(reviewEntity.getProduct().getId());
-                                      return reviewDTO;
-                                  })
-                                  .collect(Collectors.toList());
         } else {
-            this.reviews = new ArrayList<>();
+            this.variants = new ArrayList<>();
         }
+        // Reviews are intentionally not mapped here; they will be mapped by ProductMapper when needed for detail views.
+        this.reviews = new ArrayList<>(); // Initialize as empty list
     }
 
     // All-Args Constructor (manually added to replace Lombok's @AllArgsConstructor)

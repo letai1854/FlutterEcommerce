@@ -103,6 +103,47 @@ class UserInfo extends ChangeNotifier {
     
     // Then sync cart data after successful login
     await syncCartAfterLogin();
+
+  }
+
+  // Method to fetch latest user data (including points) and update
+  Future<void> refreshCustomerPoints() async {
+    if (!isLoggedIn) return; // Skip if not logged in
+
+    try {
+      print('Refreshing customer points...');
+      final userService = UserService();
+      final userProfile = await userService.getCurrentUserProfile();
+
+      if (userProfile != null) {
+        // Use the existing method to update points and notify listeners
+        updateCustomerPoints(userProfile.customerPoints);
+        // Optionally, update other user details if needed from userProfile
+        // For example, if fullName or avatar might change:
+        if (_currentUser != null) {
+          _currentUser = User(
+            id: _currentUser!.id,
+            email: _currentUser!.email,
+            fullName: userProfile.fullName, // Update full name
+            avatar: userProfile.avatar, // Update avatar
+            role: _currentUser!.role,
+            status: _currentUser!.status,
+            customerPoints: userProfile
+                .customerPoints, // This is already handled by updateCustomerPoints
+            createdDate: _currentUser!.createdDate,
+            updatedDate: userProfile.updatedDate ??
+                _currentUser!.updatedDate, // Update updatedDate
+          );
+          // notifyListeners(); // updateCustomerPoints already calls notifyListeners
+        }
+        print(
+            'Customer points refreshed successfully: ${userProfile.customerPoints}');
+      } else {
+        print('Failed to refresh customer points: User profile not found.');
+      }
+    } catch (e) {
+      print('Error refreshing customer points: $e');
+    }
   }
 
   // Enhanced method to sync cart data after login

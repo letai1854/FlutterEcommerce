@@ -208,7 +208,6 @@ class BodyPayment extends StatelessWidget {
   }
 
   Widget _buildDesktopAccumulatedPointsSection() {
-    final double customerPoints = UserInfo().currentUser?.customerPoints ?? 0;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12.0),
       child: Row(
@@ -220,9 +219,43 @@ class BodyPayment extends StatelessWidget {
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
           ),
           const SizedBox(width: 8),
-          Text(
-            '(Hiện có: ${customerPoints.toStringAsFixed(0)})',
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+          FutureBuilder<void>(
+            future:
+                UserInfo().refreshCustomerPoints(), // Request to refresh points
+            builder: (context, snapshot) {
+              final double currentPoints =
+                  UserInfo().currentUser?.customerPoints ?? 0;
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '(Hiện có: ${currentPoints.toStringAsFixed(0)})',
+                      style:
+                          TextStyle(fontSize: 14, color: Colors.grey.shade700),
+                    ),
+                    const SizedBox(width: 5),
+                    const SizedBox(
+                        height: 10,
+                        width: 10,
+                        child: CircularProgressIndicator(strokeWidth: 1.5)),
+                  ],
+                );
+              } else if (snapshot.hasError) {
+                return Text(
+                  '(Lỗi tải điểm)',
+                  style: TextStyle(fontSize: 14, color: Colors.red.shade700),
+                );
+              } else {
+                // After future completes, UserInfo().currentUser.customerPoints is updated
+                final double refreshedPoints =
+                    UserInfo().currentUser?.customerPoints ?? 0;
+                return Text(
+                  '(Hiện có: ${refreshedPoints.toStringAsFixed(0)})',
+                  style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+                );
+              }
+            },
           ),
           const Spacer(),
           Text(
@@ -232,9 +265,11 @@ class BodyPayment extends StatelessWidget {
           Checkbox(
             value: useAccumulatedPoints,
             // Disable checkbox if no points, but allow PagePayment to handle message
-            onChanged: customerPoints > 0 ? onToggleUseAccumulatedPoints : null,
+            onChanged: (UserInfo().currentUser?.customerPoints ?? 0) > 0
+                ? onToggleUseAccumulatedPoints
+                : null,
             activeColor: Colors.red.shade700,
-            fillColor: customerPoints == 0
+            fillColor: (UserInfo().currentUser?.customerPoints ?? 0) == 0
                 ? MaterialStateProperty.all(Colors.grey.shade300)
                 : null,
           ),
@@ -244,7 +279,6 @@ class BodyPayment extends StatelessWidget {
   }
 
   Widget _buildMobileAccumulatedPointsSection() {
-    final double customerPoints = UserInfo().currentUser?.customerPoints ?? 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -259,10 +293,50 @@ class BodyPayment extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Expanded(
-              child: Text(
-                '(Hiện có: ${customerPoints.toStringAsFixed(0)})',
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-                overflow: TextOverflow.ellipsis,
+              child: FutureBuilder<void>(
+                future: UserInfo()
+                    .refreshCustomerPoints(), // Request to refresh points
+                builder: (context, snapshot) {
+                  final double currentPoints =
+                      UserInfo().currentUser?.customerPoints ?? 0;
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '(Hiện có: ${currentPoints.toStringAsFixed(0)})',
+                            style: TextStyle(
+                                fontSize: 13, color: Colors.grey.shade700),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        const SizedBox(
+                            height: 10,
+                            width: 10,
+                            child: CircularProgressIndicator(strokeWidth: 1.5)),
+                      ],
+                    );
+                  } else if (snapshot.hasError) {
+                    return Text(
+                      '(Lỗi tải điểm)',
+                      style:
+                          TextStyle(fontSize: 13, color: Colors.red.shade700),
+                      overflow: TextOverflow.ellipsis,
+                    );
+                  } else {
+                    // After future completes, UserInfo().currentUser.customerPoints is updated
+                    final double refreshedPoints =
+                        UserInfo().currentUser?.customerPoints ?? 0;
+                    return Text(
+                      '(Hiện có: ${refreshedPoints.toStringAsFixed(0)})',
+                      style:
+                          TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                      overflow: TextOverflow.ellipsis,
+                    );
+                  }
+                },
               ),
             ),
           ],
@@ -277,10 +351,11 @@ class BodyPayment extends StatelessWidget {
             ),
             Checkbox(
               value: useAccumulatedPoints,
-              onChanged:
-                  customerPoints > 0 ? onToggleUseAccumulatedPoints : null,
+              onChanged: (UserInfo().currentUser?.customerPoints ?? 0) > 0
+                  ? onToggleUseAccumulatedPoints
+                  : null,
               activeColor: Colors.red.shade700,
-              fillColor: customerPoints == 0
+              fillColor: (UserInfo().currentUser?.customerPoints ?? 0) == 0
                   ? MaterialStateProperty.all(Colors.grey.shade300)
                   : null,
             ),
@@ -593,19 +668,20 @@ class BodyPayment extends StatelessWidget {
 
     for (var item in products) {
       double finalPrice = item.price; // This is already the discounted price
-      double originalPrice = finalPrice; // Default to same as final price if no discount
-      
+      double originalPrice =
+          finalPrice; // Default to same as final price if no discount
+
       // If there's a discount, calculate the original price from the discounted price
       if (item.discountPercentage != null && item.discountPercentage! > 0) {
         // Original price = discounted price / (1 - discount percentage/100)
         originalPrice = finalPrice / (1 - (item.discountPercentage! / 100));
       }
-      
+
       // Calculate totals
       double originalItemTotal = originalPrice * item.quantity;
       double discountedItemTotal = finalPrice * item.quantity;
       double itemDiscount = originalItemTotal - discountedItemTotal;
-      
+
       // Add to running totals
       sumOriginalItemPrices += originalItemTotal;
       totalProductSpecificDiscount += itemDiscount;
@@ -613,13 +689,14 @@ class BodyPayment extends StatelessWidget {
 
     // Calculate the subtotal after product-specific discounts
     // This should align with the 'subtotal' parameter if calculated correctly by the parent.
-    final subtotalAfterProductDiscounts = sumOriginalItemPrices - totalProductSpecificDiscount;
+    final subtotalAfterProductDiscounts =
+        sumOriginalItemPrices - totalProductSpecificDiscount;
 
     // Calculate the final displayed total based on the components shown in this widget
     final displayedTotalAmount = subtotalAfterProductDiscounts +
         shippingFee +
         taxAmount -
-        discountAmount - // Voucher discount
+        discountAmount -
         pointsDiscountAmount;
 
     return SingleChildScrollView(
@@ -768,12 +845,12 @@ class BodyPayment extends StatelessWidget {
                           _buildSummaryRow('Giảm giá voucher:',
                               '-${formatCurrency(discountAmount)}',
                               isDiscount: true),
-                        if (pointsDiscountAmount > 0) // Missing opening and closing brackets here
+                        if (pointsDiscountAmount >
+                            0) // Missing opening and closing brackets here
                           _buildSummaryRow(
-                            'Sử dụng điểm tích lũy (${(pointsDiscountAmount / 1000).toInt()} điểm):',
-                            '-${formatCurrency(pointsDiscountAmount)}',
-                            isDiscount: true
-                          ),
+                              'Sử dụng điểm tích lũy (${(pointsDiscountAmount / 1000).toInt()} điểm):',
+                              '-${formatCurrency(pointsDiscountAmount)}',
+                              isDiscount: true),
                         const Divider(height: 24, thickness: 1),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -893,7 +970,8 @@ class BodyPayment extends StatelessWidget {
     );
   }
 
-  Widget _buildSummaryRow(String label, String value, {bool isDiscount = false}) {
+  Widget _buildSummaryRow(String label, String value,
+      {bool isDiscount = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: Row(
@@ -902,9 +980,11 @@ class BodyPayment extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 14, 
+              fontSize: 14,
               color: Colors.grey.shade700,
-              fontWeight: label.contains('Điểm tích lũy') ? FontWeight.w600 : FontWeight.normal,
+              fontWeight: label.contains('Điểm tích lũy')
+                  ? FontWeight.w600
+                  : FontWeight.normal,
             ),
           ),
           Text(
@@ -925,13 +1005,14 @@ class BodyPayment extends StatelessWidget {
     double finalPrice = product.price; // This is already the discounted price
     double originalPrice = finalPrice; // Default to same as final price
     double lineTotal = finalPrice * product.quantity;
-    bool hasDiscount = product.discountPercentage != null && product.discountPercentage! > 0;
-    
+    bool hasDiscount =
+        product.discountPercentage != null && product.discountPercentage! > 0;
+
     if (hasDiscount) {
       // Calculate original price from final price and discount percentage
       originalPrice = finalPrice / (1 - (product.discountPercentage! / 100));
     }
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
       child: Row(
@@ -1002,8 +1083,7 @@ class BodyPayment extends StatelessWidget {
                       ),
                     ),
                   Text(
-                    formatCurrency(
-                        finalPrice), // Display discounted unit price
+                    formatCurrency(finalPrice), // Display discounted unit price
                     style: const TextStyle(fontSize: 14),
                   ),
                 ],
@@ -1041,15 +1121,16 @@ class BodyPayment extends StatelessWidget {
   Widget _buildMobileProductItem(CartItemModel product) {
     // Get the prices correctly
     double finalPrice = product.price; // This is already the discounted price
-    double originalPrice = finalPrice; // Default to same as final price  
+    double originalPrice = finalPrice; // Default to same as final price
     double lineTotal = finalPrice * product.quantity;
-    bool hasDiscount = product.discountPercentage != null && product.discountPercentage! > 0;
-    
+    bool hasDiscount =
+        product.discountPercentage != null && product.discountPercentage! > 0;
+
     if (hasDiscount) {
       // Calculate original price from final price and discount percentage
       originalPrice = finalPrice / (1 - (product.discountPercentage! / 100));
     }
-    
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
       elevation: 0.5,

@@ -2,6 +2,55 @@ import 'package:flutter/foundation.dart';
 import 'package:e_commerce_app/database/models/product_variant_dto.dart';
 import 'package:intl/intl.dart'; // Assuming you'll use intl for date formatting if needed
 
+// New ProductReviewDTO class
+class ProductReviewDTO {
+  final int? id;
+  final String? reviewerName;
+  final int? rating; // Dart uses int for Byte
+  final String? comment;
+  final DateTime? reviewTime;
+  final int? userId; // Dart uses int for Long if values are within int range, otherwise BigInt or String
+  final int? productId; // Dart uses int for Long
+  final String? reviewerAvatarUrl; // Added reviewerAvatarUrl
+
+  ProductReviewDTO({
+    this.id,
+    this.reviewerName,
+    this.rating,
+    this.comment,
+    this.reviewTime,
+    this.userId,
+    this.productId,
+    this.reviewerAvatarUrl, // Added to constructor
+  });
+
+  factory ProductReviewDTO.fromJson(Map<String, dynamic> json) {
+    return ProductReviewDTO(
+      id: json['id'] as int?,
+      reviewerName: json['reviewerName'] as String?,
+      rating: json['rating'] as int?, // Assuming Byte maps to int
+      comment: json['comment'] as String?,
+      reviewTime: json['reviewTime'] != null ? DateTime.parse(json['reviewTime']) : null,
+      userId: json['userId'] as int?, // Assuming Long maps to int
+      productId: json['productId'] as int?, // Assuming Long maps to int
+      reviewerAvatarUrl: json['reviewerAvatarUrl'] as String?, // Added parsing for reviewerAvatarUrl
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'reviewerName': reviewerName,
+      'rating': rating,
+      'comment': comment,
+      'reviewTime': reviewTime?.toIso8601String(),
+      'userId': userId,
+      'productId': productId,
+      'reviewerAvatarUrl': reviewerAvatarUrl, // Added serialization for reviewerAvatarUrl
+    };
+  }
+}
+
 class ProductDTO {
   final int? id;
   final String name;
@@ -18,6 +67,7 @@ class ProductDTO {
   final double? maxPrice;
   final int? variantCount;
   final List<ProductVariantDTO>? variants;
+  final List<ProductReviewDTO>? reviews; // Added reviews field
 
   ProductDTO({
     this.id,
@@ -35,6 +85,7 @@ class ProductDTO {
     this.maxPrice,
     this.variantCount,
     this.variants,
+    this.reviews, // Added to constructor
   });
 
   factory ProductDTO.fromJson(Map<String, dynamic> json) {
@@ -56,6 +107,9 @@ class ProductDTO {
       variants: (json['variants'] as List<dynamic>?)
           ?.map((e) => ProductVariantDTO.fromJson(e as Map<String, dynamic>))
           .toList(),
+      reviews: (json['reviews'] as List<dynamic>?) // Added parsing for reviews
+          ?.map((e) => ProductReviewDTO.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 
@@ -76,6 +130,7 @@ class ProductDTO {
       'maxPrice': maxPrice,
       'variantCount': variantCount,
       'variants': variants?.map((e) => e.toJson()).toList(),
+      'reviews': reviews?.map((e) => e.toJson()).toList(), // Added serialization for reviews
     };
   }
 }

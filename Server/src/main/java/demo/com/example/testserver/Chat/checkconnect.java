@@ -40,11 +40,48 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
+// Simple DTO class for ProductReview (matching server structure for relevant fields)
+class ProductReviewDTO {
+    private Long id;
+    private Long productId;
+    private String reviewerName;
+    private Integer rating;
+    private String comment;
+    private Date reviewDate;
+
+    // Getters and setters (or ensure Jackson can deserialize)
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public Long getProductId() { return productId; }
+    public void setProductId(Long productId) { this.productId = productId; }
+    public String getReviewerName() { return reviewerName; }
+    public void setReviewerName(String reviewerName) { this.reviewerName = reviewerName; }
+    public Integer getRating() { return rating; }
+    public void setRating(Integer rating) { this.rating = rating; }
+    public String getComment() { return comment; }
+    public void setComment(String comment) { this.comment = comment; }
+    public Date getReviewDate() { return reviewDate; }
+    public void setReviewDate(Date reviewDate) { this.reviewDate = reviewDate; }
+
+    @Override
+    public String toString() {
+        return "ProductReviewDTO{" +
+               "id=" + id +
+               ", productId=" + productId +
+               ", reviewerName='" + reviewerName + '\'' +
+               ", rating=" + rating +
+               ", comment='" + comment + '\'' +
+               ", reviewDate=" + reviewDate +
+               '}';
+    }
+}
+
 public class checkconnect {
 
     private static final String WS_URL = "wss://localhost:8443/ws/websocket";
     private static final String API_URL = "https://localhost:8443";
-    private static final Integer CONVERSATION_ID = 1;
+    private static final Integer CHAT_CONVERSATION_ID = 1; // Renamed for clarity
+    private static final Long PRODUCT_ID_TO_SUBSCRIBE = 1L; // Example product ID for review subscription
     private static String jwtToken = "";
     private static SSLContext globalPermissiveSslContext;
     
@@ -193,7 +230,7 @@ public class checkconnect {
             if (response.getBody() != null && response.getBody().containsKey("token")) {
                 jwtToken = response.getBody().get("token").toString();
                 SwingUtilities.invokeLater(() -> {
-                    statusLabel.setText("Status: Login successful, connecting...");
+                    statusLabel.setText("Status: Login successful, connecting to WebSocket...");
                 });
                 
                 // Connect to WebSocket
@@ -222,16 +259,24 @@ public class checkconnect {
                 
                 isConnected = true;
                 
-                // Join the conversation
-                StompHeaders joinHeaders = new StompHeaders();
-                joinHeaders.setDestination("/app/chat.joinConversation/" + CONVERSATION_ID);
-                stompSession.send(joinHeaders, null);
+                // Join the chat conversation
+                StompHeaders joinChatHeaders = new StompHeaders();
+                joinChatHeaders.setDestination("/app/chat.joinConversation/" + CHAT_CONVERSATION_ID);
+                stompSession.send(joinChatHeaders, null);
                 
-                // Subscribe to conversation
-                stompSession.subscribe("/topic/conversation/" + CONVERSATION_ID, new ChatSessionHandler());
+                // Subscribe to chat conversation
+                stompSession.subscribe("/topic/conversation/" + CHAT_CONVERSATION_ID, new ChatSessionHandler());
                 SwingUtilities.invokeLater(() -> {
-                    appendToChat("System", "Subscribed to conversation #" + CONVERSATION_ID);
+                    appendToChat("System", "Subscribed to chat conversation #" + CHAT_CONVERSATION_ID);
                 });
+
+                // Subscribe to product reviews for a specific product
+                String productReviewTopic = "/topic/product/" + PRODUCT_ID_TO_SUBSCRIBE + "/reviews";
+                stompSession.subscribe(productReviewTopic, new ChatSessionHandler());
+                SwingUtilities.invokeLater(() -> {
+                    appendToChat("System", "Subscribed to product reviews for product #" + PRODUCT_ID_TO_SUBSCRIBE + " on " + productReviewTopic);
+                });
+
             } else {
                 SwingUtilities.invokeLater(() -> {
                     statusLabel.setText("Status: Login failed");
@@ -280,11 +325,11 @@ public class checkconnect {
         
         try {
             SendMessageRequestDTO message = new SendMessageRequestDTO();
-            message.setConversationId(CONVERSATION_ID);
+            message.setConversationId(CHAT_CONVERSATION_ID);
             message.setContent(messageText);
             
             // Send message
-            stompSession.send("/app/chat.sendMessage/" + CONVERSATION_ID, message);
+            stompSession.send("/app/chat.sendMessage/" + CHAT_CONVERSATION_ID, message);
             
             // Clear input field
             messageField.setText("");
@@ -388,10 +433,18 @@ public class checkconnect {
         public Type getPayloadType(StompHeaders headers) {
             // Handle different message types based on destination
             String destination = headers.getDestination();
-            if (destination != null && destination.startsWith("/topic/errors")) {
-                return Map.class;
+            if (destination != null) {
+                if (destination.startsWith("/topic/errors")) {
+                    return Map.class;
+                }
+                if (destination.startsWith("/topic/conversation/")) {
+                    return MessageDTO.class; // Chat messages
+                }
+                if (destination.startsWith("/topic/product/") && destination.endsWith("/reviews")) {
+                    return ProductReviewDTO.class; // Product reviews
+                }
             }
-            return MessageDTO.class; // Default type for subscription messages
+            return Object.class; // Fallback for unknown types or system messages
         }
 
         @Override
@@ -400,6 +453,12 @@ public class checkconnect {
                 MessageDTO message = (MessageDTO) payload;
                 SwingUtilities.invokeLater(() -> {
                     appendToChat(message.getSenderFullName(), message.getContent());
+                });
+            } else if (payload instanceof ProductReviewDTO) {
+                ProductReviewDTO review = (ProductReviewDTO) payload;
+                SwingUtilities.invokeLater(() -> {
+                    appendToChat("Product Review (Product ID: " + review.getProductId() + ")",
+                        "By " + review.getReviewerName() + " (Rating: " + review.getRating() + "): " + review.getComment());
                 });
             } else if (payload instanceof Map) {
                 SwingUtilities.invokeLater(() -> {

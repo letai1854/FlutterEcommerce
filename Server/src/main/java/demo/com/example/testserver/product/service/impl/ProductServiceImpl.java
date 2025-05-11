@@ -123,7 +123,7 @@ public class ProductServiceImpl implements ProductService {
         Page<Product> productPage = productRepository.findAll(spec, pageRequest);
 
         List<ProductDTO> dtos = productPage.getContent().stream()
-                .map(productMapper::mapToProductDTO)
+                .map(productMapper::mapToProductDTO) // This will now exclude reviews
                 .collect(Collectors.toList());
 
         logger.info("Found {} products matching criteria.", productPage.getTotalElements());
@@ -164,7 +164,7 @@ public class ProductServiceImpl implements ProductService {
         Page<Product> productPage = productRepository.findAll(spec, pageRequest);
 
         List<ProductDTO> dtos = productPage.getContent().stream()
-                .map(productMapper::mapToProductDTO)
+                .map(productMapper::mapToProductDTO) // This will now exclude reviews
                 .collect(Collectors.toList());
 
         logger.info("Admin search found {} products matching criteria.", productPage.getTotalElements());
@@ -181,8 +181,8 @@ public class ProductServiceImpl implements ProductService {
                     return new EntityNotFoundException("Product not found with ID: " + id);
                 });
 
-        logger.info("Found product with ID: {}. Mapping to DTO.", id);
-        ProductDTO productDTO = productMapper.mapToProductDTO(product);
+        logger.info("Found product with ID: {}. Mapping to DTO with details.", id);
+        ProductDTO productDTO = productMapper.mapToProductDetailDTO(product); // Use detail mapper to include reviews
 
         logger.debug("Mapped ProductDTO: ID={}, Name={}, Variants={}, Reviews={}", 
                      productDTO.getId(), 
@@ -229,7 +229,7 @@ public class ProductServiceImpl implements ProductService {
         }
 
         Product finalProduct = productRepository.findById(savedProduct.getId()).orElse(savedProduct);
-        return productMapper.mapToProductDTO(finalProduct);
+        return productMapper.mapToProductDetailDTO(finalProduct); // Use detail mapper
     }
 
     @Override
@@ -261,7 +261,7 @@ public class ProductServiceImpl implements ProductService {
         }
 
         Product finalProduct = productRepository.findById(updatedProduct.getId()).orElse(updatedProduct);
-        return productMapper.mapToProductDTO(finalProduct);
+        return productMapper.mapToProductDetailDTO(finalProduct); // Use detail mapper
     }
 
     @Override
@@ -301,7 +301,7 @@ public class ProductServiceImpl implements ProductService {
 
         Page<Product> productPage = productRepository.findAll(spec, pageRequest);
         List<ProductDTO> dtos = productPage.getContent().stream()
-                .map(productMapper::mapToProductDTO)
+                .map(productMapper::mapToProductDTO) // This will now exclude reviews
                 .collect(Collectors.toList());
         return new PageImpl<>(dtos, pageRequest, productPage.getTotalElements());
     }
@@ -320,7 +320,7 @@ public class ProductServiceImpl implements ProductService {
 
         Page<Product> productPage = productRepository.findAll(spec, pageRequest);
         List<ProductDTO> dtos = productPage.getContent().stream()
-                .map(productMapper::mapToProductDTO)
+                .map(productMapper::mapToProductDTO) // This will now exclude reviews
                 .collect(Collectors.toList());
         return new PageImpl<>(dtos, pageRequest, productPage.getTotalElements());
     }
@@ -341,6 +341,7 @@ public class ProductServiceImpl implements ProductService {
                     .orElseThrow(() -> new EntityNotFoundException("User not found with email: " + userEmail + " for review submission."));
             review.setUser(user);
             // review.setReviewerName(user.getFullName()); // Set reviewer name from user
+            review.setReviewerAvatarUrl(user.getAvatar()); // Set avatar URL from user
             // Rating is mandatory for logged-in users
             if (reviewDTO.getRating() == null || reviewDTO.getRating() < 1 || reviewDTO.getRating() > 5) {
                 throw new IllegalArgumentException("Rating must be between 1 and 5 for logged-in users.");
@@ -348,7 +349,11 @@ public class ProductServiceImpl implements ProductService {
             review.setRating(reviewDTO.getRating());
         } else {
             // Anonymous user
-            // review.setReviewerName(StringUtils.hasText(reviewDTO.getReviewerName()) ? reviewDTO.getReviewerName() : "Anonymous");
+            review.setReviewerName(StringUtils.hasText(reviewDTO.getReviewerName()) ? reviewDTO.getReviewerName() : "Anonymous");
+            // For anonymous users, reviewerAvatarUrl could be set if provided in DTO, or from a service like Gravatar.
+            // For now, it will remain null unless explicitly set.
+            // If you have a default anonymous avatar, you can set it here:
+            // review.setReviewerAvatarUrl("URL_TO_DEFAULT_ANONYMOUS_AVATAR");
             // Rating is optional for anonymous, but if provided, must be valid
             if (reviewDTO.getRating() != null) {
                 if (reviewDTO.getRating() < 1 || reviewDTO.getRating() > 5) {

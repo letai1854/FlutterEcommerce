@@ -70,7 +70,7 @@ class _PromoProductItemState extends State<PromoProductItem> {
           RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
           (match) => '${match[1]},',
         );
-    return '$formatted VNĐ';
+    return '$formatted đ';
   }
 
   Widget _buildProductImage() {

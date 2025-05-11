@@ -35,7 +35,7 @@ public class ProductReview {
     private User user;
 
     @Column(name = "ten_nguoi_danh_gia_an_danh", length = 100)
-    private String anonymousReviewerName;
+    private String reviewerName;
 
     @Column(name = "diem_sao") // Nullable if only comment
     private Byte rating; // Use Byte for TINYINT (1-5)
@@ -46,6 +46,9 @@ public class ProductReview {
     @Column(name = "thoi_gian_danh_gia", updatable = false)
     @Temporal(TemporalType.TIMESTAMP)
     private Date reviewTime;
+
+    @Column(name = "nguoi_danh_gia_avatar_url")
+    private String reviewerAvatarUrl;
 
     // Lifecycle Callbacks
     @PrePersist
@@ -81,12 +84,12 @@ public class ProductReview {
         this.user = user;
     }
 
-    public String getAnonymousReviewerName() {
-        return anonymousReviewerName;
+    public String getReviewerName() {
+        return reviewerName;
     }
 
-    public void setAnonymousReviewerName(String anonymousReviewerName) {
-        this.anonymousReviewerName = anonymousReviewerName;
+    public void setReviewerName(String anonymousReviewerName) {
+        this.reviewerName = anonymousReviewerName;
     }
 
     public Byte getRating() {
@@ -111,5 +114,13 @@ public class ProductReview {
 
     public void setReviewTime(Date reviewTime) {
         this.reviewTime = reviewTime;
+    }
+
+    public String getReviewerAvatarUrl() {
+        return reviewerAvatarUrl;
+    }
+
+    public void setReviewerAvatarUrl(String reviewerAvatarUrl) {
+        this.reviewerAvatarUrl = reviewerAvatarUrl;
     }
 }

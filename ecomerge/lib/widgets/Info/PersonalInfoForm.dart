@@ -54,6 +54,8 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
   File? _selectedImageFile;
   Uint8List? _webImageBytes;
   bool _isUploading = false;
+  String? avatarUrl;
+  Future<Uint8List?>? _serverAvatarFuture;
 
   @override
   void initState() {
@@ -61,18 +63,47 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
 
     // Initialize controllers with current user data
     if (UserInfo().currentUser != null) {
-      // Set the user's name to the name controller
       widget.nameController.text = UserInfo().currentUser!.fullName;
-      // Set the user's email to the email controller
       widget.emailController.text = UserInfo().currentUser!.email;
+      avatarUrl = UserInfo().currentUser!.avatar;
+      _updateServerAvatarFuture();
+    }
+    UserInfo().addListener(_onUserInfoChanged);
+  }
+
+  @override
+  void dispose() {
+    UserInfo().removeListener(_onUserInfoChanged);
+    super.dispose();
+  }
+
+  void _onUserInfoChanged() {
+    if (mounted) {
+      final newAvatarUrlFromInfo = UserInfo().currentUser?.avatar;
+      widget.nameController.text =
+          UserInfo().currentUser?.fullName ?? widget.nameController.text;
+      widget.emailController.text =
+          UserInfo().currentUser?.email ?? widget.emailController.text;
+
+      if (newAvatarUrlFromInfo != avatarUrl) {
+        avatarUrl = newAvatarUrlFromInfo;
+        _updateServerAvatarFuture();
+      }
+      setState(() {});
     }
   }
 
-  // Method to only select image (no uploading)
+  void _updateServerAvatarFuture() {
+    if (avatarUrl != null && avatarUrl!.isNotEmpty) {
+      _serverAvatarFuture = UserService().getAvatarBytes(avatarUrl!);
+    } else {
+      _serverAvatarFuture = Future.value(null);
+    }
+  }
+
   Future<void> _pickImage() async {
     try {
       if (kIsWeb) {
-        // Web platform approach
         FilePickerResult? result = await FilePicker.platform.pickFiles(
           type: FileType.image,
           allowMultiple: false,
@@ -85,7 +116,6 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
           });
         }
       } else {
-        // Desktop and Mobile approach
         FilePickerResult? result = await FilePicker.platform.pickFiles(
           type: FileType.image,
           allowMultiple: false,
@@ -94,11 +124,9 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
         if (result != null && result.files.isNotEmpty) {
           setState(() {
             if (result.files.first.bytes != null) {
-              // Web or desktop case where we get bytes directly
               _webImageBytes = result.files.first.bytes;
               _selectedImagePath = result.files.first.name;
             } else if (result.files.first.path != null) {
-              // Desktop/Mobile case where we get file path
               _selectedImagePath = result.files.first.path;
               _selectedImageFile = File(_selectedImagePath!);
             }
@@ -115,18 +143,14 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
     }
   }
 
-  // Upload selected image and return the path
   Future<String?> _uploadSelectedImage() async {
     try {
-      // For web
       if (kIsWeb && _webImageBytes != null) {
         return await _userService.uploadImage(
           _webImageBytes!,
           _selectedImagePath ?? 'web_image.png',
         );
-      }
-      // For mobile/desktop
-      else if (_selectedImageFile != null) {
+      } else if (_selectedImageFile != null) {
         final bytes = await _selectedImageFile!.readAsBytes();
         final fileName = _selectedImagePath!.split('/').last.split('\\').last;
         return await _userService.uploadImage(bytes, fileName);
@@ -140,9 +164,6 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
 
   @override
   Widget build(BuildContext context) {
-    // Get the current user's avatar from UserInfo singleton
-    final String? avatarUrl = UserInfo().currentUser?.avatar;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -167,34 +188,26 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
               children: [
                 Stack(
                   children: [
-                    // Avatar display with improved preview logic
                     Builder(builder: (context) {
-                      // Determine which image to display based on priority:
-                      // 1. Recently selected image (_webImageBytes or _selectedImageFile)
-                      // 2. User's current avatar (from server)
-                      // 3. Default person icon if nothing else is available
-
                       if (_webImageBytes != null) {
-                        // Web-selected image
                         return CircleAvatar(
                           radius: 60,
                           backgroundColor: Colors.grey[200],
                           backgroundImage: MemoryImage(_webImageBytes!),
                         );
                       } else if (_selectedImageFile != null) {
-                        // Native-selected image
                         return CircleAvatar(
                           radius: 60,
                           backgroundColor: Colors.grey[200],
                           backgroundImage: FileImage(_selectedImageFile!),
                         );
-                      } else if (avatarUrl != null && avatarUrl.isNotEmpty) {
-                        // Server image
+                      } else if (avatarUrl != null && avatarUrl!.isNotEmpty) {
                         return FutureBuilder<Uint8List?>(
-                          future: UserService().getAvatarBytes(avatarUrl),
+                          future: _serverAvatarFuture,
                           builder: (context, snapshot) {
                             if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
+                                    ConnectionState.waiting &&
+                                _serverAvatarFuture != null) {
                               return CircleAvatar(
                                 radius: 60,
                                 backgroundColor: Colors.grey[200],
@@ -213,19 +226,27 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
                                 backgroundImage: MemoryImage(snapshot.data!),
                               );
                             } else {
+                              if (avatarUrl != null && avatarUrl!.isNotEmpty) {
+                                return CircleAvatar(
+                                  radius: 60,
+                                  backgroundColor: Colors.grey[200],
+                                  backgroundImage: NetworkImage(avatarUrl!),
+                                  onBackgroundImageError: (e, stack) {
+                                    print(
+                                        "Error loading avatar via NetworkImage: $e");
+                                  },
+                                );
+                              }
                               return CircleAvatar(
                                 radius: 60,
                                 backgroundColor: Colors.grey[200],
-                                backgroundImage: NetworkImage(avatarUrl),
-                                onBackgroundImageError: (e, stack) {
-                                  print("Error loading avatar: $e");
-                                },
+                                child: const Icon(Icons.person,
+                                    size: 60, color: Colors.grey),
                               );
                             }
                           },
                         );
                       } else {
-                        // Default person icon
                         return CircleAvatar(
                           radius: 60,
                           backgroundColor: Colors.grey[200],
@@ -278,15 +299,11 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                // Display user's name
               ],
             ),
           ],
         ),
-
         const SizedBox(height: 40),
-
-        // Personal info form
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -315,11 +332,10 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
                   ),
                   const SizedBox(width: 24),
                   Expanded(
-                    // Modified email field to be read-only
                     child: TextField(
                       controller: widget.emailController,
-                      readOnly: true, // Make the field read-only
-                      enabled: false, // Visually indicate it's disabled
+                      readOnly: true,
+                      enabled: false,
                       decoration: InputDecoration(
                         labelText: "Email (không thể thay đổi)",
                         border: OutlineInputBorder(),
@@ -341,7 +357,6 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
                 onPressed: UserInfo().currentUser == null
                     ? null
                     : () async {
-                        // Add an additional check here to prevent API calls if user isn't logged in
                         if (UserInfo().currentUser == null) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
@@ -350,35 +365,30 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
                               backgroundColor: Colors.red,
                             ),
                           );
-                          return; // Exit early if not logged in
+                          return;
                         }
 
                         setState(() => _isUploading = true);
 
                         try {
-                          // Step 1: Upload image if selected
                           String? avatarPath;
                           if (_webImageBytes != null ||
                               _selectedImageFile != null) {
                             avatarPath = await _uploadSelectedImage();
                           }
 
-                          // Step 2: Create updates map with only fullName
                           final updates = {
                             'fullName': widget.nameController.text,
                           };
 
-                          // Add avatar path if available
                           if (avatarPath != null) {
                             updates['avatar'] = avatarPath;
                           }
 
-                          // Step 3: Update user profile with all data
                           final updatedUser = await _userService
                               .updateCurrentUserProfile(updates);
 
                           if (updatedUser != null) {
-                            // Update avatar and name in UserInfo (important for other components)
                             if (avatarPath != null) {
                               UserInfo()
                                   .updateUserProperty('avatar', avatarPath);
@@ -426,7 +436,6 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
                   backgroundColor: Colors.blue,
-                  // Make button appear disabled if not logged in
                   disabledBackgroundColor: Colors.grey.shade400,
                 ),
                 child: UserInfo().currentUser == null
@@ -440,7 +449,6 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
     );
   }
 
-  // Custom text field with controller
   Widget _buildCustomTextField({
     required String label,
     required TextEditingController controller,
@@ -455,25 +463,5 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
       ),
       onChanged: onChanged,
     );
-  }
-
-  // Helper for getting the appropriate avatar image - prioritize local selection
-  ImageProvider? _getAvatarImage(String? avatarUrl) {
-    // For web with selected image - prioritized first
-    if (_webImageBytes != null) {
-      return MemoryImage(_webImageBytes!);
-    }
-
-    // For mobile/desktop with selected image - prioritized second
-    if (_selectedImageFile != null) {
-      return FileImage(_selectedImageFile!);
-    }
-
-    // For existing avatar URL - fallback
-    if (avatarUrl != null && avatarUrl.isNotEmpty) {
-      return NetworkImage(avatarUrl);
-    }
-
-    return null;
   }
 }
