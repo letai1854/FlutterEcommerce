@@ -7,6 +7,15 @@ class BarChartWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (data.isEmpty) {
+      return const Center(
+        child: Text(
+          'Không có dữ liệu để hiển thị.',
+          style: TextStyle(fontSize: 14, color: Colors.grey),
+        ),
+      );
+    }
+
     // Find the max value for scaling
     final maxValue =
         data.map((item) => item.$2).reduce((a, b) => a > b ? a : b);

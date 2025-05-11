@@ -33,15 +33,15 @@ public class ProductMapper {
         if (product == null) {
             return null;
         }
-        ProductDTO dto = new ProductDTO(product); // Constructor handles basic mapping + variants now
+        ProductDTO dto = new ProductDTO(product); // Constructor handles basic mapping (excluding reviews now)
         // Set denormalized fields directly from the entity
         dto.setAverageRating(product.getAverageRating());
         dto.setMinPrice(product.getMinPrice());
         dto.setMaxPrice(product.getMaxPrice());
-        // Explicitly set variant count (redundant if constructor does it, but safe)
+        // Explicitly set variant count (constructor also does this, but explicit is fine)
         dto.setVariantCount(product.getVariants() != null ? product.getVariants().size() : 0);
 
-        // Map additional images explicitly (constructor might already do this, but being explicit is safer)
+        // Map additional images explicitly (constructor also does this)
         if (product.getImages() != null) {
             dto.setImageUrls(product.getImages().stream()
                                     .map(ProductImage::getImageUrl)
@@ -50,7 +50,7 @@ public class ProductMapper {
             dto.setImageUrls(new ArrayList<>());
         }
 
-        // Map variants explicitly if needed (constructor might already do this)
+        // Map variants explicitly (constructor also does this)
         if (product.getVariants() != null) {
              dto.setVariants(product.getVariants().stream()
                                    .map(this::mapToProductVariantDTO) // Use helper method
@@ -58,7 +58,26 @@ public class ProductMapper {
         } else {
             dto.setVariants(new ArrayList<>());
         }
-        // Add any other complex mapping logic here if needed
+        // Reviews are not mapped here for the general DTO.
+        // Use mapToProductDetailDTO for DTOs that require reviews.
+        return dto;
+    }
+
+    public ProductDTO mapToProductDetailDTO(Product product) {
+        if (product == null) {
+            return null;
+        }
+        // Start with the base mapping (which excludes reviews by default now)
+        ProductDTO dto = this.mapToProductDTO(product);
+
+        // Explicitly map reviews for the detail DTO
+        if (product.getReviews() != null) {
+            dto.setReviews(product.getReviews().stream()
+                                  .map(this::toProductReviewDTO) // Use existing helper to map ProductReview to ProductReviewDTO
+                                  .collect(Collectors.toList()));
+        } else {
+            dto.setReviews(new ArrayList<>()); // Ensure it's an empty list if no reviews
+        }
         return dto;
     }
 
@@ -306,12 +325,24 @@ public class ProductMapper {
         }
         ProductReviewDTO dto = new ProductReviewDTO();
         dto.setId(review.getId());
+
         if (review.getUser() != null) {
             dto.setReviewerName(review.getUser().getFullName());
             dto.setUserId(review.getUser().getId().longValue());
+            dto.setReviewerAvatarUrl(review.getUser().getAvatar()); // Get avatar from User
         } else {
-            dto.setReviewerName(review.getAnonymousReviewerName());
+            if (review.getReviewerName() != null && !review.getReviewerName().trim().isEmpty()) {
+                dto.setReviewerName(review.getReviewerName());
+            } else {
+                dto.setReviewerName("Anonymous");
+            }
+            // For anonymous users, reviewerAvatarUrl in DTO will be based on what's in ProductReview entity.
+            // If ProductReview.reviewerAvatarUrl is populated for anonymous (e.g. Gravatar), it will be mapped.
+            // Otherwise, it will be null.
+            dto.setReviewerAvatarUrl(review.getReviewerAvatarUrl());
+            dto.setUserId(null); // Explicitly set userId to null for anonymous
         }
+
         dto.setRating(review.getRating());
         dto.setComment(review.getComment());
         dto.setReviewTime(review.getReviewTime());
@@ -330,7 +361,7 @@ public class ProductMapper {
         if (review.getUser() != null) {
             dto.setReviewerName(review.getUser().getFullName());
         } else {
-            dto.setReviewerName(review.getAnonymousReviewerName());
+            dto.setReviewerName(review.getReviewerName());
         }
         dto.setRating(review.getRating());
         dto.setComment(review.getComment());
