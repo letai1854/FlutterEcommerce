@@ -339,27 +339,20 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
                                 }
 
                                 final order = _displayedOrders[index];
-                                final items =
-                                    _mapOrderDetailsToItems(order.orderDetails);
-                                final statusText =
-                                    _getShortStatusName(_selectedOrderTab);
 
                                 return GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
+                                  onTap: () async {
+                                    final result = await Navigator.push(
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) => OrderDetailPage(
                                           orderId: order.id.toString(),
-                                          orderDate: order.orderDate
-                                                  ?.toIso8601String()
-                                                  .split('T')[0] ??
-                                              'N/A',
-                                          items: items,
-                                          status: statusText,
                                         ),
                                       ),
                                     );
+                                    if (result == true) {
+                                      _fetchOrders();
+                                    }
                                   },
                                   child: OrderItem(
                                     orderId: order.id.toString(),
@@ -367,8 +360,10 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
                                             ?.toIso8601String()
                                             .split('T')[0] ??
                                         'N/A',
-                                    items: items,
-                                    status: statusText,
+                                    items: _mapOrderDetailsToItems(
+                                        order.orderDetails),
+                                    status:
+                                        _getShortStatusName(_selectedOrderTab),
                                     isClickable: true,
                                     onViewHistory: () {
                                       Navigator.push(
@@ -377,7 +372,8 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
                                           builder: (context) =>
                                               OrderStatusHistoryPage(
                                             orderId: order.id.toString(),
-                                            currentStatus: statusText,
+                                            currentStatus: _getShortStatusName(
+                                                _selectedOrderTab),
                                           ),
                                         ),
                                       );

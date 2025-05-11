@@ -349,8 +349,6 @@ class _OrdersContentState extends State<OrdersContent> {
                             }
 
                             final order = _orders[index];
-                            final items =
-                                _mapOrderDetailsToItems(order.orderDetails);
 
                             return AnimatedListItemWrapper(
                               index: index,
@@ -364,13 +362,6 @@ class _OrdersContentState extends State<OrdersContent> {
                                       MaterialPageRoute(
                                         builder: (context) => OrderDetailPage(
                                           orderId: order.id.toString(),
-                                          orderDate: order.orderDate
-                                                  ?.toIso8601String()
-                                                  .split('T')[0] ??
-                                              'N/A',
-                                          items: items,
-                                          status: _getShortStatusName(
-                                              widget.selectedTab),
                                         ),
                                       ),
                                     );
@@ -381,7 +372,8 @@ class _OrdersContentState extends State<OrdersContent> {
                                             ?.toIso8601String()
                                             .split('T')[0] ??
                                         'N/A',
-                                    items: items,
+                                    items: _mapOrderDetailsToItems(
+                                        order.orderDetails),
                                     status:
                                         _getShortStatusName(widget.selectedTab),
                                     isClickable: true,
