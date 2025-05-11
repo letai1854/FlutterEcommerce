@@ -19,15 +19,17 @@ class MobileOrdersPage extends StatefulWidget {
 
 class _MobileOrdersPageState extends State<MobileOrdersPage> {
   late int _selectedOrderTab;
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-  bool _isSearchVisible = false;
 
   late OrderService _orderService;
-  List<OrderDTO> _allFetchedOrders = [];
-  List<OrderDTO> _displayedOrders = [];
+  List<OrderDTO> _orders = [];
   bool _isLoading = true;
   String? _errorMessage;
+
+  final ScrollController _scrollController = ScrollController();
+  int _currentPage = 0;
+  final int _pageSize = 10;
+  bool _hasMore = true;
+  bool _isLoadingMore = false;
 
   @override
   void initState() {
@@ -35,13 +37,24 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
     _selectedOrderTab = widget.initialTab < 0 ? 0 : widget.initialTab;
     _orderService = OrderService();
     _fetchOrders();
+    _scrollController.addListener(_scrollListener);
   }
 
   @override
   void dispose() {
-    _searchController.dispose();
     _orderService.dispose();
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollListener() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoadingMore &&
+        _hasMore) {
+      _loadMoreOrders();
+    }
   }
 
   OrderStatus? _mapTabIndexToOrderStatus(int tabIndex) {
@@ -65,49 +78,80 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _allFetchedOrders = [];
-      _displayedOrders = [];
+      _orders = [];
+      _currentPage = 0;
+      _hasMore = true;
+      _isLoadingMore = false;
     });
     try {
       final status = _mapTabIndexToOrderStatus(_selectedOrderTab);
-      final orderPage =
-          await _orderService.getCurrentUserOrders(status: status);
-      setState(() {
-        _allFetchedOrders = orderPage.orders;
-        _displayedOrders = _allFetchedOrders;
-        _isLoading = false;
-        _filterOrdersForDisplay();
-      });
+      final orderPage = await _orderService.getCurrentUserOrders(
+        status: status,
+        page: _currentPage,
+        size: _pageSize,
+      );
+      if (mounted) {
+        setState(() {
+          _orders = orderPage.orders;
+          _hasMore = !orderPage.isLast;
+          if (_hasMore) {
+            _currentPage++;
+          }
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.toString();
-      });
+      if (mounted) {
+        String displayError;
+        bool is404 = e.toString().toLowerCase().contains('(status: 404)');
+        if (is404) {
+          displayError = "Chưa có đơn hàng nào.";
+        } else {
+          displayError = "Lỗi tải đơn hàng. Vui lòng thử lại.";
+        }
+        setState(() {
+          _isLoading = false;
+          _errorMessage = displayError;
+          if (is404) {
+            _orders = [];
+            _hasMore = false;
+          }
+        });
+      }
     }
   }
 
-  void _filterOrdersForDisplay() {
-    if (_searchQuery.isEmpty) {
-      _displayedOrders = List.from(_allFetchedOrders);
-    } else {
-      _displayedOrders = _allFetchedOrders.where((order) {
-        final query = _searchQuery.toLowerCase();
-        bool matches = order.id.toString().toLowerCase().contains(query);
-        if (matches) return true;
+  Future<void> _loadMoreOrders() async {
+    if (_isLoadingMore || !_hasMore) return;
 
-        if (order.orderDetails != null) {
-          for (var item in order.orderDetails!) {
-            if (item.productName != null &&
-                item.productName!.toLowerCase().contains(query)) {
-              matches = true;
-              break;
-            }
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final status = _mapTabIndexToOrderStatus(_selectedOrderTab);
+      final orderPage = await _orderService.getCurrentUserOrders(
+        status: status,
+        page: _currentPage,
+        size: _pageSize,
+      );
+      if (mounted) {
+        setState(() {
+          _orders.addAll(orderPage.orders);
+          _hasMore = !orderPage.isLast;
+          if (_hasMore) {
+            _currentPage++;
           }
-        }
-        return matches;
-      }).toList();
+          _isLoadingMore = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingMore = false;
+        });
+      }
     }
-    setState(() {});
   }
 
   List<Map<String, dynamic>> _mapOrderDetailsToItems(
@@ -119,6 +163,7 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
         "image": d.imageUrl ?? "https://via.placeholder.com/80",
         "price": d.priceAtPurchase,
         "quantity": d.quantity,
+        "discountPercentage": d.productDiscountPercentage ?? 0.0,
       };
     }).toList();
   }
@@ -147,45 +192,15 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: _isSearchVisible
-            ? TextField(
-                controller: _searchController,
-                decoration: const InputDecoration(
-                  hintText: "Tìm kiếm đơn hàng...",
-                  hintStyle: TextStyle(color: Colors.white70),
-                  border: InputBorder.none,
-                ),
-                style: const TextStyle(color: Colors.white),
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                    _filterOrdersForDisplay();
-                  });
-                },
-                autofocus: true,
-              )
-            : const Text(
-                "Đơn hàng của tôi",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
+        title: const Text(
+          "Đơn hàng của tôi",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
         backgroundColor: Colors.red,
         actions: [
-          IconButton(
-            icon: Icon(_isSearchVisible ? Icons.close : Icons.search),
-            onPressed: () {
-              setState(() {
-                _isSearchVisible = !_isSearchVisible;
-                if (!_isSearchVisible) {
-                  _searchQuery = '';
-                  _searchController.clear();
-                  _filterOrdersForDisplay();
-                }
-              });
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.chat),
             onPressed: () {},
@@ -205,13 +220,16 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 TextButton.icon(
-                  onPressed: () {
-                    Navigator.push(
+                  onPressed: () async {
+                    final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => const OrderHistoryPage(),
                       ),
                     );
+                    if (result == true && mounted) {
+                      _fetchOrders();
+                    }
                   },
                   icon: const Icon(Icons.history),
                   label: const Text("Lịch sử đơn hàng"),
@@ -236,7 +254,6 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
                       _buildMobileTab(_getShortStatusName(2), 2),
                       _buildMobileTab(_getShortStatusName(3), 3),
                       _buildMobileTab(_getShortStatusName(4), 4),
-                      // _buildMobileTab(_getShortStatusName(5), 5),
                     ],
                   ),
                 ),
@@ -249,40 +266,47 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
                   : _errorMessage != null
                       ? Center(
                           child: Text("Lỗi: $_errorMessage",
-                              style: const TextStyle(color: Colors.red)))
-                      : _displayedOrders.isEmpty
+                              style: const TextStyle(color: Colors.black)))
+                      : _orders.isEmpty && !_hasMore
                           ? Center(
-                              child: Text(_searchQuery.isNotEmpty
-                                  ? "Không tìm thấy đơn hàng nào với từ khóa \"$_searchQuery\" trong mục '${_getShortStatusName(_selectedOrderTab)}'."
-                                  : "Không có đơn hàng nào trong mục '${_getShortStatusName(_selectedOrderTab)}'."))
+                              child: Text(
+                                  "Không có đơn hàng nào trong mục '${_getShortStatusName(_selectedOrderTab)}'."))
                           : ListView.separated(
+                              controller: _scrollController,
                               padding: EdgeInsets.zero,
-                              itemCount: _displayedOrders.length,
+                              itemCount: _orders.length + (_hasMore ? 1 : 0),
                               separatorBuilder: (context, index) =>
                                   const SizedBox(height: 16),
                               itemBuilder: (context, index) {
-                                final order = _displayedOrders[index];
-                                final items =
-                                    _mapOrderDetailsToItems(order.orderDetails);
-                                final statusText =
-                                    _getShortStatusName(_selectedOrderTab);
+                                if (index == _orders.length && _hasMore) {
+                                  return _isLoadingMore
+                                      ? const Center(
+                                          child: Padding(
+                                            padding: EdgeInsets.all(16.0),
+                                            child: CircularProgressIndicator(),
+                                          ),
+                                        )
+                                      : const SizedBox.shrink();
+                                }
+                                if (index >= _orders.length) {
+                                  return const SizedBox.shrink();
+                                }
+
+                                final order = _orders[index];
 
                                 return GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
+                                  onTap: () async {
+                                    final result = await Navigator.push(
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) => OrderDetailPage(
                                           orderId: order.id.toString(),
-                                          orderDate: order.orderDate
-                                                  ?.toIso8601String()
-                                                  .split('T')[0] ??
-                                              'N/A',
-                                          items: items,
-                                          status: statusText,
                                         ),
                                       ),
                                     );
+                                    if (result == true) {
+                                      _fetchOrders();
+                                    }
                                   },
                                   child: OrderItem(
                                     orderId: order.id.toString(),
@@ -290,8 +314,10 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
                                             ?.toIso8601String()
                                             .split('T')[0] ??
                                         'N/A',
-                                    items: items,
-                                    status: statusText,
+                                    items: _mapOrderDetailsToItems(
+                                        order.orderDetails),
+                                    status:
+                                        _getShortStatusName(_selectedOrderTab),
                                     isClickable: true,
                                     onViewHistory: () {
                                       Navigator.push(
@@ -300,11 +326,22 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
                                           builder: (context) =>
                                               OrderStatusHistoryPage(
                                             orderId: order.id.toString(),
-                                            currentStatus: statusText,
+                                            currentStatus: _getShortStatusName(
+                                                _selectedOrderTab),
                                           ),
                                         ),
                                       );
                                     },
+                                    subtotal: order.subtotal ?? 0.0,
+                                    shippingFee: order.shippingFee ?? 0.0,
+                                    tax: order.tax ?? 0.0,
+                                    totalAmount: order.totalAmount ?? 0.0,
+                                    couponDiscount: order.couponDiscount,
+                                    pointsDiscount:
+                                        order.pointsDiscount?.toDouble(),
+                                    pointsEarned:
+                                        order.pointsEarned?.toDouble(),
+                                    isSmallScreen: true,
                                   ),
                                 );
                               },
@@ -327,8 +364,6 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
       onTap: () {
         setState(() {
           _selectedOrderTab = index;
-          _searchQuery = '';
-          _searchController.clear();
           _fetchOrders();
         });
       },

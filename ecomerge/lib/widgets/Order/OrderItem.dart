@@ -1,7 +1,7 @@
 import 'package:e_commerce_app/widgets/Order/OrderStatusHistoryPage.dart';
 import 'package:flutter/material.dart';
-import 'dart:typed_data'; // Add this import
-import 'package:e_commerce_app/database/services/categories_service.dart'; // Add this import
+import 'dart:typed_data';
+import 'package:e_commerce_app/database/services/categories_service.dart';
 
 class OrderItem extends StatefulWidget {
   final String orderId;
@@ -10,7 +10,15 @@ class OrderItem extends StatefulWidget {
   final String status;
   final bool isClickable;
   final VoidCallback? onViewHistory;
-  final bool isSmallScreen; // Added parameter for screen size
+  final bool isSmallScreen;
+
+  final double subtotal;
+  final double shippingFee;
+  final double tax;
+  final double totalAmount;
+  final double? couponDiscount;
+  final double? pointsDiscount;
+  final double? pointsEarned;
 
   const OrderItem({
     Key? key,
@@ -20,7 +28,14 @@ class OrderItem extends StatefulWidget {
     required this.status,
     this.isClickable = false,
     this.onViewHistory,
-    this.isSmallScreen = false, // Default to desktop layout
+    this.isSmallScreen = false,
+    required this.subtotal,
+    required this.shippingFee,
+    required this.tax,
+    required this.totalAmount,
+    this.couponDiscount,
+    this.pointsDiscount,
+    this.pointsEarned,
   }) : super(key: key);
 
   @override
@@ -30,31 +45,66 @@ class OrderItem extends StatefulWidget {
 class _OrderItemState extends State<OrderItem> {
   bool _expanded = false;
   bool _isHovering = false;
-  final CategoriesService _categoriesService =
-      CategoriesService(); // Add this line
+  final CategoriesService _categoriesService = CategoriesService();
+  final Map<String, Future<Uint8List?>> _imageFutures = {};
 
-  // Modified to handle both int and double types
   String _formatCurrency(dynamic amount) {
-    // Convert to double regardless of whether it's an int or double
     final double value = amount is int ? amount.toDouble() : amount;
-
+    if (value == 0.0 && amount is double && value.isNegative) {
+      return "0";
+    }
     return value.toStringAsFixed(0).replaceAllMapped(
           RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
           (Match m) => '${m[1]},',
         );
   }
 
+  Widget _buildDetailRow(String label, dynamic value,
+      {String unit = "đ",
+      bool isDiscount = false,
+      bool alwaysShowZero = false}) {
+    if (value == null) return const SizedBox.shrink();
+    double numericValue = 0.0;
+    if (value is int) {
+      numericValue = value.toDouble();
+    } else if (value is double) {
+      numericValue = value;
+    } else {
+      return const SizedBox.shrink();
+    }
+
+    if (!alwaysShowZero && numericValue == 0.0 && !isDiscount)
+      return const SizedBox.shrink();
+    if (isDiscount && numericValue == 0.0) return const SizedBox.shrink();
+
+    String formattedValue;
+    if (unit == "điểm") {
+      // Divide by 1000 and then convert to int for display
+      formattedValue = (numericValue / 1000).toInt().toString();
+    } else {
+      formattedValue = _formatCurrency(numericValue);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+          Text(
+            "${isDiscount ? '-' : ''}$formattedValue $unit",
+            style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[800],
+                fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Calculate total - ensure we convert values to double
-    double total = widget.items.fold(0.0, (sum, item) {
-      final dynamic price = item["price"];
-      final int quantity = item["quantity"] as int;
-      // Convert price to double if it's an int
-      final double priceAsDouble = price is int ? price.toDouble() : price;
-      return sum + (priceAsDouble * quantity);
-    });
-
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovering = true),
       onExit: (_) => setState(() => _isHovering = false),
@@ -84,16 +134,11 @@ class _OrderItemState extends State<OrderItem> {
                 border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
               ),
               child: widget.isSmallScreen
-                  ? _buildMobileHeader() // Mobile layout
-                  : _buildDesktopHeader(), // Desktop layout
+                  ? _buildMobileHeader()
+                  : _buildDesktopHeader(),
             ),
-
-            // First item (always visible)
             _buildOrderItemRow(widget.items[0]),
-
-            // Additional items (collapsible)
             if (widget.items.length > 1) ...[
-              // "See more" button if there are multiple items
               ExpansionTile(
                 title: const Text(
                   "Xem thêm sản phẩm",
@@ -110,8 +155,31 @@ class _OrderItemState extends State<OrderItem> {
                 ],
               ),
             ],
-
-            // Order total
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Column(
+                children: [
+                  _buildDetailRow("Tạm tính:", widget.subtotal,
+                      alwaysShowZero: true),
+                  _buildDetailRow("Phí vận chuyển:", widget.shippingFee,
+                      alwaysShowZero: true),
+                  _buildDetailRow("Thuế:", widget.tax, alwaysShowZero: true),
+                  if (widget.couponDiscount != null &&
+                      widget.couponDiscount! > 0)
+                    _buildDetailRow("Giảm giá coupon:", widget.couponDiscount,
+                        isDiscount: true),
+                  if (widget.pointsDiscount != null &&
+                      widget.pointsDiscount! > 0)
+                    _buildDetailRow("Giảm giá điểm:", widget.pointsDiscount,
+                        isDiscount: true),
+                  if (widget.pointsDiscount != null &&
+                      widget.pointsDiscount! > 0)
+                    _buildDetailRow("Điểm tích lũy:", widget.pointsDiscount,
+                        unit: "điểm", isDiscount: true),
+                ],
+              ),
+            ),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -126,7 +194,7 @@ class _OrderItemState extends State<OrderItem> {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    "${_formatCurrency(total)} đ",
+                    "${_formatCurrency(widget.totalAmount)} đ",
                     style: const TextStyle(
                       color: Colors.red,
                       fontWeight: FontWeight.bold,
@@ -142,7 +210,6 @@ class _OrderItemState extends State<OrderItem> {
     );
   }
 
-  // Desktop header layout - side by side
   Widget _buildDesktopHeader() {
     final screenWidth = MediaQuery.of(context).size.width;
 
@@ -187,7 +254,6 @@ class _OrderItemState extends State<OrderItem> {
             ],
           )
         else
-          // For narrower screens, use Column (stacked)
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -218,16 +284,13 @@ class _OrderItemState extends State<OrderItem> {
     );
   }
 
-  // Mobile header layout - status below history button
   Widget _buildMobileHeader() {
-    // Get screen width for better mobile detection
     final screenWidth = MediaQuery.of(context).size.width;
-    final isPhoneSize = screenWidth < 450; // More precise phone detection
+    final isPhoneSize = screenWidth < 450;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Order details
         Text(
           "Mã đơn hàng: ${widget.orderId}",
           style: const TextStyle(fontWeight: FontWeight.bold),
@@ -235,12 +298,9 @@ class _OrderItemState extends State<OrderItem> {
         const SizedBox(height: 4),
         Text("Ngày mua: ${widget.date}"),
         const SizedBox(height: 12),
-
-        // For phone-sized screens, force status indicator to appear below history button
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // History button row
             Row(
               children: [
                 TextButton.icon(
@@ -264,11 +324,7 @@ class _OrderItemState extends State<OrderItem> {
                 ),
               ],
             ),
-
             const SizedBox(height: 8),
-
-            // Status indicator always on a separate row
-
             Align(
               alignment: Alignment.centerRight,
               child: _buildStatusIndicator(),
@@ -279,7 +335,6 @@ class _OrderItemState extends State<OrderItem> {
     );
   }
 
-  // Extracted status indicator for reuse
   Widget _buildStatusIndicator() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -304,6 +359,33 @@ class _OrderItemState extends State<OrderItem> {
   }
 
   Widget _buildOrderItemRow(Map<String, dynamic> item) {
+    final String? imageUrl = item["image"] as String?;
+    Future<Uint8List?>? imageFuture;
+
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      if (!_imageFutures.containsKey(imageUrl)) {
+        _imageFutures[imageUrl] =
+            _categoriesService.getImageFromServer(imageUrl);
+      }
+      imageFuture = _imageFutures[imageUrl];
+    }
+
+    final dynamic priceAtPurchase = item["price"];
+    final double productDiscountPercentage =
+        (item["discountPercentage"] as num?)?.toDouble() ?? 0.0;
+    final int quantity = item["quantity"] as int;
+
+    double originalSinglePrice = 0.0;
+    double discountedSinglePrice = 0.0;
+
+    if (priceAtPurchase is num) {
+      originalSinglePrice = priceAtPurchase.toDouble();
+      if (productDiscountPercentage > 0) {
+        discountedSinglePrice =
+            originalSinglePrice * (1 - productDiscountPercentage / 100);
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -311,49 +393,57 @@ class _OrderItemState extends State<OrderItem> {
       ),
       child: Row(
         children: [
-          // Product image
           SizedBox(
             width: 80,
             height: 80,
-            child: FutureBuilder<Uint8List?>(
-              future: _categoriesService
-                  .getImageFromServer(item["image"] as String?),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                      child: CircularProgressIndicator(strokeWidth: 2));
-                } else if (snapshot.hasError ||
-                    !snapshot.hasData ||
-                    snapshot.data == null) {
-                  return Container(
+            child: (imageUrl == null || imageUrl.isEmpty)
+                ? Container(
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.grey.shade200),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: const Icon(Icons.error_outline, color: Colors.grey),
-                  );
-                } else {
-                  return Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade200),
-                      borderRadius: BorderRadius.circular(4),
-                      image: DecorationImage(
-                        image: MemoryImage(snapshot.data!),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  );
-                }
-              },
-            ),
+                    child: const Icon(Icons.image_not_supported,
+                        color: Colors.grey),
+                  )
+                : FutureBuilder<Uint8List?>(
+                    future: imageFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2));
+                      } else if (snapshot.hasError ||
+                          !snapshot.hasData ||
+                          snapshot.data == null) {
+                        return Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade200),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Icon(Icons.error_outline,
+                              color: Colors.grey),
+                        );
+                      } else {
+                        return Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade200),
+                            borderRadius: BorderRadius.circular(4),
+                            image: DecorationImage(
+                              image: MemoryImage(snapshot.data!),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                  ),
           ),
           const SizedBox(width: 16),
-
-          // Product info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -363,19 +453,53 @@ class _OrderItemState extends State<OrderItem> {
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                Text("Số lượng: x${item["quantity"]}"),
+                Text("Số lượng: x$quantity"),
               ],
             ),
           ),
-
-          // Price display - using the updated _formatCurrency method
-          Text(
-            "${_formatCurrency(item["price"])} đ",
-            style: const TextStyle(
-              color: Colors.red,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (productDiscountPercentage > 0 &&
+                  originalSinglePrice > 0 &&
+                  discountedSinglePrice > 0) ...[
+                Text(
+                  "${_formatCurrency(originalSinglePrice)} đ",
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    decoration: TextDecoration.lineThrough,
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  "${_formatCurrency(discountedSinglePrice)} đ",
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ] else if (originalSinglePrice > 0) ...[
+                Text(
+                  "${_formatCurrency(originalSinglePrice)} đ",
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ] else ...[
+                Text(
+                  "N/A",
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ]
+            ],
+          )
         ],
       ),
     );

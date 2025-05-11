@@ -417,7 +417,6 @@ class _PageproductdetailState extends State<Pageproductdetail> {
             discountPercentage: _productData['discountPercentage']?.toDouble(),
             finalPrice: selectedVariant['price'] as double?,
             stockQuantity: selectedVariant['stock'] as int?,
-            
           );
 
           print(

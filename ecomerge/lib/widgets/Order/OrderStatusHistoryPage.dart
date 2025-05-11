@@ -1,4 +1,7 @@
+import 'package:e_commerce_app/database/models/order/OrderDTO.dart';
+import 'package:e_commerce_app/database/services/order_service.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; // For date formatting
 
 class OrderStatusHistoryPage extends StatefulWidget {
   final String orderId;
@@ -18,74 +21,213 @@ class OrderStatusHistoryPage extends StatefulWidget {
 
 class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
   bool _showAllHistory = false;
-  late List<Map<String, dynamic>> _statusHistory;
+  late List<OrderStatusHistoryDTO> _statusHistory;
+  OrderDTO? _orderDetails; // To store fetched order details
+  bool _isLoadingHistory = true;
+  bool _isLoadingOrderDetails = true; // Loading state for order details
+  String? _historyErrorMsg;
+  String? _orderDetailsErrorMsg; // Error message for order details
+  final OrderService _orderService = OrderService();
+
+  final Map<String, String> _commonPhrases = {
+    'Order created successfully': 'Đơn hàng đã được tạo thành công',
+    'Order status updated by admin':
+        'Trạng thái đơn hàng đã được cập nhật bởi quản trị viên',
+    'Order status updated by system':
+        'Trạng thái đơn hàng đã được cập nhật bởi hệ thống',
+    'Order cancelled by user': 'Đơn hàng đã được hủy ',
+    'Order cancelled by admin': 'Đơn hàng đã được hủy',
+    'Order cancelled': 'Đơn hàng đã bị hủy',
+    'Order processed': 'Đơn hàng đã được xử lý',
+    'Order confirmed': 'Đơn hàng đã được xác nhận',
+    'Order is being shipped': 'Đơn hàng đang được giao',
+    'Order delivered successfully': 'Đơn hàng đã giao thành công',
+    'Payment status updated to': 'Trạng thái thanh toán cập nhật thành',
+  };
+
+  final Map<String, String> _paymentStatusValues = {
+    'DA_THANH_TOAN': 'đã thanh toán',
+    'CHUA_THANH_TOAN': 'chưa thanh toán',
+    'HOAN_TIEN': 'hoàn tiền',
+    'DA_HUY': 'đã hủy', // Assuming payment can also be cancelled
+    'THANH_TOAN_LOI': 'thanh toán lỗi',
+  };
+
+  final Map<String, String> _orderStatusTranslations = {
+    'CHO_XU_LY': 'Chờ xử lý',
+    'DA_XAC_NHAN': 'Đã xác nhận',
+    'DANG_GIAO': 'Đang giao',
+    'DA_GIAO': 'Đã giao',
+    'DA_HUY': 'Đã hủy',
+    'TRA_HANG': 'Trả hàng', // If applicable
+    'HOAN_THANH': 'Hoàn thành', // If applicable
+  };
 
   @override
   void initState() {
     super.initState();
-    // Generate dummy status history with updated status names
-    _statusHistory = [
-      {
-        "status": "Đã giao",
-        "time": "12/05/2023 14:25",
-        "description": "Đơn hàng đã được giao thành công"
-      },
-      {
-        "status": "Đang giao",
-        "time": "11/05/2023 08:15",
-        "description": "Đơn hàng đang được giao đến bạn"
-      },
-      {
-        "status": "Đã xác nhận",
-        "time": "10/05/2023 17:30",
-        "description": "Đơn hàng đã được xác nhận và đóng gói"
-      },
-      {
-        "status": "Chờ xử lý",
-        "time": "09/05/2023 22:45",
-        "description": "Đơn hàng của bạn đang được xử lý"
-      },
-      {
-        "status": "Đã đặt hàng",
-        "time": "09/05/2023 22:40",
-        "description": "Đơn hàng đã được đặt thành công"
-      },
-      {
-        "status": "Thêm vào giỏ hàng",
-        "time": "09/05/2023 21:30",
-        "description": "Sản phẩm đã được thêm vào giỏ hàng"
-      },
-    ];
+    _statusHistory = [];
+    _fetchAllData();
   }
 
-  // Updated status color method to match new status names
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case "Đã giao":
-        return Colors.green;
-      case "Đang giao":
-        return Colors.orange;
-      case "Đã hủy":
-        return Colors.red;
-      case "Trả hàng":
-        return Colors.purple;
-      default:
-        return Colors.blue;
+  Future<void> _fetchAllData() async {
+    await Future.wait([
+      _fetchOrderDetails(),
+      _fetchHistory(),
+    ]);
+  }
+
+  Future<void> _fetchOrderDetails() async {
+    setState(() {
+      _isLoadingOrderDetails = true;
+      _orderDetailsErrorMsg = null;
+    });
+    try {
+      final details = await _orderService
+          .getOrderDetailsForCurrentUser(int.parse(widget.orderId));
+      if (mounted) {
+        setState(() {
+          _orderDetails = details;
+          _isLoadingOrderDetails = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingOrderDetails = false;
+          _orderDetailsErrorMsg = "Lỗi tải thông tin đơn hàng: ${e.toString()}";
+        });
+      }
+    }
+  }
+
+  Future<void> _fetchHistory() async {
+    setState(() {
+      _isLoadingHistory = true;
+      _historyErrorMsg = null;
+    });
+    try {
+      final history = await _orderService
+          .getOrderStatusHistoryForCurrentUser(int.parse(widget.orderId));
+      history.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      if (mounted) {
+        setState(() {
+          _statusHistory = history;
+          _isLoadingHistory = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingHistory = false;
+          _historyErrorMsg = "Lỗi tải lịch sử: ${e.toString()}";
+        });
+      }
     }
   }
 
   @override
+  void dispose() {
+    _orderService.dispose();
+    super.dispose();
+  }
+
+  Color _getStatusColor(String status) {
+    String normalizedStatus = status.toLowerCase().replaceAll('_', ' ');
+
+    if (normalizedStatus == "da giao" || normalizedStatus == "đã giao") {
+      return Colors.green;
+    } else if (normalizedStatus == "dang giao" ||
+        normalizedStatus == "đang giao") {
+      return Colors.orange;
+    } else if (normalizedStatus == "da huy" || normalizedStatus == "đã hủy") {
+      return Colors.red;
+    } else if (normalizedStatus == "tra hang" ||
+        normalizedStatus == "trả hàng") {
+      return Colors.purple;
+    } else if (normalizedStatus == "da xac nhan" ||
+        normalizedStatus == "đã xác nhận") {
+      return Colors.blueAccent;
+    } else if (normalizedStatus == "cho xu ly" ||
+        normalizedStatus == "chờ xử lý") {
+      return Colors.blue;
+    }
+    return Colors.grey;
+  }
+
+  String _translateStatusToVietnamese(String apiStatus) {
+    return _orderStatusTranslations[apiStatus.toUpperCase()] ?? apiStatus;
+  }
+
+  String _translateNotesToVietnamese(String? notes) {
+    if (notes == null || notes.isEmpty) {
+      return "Không có ghi chú";
+    }
+    String translatedNote = notes;
+
+    _commonPhrases.forEach((key, value) {
+      if (translatedNote.contains(key)) {
+        translatedNote = translatedNote.replaceAll(key, value);
+      }
+    });
+
+    _paymentStatusValues.forEach((key, value) {
+      if (translatedNote.contains(key.replaceAll('_', ' ').toLowerCase())) {
+        translatedNote = translatedNote.replaceAll(
+            key.replaceAll('_', ' ').toLowerCase(), value);
+      } else if (translatedNote.contains(key)) {
+        translatedNote = translatedNote.replaceAll(key, value);
+      }
+    });
+    return translatedNote;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Get the screen width to determine layout
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 650;
 
-    final int itemsToShow = _showAllHistory
-        ? _statusHistory.length
-        : (_statusHistory.length > 3 ? 3 : _statusHistory.length);
-
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final backgroundColor = isDarkMode ? Colors.grey[900] : Colors.grey[100];
+
+    bool overallLoading = _isLoadingHistory || _isLoadingOrderDetails;
+    String? overallError = _historyErrorMsg ?? _orderDetailsErrorMsg;
+
+    if (overallLoading) {
+      return Scaffold(
+        backgroundColor: backgroundColor,
+        appBar: AppBar(
+          title: Text(
+            "Chi tiết đơn hàng ${widget.orderId}",
+            style: const TextStyle(
+                fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18),
+          ),
+          backgroundColor: Colors.red,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (overallError != null) {
+      return Scaffold(
+        backgroundColor: backgroundColor,
+        appBar: AppBar(
+          title: Text(
+            "Chi tiết đơn hàng ${widget.orderId}",
+            style: const TextStyle(
+                fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18),
+          ),
+          backgroundColor: Colors.red,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: Center(
+            child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(overallError, style: const TextStyle(color: Colors.red)),
+        )),
+      );
+    }
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -122,7 +264,6 @@ class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Order ID and Status card - same for all screen sizes
               Card(
                 elevation: 4,
                 shape: RoundedRectangleBorder(
@@ -186,10 +327,7 @@ class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 16),
-
-              // Main content area with responsive layout
               Expanded(
                 child: isSmallScreen
                     ? _buildVerticalLayout()
@@ -202,52 +340,84 @@ class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
     );
   }
 
-  // Vertical layout for small screens (stacked columns)
   Widget _buildVerticalLayout() {
-    // Use a ListView instead of SingleChildScrollView for better handling of children
     return ListView(
-      // Remove physics if you want to keep the parent scroll behavior
       physics: const ClampingScrollPhysics(),
       children: [
-        // Shipping information section - full width, no Expanded
         _buildShippingInfoCard(),
-
         const SizedBox(height: 16),
-
-        // Timeline section - with fixed height instead of Expanded
         Container(
-          // Provide a fixed height for the timeline on mobile
-          height: 400, // Adjust based on your needs
-          child: _buildTimelineCardContent(),
+          height: 400,
+          child: _isLoadingHistory
+              ? Center(child: CircularProgressIndicator())
+              : _historyErrorMsg != null
+                  ? Center(
+                      child: Text(_historyErrorMsg!,
+                          style: TextStyle(color: Colors.red)))
+                  : _statusHistory.isEmpty
+                      ? Center(child: Text("Không có lịch sử trạng thái."))
+                      : _buildTimelineCardContent(),
         ),
       ],
     );
   }
 
-  // Horizontal layout for larger screens (side-by-side columns)
   Widget _buildHorizontalLayout() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Left column: Shipping information
         Expanded(
           flex: 2,
           child: _buildShippingInfoCard(),
         ),
-
         const SizedBox(width: 16),
-
-        // Right column: Status timeline
         Expanded(
           flex: 3,
-          child: _buildTimelineCard(),
+          child: _isLoadingHistory
+              ? Center(child: CircularProgressIndicator())
+              : _historyErrorMsg != null
+                  ? Center(
+                      child: Text(_historyErrorMsg!,
+                          style: TextStyle(color: Colors.red)))
+                  : _statusHistory.isEmpty
+                      ? Center(child: Text("Không có lịch sử trạng thái."))
+                      : _buildTimelineCard(),
         ),
       ],
     );
   }
 
-  // Shipping information card - used in both layouts
   Widget _buildShippingInfoCard() {
+    if (_isLoadingOrderDetails) {
+      return Card(
+          elevation: 4,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Center(child: CircularProgressIndicator())));
+    }
+    if (_orderDetailsErrorMsg != null) {
+      return Card(
+          elevation: 4,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Center(
+                  child: Text(_orderDetailsErrorMsg!,
+                      style: const TextStyle(color: Colors.red)))));
+    }
+    if (_orderDetails == null) {
+      return Card(
+          elevation: 4,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Center(child: Text("Không có thông tin nhận hàng."))));
+    }
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
@@ -266,8 +436,7 @@ class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize:
-                MainAxisSize.min, // Important for scrolling in vertical layout
+            mainAxisSize: MainAxisSize.min,
             children: [
               Row(
                 children: [
@@ -284,8 +453,6 @@ class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
                 ],
               ),
               const Divider(height: 24),
-
-              // User info with icons
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -301,14 +468,12 @@ class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      const Text("Nguyễn Văn A"),
+                      Text(_orderDetails?.recipientName ?? "N/A"),
                     ],
                   ),
                 ],
               ),
-
               const SizedBox(height: 12),
-
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -324,14 +489,12 @@ class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      const Text("0987654321"),
+                      Text(_orderDetails?.recipientPhoneNumber ?? "N/A"),
                     ],
                   ),
                 ],
               ),
-
               const SizedBox(height: 12),
-
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -348,9 +511,9 @@ class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
-                          "123 Đường Nguyễn Văn Linh, Phường Tân Phú, Quận 7, TP. Hồ Chí Minh",
-                          style: TextStyle(
+                        Text(
+                          _orderDetails?.shippingAddress ?? "N/A",
+                          style: const TextStyle(
                             height: 1.4,
                           ),
                         ),
@@ -366,7 +529,6 @@ class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
     );
   }
 
-  // Timeline card - used in horizontal layout with Expanded
   Widget _buildTimelineCard() {
     return Card(
       elevation: 4,
@@ -390,8 +552,11 @@ class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
     );
   }
 
-  // Extract timeline content to avoid duplication
   Widget _buildTimelineCardContent() {
+    final int itemsToShow = _showAllHistory
+        ? _statusHistory.length
+        : (_statusHistory.length > 3 ? 3 : _statusHistory.length);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -410,22 +575,19 @@ class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
           ],
         ),
         const Divider(height: 24),
-
-        // Timeline entries - take remaining space
         Expanded(
           child: ListView.builder(
-            // Use proper physics for nested scrolling
             physics: const ClampingScrollPhysics(),
-            itemCount: (_showAllHistory
-                    ? _statusHistory.length
-                    : (_statusHistory.length > 3 ? 3 : _statusHistory.length)) +
-                (_statusHistory.length > 3 && !_showAllHistory ? 1 : 0),
+            itemCount: itemsToShow +
+                (_statusHistory.length > 3 &&
+                        !_showAllHistory &&
+                        itemsToShow < _statusHistory.length
+                    ? 1
+                    : 0),
             itemBuilder: (context, index) {
               if (!_showAllHistory &&
-                  index ==
-                      (_statusHistory.length > 3 ? 3 : _statusHistory.length) &&
+                  index == itemsToShow &&
                   _statusHistory.length > 3) {
-                // "See more" button
                 return Center(
                   child: TextButton.icon(
                     onPressed: () {
@@ -450,15 +612,25 @@ class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
                 );
               }
 
+              if (index >= _statusHistory.length) {
+                return SizedBox.shrink();
+              }
+
               final statusItem = _statusHistory[index];
               final isLast = index == _statusHistory.length - 1;
+              final String formattedTime = DateFormat('dd/MM/yyyy HH:mm')
+                  .format(statusItem.timestamp.toLocal());
+              final String translatedStatus =
+                  _translateStatusToVietnamese(statusItem.status);
+              final String translatedNotes =
+                  _translateNotesToVietnamese(statusItem.notes);
 
               return TimelineEntry(
-                status: statusItem["status"],
-                time: statusItem["time"],
-                description: statusItem["description"],
+                status: translatedStatus,
+                time: formattedTime,
+                description: translatedNotes,
                 isLast: isLast,
-                color: _getStatusColor(statusItem["status"]),
+                color: _getStatusColor(statusItem.status),
               );
             },
           ),
@@ -484,17 +656,19 @@ class TimelineEntry extends StatelessWidget {
     this.color = Colors.blue,
   }) : super(key: key);
 
+  String _formatStatusString(String status) {
+    return status;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Timeline dot and line with enhanced styling
         SizedBox(
           width: 24,
           child: Column(
             children: [
-              // Dot with shadow
               Container(
                 width: 16,
                 height: 16,
@@ -511,7 +685,6 @@ class TimelineEntry extends StatelessWidget {
                   ],
                 ),
               ),
-              // Line
               if (!isLast)
                 Container(
                   width: 2,
@@ -527,10 +700,7 @@ class TimelineEntry extends StatelessWidget {
             ],
           ),
         ),
-
         const SizedBox(width: 12),
-
-        // Content with enhanced styling
         Expanded(
           child: Container(
             margin: const EdgeInsets.only(bottom: 16.0),
@@ -552,7 +722,7 @@ class TimelineEntry extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  status,
+                  _formatStatusString(status),
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,

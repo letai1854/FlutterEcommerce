@@ -299,12 +299,20 @@ class _CategoryFilteredProductGridState
           itemCount: _products.length,
           itemBuilder: (context, index) {
             final product = _products[index];
+            double price = 0.0;
+            if (product.variants != null &&
+                product.variants!.isNotEmpty &&
+                product.variants![0].price != null) {
+              price = product.variants![0].price!;
+            } else {
+              price = product.minPrice ?? 0.0;
+            }
             return ProductItem(
               productId: product.id ?? 0,
               imageUrl: product.mainImageUrl,
               title: product.name,
               describe: product.description,
-              price: product.minPrice ?? 0.0,
+              price: price, // Use the determined price
               discount: product.discountPercentage?.toInt(),
               rating: product.averageRating ?? 0.0,
               isFromCache:

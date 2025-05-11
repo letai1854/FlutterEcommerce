@@ -111,6 +111,99 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
+  // Translation function for order status notes - reusable across the app
+  String _translateOrderNote(String? englishNote) {
+    if (englishNote == null || englishNote.isEmpty) {
+      return '';
+    }
+    
+    String translatedNote = englishNote;
+    
+    // Extract points information if present
+    int? pointsAwarded;
+    if (englishNote.contains('Points awarded:')) {
+      final pointsMatch = RegExp(r'Points awarded: (\d+)').firstMatch(englishNote);
+      if (pointsMatch != null && pointsMatch.groupCount >= 1) {
+        pointsAwarded = int.tryParse(pointsMatch.group(1)!);
+      }
+    }
+    
+    // Standard message translations
+    final Map<String, String> commonPhrases = {
+      'Order created successfully': 'Đơn hàng đã được tạo thành công',
+      'Order status updated by admin': 'Trạng thái đơn hàng đã được cập nhật bởi quản trị viên',
+      'Order status updated by system': 'Trạng thái đơn hàng đã được cập nhật bởi hệ thống',
+      'Order cancelled': 'Đơn hàng đã bị hủy',
+      'Order processed': 'Đơn hàng đã được xử lý',
+      'Order confirmed': 'Đơn hàng đã được xác nhận',
+      'Order is being shipped': 'Đơn hàng đang được giao',
+      'Order delivered successfully': 'Đơn hàng đã giao thành công',
+    };
+    
+    // Payment status translations
+    final Map<String, String> paymentStatuses = {
+      'Payment status updated to': 'Trạng thái thanh toán cập nhật thành',
+      'da_thanh_toan': 'đã thanh toán',
+      'chua_thanh_toan': 'chưa thanh toán',
+      'hoan_tien': 'hoàn tiền',
+    };
+    
+    // Apply all translations
+    commonPhrases.forEach((english, vietnamese) {
+      translatedNote = translatedNote.replaceAll(english, vietnamese);
+    });
+    
+    paymentStatuses.forEach((english, vietnamese) {
+      translatedNote = translatedNote.replaceAll(english, vietnamese);
+    });
+    
+    // Format points information separately for better visibility
+    if (pointsAwarded != null) {
+      translatedNote = translatedNote.replaceAll(
+        'Points awarded: $pointsAwarded', 
+        'Tặng điểm tích lũy: $pointsAwarded điểm'
+      );
+    }
+    
+    return translatedNote;
+  }
+
+  // Convert status code to Vietnamese display text - reusable across the app
+  String _getOrderStatusDisplay(String status) {
+    final Map<String, String> statusDisplay = {
+      'cho_xu_ly': 'Chờ xử lý',
+      'da_xac_nhan': 'Đã xác nhận',
+      'dang_giao': 'Đang giao',
+      'da_giao': 'Đã giao',
+      'da_huy': 'Đã hủy',
+    };
+    return statusDisplay[status.toLowerCase()] ?? status;
+  }
+
+  // Get appropriate status icon based on status - reusable across the app
+  IconData _getStatusIcon(String status) {
+    final Map<String, IconData> statusIcons = {
+      'cho_xu_ly': Icons.hourglass_empty,
+      'da_xac_nhan': Icons.check_circle_outline,
+      'dang_giao': Icons.local_shipping,
+      'da_giao': Icons.done_all,
+      'da_huy': Icons.cancel,
+    };
+    return statusIcons[status.toLowerCase()] ?? Icons.circle;
+  }
+  
+  // Get appropriate status color based on status - reusable across the app
+  Color _getStatusColor(String status) {
+    final Map<String, Color> statusColors = {
+      'cho_xu_ly': Colors.orange,
+      'da_xac_nhan': Colors.blue,
+      'dang_giao': Colors.indigo,
+      'da_giao': Colors.green,
+      'da_huy': Colors.red,
+    };
+    return statusColors[status.toLowerCase()] ?? Colors.blue;
+  }
+
   Widget _buildStatusHistoryTimeline() {
     if (_loadingHistory) {
       return Center(
@@ -135,6 +228,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       itemBuilder: (context, index) {
         final item = _statusHistory[index];
         final isLast = index == _statusHistory.length - 1;
+        final statusColor = _getStatusColor(item.status);
+        final statusIcon = _getStatusIcon(item.status);
         
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,10 +241,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   margin: EdgeInsets.only(left: 16, right: 16),
                   padding: EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: Colors.blue,
+                    color: statusColor,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.circle, size: 12, color: Colors.white),
+                  child: Icon(statusIcon, size: 12, color: Colors.white),
                 ),
                 Expanded(
                   child: Column(
@@ -157,7 +252,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     children: [
                       Text(
                         _getOrderStatusDisplay(item.status), 
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: statusColor,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -166,7 +264,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       ),
                       if (item.notes != null && item.notes!.isNotEmpty) ...[
                         const SizedBox(height: 4),
-                        Text(item.notes!, style: TextStyle(fontSize: 13)),
+                        Text(
+                          _translateOrderNote(item.notes!),
+                          style: TextStyle(fontSize: 13),
+                        ),
                       ],
                     ],
                   ),
@@ -184,18 +285,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         );
       },
     );
-  }
-  
-  // Convert status string to display name
-  String _getOrderStatusDisplay(String status) {
-    final Map<String, String> statusDisplay = {
-      'cho_xu_ly': 'Chờ xử lý',
-      'da_xac_nhan': 'Đã xác nhận',
-      'dang_giao': 'Đang giao',
-      'da_giao': 'Đã giao',
-      'da_huy': 'Đã hủy',
-    };
-    return statusDisplay[status.toLowerCase()] ?? status;
   }
 
   // Enhanced image display widget with better error handling and retry

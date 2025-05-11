@@ -111,7 +111,7 @@ class PointsContent extends StatelessWidget {
                   Expanded(
                     // Use Expanded to prevent overflow on small screens
                     child: Text(
-                      "Điểm tích lũy sẽ được tính 10% cho mỗi đơn hàng thành công",
+                      "Điểm tích lũy sẽ được tính 10% cho mỗi đơn hàng thành công. 1 điểm tương đương 1.000 VND",
                       style: TextStyle(color: Colors.blue),
                     ),
                   ),

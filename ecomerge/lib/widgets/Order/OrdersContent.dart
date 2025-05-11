@@ -4,7 +4,85 @@ import 'package:e_commerce_app/database/services/order_service.dart';
 import 'package:e_commerce_app/widgets/Order/OrderDetailPage.dart';
 import 'package:e_commerce_app/widgets/Order/OrderHistoryPage.dart';
 import 'package:e_commerce_app/widgets/Order/OrderItem.dart';
+import 'package:e_commerce_app/widgets/Order/OrderStatusHistoryPage.dart';
 import 'package:flutter/material.dart';
+
+// Define the animation wrapper widget
+class AnimatedListItemWrapper extends StatefulWidget {
+  final Widget child;
+  final int index;
+  final int pageSize; // To calculate stagger relative to page
+
+  const AnimatedListItemWrapper({
+    Key? key,
+    required this.child,
+    required this.index,
+    required this.pageSize,
+  }) : super(key: key);
+
+  @override
+  _AnimatedListItemWrapperState createState() =>
+      _AnimatedListItemWrapperState();
+}
+
+class _AnimatedListItemWrapperState extends State<AnimatedListItemWrapper>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacityAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 400), // Animation duration
+      vsync: this,
+    );
+
+    // Staggered delay: items in the same "page" load will animate sequentially
+    final staggerIndex = widget.index % widget.pageSize;
+    final delay =
+        Duration(milliseconds: staggerIndex * 75); // Stagger delay per item
+
+    _opacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOutCubic,
+      ),
+    );
+
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOutCubic,
+      ),
+    );
+
+    Future.delayed(delay, () {
+      if (mounted) {
+        _controller.forward();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _opacityAnimation,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: widget.child,
+      ),
+    );
+  }
+}
 
 class OrdersContent extends StatefulWidget {
   final int selectedTab;
@@ -23,28 +101,47 @@ class OrdersContent extends StatefulWidget {
 class _OrdersContentState extends State<OrdersContent> {
   late OrderService _orderService;
   List<OrderDTO> _orders = [];
-  bool _isLoading = true;
+  bool _isLoading = true; // For initial full page load
   String? _errorMessage;
+
+  final ScrollController _scrollController = ScrollController();
+  int _currentPage = 0;
+  final int _pageSize = 10; // Number of items to fetch per page
+  bool _hasMore = true; // True if there are more items to load
+  bool _isLoadingMore = false; // True when loading more items
 
   @override
   void initState() {
     super.initState();
     _orderService = OrderService();
-    _fetchOrders();
+    _fetchOrders(); // Initial fetch
+    _scrollController.addListener(_scrollListener);
   }
 
   @override
   void didUpdateWidget(covariant OrdersContent oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.selectedTab != oldWidget.selectedTab) {
-      _fetchOrders();
+      _fetchOrders(); // Reset and fetch for the new tab
     }
   }
 
   @override
   void dispose() {
     _orderService.dispose();
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollListener() {
+    // Trigger load more when near the bottom (e.g., 200 pixels from the end)
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoadingMore &&
+        _hasMore) {
+      _loadMoreOrders();
+    }
   }
 
   OrderStatus? _mapTabIndexToOrderStatus(int tabIndex) {
@@ -68,20 +165,75 @@ class _OrdersContentState extends State<OrdersContent> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _orders = [];
+      _orders = []; // Reset orders list
+      _currentPage = 0; // Reset current page
+      _hasMore = true; // Assume there's more data initially
+      _isLoadingMore = false; // Not loading more during a full refresh
     });
+
     try {
       final status = _mapTabIndexToOrderStatus(widget.selectedTab);
-      final orderPage =
-          await _orderService.getCurrentUserOrders(status: status);
+      final orderPage = await _orderService.getCurrentUserOrders(
+        status: status,
+        page: _currentPage,
+        size: _pageSize,
+      );
+      if (mounted) {
+        setState(() {
+          _orders = orderPage.orders;
+          _hasMore = !orderPage.isLast;
+          if (_hasMore) {
+            _currentPage++;
+          }
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        String displayError;
+        bool is404 = e.toString().toLowerCase().contains('(status: 404)');
+        if (is404) {
+          displayError = "Chưa có đơn hàng nào.";
+        } else {
+          displayError = "Chưa có đơn hàng nào.";
+        }
+        setState(() {
+          _isLoading = false;
+          _errorMessage = displayError;
+          if (is404) {
+            _orders = [];
+            _hasMore = false;
+          }
+        });
+      }
+    }
+  }
+
+  Future<void> _loadMoreOrders() async {
+    if (_isLoadingMore || !_hasMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final status = _mapTabIndexToOrderStatus(widget.selectedTab);
+      final orderPage = await _orderService.getCurrentUserOrders(
+        status: status,
+        page: _currentPage,
+        size: _pageSize,
+      );
       setState(() {
-        _orders = orderPage.orders;
-        _isLoading = false;
+        _orders.addAll(orderPage.orders);
+        _hasMore = !orderPage.isLast;
+        if (_hasMore) {
+          _currentPage++;
+        }
+        _isLoadingMore = false;
       });
     } catch (e) {
       setState(() {
-        _isLoading = false;
-        _errorMessage = e.toString();
+        _isLoadingMore = false;
       });
     }
   }
@@ -95,6 +247,7 @@ class _OrdersContentState extends State<OrdersContent> {
         "image": d.imageUrl ?? "https://via.placeholder.com/80",
         "price": d.priceAtPurchase,
         "quantity": d.quantity,
+        "discountPercentage": d.productDiscountPercentage ?? 0.0,
       };
     }).toList();
   }
@@ -133,12 +286,15 @@ class _OrdersContentState extends State<OrdersContent> {
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             TextButton.icon(
-              onPressed: () {
-                Navigator.push(
+              onPressed: () async {
+                final result = await Navigator.push(
                   context,
                   MaterialPageRoute(
                       builder: (context) => const OrderHistoryPage()),
                 );
+                if (result == true && mounted) {
+                  _fetchOrders();
+                }
               },
               icon: const Icon(Icons.history),
               label: const Text("Lịch sử đơn hàng"),
@@ -171,8 +327,6 @@ class _OrdersContentState extends State<OrdersContent> {
                         _getShortStatusName(3), 3, isSmallScreen),
                     _buildResponsiveTab(
                         _getShortStatusName(4), 4, isSmallScreen),
-                    // _buildResponsiveTab(
-                    //     _getShortStatusName(5), 5, isSmallScreen),
                   ],
                 ),
               ),
@@ -180,69 +334,101 @@ class _OrdersContentState extends State<OrdersContent> {
           ),
         ),
         const SizedBox(height: 24),
-        _isLoading
+        _isLoading // Handles initial loading state
             ? const Center(child: CircularProgressIndicator())
             : _errorMessage != null
                 ? Center(
-                    child: Text("Lỗi: $_errorMessage",
-                        style: const TextStyle(color: Colors.red)))
-                : _orders.isEmpty
+                    child: Text(" $_errorMessage", // Kept "Lỗi: " prefix
+                        style: const TextStyle(
+                            color: Colors.black))) // Changed to Colors.black
+                // After initial load, if orders list is empty and no more data expected
+                : _orders.isEmpty && !_hasMore && !_isLoadingMore
                     ? Center(
                         child: Text(
                             "Không có đơn hàng nào trong mục '${_getShortStatusName(widget.selectedTab)}'."))
-                    : ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _orders.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(height: 16),
-                        itemBuilder: (context, index) {
-                          final order = _orders[index];
-                          final items =
-                              _mapOrderDetailsToItems(order.orderDetails);
+                    : ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: MediaQuery.of(context).size.height * 0.6,
+                        ),
+                        child: ListView.separated(
+                          controller: _scrollController,
+                          shrinkWrap: true,
+                          physics: const ClampingScrollPhysics(),
+                          itemCount: _orders.length + (_hasMore ? 1 : 0),
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(height: 16),
+                          itemBuilder: (context, index) {
+                            if (index == _orders.length) {
+                              return _isLoadingMore
+                                  ? const Center(
+                                      child: Padding(
+                                      padding: EdgeInsets.all(16.0),
+                                      child: CircularProgressIndicator(),
+                                    ))
+                                  : const SizedBox.shrink();
+                            }
 
-                          return MouseRegion(
-                            cursor: SystemMouseCursors.click,
-                            child: GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => OrderDetailPage(
-                                      orderId: order.id.toString(),
-                                      orderDate: order.orderDate
-                                              ?.toIso8601String()
-                                              .split('T')[0] ??
-                                          'N/A',
-                                      items: items,
-                                      status: _getShortStatusName(
-                                          widget.selectedTab),
-                                    ),
+                            final order = _orders[index];
+
+                            return AnimatedListItemWrapper(
+                              index: index,
+                              pageSize: _pageSize,
+                              child: MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: GestureDetector(
+                                  onTap: () async {
+                                    final result = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => OrderDetailPage(
+                                          orderId: order.id.toString(),
+                                        ),
+                                      ),
+                                    );
+                                    if (result == true && mounted) {
+                                      _fetchOrders();
+                                    }
+                                  },
+                                  child: OrderItem(
+                                    orderId: order.id.toString(),
+                                    date: order.orderDate
+                                            ?.toIso8601String()
+                                            .split('T')[0] ??
+                                        'N/A',
+                                    items: _mapOrderDetailsToItems(
+                                        order.orderDetails),
+                                    status:
+                                        _getShortStatusName(widget.selectedTab),
+                                    isClickable: true,
+                                    onViewHistory: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              OrderStatusHistoryPage(
+                                            orderId: order.id.toString(),
+                                            currentStatus: _getShortStatusName(
+                                                widget.selectedTab),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    isSmallScreen: isSmallScreen,
+                                    subtotal: order.subtotal ?? 0.0,
+                                    shippingFee: order.shippingFee ?? 0.0,
+                                    tax: order.tax ?? 0.0,
+                                    totalAmount: order.totalAmount ?? 0.0,
+                                    couponDiscount: order.couponDiscount,
+                                    pointsDiscount:
+                                        order.pointsDiscount?.toDouble(),
+                                    pointsEarned:
+                                        order.pointsEarned?.toDouble(),
                                   ),
-                                );
-                              },
-                              child: OrderItem(
-                                orderId: order.id.toString(),
-                                date: order.orderDate
-                                        ?.toIso8601String()
-                                        .split('T')[0] ??
-                                    'N/A',
-                                items: items,
-                                status: _getShortStatusName(widget.selectedTab),
-                                isClickable: true,
-                                onViewHistory: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => OrderHistoryPage(),
-                                    ),
-                                  );
-                                },
-                                isSmallScreen: isSmallScreen,
+                                ),
                               ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
       ],
     );
