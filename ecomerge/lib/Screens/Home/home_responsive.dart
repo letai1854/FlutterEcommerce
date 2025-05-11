@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 import 'package:e_commerce_app/Constants/productTest.dart';
-import 'package:e_commerce_app/constants.dart';
+import 'package:e_commerce_app/constants.dart' as constants;
 import 'package:e_commerce_app/database/Storage/BrandCategoryService.dart';
 import 'package:e_commerce_app/database/models/categories.dart';
 import 'package:e_commerce_app/database/services/product_service.dart';
@@ -42,7 +42,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
   bool _showFloatingCategories = false;
   bool _isPanelExpanded = false; // For mobile panel expansion
   int? _selectedCategory;
-    bool _isHoveredTK = false;
+  bool _isHoveredTK = false;
 
   final CategoriesService _categoriesService = CategoriesService();
   List<CategoryDTO> _appCategories = [];
@@ -201,9 +201,8 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
         bool isMobileView = false;
 
         if (screenWidth < 600) {
-          if (isMobile) {
+          if (constants.isMobile) {
             return Scaffold(
-
               body: NavbarFormobile(
                 body: _buildHomeContent(
                   screenWidth,
@@ -245,13 +244,16 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                                   hintText: 'Thanh tìm kiếm',
                                   border: InputBorder.none,
                                   hintStyle: TextStyle(fontSize: 14),
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 15, vertical: 15),
                                 ),
                                 onSubmitted: (value) {
                                   if (value.trim().isNotEmpty) {
                                     // Use the centralized executeSearch method with isNewSearch=true
                                     // This ensures no filters are applied on initial search
-                                    _searchService.executeSearch(isNewSearch: true).then((_) {
+                                    _searchService
+                                        .executeSearch(isNewSearch: true)
+                                        .then((_) {
                                       Navigator.pushNamed(context, '/search');
                                     });
                                   }
@@ -260,40 +262,44 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                             ),
                           ),
                         ),
-                                        MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    onEnter: (_) => setState(() {
-                      _isHoveredTK = true;
-                    }),
-                    onExit: (_) => setState(() {
-                      _isHoveredTK = false;
-                    }),
-                    child: GestureDetector(
-                      onTap: () {
-                        if (_searchService.searchController.text.trim().isNotEmpty) {
-                          // Use the centralized executeSearch method with isNewSearch=true
-                          // This ensures no filters are applied on initial search
-                          _searchService.executeSearch(isNewSearch: true).then((_) {
-                            Navigator.pushNamed(context, '/search');
-                          });
-                        }
-                      },
-                      child: Container(
-                        width: 45,
-                        height: 53, // Giữ nguyên height gốc
-                        decoration: BoxDecoration(
-                          color: _isHoveredTK
-                              ? const Color.fromARGB(255, 255, 48, 1)
-                              : Colors.red,
-                          borderRadius: BorderRadius.only(
-                            topRight: Radius.circular(8),
-                            bottomRight: Radius.circular(8),
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          onEnter: (_) => setState(() {
+                            _isHoveredTK = true;
+                          }),
+                          onExit: (_) => setState(() {
+                            _isHoveredTK = false;
+                          }),
+                          child: GestureDetector(
+                            onTap: () {
+                              if (_searchService.searchController.text
+                                  .trim()
+                                  .isNotEmpty) {
+                                // Use the centralized executeSearch method with isNewSearch=true
+                                // This ensures no filters are applied on initial search
+                                _searchService
+                                    .executeSearch(isNewSearch: true)
+                                    .then((_) {
+                                  Navigator.pushNamed(context, '/search');
+                                });
+                              }
+                            },
+                            child: Container(
+                              width: 45,
+                              height: 53, // Giữ nguyên height gốc
+                              decoration: BoxDecoration(
+                                color: _isHoveredTK
+                                    ? const Color.fromARGB(255, 255, 48, 1)
+                                    : Colors.red,
+                                borderRadius: BorderRadius.only(
+                                  topRight: Radius.circular(8),
+                                  bottomRight: Radius.circular(8),
+                                ),
+                              ),
+                              child: Icon(Icons.search, color: Colors.white),
+                            ),
                           ),
                         ),
-                        child: Icon(Icons.search, color: Colors.white),
-                      ),
-                    ),
-                  ),
                         SizedBox(width: 10),
                         IconButton(
                           icon: Icon(Icons.shopping_cart, color: Colors.white),
@@ -552,9 +558,10 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
           ),
         ),
         if (_showFloatingCategories)
-          (isMobile || isTablet)
-              ? _buildMobileFloatingCategories(isTablet: isTablet)
-              : _buildFloatingCategories(),
+          if (constants.isMobile || (isMobile || isTablet))
+            _buildMobileFloatingCategories(isTablet: isTablet)
+          else
+            _buildFloatingCategories(),
       ],
     );
   }
@@ -743,7 +750,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
   Widget _buildVerticalCategoryItem(CategoryDTO category, int itemIndex) {
     bool isSelected = _selectedCategory == itemIndex;
     String fullImageUrl = _categoriesService.getImageUrl(category.imageUrl);
-    
+
     // Create a product service instance for using getImageFromServer
     final productService = ProductService();
 
@@ -766,8 +773,9 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                       child: Builder(
                         builder: (context) {
                           // First check if image is in cache
-                          final cachedImage = productService.getImageFromCache(category.imageUrl);
-                          
+                          final cachedImage = productService
+                              .getImageFromCache(category.imageUrl);
+
                           // If we already have the image in cache, show it immediately
                           if (cachedImage != null) {
                             return Image.memory(
@@ -777,12 +785,14 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                               width: 30,
                             );
                           }
-                          
+
                           // If not in cache, load it using FutureBuilder
                           return FutureBuilder<Uint8List?>(
-                            future: productService.getImageFromServer(category.imageUrl),
+                            future: productService
+                                .getImageFromServer(category.imageUrl),
                             builder: (context, snapshot) {
-                              if (snapshot.connectionState == ConnectionState.waiting) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
                                 return SizedBox(
                                   width: 30,
                                   height: 30,
@@ -797,8 +807,11 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                                     ),
                                   ),
                                 );
-                              } else if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
-                                return Icon(Icons.category, size: 20, color: Colors.grey[400]);
+                              } else if (snapshot.hasError ||
+                                  !snapshot.hasData ||
+                                  snapshot.data == null) {
+                                return Icon(Icons.category,
+                                    size: 20, color: Colors.grey[400]);
                               } else {
                                 // Display image loaded from server
                                 return Image.memory(
@@ -810,7 +823,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                               }
                             },
                           );
-                        }
+                        },
                       ),
                     )
                   : Icon(Icons.category, size: 20, color: Colors.grey[400]),
@@ -841,7 +854,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
             decoration: const BoxDecoration(color: Colors.red),
             child: GestureDetector(
               onTap: () {
-                if (isWeb) {
+                if (constants.isWeb) {
                   // For web platform, check login status
                   if (UserInfo().currentUser == null) {
                     Navigator.pushNamed(context, '/login');
