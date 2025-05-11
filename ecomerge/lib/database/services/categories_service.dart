@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert'; // Import for jsonDecode and utf8
 import 'dart:typed_data'; // Required for Uint8List if upload method is in ProductService
 
+import 'package:e_commerce_app/database/Storage/BrandCategoryService.dart';
 import 'package:e_commerce_app/database/database_helper.dart'; // Assuming this file provides baseurl
 import 'package:e_commerce_app/database/models/categores/CreateCategoryRequestDTO.dart';
 import 'package:e_commerce_app/database/models/categores/UpdateCategoryRequestDTO.dart';
@@ -284,27 +285,37 @@ Future<String?> uploadImage(List<int> imageBytes, String fileName) async {
   }
 
   // Method to get cached avatar or fetch if not available
-  Future<Uint8List?> getImageFromServer(String? avatarPath) async {
-    if (avatarPath == null || avatarPath.isEmpty) return null;
+  Future<Uint8List?> getImageFromServer(String? imagePath) async {
+    if (imagePath == null || imagePath.isEmpty) return null;
 
-    if (UserInfo.avatarCache.containsKey(avatarPath)) {
-      return UserInfo.avatarCache[avatarPath];
+    // First check AppDataService image cache
+    final appDataService = AppDataService();
+    final cachedImage = appDataService.getCategoryImage(imagePath);
+    if (cachedImage != null) {
+      return cachedImage;
+    }
+
+    // Then check UserInfo cache
+    if (UserInfo.avatarCache.containsKey(imagePath)) {
+      return UserInfo.avatarCache[imagePath];
     }
 
     try {
-      String fullUrl = getImageUrl(avatarPath);
+      String fullUrl = getImageUrl(imagePath);
       final response = await httpClient.get(Uri.parse(fullUrl));
 
       if (response.statusCode == 200) {
-        UserInfo.avatarCache[avatarPath] = response.bodyBytes;
+        // Store in both caches
+        UserInfo.avatarCache[imagePath] = response.bodyBytes;
         return response.bodyBytes;
       }
     } catch (e) {
-      print('Error fetching avatar: $e');
+      print('Error fetching image: $e');
     }
 
     return null;
   }
+
   // Helper method to get the complete image URL
   String getImageUrl(String? imagePath) {
     if (imagePath == null) return '';
