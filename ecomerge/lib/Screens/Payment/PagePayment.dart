@@ -186,9 +186,8 @@ class _PagePaymentState extends State<PagePayment> {
   }
 
   String _formatCurrency(num amount) {
-    final formatter =
-        NumberFormat.decimalPatternDigits(locale: 'vi_VN', decimalDigits: 0);
-    return '${formatter.format(amount)} VND';
+    final formatter = NumberFormat("#,##0 đ", "en_US");
+    return formatter.format(amount);
   }
 
   bool _hasValidAddress() {

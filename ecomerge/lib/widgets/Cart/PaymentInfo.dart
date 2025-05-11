@@ -53,8 +53,10 @@ class PaymentInfo extends StatelessWidget {
     final int totalItems = cartItems.length;
     final double taxAmount = calculateTax();
     final double totalAmount = calculateTotal();
-    // Định dạng tiền tệ Việt Nam
-    final formatCurrency = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
+    
+    // Định dạng tiền tệ Việt Nam với dấu phẩy thay vì dấu chấm
+    final formatCurrency = NumberFormat('#,##0 đ', 'en_US');
+    
     // Định dạng phần trăm
     final formatPercent = NumberFormat.percentPattern(); // Ví dụ: 0.05 -> 5%
 

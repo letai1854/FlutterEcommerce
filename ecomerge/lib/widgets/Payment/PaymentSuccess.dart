@@ -21,10 +21,8 @@ class bodySuccessPayment extends StatefulWidget {
 class _bodySuccessPaymentState extends State<bodySuccessPayment> {
   // --- Thêm hàm _formatCurrency vào đây vì nó được sử dụng ở đây ---
   String _formatCurrency(num amount) {
-    // Đảm bảo amount không phải null, nếu là null thì trả về chuỗi rỗng hoặc giá trị mặc định
-    if (amount == null) return '0 VND'; // Changed null return
-    final formatter = NumberFormat("#,##0", "vi_VN"); // Changed pattern
-    return '${formatter.format(amount)} VND'; // Changed prefix and added suffix
+    final formatter = NumberFormat("#,##0 đ", "en_US"); 
+    return formatter.format(amount);
   }
 
   @override
