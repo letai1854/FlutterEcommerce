@@ -53,10 +53,9 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _orders = [];
-      _apiCurrentPage = 0;
-      _hasMore = true;
-      _isLoadingMore = false;
+      _orders = []; // Reset orders list
+      _apiCurrentPage = 0; // Reset current page
+      _hasMore = true; // Assume there's more data initially
     });
 
     try {
@@ -65,19 +64,36 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
         size: _apiPageSize,
         // No status is passed to fetch all orders
       );
-      setState(() {
-        _orders = orderPage.orders;
-        _hasMore = !orderPage.isLast;
-        if (_hasMore) {
-          _apiCurrentPage++;
-        }
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _orders = orderPage.orders;
+          _hasMore = !orderPage.isLast;
+          if (_hasMore) {
+            _apiCurrentPage++;
+          }
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.toString();
-      });
+      if (mounted) {
+        String displayError;
+        bool is404 = e.toString().toLowerCase().contains('(status: 404)');
+        if (is404) {
+          displayError = "Chưa có đơn hàng nào.";
+        } else {
+          displayError = "Chưa có đơn hàng nào.";
+          // Optionally, log the original error for debugging if needed
+          // print("Error fetching initial orders: ${e.toString()}");
+        }
+        setState(() {
+          _isLoading = false;
+          _errorMessage = displayError;
+          if (is404) {
+            _orders = []; // Ensure orders list is empty
+            _hasMore = false; // No more data to fetch
+          }
+        });
+      }
     }
   }
 
@@ -235,8 +251,8 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                       ? const Center(child: CircularProgressIndicator())
                       : _errorMessage != null
                           ? Center(
-                              child: Text("Lỗi: $_errorMessage",
-                                  style: const TextStyle(color: Colors.red)))
+                              child: Text(" $_errorMessage",
+                                  style: const TextStyle(color: Colors.black)))
                           : _orders.isEmpty && !_hasMore
                               ? Center(
                                   child: Column(

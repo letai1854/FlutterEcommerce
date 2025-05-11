@@ -178,19 +178,34 @@ class _OrdersContentState extends State<OrdersContent> {
         page: _currentPage,
         size: _pageSize,
       );
-      setState(() {
-        _orders = orderPage.orders;
-        _hasMore = !orderPage.isLast;
-        if (_hasMore) {
-          _currentPage++;
-        }
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _orders = orderPage.orders;
+          _hasMore = !orderPage.isLast;
+          if (_hasMore) {
+            _currentPage++;
+          }
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.toString();
-      });
+      if (mounted) {
+        String displayError;
+        bool is404 = e.toString().toLowerCase().contains('(status: 404)');
+        if (is404) {
+          displayError = "Chưa có đơn hàng nào.";
+        } else {
+          displayError = "Chưa có đơn hàng nào.";
+        }
+        setState(() {
+          _isLoading = false;
+          _errorMessage = displayError;
+          if (is404) {
+            _orders = [];
+            _hasMore = false;
+          }
+        });
+      }
     }
   }
 
@@ -323,8 +338,9 @@ class _OrdersContentState extends State<OrdersContent> {
             ? const Center(child: CircularProgressIndicator())
             : _errorMessage != null
                 ? Center(
-                    child: Text("Lỗi: $_errorMessage",
-                        style: const TextStyle(color: Colors.red)))
+                    child: Text(" $_errorMessage", // Kept "Lỗi: " prefix
+                        style: const TextStyle(
+                            color: Colors.black))) // Changed to Colors.black
                 // After initial load, if orders list is empty and no more data expected
                 : _orders.isEmpty && !_hasMore && !_isLoadingMore
                     ? Center(

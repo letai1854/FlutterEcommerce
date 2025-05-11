@@ -22,15 +22,83 @@ class OrderStatusHistoryPage extends StatefulWidget {
 class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
   bool _showAllHistory = false;
   late List<OrderStatusHistoryDTO> _statusHistory;
+  OrderDTO? _orderDetails; // To store fetched order details
   bool _isLoadingHistory = true;
+  bool _isLoadingOrderDetails = true; // Loading state for order details
   String? _historyErrorMsg;
+  String? _orderDetailsErrorMsg; // Error message for order details
   final OrderService _orderService = OrderService();
+
+  final Map<String, String> _commonPhrases = {
+    'Order created successfully': 'Đơn hàng đã được tạo thành công',
+    'Order status updated by admin':
+        'Trạng thái đơn hàng đã được cập nhật bởi quản trị viên',
+    'Order status updated by system':
+        'Trạng thái đơn hàng đã được cập nhật bởi hệ thống',
+    'Order cancelled by user': 'Đơn hàng đã được hủy ',
+    'Order cancelled by admin': 'Đơn hàng đã được hủy',
+    'Order cancelled': 'Đơn hàng đã bị hủy',
+    'Order processed': 'Đơn hàng đã được xử lý',
+    'Order confirmed': 'Đơn hàng đã được xác nhận',
+    'Order is being shipped': 'Đơn hàng đang được giao',
+    'Order delivered successfully': 'Đơn hàng đã giao thành công',
+    'Payment status updated to': 'Trạng thái thanh toán cập nhật thành',
+  };
+
+  final Map<String, String> _paymentStatusValues = {
+    'DA_THANH_TOAN': 'đã thanh toán',
+    'CHUA_THANH_TOAN': 'chưa thanh toán',
+    'HOAN_TIEN': 'hoàn tiền',
+    'DA_HUY': 'đã hủy', // Assuming payment can also be cancelled
+    'THANH_TOAN_LOI': 'thanh toán lỗi',
+  };
+
+  final Map<String, String> _orderStatusTranslations = {
+    'CHO_XU_LY': 'Chờ xử lý',
+    'DA_XAC_NHAN': 'Đã xác nhận',
+    'DANG_GIAO': 'Đang giao',
+    'DA_GIAO': 'Đã giao',
+    'DA_HUY': 'Đã hủy',
+    'TRA_HANG': 'Trả hàng', // If applicable
+    'HOAN_THANH': 'Hoàn thành', // If applicable
+  };
 
   @override
   void initState() {
     super.initState();
     _statusHistory = [];
-    _fetchHistory();
+    _fetchAllData();
+  }
+
+  Future<void> _fetchAllData() async {
+    await Future.wait([
+      _fetchOrderDetails(),
+      _fetchHistory(),
+    ]);
+  }
+
+  Future<void> _fetchOrderDetails() async {
+    setState(() {
+      _isLoadingOrderDetails = true;
+      _orderDetailsErrorMsg = null;
+    });
+    try {
+      final details = await _orderService
+          .getOrderDetailsForCurrentUser(int.parse(widget.orderId));
+      if (mounted) {
+        setState(() {
+          _orderDetails = details;
+          _isLoadingOrderDetails = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingOrderDetails = false;
+          _orderDetailsErrorMsg = "Lỗi tải thông tin đơn hàng: ${e.toString()}";
+        });
+      }
+    }
   }
 
   Future<void> _fetchHistory() async {
@@ -42,15 +110,19 @@ class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
       final history = await _orderService
           .getOrderStatusHistoryForCurrentUser(int.parse(widget.orderId));
       history.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-      setState(() {
-        _statusHistory = history;
-        _isLoadingHistory = false;
-      });
+      if (mounted) {
+        setState(() {
+          _statusHistory = history;
+          _isLoadingHistory = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isLoadingHistory = false;
-        _historyErrorMsg = "Lỗi tải lịch sử: ${e.toString()}";
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingHistory = false;
+          _historyErrorMsg = "Lỗi tải lịch sử: ${e.toString()}";
+        });
+      }
     }
   }
 
@@ -83,6 +155,33 @@ class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
     return Colors.grey;
   }
 
+  String _translateStatusToVietnamese(String apiStatus) {
+    return _orderStatusTranslations[apiStatus.toUpperCase()] ?? apiStatus;
+  }
+
+  String _translateNotesToVietnamese(String? notes) {
+    if (notes == null || notes.isEmpty) {
+      return "Không có ghi chú";
+    }
+    String translatedNote = notes;
+
+    _commonPhrases.forEach((key, value) {
+      if (translatedNote.contains(key)) {
+        translatedNote = translatedNote.replaceAll(key, value);
+      }
+    });
+
+    _paymentStatusValues.forEach((key, value) {
+      if (translatedNote.contains(key.replaceAll('_', ' ').toLowerCase())) {
+        translatedNote = translatedNote.replaceAll(
+            key.replaceAll('_', ' ').toLowerCase(), value);
+      } else if (translatedNote.contains(key)) {
+        translatedNote = translatedNote.replaceAll(key, value);
+      }
+    });
+    return translatedNote;
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -90,6 +189,45 @@ class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
 
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final backgroundColor = isDarkMode ? Colors.grey[900] : Colors.grey[100];
+
+    bool overallLoading = _isLoadingHistory || _isLoadingOrderDetails;
+    String? overallError = _historyErrorMsg ?? _orderDetailsErrorMsg;
+
+    if (overallLoading) {
+      return Scaffold(
+        backgroundColor: backgroundColor,
+        appBar: AppBar(
+          title: Text(
+            "Chi tiết đơn hàng ${widget.orderId}",
+            style: const TextStyle(
+                fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18),
+          ),
+          backgroundColor: Colors.red,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (overallError != null) {
+      return Scaffold(
+        backgroundColor: backgroundColor,
+        appBar: AppBar(
+          title: Text(
+            "Chi tiết đơn hàng ${widget.orderId}",
+            style: const TextStyle(
+                fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18),
+          ),
+          backgroundColor: Colors.red,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: Center(
+            child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(overallError, style: const TextStyle(color: Colors.red)),
+        )),
+      );
+    }
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -250,6 +388,36 @@ class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
   }
 
   Widget _buildShippingInfoCard() {
+    if (_isLoadingOrderDetails) {
+      return Card(
+          elevation: 4,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Center(child: CircularProgressIndicator())));
+    }
+    if (_orderDetailsErrorMsg != null) {
+      return Card(
+          elevation: 4,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Center(
+                  child: Text(_orderDetailsErrorMsg!,
+                      style: const TextStyle(color: Colors.red)))));
+    }
+    if (_orderDetails == null) {
+      return Card(
+          elevation: 4,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Center(child: Text("Không có thông tin nhận hàng."))));
+    }
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
@@ -300,7 +468,7 @@ class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      const Text("Nguyễn Văn A"),
+                      Text(_orderDetails?.recipientName ?? "N/A"),
                     ],
                   ),
                 ],
@@ -321,7 +489,7 @@ class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      const Text("0987654321"),
+                      Text(_orderDetails?.recipientPhoneNumber ?? "N/A"),
                     ],
                   ),
                 ],
@@ -343,9 +511,9 @@ class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
-                          "123 Đường Nguyễn Văn Linh, Phường Tân Phú, Quận 7, TP. Hồ Chí Minh",
-                          style: TextStyle(
+                        Text(
+                          _orderDetails?.shippingAddress ?? "N/A",
+                          style: const TextStyle(
                             height: 1.4,
                           ),
                         ),
@@ -452,11 +620,15 @@ class _OrderStatusHistoryPageState extends State<OrderStatusHistoryPage> {
               final isLast = index == _statusHistory.length - 1;
               final String formattedTime = DateFormat('dd/MM/yyyy HH:mm')
                   .format(statusItem.timestamp.toLocal());
+              final String translatedStatus =
+                  _translateStatusToVietnamese(statusItem.status);
+              final String translatedNotes =
+                  _translateNotesToVietnamese(statusItem.notes);
 
               return TimelineEntry(
-                status: statusItem.status,
+                status: translatedStatus,
                 time: formattedTime,
-                description: statusItem.notes ?? "Không có ghi chú",
+                description: translatedNotes,
                 isLast: isLast,
                 color: _getStatusColor(statusItem.status),
               );
@@ -485,11 +657,7 @@ class TimelineEntry extends StatelessWidget {
   }) : super(key: key);
 
   String _formatStatusString(String status) {
-    return status
-        .replaceAll('_', ' ')
-        .split(' ')
-        .map((word) => word[0].toUpperCase() + word.substring(1).toLowerCase())
-        .join(' ');
+    return status;
   }
 
   @override
