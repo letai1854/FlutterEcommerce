@@ -124,7 +124,11 @@ class CartStorage {
       addedDate: DateTime.now(),
       updatedDate: DateTime.now(),
     );
-    
+    if(!UserInfo().isLoggedIn){
+        if(cartItem.productVariant?.discountPercentage != null && cartItem.productVariant!.discountPercentage! > 0) {
+          cartItem.productVariant?.finalPrice = cartItem.productVariant!.price! * (1 - cartItem.productVariant!.discountPercentage! / 100);
+        } 
+    }
     // Add to local cache
     addItem(cartItem);
     
@@ -441,17 +445,25 @@ class CartStorage {
       // Update existing item instead
       _cartItems![existingIndex].quantity = ((_cartItems![existingIndex].quantity ?? 0) + (item.quantity ?? 0));
       _cartItems![existingIndex].updatedDate = DateTime.now();
-      _cartItems![existingIndex].productVariant?.discountPercentage= item.productVariant?.discountPercentage;
+      _cartItems![existingIndex].productVariant?.discountPercentage = item.productVariant?.discountPercentage;
       // ALWAYS preserve the formatted name with variant info from the new item
       if (item.productVariant?.name != null && item.productVariant!.name!.contains('-')) {
         _cartItems![existingIndex].productVariant!.name = item.productVariant!.name;
         print('Preserved formatted name when updating: ${item.productVariant!.name}');
       }
       
-      // Update line total
-      double price = _cartItems![existingIndex].productVariant?.finalPrice ?? 
-                      _cartItems![existingIndex].productVariant?.price ?? 0;
-      _cartItems![existingIndex].lineTotal = price * (_cartItems![existingIndex].quantity ?? 1);
+      // Get base price (fix duplicate fallback)
+      double price = _cartItems![existingIndex].productVariant?.price ?? 0;
+      double finalPrice = price;
+      
+      // Apply discount if present
+      if(item.productVariant?.discountPercentage != null && item.productVariant!.discountPercentage! > 0) {
+        finalPrice = price * (1 - item.productVariant!.discountPercentage! / 100);
+        _cartItems![existingIndex].productVariant?.finalPrice = finalPrice;
+      }
+      
+      // Use finalPrice for line total calculation to ensure discounts are applied
+      _cartItems![existingIndex].lineTotal = finalPrice * (_cartItems![existingIndex].quantity ?? 1);
     } else {
       // Add new item - make sure the name is properly displayed
       print('Adding new cart item with name: ${item.productVariant?.name}');
