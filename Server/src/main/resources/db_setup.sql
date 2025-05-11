@@ -207,6 +207,7 @@ CREATE TABLE danh_gia_san_pham (
     san_pham_id INT NOT NULL,
     nguoi_dung_id INT NULL, -- NULL nếu là bình luận ẩn danh (khách)
     ten_nguoi_danh_gia_an_danh VARCHAR(100) NULL, -- Tên khách nhập khi bình luận ẩn danh
+    nguoi_danh_gia_avatar_url VARCHAR(255) NULL, -- URL avatar của người đánh giá
     diem_sao TINYINT NULL, -- 1-5 sao, NULL nếu chỉ bình luận (chỉ user đăng nhập mới được set giá trị này - logic app)
     binh_luan TEXT NULL, -- Nội dung bình luận, NULL nếu chỉ đánh giá sao
     thoi_gian_danh_gia TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

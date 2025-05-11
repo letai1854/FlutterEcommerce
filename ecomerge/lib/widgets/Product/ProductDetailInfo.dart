@@ -5,7 +5,7 @@ import 'package:e_commerce_app/database/services/product_service.dart'; // Add t
 import 'package:cached_network_image/cached_network_image.dart';
 
 // --- Main Detail Widget ---
-class ProductDetialInfo extends StatelessWidget {
+class ProductDetailInfo extends StatelessWidget {
   // Product Info
   final String productName;
   final String brandName;
@@ -52,7 +52,7 @@ class ProductDetialInfo extends StatelessWidget {
   final Future<Uint8List?> Function(String, ProductService)? imageCache;
   final double? discountPercentage; // Add this parameter
 
-  const ProductDetialInfo({
+  const ProductDetailInfo({
     Key? key,
     // Product
     required this.productName,

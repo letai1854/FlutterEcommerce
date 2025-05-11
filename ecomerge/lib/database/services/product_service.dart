@@ -8,6 +8,7 @@ import 'package:e_commerce_app/database/models/create_product_request_dto.dart';
 import 'package:e_commerce_app/database/models/product_dto.dart'; // Import đúng
 import 'package:e_commerce_app/database/models/update_product_request_dto.dart'; // Import đúng
 import 'package:e_commerce_app/database/Storage/UserInfo.dart'; // Import UserInfo để lấy token
+import 'package:e_commerce_app/database/models/create_product_review_request_dto.dart'; // Added import
 import 'package:http/http.dart' as http;
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -278,29 +279,6 @@ class ProductService {
       }
     }
   }
-
-  // // Method to get cached avatar or fetch if not available
-  // Future<Uint8List?> getImageFromServer(String? avatarPath) async {
-  //   if (avatarPath == null || avatarPath.isEmpty) return null;
-
-  //   if (UserInfo.avatarCache.containsKey(avatarPath)) {
-  //     return UserInfo.avatarCache[avatarPath];
-  //   }
-
-  //   try {
-  //     String fullUrl = getImageUrl(avatarPath);
-  //     final response = await httpClient.get(Uri.parse(fullUrl));
-
-  //     if (response.statusCode == 200) {
-  //       UserInfo.avatarCache[avatarPath] = response.bodyBytes;
-  //       return response.bodyBytes;
-  //     }
-  //   } catch (e) {
-  //     print('Error fetching avatar: $e');
-  //   }
-
-  //   return null;
-  // }
 
   // Helper method to get the complete image URL
   String getImageUrl(String? imagePath) {
@@ -750,6 +728,49 @@ class ProductService {
         throw e; // Re-throw the specific HTTP status exception
       }
       throw Exception('Error fetching top discounted products: $e');
+    }
+  }
+
+  // Add Product Review
+  Future<ProductReviewDTO> submitReview(int productId, CreateProductReviewRequestDTO reviewDto) async {
+    final url = Uri.parse('$baseUrl/api/products/$productId/reviews');
+    final userInfo = UserInfo();
+    final bool isLoggedIn = userInfo.currentUser != null;
+
+    try {
+      final response = await httpClient.post(
+        url,
+        headers: _getHeaders(includeAuth: isLoggedIn), // Token needed if user is logged in
+        body: jsonEncode(reviewDto.toJson()),
+      );
+
+      if (kDebugMode) {
+        print('Submit Review Request URL: $url');
+        print('Submit Review Request Body: ${jsonEncode(reviewDto.toJson())}');
+        print('Submit Review Response Status: ${response.statusCode}');
+        print('Submit Review Response Body: ${utf8.decode(response.bodyBytes)}');
+      }
+
+      if (response.statusCode == 201) {
+        return ProductReviewDTO.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
+      } else {
+        String errorMessage = 'Failed to submit review.';
+        try {
+          final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
+          if (errorBody is Map && errorBody.containsKey('message')) {
+            errorMessage = errorBody['message'];
+          } else if (errorBody is String && errorBody.isNotEmpty) {
+            errorMessage = errorBody;
+          }
+        } catch (_) {}
+        throw Exception('Failed to submit review: $errorMessage (Status: ${response.statusCode})');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) print('SocketException during submit review: $e');
+      throw Exception('Network Error: Could not connect to server.');
+    } catch (e) {
+      if (kDebugMode) print('Unexpected Error during submit review: $e');
+      throw Exception('An unexpected error occurred: ${e.toString()}');
     }
   }
 

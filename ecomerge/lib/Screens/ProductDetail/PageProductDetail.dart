@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:e_commerce_app/database/models/CartDTO.dart';
+import 'package:e_commerce_app/database/models/create_product_review_request_dto.dart';
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForTablet.dart';
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
 import 'package:e_commerce_app/widgets/Product/ProductDetailInfo.dart';
@@ -9,23 +11,42 @@ import 'package:flutter/material.dart';
 import 'package:e_commerce_app/database/services/product_service.dart';
 import 'package:e_commerce_app/database/models/cart_item_model.dart';
 import 'package:e_commerce_app/Screens/Payment/PagePayment.dart';
-// Add new imports for cart functionality
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/Storage/CartStorage.dart';
+import 'package:e_commerce_app/database/models/product_dto.dart';
+import 'package:stomp_dart_client/stomp_dart_client.dart';
+import 'package:flutter/foundation.dart';
+import 'package:e_commerce_app/database/database_helper.dart';
 
-// Create an in-memory cache for product images to prevent flickering
 class _ProductImageCache {
   static final Map<String, Future<Uint8List?>> _cache = {};
 
   static Future<Uint8List?> getImage(String url, ProductService service) {
-    if (!_cache.containsKey(url)) {
-      _cache[url] = service.getImageFromServer(url);
+    if (url.isEmpty) {
+      return Future.value(null);
     }
-    return _cache[url]!;
-  }
 
-  static void clear() {
-    _cache.clear();
+    if (!_cache.containsKey(url)) {
+      _cache[url] = service.getImageFromServer(url).then((imageData) {
+        if (imageData == null || imageData.isEmpty) {
+          return null;
+        }
+        return imageData;
+      }).catchError((error) {
+        if (kDebugMode) {
+          print('Error fetching image $url: $error');
+        }
+        return null;
+      });
+    }
+
+    return _cache[url]!.catchError((error) {
+      if (kDebugMode) {
+        print('Error retrieving cached image $url: $error');
+      }
+      _cache.remove(url);
+      return null;
+    });
   }
 }
 
@@ -45,9 +66,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
   final ScrollController _scrollController = ScrollController();
   int _selectedRating = 0;
   final TextEditingController _commentController = TextEditingController();
-  List<Map<String, dynamic>> _displayedReviews = [];
-  int _reviewsPerPage = 2;
-  bool _isLoadingReviews = false;
+  List<ProductReviewDTO> _displayedReviews = [];
   int _selectedVariantIndex = 0;
   String _displayedMainImageUrl = '';
   bool _isLoading = true;
@@ -55,19 +74,25 @@ class _PageproductdetailState extends State<Pageproductdetail> {
   Map<String, dynamic> _productData = {};
   int _selectedQuantity = 1;
 
+  bool _isLoadingReviews = false;
+  bool _canLoadMoreReviews = false;
+
+  StompClient? _stompClient;
+  StompUnsubscribe? _reviewSubscription;
+  final UserInfo _userInfo = UserInfo();
+
   @override
   void initState() {
     super.initState();
     _loadProductDetails(widget.productId);
-    _loadInitialReviews();
-    _scrollController.addListener(_loadMoreReviewsOnScroll);
+    _connectToReviewWebSocket();
   }
 
   Future<void> _loadProductDetails(int productId) async {
     if (!mounted) return;
     setState(() {
       _isLoading = true;
-      _productData = {}; // Clear previous data
+      _productData = {};
     });
 
     try {
@@ -89,8 +114,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
           'name': product.name,
           'brand': product.brandName ?? "N/A",
           'averageRating': product.averageRating ?? 0.0,
-          'ratingCount': product.variantCount ??
-              0, // Assuming variantCount is total ratings
+          'ratingCount': product.variantCount ?? 0,
           'shortDescription': product.description,
           'illustrationImages': allImages,
           'productVariants': product.variants
@@ -104,19 +128,17 @@ class _PageproductdetailState extends State<Pageproductdetail> {
                             product.mainImageUrl ??
                             '',
                         'stock': variant.stockQuantity ?? 0,
-                        // Prioritize variant.price, fallback to 0.0 if null
                         'price': variant.price ?? 0.0,
                       })
                   .toList() ??
               [],
-          'minPrice': product.minPrice, // Still useful for other contexts
-          'maxPrice': product.maxPrice, // Still useful for other contexts
+          'minPrice': product.minPrice,
+          'maxPrice': product.maxPrice,
           'discountPercentage': product.discountPercentage,
         };
 
         if (_productData['productVariants'] != null &&
             (_productData['productVariants'] as List).isNotEmpty) {
-          // Set initial displayed image based on the first variant or main product image
           final firstVariant = (_productData['productVariants'] as List).first;
           if (firstVariant['mainImage'] != null &&
               (firstVariant['mainImage'] as String).isNotEmpty) {
@@ -134,6 +156,12 @@ class _PageproductdetailState extends State<Pageproductdetail> {
           _displayedMainImageUrl = allImages.first;
         }
 
+        if (product.reviews != null) {
+          _displayedReviews = product.reviews!;
+        } else {
+          _displayedReviews = [];
+        }
+
         _isLoading = false;
       });
     } catch (e) {
@@ -147,43 +175,67 @@ class _PageproductdetailState extends State<Pageproductdetail> {
     }
   }
 
+  void _connectToReviewWebSocket() {
+    final String webSocketUrl = '${baseurl.replaceFirst("http", "ws")}/ws/websocket';
+    final token = _userInfo.authToken;
+    final Map<String, String> connectHeaders = token != null ? {'Authorization': 'Bearer $token'} : {};
+
+    _stompClient = StompClient(
+      config: StompConfig(
+        url: webSocketUrl,
+        onConnect: _onStompConnect,
+        onWebSocketError: (dynamic error) {
+          if (kDebugMode) print('WebSocket Error: $error');
+        },
+        stompConnectHeaders: connectHeaders,
+        webSocketConnectHeaders: connectHeaders,
+        onDebugMessage: kDebugMode ? (String message) => print("STOMP_DEBUG: $message") : (String message) {},
+      ),
+    );
+    _stompClient?.activate();
+  }
+
+  void _onStompConnect(StompFrame connectFrame) {
+    if (kDebugMode) print('Connected to WebSocket for reviews.');
+    _reviewSubscription = _stompClient?.subscribe(
+      destination: '/topic/product/${widget.productId}/reviews',
+      callback: _onReviewReceived,
+    );
+  }
+
+  void _onReviewReceived(StompFrame frame) {
+    if (frame.body != null) {
+      try {
+        final newReviewJson = jsonDecode(frame.body!);
+        final newReview = ProductReviewDTO.fromJson(newReviewJson);
+
+        if (mounted) {
+          setState(() {
+            if (!_displayedReviews.any((r) => r.id == newReview.id)) {
+              _displayedReviews.insert(0, newReview);
+              _displayedReviews.sort((a, b) => (b.reviewTime ?? DateTime(0)).compareTo(a.reviewTime ?? DateTime(0)));
+            } else {
+              final index = _displayedReviews.indexWhere((r) => r.id == newReview.id);
+              if (index != -1) {
+                _displayedReviews[index] = newReview;
+              }
+            }
+          });
+        }
+      } catch (e) {
+        if (kDebugMode) print('Error processing review message: $e. Body: ${frame.body}');
+      }
+    }
+  }
+
   @override
   void dispose() {
-    _scrollController.removeListener(_loadMoreReviewsOnScroll);
     _scrollController.dispose();
     _commentController.dispose();
     _productService.dispose();
+    _reviewSubscription?.call();
+    _stompClient?.deactivate();
     super.dispose();
-  }
-
-  void _loadInitialReviews() {
-    setState(() {
-      _displayedReviews = _dummyReviews.take(_reviewsPerPage).toList();
-    });
-  }
-
-  Future<void> _loadMoreReviews() async {
-    if (_isLoadingReviews || !_canLoadMoreReviews) return;
-    setState(() => _isLoadingReviews = true);
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
-    final startIndex = _displayedReviews.length;
-    final endIndex = (startIndex + _reviewsPerPage > _dummyReviews.length)
-        ? _dummyReviews.length
-        : startIndex + _reviewsPerPage;
-    if (startIndex < endIndex) {
-      setState(() {
-        _displayedReviews.addAll(_dummyReviews.sublist(startIndex, endIndex));
-      });
-    }
-    setState(() => _isLoadingReviews = false);
-  }
-
-  void _loadMoreReviewsOnScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 100) {
-      _loadMoreReviews();
-    }
   }
 
   void _onVariantSelected(int index) {
@@ -211,79 +263,74 @@ class _PageproductdetailState extends State<Pageproductdetail> {
     });
   }
 
-  void _submitReview() {
-    if (_selectedRating > 0 && _commentController.text.trim().isNotEmpty) {
-      final newReview = {
-        'name': 'Bạn',
-        'rating': _selectedRating,
-        'comment': _commentController.text.trim(),
-        'avatar': 'assets/default_avatar.png',
-      };
+  void _submitReview() async {
+    final bool isLoggedIn = _userInfo.currentUser != null;
+    final String commentText = _commentController.text.trim();
+
+    if (isLoggedIn) {
+      if (_selectedRating < 1 || _selectedRating > 5) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Logged-in users must provide a rating between 1 and 5.')),
+        );
+        return;
+      }
+    } else {
+      if ((_selectedRating == 0) && commentText.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Anonymous users must provide a rating or a comment.')),
+        );
+        return;
+      }
+      if (_selectedRating != 0 && (_selectedRating < 1 || _selectedRating > 5)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('If providing a rating, it must be between 1 and 5.')),
+        );
+        return;
+      }
+    }
+
+    CreateProductReviewRequestDTO reviewRequest;
+    if (isLoggedIn) {
+      reviewRequest = CreateProductReviewRequestDTO(
+        rating: _selectedRating,
+        comment: commentText.isNotEmpty ? commentText : null,
+      );
+    } else {
+      reviewRequest = CreateProductReviewRequestDTO(
+        reviewerName: "Anonymous",
+        rating: _selectedRating > 0 ? _selectedRating : null,
+        comment: commentText.isNotEmpty ? commentText : null,
+      );
+    }
+
+    try {
+      await _productService.submitReview(widget.productId, reviewRequest);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Review submitted successfully!')),
+      );
       setState(() {
-        _dummyReviews.insert(0, newReview);
-        _displayedReviews.insert(0, newReview);
         _selectedRating = 0;
         _commentController.clear();
       });
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đánh giá của bạn đã được gửi!')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Vui lòng chọn sao đánh giá và nhập bình luận.')),
+        SnackBar(content: Text('Failed to submit review: ${e.toString()}')),
       );
     }
   }
 
-  final List<Map<String, dynamic>> _dummyReviews = [
-    {
-      'name': 'Nguyễn Văn A',
-      'rating': 5,
-      'comment': 'Sản phẩm tuyệt vời, đáng mua!',
-      'avatar': 'assets/avatar1.png',
-    },
-    {
-      'name': 'Trần Thị B',
-      'rating': 4,
-      'comment': 'Chất lượng tốt, giá cả hợp lý.',
-      'avatar': 'assets/avatar2.png',
-    },
-    {
-      'name': 'Lê Văn C',
-      'rating': 3,
-      'comment': 'Sản phẩm ổn, nhưng giao hàng hơi chậm.',
-      'avatar': 'assets/avatar3.png',
-    },
-    {
-      'name': 'Phạm Thị D',
-      'rating': 5,
-      'comment': 'Rất hài lòng về sản phẩm và dịch vụ.',
-      'avatar': 'assets/avatar4.png',
-    },
-    {
-      'name': 'Hoàng Văn E',
-      'rating': 4,
-      'comment': 'Sản phẩm tốt, đóng gói cẩn thận.',
-      'avatar': 'assets/avatar5.png',
-    },
-    {
-      'name': 'Đặng Thị F',
-      'rating': 3,
-      'comment': 'Giá hơi cao so với chất lượng.',
-      'avatar': 'assets/avatar6.png',
-    },
-  ];
-
-  bool get _canLoadMoreReviews =>
-      _displayedReviews.length < _dummyReviews.length;
-
   void _onQuantityChanged(int newQuantity) {
-    // Prevent entire UI rebuild when only quantity changes
     if (newQuantity != _selectedQuantity) {
       setState(() {
         _selectedQuantity = newQuantity;
       });
+    }
+  }
+
+  void _loadMoreReviews() {
+    if (kDebugMode) {
+      print("Load more reviews triggered");
     }
   }
 
@@ -314,7 +361,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
       );
     }
 
-    Widget productInfoSection = ProductDetialInfo(
+    Widget productInfoSection = ProductDetailInfo(
       productId: widget.productId,
       productName: _productData['name'] ?? 'N/A',
       brandName: _productData['brand'] ?? 'N/A',
@@ -333,8 +380,17 @@ class _PageproductdetailState extends State<Pageproductdetail> {
       displayedMainImageUrl: _displayedMainImageUrl,
       onIllustrationImageSelected: _onIllustrationImageSelected,
       scrollController: _scrollController,
-      displayedReviews: _displayedReviews,
-      totalReviews: _dummyReviews.length,
+      displayedReviews: _displayedReviews.map((review) {
+        return {
+          'id': review.id,
+          'avatar': review.reviewerAvatarUrl ?? 'assets/default_avatar.png',
+          'name': review.reviewerName ?? 'Ẩn danh',
+          'rating': review.rating ?? 0,
+          'comment': review.comment ?? '',
+          'reviewTime': review.reviewTime?.toIso8601String() ?? DateTime.now().toIso8601String(),
+        };
+      }).toList(),
+      totalReviews: _displayedReviews.length,
       isLoadingReviews: _isLoadingReviews,
       canLoadMoreReviews: _canLoadMoreReviews,
       loadMoreReviews: _loadMoreReviews,
@@ -342,7 +398,6 @@ class _PageproductdetailState extends State<Pageproductdetail> {
       commentController: _commentController,
       selectedRating: _selectedRating,
       onRatingChanged: _onRatingChanged,
-      // Pass the image cache to prevent flickering
       imageCache: _ProductImageCache.getImage,
       discountPercentage:
           (_productData['discountPercentage'] as num?)?.toDouble(),
@@ -367,9 +422,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
           return;
         }
 
-        // Check if stock quantity is zero
         final selectedVariant = productVariantsList[_selectedVariantIndex];
-        print('selectedVariant: $selectedVariant');
         final int stockQuantity = selectedVariant['stock'] as int? ?? 0;
         if (stockQuantity <= 0) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -380,8 +433,12 @@ class _PageproductdetailState extends State<Pageproductdetail> {
 
         String baseProductName = _productData['name'] ?? 'Sản phẩm';
         final String? variantName = selectedVariant['name'] as String?;
-        if (variantName != null && variantName.isNotEmpty) {
-          baseProductName = '$baseProductName - $variantName';
+        
+        final String fullProductName;
+        if (variantName != null && variantName.isNotEmpty && variantName != 'Không tên') {
+          fullProductName = '$baseProductName - $variantName';
+        } else {
+          fullProductName = baseProductName;
         }
 
         final String variantImageUrl =
@@ -393,49 +450,25 @@ class _PageproductdetailState extends State<Pageproductdetail> {
                 '';
 
         try {
-          // Get product name
-          final String baseProductName = _productData['name'] ?? 'Sản phẩm';
-
-          // Get selected variant name from productVariants list
-          final String? variantName = selectedVariant['name'] as String?;
-
-          // Create the full product name with variant
-          final String fullProductName;
-          fullProductName = baseProductName;
-
-          print(
-              'Creating cart item with productName: $baseProductName, variantName: $variantName, fullName: $fullProductName');
-
-          // Create product variant for CartStorage with combined name
           final cartProductVariant = CartProductVariantDTO(
             id: selectedVariant['id'] as int?,
             productId: widget.productId,
-            name: fullProductName, // Use the combined name format
+            name: fullProductName,
             description: _productData['shortDescription'] ?? '',
             imageUrl: variantImageUrl,
             price: selectedVariant['price'] as double?,
             discountPercentage: _productData['discountPercentage']?.toDouble(),
             finalPrice: selectedVariant['price'] as double?,
             stockQuantity: selectedVariant['stock'] as int?,
-            
           );
 
-          print(
-              'Adding to cart: ${cartProductVariant.name}, ID: ${cartProductVariant.id}');
-
-          // Get cart storage and add item
           final cartStorage = CartStorage();
           await cartStorage.addItemToCart(
               cartProductVariant, _selectedQuantity);
 
-          // Check if user is logged in for debug info
-          final bool isLoggedIn = UserInfo().currentUser != null;
-          print('Item added to cart. User logged in: $isLoggedIn');
-
-          // Show success message with action to view cart
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Đã thêm "$baseProductName" vào giỏ hàng!'),
+              content: Text('Đã thêm "$fullProductName" vào giỏ hàng!'),
             ),
           );
         } catch (e) {
@@ -464,7 +497,6 @@ class _PageproductdetailState extends State<Pageproductdetail> {
           return;
         }
 
-        // Check if stock quantity is zero
         final selectedVariant = productVariantsList[_selectedVariantIndex];
         final int stockQuantity = selectedVariant['stock'] as int? ?? 0;
         if (stockQuantity <= 0) {
@@ -476,8 +508,12 @@ class _PageproductdetailState extends State<Pageproductdetail> {
 
         String baseProductName = _productData['name'] ?? 'Sản phẩm';
         final String? variantName = selectedVariant['name'] as String?;
-        if (variantName != null && variantName.isNotEmpty) {
-          baseProductName = '$baseProductName - $variantName';
+        
+        final String fullProductName;
+        if (variantName != null && variantName.isNotEmpty && variantName != 'Không tên') {
+          fullProductName = '$baseProductName - $variantName';
+        } else {
+          fullProductName = baseProductName;
         }
 
         final String variantImageUrl =
@@ -488,28 +524,23 @@ class _PageproductdetailState extends State<Pageproductdetail> {
                     orElse: () => '') ??
                 '';
 
-        // Get the original price and discount percentage
         double originalPrice = (selectedVariant['price'] as num?)?.toDouble() ?? 0.0;
-        double discountPercentage = (_productData['discountPercentage'] as num?)?.toDouble() ?? 0.0;
-        
-        // Calculate the final price after discount
+        double discountPercentageValue = (_productData['discountPercentage'] as num?)?.toDouble() ?? 0.0;
         double finalPrice = originalPrice;
-        if (discountPercentage > 0) {
-          finalPrice = originalPrice * (1 - (discountPercentage / 100));
+        if (discountPercentageValue > 0) {
+          finalPrice = originalPrice * (1 - (discountPercentageValue / 100));
         }
 
-        // Create CartItemModel with the FINAL price (after discount)
         final buyNowItem = CartItemModel(
           productId: widget.productId,
-          productName: baseProductName,
+          productName: fullProductName,
           imageUrl: variantImageUrl,
           quantity: _selectedQuantity,
-          price: finalPrice, // Use the discounted price
+          price: finalPrice,
           variantId: selectedVariant['id'] as int,
-          discountPercentage: discountPercentage, // Pass discount percentage for display purposes
+          discountPercentage: discountPercentageValue,
         );
 
-        // Pass the product ID to payment page for navigation back
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -569,7 +600,7 @@ class _PageproductdetailState extends State<Pageproductdetail> {
             child: Navbarhomedesktop(),
           );
           return Scaffold(
-            appBar: appBar as PreferredSize,
+            appBar: appBar,
             body: Column(
               children: [
                 Container(

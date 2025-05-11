@@ -14,7 +14,7 @@ public class CreateProductReviewRequestDTO {
     private String comment; // Nullable
 
     @Size(max = 100, message = "Anonymous reviewer name cannot exceed 100 characters")
-    private String anonymousReviewerName; // For anonymous users
+    private String reviewerName; // For anonymous users
 
     // Getters and Setters
     public Byte getRating() {
@@ -33,11 +33,11 @@ public class CreateProductReviewRequestDTO {
         this.comment = comment;
     }
 
-    public String getAnonymousReviewerName() {
-        return anonymousReviewerName;
+    public String getReviewerName() {
+        return reviewerName;
     }
 
-    public void setAnonymousReviewerName(String anonymousReviewerName) {
-        this.anonymousReviewerName = anonymousReviewerName;
+    public void setReviewerName(String anonymousReviewerName) {
+        this.reviewerName = anonymousReviewerName;
     }
 }

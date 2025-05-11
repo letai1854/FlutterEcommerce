@@ -325,6 +325,48 @@ public class AdminChatClient {
 
                 // Fetch and subscribe to all active conversations
                 fetchAndSubscribeToActiveConversations();
+
+                // Subscribe to new conversation notifications
+                stompSession.subscribe("/topic/admin/conversations/new", new StompFrameHandler() {
+                    @Override
+                    public Type getPayloadType(StompHeaders headers) {
+                        return ConversationDTO.class;
+                    }
+
+                    @Override
+                    public void handleFrame(StompHeaders headers, Object payload) {
+                        if (payload instanceof ConversationDTO) {
+                            ConversationDTO newConversation = (ConversationDTO) payload;
+                            SwingUtilities.invokeLater(() -> {
+                                activeConversations.put(newConversation.getId(), newConversation);
+                                updateConversationsList(); // Refresh the list
+                                // Automatically subscribe to this new conversation's messages
+                                subscribeToConversation(newConversation.getId());
+                                
+                                String notificationMessage = "New conversation #" + newConversation.getId() + 
+                                                             " ('" + newConversation.getTitle() + "') started by " + 
+                                                             newConversation.getCustomerFullName();
+                                updateStatus(notificationMessage);
+                                JOptionPane.showMessageDialog(mainFrame,
+                                        notificationMessage,
+                                        "New Conversation Alert",
+                                        JOptionPane.INFORMATION_MESSAGE);
+                                
+                                // Optionally, select the new conversation if no other is selected
+                                if (selectedConversationId == null) {
+                                    for (int i = 0; i < conversationsModel.getSize(); i++) {
+                                        if (conversationsModel.getElementAt(i).getConversationId().equals(newConversation.getId())) {
+                                            conversationsList.setSelectedIndex(i);
+                                            break;
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    }
+                });
+                updateStatus("Subscribed to new conversation alerts on /topic/admin/conversations/new");
+
             } catch (ExecutionException | InterruptedException e) {
                 SwingUtilities.invokeLater(() -> {
                     updateStatus("Error connecting to WebSocket server: " + e.getMessage());

@@ -40,8 +40,8 @@ public class AdminDashboardController {
 
     @GetMapping("/sales")
     public ResponseEntity<?> getSalesStatistics(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Date startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Date endDate) {
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS") Date startDate,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS") Date endDate) {
         try {
             if (startDate.after(endDate)) {
                 logger.warn("Invalid date range: startDate {} is after endDate {}", startDate, endDate);
