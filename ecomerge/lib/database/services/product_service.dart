@@ -451,8 +451,8 @@ class ProductService {
             headers: _getHeaders(includeAuth: false), // Make this a public API call
         );
 
-
       if (kDebugMode) {
+          print("data: ${response.body}");
         print('Fetch Products Request URL: $url');
         print('Fetch Products Response Status: ${response.statusCode}');
       }

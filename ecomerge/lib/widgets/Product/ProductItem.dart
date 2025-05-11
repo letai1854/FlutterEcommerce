@@ -261,7 +261,8 @@ class ProductItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final discountedPrice = discount != null && discount! > 0
+    // Modified the discount calculation to be more explicit
+    final discountedPrice = (discount != null && discount! > 0)
         ? price - (price * discount! / 100)
         : price;
 

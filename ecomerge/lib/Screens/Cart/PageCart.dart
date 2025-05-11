@@ -137,13 +137,19 @@ class _PageCartState extends State<PageCart> {
         if (newValue) {
           // Use the productVariant.id as variantId to ensure consistent identification
           final variantId = item.productVariant?.id ?? 0;
+          
+          // Get the price information correctly
+          final double finalPrice = item.productVariant?.finalPrice ?? item.productVariant?.price ?? 0;
+          
           final model = CartItemModel(
-            productId: variantId, // Use the variant ID consistently
+            productId: variantId,
             productName: item.productVariant?.name ?? 'Unknown product',
             imageUrl: item.productVariant?.imageUrl ?? '',
             quantity: item.quantity ?? 0,
-            price: item.productVariant?.finalPrice ?? item.productVariant?.price ?? 0,
-            variantId: variantId, // Use the variant ID consistently
+            price: finalPrice,  // This is the FINAL price after discount
+            variantId: variantId,
+            discountPercentage: item.productVariant?.discountPercentage,
+            // Don't calculate or apply the discount again - just pass the values as they are
           );
           
           // Check if it's already in the list using variantId for consistency
@@ -202,6 +208,7 @@ class _PageCartState extends State<PageCart> {
               quantity: newQuantity,
               price: _selectedCartItemsList[selectedIndex].price,
               variantId: _selectedCartItemsList[selectedIndex].variantId,
+              discountPercentage: _selectedCartItemsList[selectedIndex].discountPercentage
             );
             
             // Replace the item in the list
@@ -244,6 +251,7 @@ class _PageCartState extends State<PageCart> {
                 quantity: newQuantity,
                 price: _selectedCartItemsList[selectedIndex].price,
                 variantId: _selectedCartItemsList[selectedIndex].variantId,
+                discountPercentage: _selectedCartItemsList[selectedIndex].discountPercentage,
               );
               
               // Replace the item in the list
@@ -297,13 +305,17 @@ class _PageCartState extends State<PageCart> {
           
           // If selecting all and the item has stock, add it to the selected list
           if (value && hasStock) {
+            // Get the price information correctly
+            final double finalPrice = item.productVariant?.finalPrice ?? item.productVariant?.price ?? 0;
+            
             final model = CartItemModel(
               productId: item.productVariant?.id ?? 0,
               productName: item.productVariant?.name ?? 'Unknown product',
               imageUrl: item.productVariant?.imageUrl ?? '',
               quantity: item.quantity ?? 0,
-              price: item.productVariant?.finalPrice ?? item.productVariant?.price ?? 0,
+              price: finalPrice, // This is the FINAL price after discount
               variantId: item.productVariant?.id ?? 0,
+              discountPercentage: item.productVariant?.discountPercentage
             );
             _selectedCartItemsList.add(model);
           }
@@ -359,13 +371,17 @@ class _PageCartState extends State<PageCart> {
       if (_cartStorage.cartItems.isNotEmpty) {
         for (var item in _cartStorage.cartItems) {
           if (item.cartItemId != null) {
+            // Get the price information correctly
+            final double finalPrice = item.productVariant?.finalPrice ?? item.productVariant?.price ?? 0;
+            
             final model = CartItemModel(
               productId: item.productVariant?.id ?? 0,
               productName: item.productVariant?.name ?? 'Unknown product',
               imageUrl: item.productVariant?.imageUrl ?? '',
               quantity: item.quantity ?? 0, 
-              price: item.productVariant?.finalPrice ?? item.productVariant?.price ?? 0,
+              price: finalPrice, // This is the FINAL price after discount
               variantId: item.productVariant?.id ?? 0,
+              discountPercentage: item.productVariant?.discountPercentage
             );
             _selectedCartItemsList.add(model);
           }

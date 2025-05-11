@@ -36,31 +36,20 @@ class _PagesuccesspaymentState extends State<Pagesuccesspayment> {
     orderData.putIfAbsent('tax', () => 0.0);
     orderData.putIfAbsent('discount', () => 0.0);
     orderData.putIfAbsent('totalAmount', () => 0.0);
+    orderData.putIfAbsent('productDiscount', () => 0.0); // Ensure productDiscount is present
 
-    // --- Currency values will be passed as num; formatting should be done in bodySuccessPayment ---
-    // final currencyFormatter = NumberFormat("#,##0", "vi_VN");
-    // final List<String> currencyKeys = [
-    //   'itemsTotal',
-    //   'shippingFee',
-    //   'tax',
-    //   'discount',
-    //   'totalAmount'
-    // ];
-
-    // for (String key in currencyKeys) {
-    //   if (orderData[key] is num) {
-    //     orderData[key] = '${currencyFormatter.format(orderData[key])} VND';
-    //   }
-    // }
+    // Extract the product discount value
+    final double productDiscount = (orderData['productDiscount'] as num?)?.toDouble() ?? 0.0;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final screenWidth = constraints.maxWidth;
 
         Widget appBar;
-        // *** Truyền orderData vào bodySuccessPayment ***
+        // Pass both orderData and productDiscount to bodySuccessPayment
         Widget body = bodySuccessPayment(
-          orderData: orderData, // Truyền dữ liệu vào đây
+          orderData: orderData,
+          totalDiscount: productDiscount,
         );
 
         if (screenWidth < 768) {

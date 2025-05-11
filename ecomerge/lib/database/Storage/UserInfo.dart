@@ -92,6 +92,25 @@ class UserInfo extends ChangeNotifier {
     }
   }
 
+  // Update customer points and notify listeners
+  void updateCustomerPoints(double newPoints) {
+    if (_currentUser != null) {
+      _currentUser = User(
+        id: _currentUser!.id,
+        email: _currentUser!.email,
+        fullName: _currentUser!.fullName,
+        avatar: _currentUser!.avatar,
+        role: _currentUser!.role,
+        status: _currentUser!.status,
+        customerPoints: newPoints,
+        createdDate: _currentUser!.createdDate,
+        updatedDate: _currentUser!.updatedDate,
+      );
+      print('Updated customer points to: $newPoints');
+      notifyListeners(); // Notify listeners about the change
+    }
+  }
+
   // Method to clear user info on logout
   void clearUserInfo() {
     _currentUser = null;

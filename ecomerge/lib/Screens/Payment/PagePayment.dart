@@ -163,7 +163,26 @@ class _PagePaymentState extends State<PagePayment> {
   }
 
   double _calculateTotalProductSpecificDiscount() {
-    return _calculateSumOfOriginalItemPrices() - _calculateSubtotal();
+    double sumOriginalPrices = 0.0;
+    double sumDiscountedPrices = 0.0;
+    
+    for (var item in widget.cartItems) {
+      double price = item.price; // This is already the final discounted price
+      double originalPrice = price;
+      
+      // Calculate the original price if there's a discount percentage
+      if (item.discountPercentage != null && item.discountPercentage! > 0) {
+        // Original price = discounted price / (1 - discount percentage/100)
+        originalPrice = price / (1 - (item.discountPercentage! / 100));
+      }
+      
+      // Add to sums
+      sumOriginalPrices += originalPrice * item.quantity;
+      sumDiscountedPrices += price * item.quantity;
+    }
+    
+    // Total discount is the difference between original and discounted totals
+    return sumOriginalPrices - sumDiscountedPrices;
   }
 
   String _formatCurrency(num amount) {
@@ -453,6 +472,23 @@ class _PagePaymentState extends State<PagePayment> {
       print(
           "PagePayment: Order created successfully with ID: ${createdOrder.id}");
 
+      // If using points, update the user's point balance
+      if (_useAccumulatedPoints && _pointsDiscountAmount > 0) {
+        // Calculate points used (1 point = 1000 VND)
+        double pointsUsed = _pointsDiscountAmount / 1000;
+        
+        // Get current points balance
+        double currentPoints = UserInfo().currentUser?.customerPoints ?? 0;
+        
+        // Calculate and update new points balance
+        double newPointsBalance = currentPoints - pointsUsed;
+        if (newPointsBalance < 0) newPointsBalance = 0; // Ensure non-negative
+        
+        // Update points in UserInfo
+        UserInfo().updateCustomerPoints(newPointsBalance);
+        print("PagePayment: Updated user points balance from $currentPoints to $newPointsBalance");
+      }
+
       Map<String, dynamic> paymentSuccessArgs =
           createdOrder.toMapForPaymentSuccess();
 
@@ -461,13 +497,36 @@ class _PagePaymentState extends State<PagePayment> {
               paymentSuccessArgs['customerID'] ??
               'N/A';
 
-      paymentSuccessArgs['sumOriginalItemPrices'] =
-          _calculateSumOfOriginalItemPrices();
-      paymentSuccessArgs['totalProductSpecificDiscount'] =
-          _calculateTotalProductSpecificDiscount();
-      paymentSuccessArgs['taxRate'] = _taxRate; // Pass the tax rate
+      // Calculate product discount properly
+      double totalProductDiscount = 0.0;
+      for (var item in widget.cartItems) {
+        if (item.discountPercentage != null && item.discountPercentage! > 0) {
+          // Calculate the original price before discount
+          // Original price = discounted price / (1 - discount percentage/100)
+          double originalPrice = item.price / (1 - (item.discountPercentage! / 100));
+          
+          // Calculate the discount amount for this item
+          double discountAmount = (originalPrice - item.price) * item.quantity;
+          totalProductDiscount += discountAmount;
+        }
+      }
 
+      paymentSuccessArgs['sumOriginalItemPrices'] = _calculateSumOfOriginalItemPrices();
+      paymentSuccessArgs['productDiscount'] = totalProductDiscount;
+      paymentSuccessArgs['taxRate'] = _taxRate;
+      
+      // Add points discount information to payment success arguments
+      paymentSuccessArgs['pointsDiscount'] = _pointsDiscountAmount;
+      paymentSuccessArgs['usedPoints'] = _useAccumulatedPoints && _pointsDiscountAmount > 0
+          ? (_pointsDiscountAmount / 1000) : 0;
+      paymentSuccessArgs['updatedPointsBalance'] = UserInfo().currentUser?.customerPoints ?? 0;
+      
+      print("PagePayment: Product discount: $totalProductDiscount");
+      print("PagePayment: Points discount: $_pointsDiscountAmount");
+      print("PagePayment: Payment success arguments: $paymentSuccessArgs");
+      
       if (mounted) {
+        // Correct way to pass all data through a single arguments parameter
         Navigator.pushReplacementNamed(
           context,
           '/payment_success',
@@ -562,12 +621,12 @@ class _PagePaymentState extends State<PagePayment> {
   void _toggleUseAccumulatedPoints(bool? value) {
     if (value == null) return;
 
-    // If UserInfo().currentUser?.customerPoints is null, customerPoints will be 0.
+    // Get customer points as double
     final double customerPoints = UserInfo().currentUser?.customerPoints ?? 0;
 
     setState(() {
       if (value) {
-        if (customerPoints == 0) {
+        if (customerPoints <= 0) {
           _useAccumulatedPoints = false;
           _pointsDiscountAmount = 0.0;
           ScaffoldMessenger.of(context).showSnackBar(
@@ -579,13 +638,15 @@ class _PagePaymentState extends State<PagePayment> {
           return;
         }
 
+        // Calculate discount amount (1 point = 1000 VND)
         double potentialPointsDiscount = customerPoints * 1000;
         double currentTotalBeforePoints = _calculateSubtotal() +
             _shippingFee +
             _calculateTax() -
             _calculateDiscount();
 
-        _pointsDiscountAmount =
+        // Limit point usage to the current total
+        _pointsDiscountAmount = 
             (potentialPointsDiscount > currentTotalBeforePoints)
                 ? currentTotalBeforePoints
                 : potentialPointsDiscount;
