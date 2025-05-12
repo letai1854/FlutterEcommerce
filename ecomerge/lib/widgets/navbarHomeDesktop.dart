@@ -7,6 +7,7 @@ import 'package:e_commerce_app/state/Search/SearchStateService.dart';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:e_commerce_app/Screens/ChatbotAI/PageChatbotAI.dart';
 
 class Navbarhomedesktop extends StatefulWidget {
   const Navbarhomedesktop({Key? key}) : super(key: key);
@@ -83,11 +84,24 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
               // Right side - Actions
               Row(
                 children: [
+                  // bổ sung thêm chatbox với ai
+                  
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: IconButton(
                       icon: const Icon(Icons.chat, color: Colors.white),
                       onPressed: () => Navigator.pushNamed(context, '/chat'),
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  
+                  // Add AI chatbox button
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                      icon: const Icon(Icons.smart_toy, color: Colors.white),  // AI robot icon
+                      tooltip: 'AI Chatbox',
+                      onPressed: () => Pagechatbotai.showAsPopup(context),
                     ),
                   ),
                   SizedBox(width: 10),

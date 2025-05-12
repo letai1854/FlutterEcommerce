@@ -1,4 +1,6 @@
 // lib/database/Storage/BrandCategoryService.dart
+import 'dart:async';
+
 import 'package:e_commerce_app/database/models/brand.dart';
 import 'package:e_commerce_app/database/models/categories.dart'; // Assuming CategoryDTO is here
 import 'package:e_commerce_app/database/services/categories_service.dart'; // Import CategoriesService
@@ -14,6 +16,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'dart:typed_data';
+import 'package:crypto/crypto.dart'; // For sha256
 
 // --- Singleton Setup ---
 // AppDataService extends ChangeNotifier to notify listeners when data changes
@@ -86,21 +89,70 @@ class AppDataService extends ChangeNotifier {
   // Check current connectivity status
   Future<void> _checkConnectivity() async {
     if (kIsWeb) {
-      _isOnline = true; // Always assume online for web
+      _isOnline = true; // Luôn giả định online cho web
       return;
     }
 
     try {
+      // Kiểm tra xem thiết bị có phần cứng kết nối đang hoạt động không
       final result = await _connectivity.checkConnectivity();
-      _isOnline = (result != ConnectivityResult.none);
+
+      // Chỉ kiểm tra sâu hơn nếu có giao diện mạng đang hoạt động
+      if (result == ConnectivityResult.none) {
+        _isOnline = false;
+      } else {
+        // *** THAY ĐỔI CHÍNH: Sử dụng InternetAddress.lookup thay vì Socket.connect ***
+        try {
+          // Chọn một tên miền đáng tin cậy
+          const String lookupHost = 'google.com';
+          // Thêm timeout cho lookup để tránh treo quá lâu trên mạng rất tệ
+          final lookupResult = await InternetAddress.lookup(lookupHost)
+              .timeout(const Duration(seconds: 1)); // Timeout ngắn cho lookup
+
+          // Nếu lookup thành công và trả về ít nhất một địa chỉ IP hợp lệ
+          if (lookupResult.isNotEmpty &&
+              lookupResult[0].rawAddress.isNotEmpty) {
+            _isOnline = true;
+            if (kDebugMode) {
+              print('DNS lookup successful for $lookupHost');
+            }
+          } else {
+            // Trường hợp hiếm: lookup thành công nhưng không có địa chỉ?
+            _isOnline = false;
+            if (kDebugMode) {
+              print('DNS lookup for $lookupHost returned empty result.');
+            }
+          }
+        } on SocketException catch (e) {
+          // Lỗi phổ biến khi không phân giải được DNS (không có mạng, DNS lỗi)
+          _isOnline = false;
+          if (kDebugMode) {
+            print('DNS lookup failed for: $e');
+          }
+        } on TimeoutException catch (_) {
+          // Lookup mất quá nhiều thời gian
+          _isOnline = false;
+          if (kDebugMode) {
+            print('DNS lookup for  timed out.');
+          }
+        } catch (e) {
+          // Các lỗi không mong muốn khác
+          _isOnline = false;
+          if (kDebugMode) {
+            print('Unexpected error during DNS lookup: $e');
+          }
+        }
+      }
+
       if (kDebugMode) {
-        print('Initial connectivity check: $_isOnline');
+        print(
+            'Connectivity check result: $_isOnline (Device interface: $result)');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error checking connectivity: $e');
+        print('Error checking basic connectivity: $e');
       }
-      _isOnline = true; // Default to assuming online if check fails
+      _isOnline = false; // Mặc định là offline nếu kiểm tra cơ bản thất bại
     }
   }
 
@@ -569,5 +621,73 @@ class AppDataService extends ChangeNotifier {
   Uint8List? getCategoryImage(String? imageUrl) {
     if (imageUrl == null || imageUrl.isEmpty) return null;
     return _imageCache[imageUrl];
+  }
+
+  // Add these helper methods to make image access consistent
+
+  // Get image from memory cache
+  Uint8List? getImageFromCache(String imageUrl) {
+    if (_imageCache.containsKey(imageUrl)) {
+      return _imageCache[imageUrl];
+    }
+    return null;
+  }
+
+  // Get image from offline storage without trying network
+  Future<Uint8List?> getImageFromOfflineStorage(String imageUrl) async {
+    // First check memory cache
+    final cachedImage = getImageFromCache(imageUrl);
+    if (cachedImage != null) {
+      return cachedImage;
+    }
+
+    // Then try loading from local storage
+    try {
+      final String fileName = _createImageFileName(imageUrl);
+      final file = await _getImageFile(fileName);
+
+      if (await file.exists()) {
+        final bytes = await file.readAsBytes();
+        // Add to memory cache for faster future access
+        _imageCache[imageUrl] = bytes;
+        return bytes;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error loading image from local storage: $e');
+      }
+    }
+
+    return null;
+  }
+
+  // Helper method to create consistent filenames
+  String _createImageFileName(String imageUrl) {
+    final bytes = utf8.encode(imageUrl);
+    final digest = sha256.convert(bytes);
+    return digest.toString() + '.png';
+  }
+
+  // Helper to get image file
+  Future<File> _getImageFile(String fileName) async {
+    final directory = await getApplicationDocumentsDirectory();
+    final imagesDir = Directory('${directory.path}/category_images');
+    if (!await imagesDir.exists()) {
+      await imagesDir.create(recursive: true);
+    }
+    return File('${imagesDir.path}/$fileName');
+  }
+
+  // Refresh images after network is restored
+  void refreshImagesAfterNetworkRestoration() {
+    if (_categories.isEmpty || _isLoading) return;
+
+    if (kDebugMode) {
+      print(
+          'AppDataService: Network restored - refreshing all category images');
+    }
+
+    // Force reload data from server
+    loadData();
   }
 }

@@ -1,5 +1,8 @@
 import 'dart:convert';
 import 'dart:io'; // For SocketException and HttpClient
+import 'dart:typed_data';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:crypto/crypto.dart';
 import 'package:e_commerce_app/database/PageResponse.dart';
 import 'package:e_commerce_app/database/database_helper.dart'; // For baseurl
 import 'package:e_commerce_app/database/models/order/CreateOrderRequestDTO.dart';
@@ -8,6 +11,8 @@ import 'package:e_commerce_app/database/Storage/UserInfo.dart'; // For auth toke
 import 'package:flutter/foundation.dart'; // For kDebugMode, kIsWeb
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart'; // For IOClient
+import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
   enum PaymentStatus {
         chua_thanh_toan, da_thanh_toan, loi_thanh_toan
@@ -20,8 +25,18 @@ class OrderService {
   final String _baseUrl = baseurl;
   late final http.Client httpClient;
 
+  // Add connectivity monitoring
+  final Connectivity _connectivity = Connectivity();
+  bool _isOnline = true;
+  bool _wasOffline = false; // Track if we were offline before
+  
+  // Add static property to track network restoration status
+  static bool _networkJustRestored = false;
+  static bool get networkJustRestored => _networkJustRestored;
+
   OrderService() {
     httpClient = _createSecureClient();
+    _initConnectivityMonitoring();
   }
 
   http.Client _createSecureClient() {
@@ -165,77 +180,151 @@ class OrderService {
     int size = 10, // Default page size
     String sort = 'orderDate,desc', // Default sort
   }) async {
-    final Map<String, String> queryParams = {
-      'page': page.toString(),
-      'size': size.toString(),
-      'sort': sort,
-    };
-    if (status != null) {
-      queryParams['status'] = orderStatusToString(status);
-    }
-    final url = Uri.parse('$_baseUrl/api/orders/me')
-        .replace(queryParameters: queryParams);
-    if (kDebugMode) {
-      print('Get Current User Orders Request URL: $url');
-    }
-
-    try {
-      final response = await httpClient.get(
-        url,
-        headers: _getHeaders(includeAuth: true),
-      );
-
+    // Refresh connectivity status
+    await _checkConnectivity();
+    
+    // If we just came back online, always fetch fresh data from server and clear cache
+    if (_wasOffline && _isOnline) {
+      _wasOffline = false; // Reset the flag
+      
+      // Clear local cache first
+      await clearLocalOrderCache();
+      
       if (kDebugMode) {
-        print(
-            'Get Current User Orders Response Status: ${response.statusCode}');
-        if (response.bodyBytes.isNotEmpty) {
-          try {
-            print(
-                'Get Current User Orders Response Body: ${utf8.decode(response.bodyBytes)}');
-          } catch (e) {
-            print('Error decoding response body: $e');
+        print('OrderService: Network just restored - fetching fresh data from server');
+      }
+      
+      // Continue with online path to fetch fresh data
+    }
+    
+    if (_isOnline) {
+      // Online mode - proceed with API call
+      final Map<String, String> queryParams = {
+        'page': page.toString(),
+        'size': size.toString(),
+        'sort': sort,
+      };
+      if (status != null) {
+        queryParams['status'] = orderStatusToString(status);
+      }
+      final url = Uri.parse('$_baseUrl/api/orders/me')
+          .replace(queryParameters: queryParams);
+      
+      if (kDebugMode) {
+        print('Get Current User Orders Request URL: $url');
+      }
+      
+      try {
+        final response = await httpClient.get(
+          url,
+          headers: _getHeaders(includeAuth: true),
+        );
+        
+        if (kDebugMode) {
+          print('Get Current User Orders Response Status: ${response.statusCode}');
+          if (response.bodyBytes.isNotEmpty) {
+            try {
+              print('Get Current User Orders Response Body: ${utf8.decode(response.bodyBytes)}');
+            } catch (e) {
+              print('Error decoding response body: $e');
+            }
           }
         }
-      }
 
-      switch (response.statusCode) {
-        case 200:
-          final responseBody = jsonDecode(utf8.decode(response.bodyBytes));
-          if (responseBody is Map<String, dynamic>) {
-            return OrderPage.fromJson(responseBody);
-          } else {
-            throw FormatException(
-                'Invalid response format for user orders: Expected a JSON object, got ${responseBody.runtimeType}.');
-          }
-        case 204: // No content
-          return OrderPage(
+        OrderPage orderPage;
+        switch (response.statusCode) {
+          case 200:
+            final responseBody = jsonDecode(utf8.decode(response.bodyBytes));
+            if (responseBody is Map<String, dynamic>) {
+              orderPage = OrderPage.fromJson(responseBody);
+              
+              // Save to local storage for offline access
+              await saveOrdersToLocalStorage(orderPage, status: status, page: page, size: size, sort: sort);
+              
+              // Mark as online data
+              orderPage.isOfflineData = false;
+              return orderPage;
+            } else {
+              throw FormatException('Invalid response format for user orders: Expected a JSON object, got ${responseBody.runtimeType}.');
+            }
+          case 204: // No content
+            orderPage = OrderPage(
               orders: [],
               totalPages: 0,
               totalElements: 0,
               currentPage: 0,
               pageSize: size,
               isLast: true,
-              isFirst: true);
-        case 401:
-          throw Exception(
-              'User not authenticated. Please log in. (Status: 401)');
-        case 500:
-          throw Exception(
-              'An unexpected error occurred while fetching orders. (Status: 500)');
-        default:
-          throw Exception(
-              'Failed to fetch user orders. (Status: ${response.statusCode})');
+              isFirst: true
+            );
+            
+            // Save empty result to local storage too
+            await saveOrdersToLocalStorage(orderPage, status: status, page: page, size: size, sort: sort);
+            
+            // Mark as online data
+            orderPage.isOfflineData = false;
+            return orderPage;
+          case 401:
+            throw Exception('User not authenticated. Please log in. (Status: 401)');
+          case 500:
+            throw Exception('An unexpected error occurred while fetching orders. (Status: 500)');
+          default:
+            throw Exception('Failed to fetch user orders. (Status: ${response.statusCode})');
+        }
+      } on SocketException catch (e) {
+        if (kDebugMode) print('SocketException during getCurrentUserOrders: $e');
+        
+        // Try to load from local storage as fallback if API call fails due to network issues
+        final localOrders = await loadOrdersFromLocalStorage(
+          status: status, page: page, size: size, sort: sort
+        );
+        
+        if (localOrders != null) {
+          if (kDebugMode) {
+            print('Network issue, using locally cached order data');
+          }
+          return localOrders;
+        }
+        
+        // If no local cache either, rethrow the original error
+        throw Exception('Network Error: Could not connect to server.');
+      } on FormatException catch (e) {
+        if (kDebugMode) print('FormatException during getCurrentUserOrders: $e');
+        throw Exception('Server response format error for user orders.');
+      } catch (e) {
+        if (kDebugMode)
+          print('Unexpected Error during getCurrentUserOrders: ${e.toString()}');
+        
+        // Try local cache as fallback for any other errors
+        final localOrders = await loadOrdersFromLocalStorage(
+          status: status, page: page, size: size, sort: sort
+        );
+        
+        if (localOrders != null) {
+          if (kDebugMode) {
+            print('Error fetching from server, using locally cached order data');
+          }
+          return localOrders;
+        }
+        
+        throw Exception('An unexpected error occurred: ${e.toString()}');
       }
-    } on SocketException catch (e) {
-      if (kDebugMode) print('SocketException during getCurrentUserOrders: $e');
-      throw Exception('Network Error: Could not connect to server.');
-    } on FormatException catch (e) {
-      if (kDebugMode) print('FormatException during getCurrentUserOrders: $e');
-      throw Exception('Server response format error for user orders.');
-    } catch (e) {
-      if (kDebugMode)
-        print('Unexpected Error during getCurrentUserOrders: ${e.toString()}');
-      throw Exception('An unexpected error occurred: ${e.toString()}');
+    } else {
+      // Offline mode - try to load from local storage
+      if (kDebugMode) {
+        print('Device is offline, loading orders from local storage');
+      }
+      
+      final localOrders = await loadOrdersFromLocalStorage(
+        status: status, page: page, size: size, sort: sort
+      );
+      
+      if (localOrders != null) {
+        return localOrders;
+      }
+      
+      // If no cached data found
+      throw Exception('No internet connection and no cached order data available');
     }
   }
 
@@ -782,6 +871,391 @@ class OrderService {
       }
     }
     throw Exception('Failed after $maxAttempts attempts');
+  }
+
+  // Check if device is currently online
+  Future<bool> isOnline() async {
+    await _checkConnectivity();
+    return _isOnline;
+  }
+  
+  // Save orders to local storage
+  Future<void> saveOrdersToLocalStorage(OrderPage orderPage, {OrderStatus? status, int page = 0, int size = 10, String sort = 'orderDate,desc'}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Create a key that includes the query parameters
+      final String storageKey = _createOrderStorageKey(status, page, size, sort);
+      
+      // Convert OrderPage to JSON and save
+      final Map<String, dynamic> orderPageJson = {
+        'orders': orderPage.orders.map((order) => _convertOrderToJson(order)).toList(),
+        'totalPages': orderPage.totalPages,
+        'totalElements': orderPage.totalElements,
+        'currentPage': orderPage.currentPage,
+        'pageSize': orderPage.pageSize,
+        'isLast': orderPage.isLast,
+        'isFirst': orderPage.isFirst,
+      };
+      
+      await prefs.setString(storageKey, jsonEncode(orderPageJson));
+      
+      // Save timestamp
+      await prefs.setInt('${storageKey}_timestamp', DateTime.now().millisecondsSinceEpoch);
+      
+      if (kDebugMode) {
+        print('Saved orders to local storage with key: $storageKey');
+      }
+      
+      // Also save order images
+      await _saveOrderImagesToLocalStorage(orderPage.orders);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error saving orders to local storage: $e');
+      }
+    }
+  }
+  
+  // Helper method to convert OrderDTO to JSON (avoiding toJson() dependency)
+  Map<String, dynamic> _convertOrderToJson(OrderDTO order) {
+    return {
+      'id': order.id,
+      'orderDate': order.orderDate?.toIso8601String(),
+      'updatedDate': order.updatedDate?.toIso8601String(),
+      'recipientName': order.recipientName,
+      'recipientPhoneNumber': order.recipientPhoneNumber,
+      'shippingAddress': order.shippingAddress,
+      'subtotal': order.subtotal,
+      'couponDiscount': order.couponDiscount,
+      'pointsDiscount': order.pointsDiscount,
+      'shippingFee': order.shippingFee,
+      'tax': order.tax,
+      'totalAmount': order.totalAmount,
+      'paymentMethod': order.paymentMethod,
+      'paymentStatus': order.paymentStatus,
+      'orderStatus': order.orderStatus != null ? orderStatusToString(order.orderStatus!) : null,
+      'pointsEarned': order.pointsEarned,
+      'couponCode': order.couponCode,
+      'orderDetails': order.orderDetails?.map((detail) => {
+        'productVariantId': detail.productVariantId,
+        'productName': detail.productName,
+        'variantName': detail.variantName,
+        'imageUrl': detail.imageUrl,
+        'quantity': detail.quantity,
+        'priceAtPurchase': detail.priceAtPurchase,
+        'productDiscountPercentage': detail.productDiscountPercentage,
+        'lineTotal': detail.lineTotal,
+      }).toList(),
+    };
+  }
+  
+  // Load orders from local storage
+  Future<OrderPage?> loadOrdersFromLocalStorage({OrderStatus? status, int page = 0, int size = 10, String sort = 'orderDate,desc'}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Create the same key used for saving
+      final String storageKey = _createOrderStorageKey(status, page, size, sort);
+      
+      // Get the saved JSON
+      final String? orderPageJson = prefs.getString(storageKey);
+      
+      if (orderPageJson == null) {
+        if (kDebugMode) {
+          print('No orders found in local storage for key: $storageKey');
+        }
+        return null;
+      }
+      
+      // Parse the JSON
+      final Map<String, dynamic> orderPageMap = jsonDecode(orderPageJson);
+      
+      // Reconstruct OrderPage
+      final List<dynamic> ordersJson = orderPageMap['orders'] ?? [];
+      final List<OrderDTO> orders = ordersJson.map((orderJson) {
+        return OrderDTO(
+          id: orderJson['id'],
+          orderDate: orderJson['orderDate'] != null ? DateTime.tryParse(orderJson['orderDate']) : null,
+          updatedDate: orderJson['updatedDate'] != null ? DateTime.tryParse(orderJson['updatedDate']) : null,
+          recipientName: orderJson['recipientName'],
+          recipientPhoneNumber: orderJson['recipientPhoneNumber'],
+          shippingAddress: orderJson['shippingAddress'],
+          subtotal: orderJson['subtotal']?.toDouble(),
+          couponDiscount: orderJson['couponDiscount']?.toDouble(),
+          pointsDiscount: orderJson['pointsDiscount']?.toDouble(),
+          shippingFee: orderJson['shippingFee']?.toDouble(),
+          tax: orderJson['tax']?.toDouble(),
+          totalAmount: orderJson['totalAmount']?.toDouble(),
+          paymentMethod: orderJson['paymentMethod'],
+          paymentStatus: orderJson['paymentStatus'],
+          orderStatus: orderStatusFromString(orderJson['orderStatus']),
+          pointsEarned: orderJson['pointsEarned'],
+          couponCode: orderJson['couponCode'],
+          orderDetails: orderJson['orderDetails'] != null 
+            ? List<OrderDetailItemDTO>.from(orderJson['orderDetails'].map((detail) => 
+                OrderDetailItemDTO(
+                  productVariantId: detail['productVariantId'], 
+                  productName: detail['productName'],
+                  variantName: detail['variantName'],
+                  imageUrl: detail['imageUrl'],
+                  quantity: detail['quantity'],
+                  priceAtPurchase: detail['priceAtPurchase']?.toDouble(),
+                  productDiscountPercentage: detail['productDiscountPercentage']?.toDouble(),
+                  lineTotal: detail['lineTotal']?.toDouble(),
+                )
+              ))
+            : null,
+        );
+      }).toList();
+      
+      final orderPage = OrderPage(
+        orders: orders,
+        totalPages: orderPageMap['totalPages'] ?? 0,
+        totalElements: orderPageMap['totalElements'] ?? 0,
+        currentPage: orderPageMap['currentPage'] ?? 0,
+        pageSize: orderPageMap['pageSize'] ?? size,
+        isLast: orderPageMap['isLast'] ?? true,
+        isFirst: orderPageMap['isFirst'] ?? true,
+      );
+      
+      if (kDebugMode) {
+        print('Loaded ${orderPage.orders.length} orders from local storage');
+      }
+      
+      return orderPage;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error loading orders from local storage: $e');
+      }
+      return null;
+    }
+  }
+  
+  // Create a consistent key for storing order data
+  String _createOrderStorageKey(OrderStatus? status, int page, int size, String sort) {
+    String key = 'orders_page${page}_size${size}_sort${sort}';
+    if (status != null) {
+      key += '_status${orderStatusToString(status)}';
+    }
+    return key;
+  }
+  
+  // Save order images to local storage
+  Future<void> _saveOrderImagesToLocalStorage(List<OrderDTO> orders) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final imagesDir = Directory('${directory.path}/order_images');
+      if (!await imagesDir.exists()) {
+        await imagesDir.create(recursive: true);
+      }
+      
+      // Extract all image URLs from orders
+      final List<String> imageUrls = [];
+      for (var order in orders) {
+        if (order.orderDetails != null) {
+          for (var detail in order.orderDetails!) {
+            if (detail.imageUrl != null && detail.imageUrl!.isNotEmpty) {
+              imageUrls.add(detail.imageUrl!);
+            }
+          }
+        }
+      }
+      
+      // Save images
+      for (var imageUrl in imageUrls) {
+        try {
+          final imageData = await getImageFromServer(imageUrl);
+          if (imageData != null) {
+            final fileName = _getImageFileName(imageUrl);
+            final file = File('${imagesDir.path}/$fileName');
+            await file.writeAsBytes(imageData);
+            
+            if (kDebugMode) {
+              print('Saved order image to local storage: $fileName');
+            }
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('Error saving image $imageUrl: $e');
+          }
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error saving order images: $e');
+      }
+    }
+  }
+  
+  // Helper method to create a consistent filename for an image
+  String _getImageFileName(String imagePath) {
+    final bytes = utf8.encode(imagePath);
+    final digest = sha256.convert(bytes);
+    return digest.toString() + '.png';
+  }
+
+  // Method to fetch image from server
+  // Future<Uint8List?> getImageFromServer(String imagePath) async {
+  //   try {
+  //     final String fullUrl = _getImageUrl(imagePath);
+  //     final response = await _httpClient.get(Uri.parse(fullUrl));
+      
+  //     if (response.statusCode == 200) {
+  //       return response.bodyBytes;
+  //     }
+  //   } catch (e) {
+  //     if (kDebugMode) {
+  //       print('Error fetching image from server: $e');
+  //     }
+  //   }
+  //   return null;
+  // }
+  
+  // Helper method to get the full URL for an image
+  String _getImageUrl(String imagePath) {
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+    String path = imagePath.startsWith('/') ? imagePath : '/$imagePath';
+    return _baseUrl + path;
+  }
+  
+  // Load image from local storage
+  Future<Uint8List?> loadImageFromLocalStorage(String imagePath) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final imagesDir = Directory('${directory.path}/order_images');
+      final fileName = _getImageFileName(imagePath);
+      final file = File('${imagesDir.path}/$fileName');
+      
+      if (await file.exists()) {
+        final bytes = await file.readAsBytes();
+        if (kDebugMode) {
+          print('Loaded order image from local storage: $fileName');
+        }
+        return bytes;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error loading image from local storage: $e');
+      }
+    }
+    return null;
+  }
+
+  // Initialize connectivity monitoring
+  void _initConnectivityMonitoring() {
+    // Check initial connectivity
+    _checkConnectivity();
+    
+    // Listen for connectivity changes
+    _connectivity.onConnectivityChanged.listen((ConnectivityResult result) {
+      final bool wasOffline = !_isOnline;
+      _isOnline = result != ConnectivityResult.none;
+      
+      if (kDebugMode) {
+        print('OrderService: Connectivity changed to: ${result.toString()}');
+        print('OrderService: Is online: $_isOnline');
+      }
+      
+      // If we just came back online after being offline, trigger data refresh
+      if (wasOffline && _isOnline) {
+        _wasOffline = true; // Mark that we were offline and just came back online
+        _networkJustRestored = true; // Set the static flag
+        
+        if (kDebugMode) {
+          print('OrderService: Network restored - auto-refreshing order data');
+        }
+        
+        // Clear local cache to ensure we get the freshest data
+        clearLocalOrderCache().then((_) {
+          if (kDebugMode) {
+            print('OrderService: Local order cache cleared after network restoration');
+          }
+          
+          // Reset the networkJustRestored flag after a delay
+          Future.delayed(const Duration(seconds: 10), () {
+            _networkJustRestored = false;
+          });
+        });
+      }
+    });
+  }
+  
+  // Check current connectivity status
+  Future<void> _checkConnectivity() async {
+    try {
+      final result = await _connectivity.checkConnectivity();
+      _isOnline = result != ConnectivityResult.none;
+      if (kDebugMode) {
+        print('OrderService: Initial connectivity check: $_isOnline');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('OrderService: Error checking connectivity: $e');
+      }
+      _isOnline = true; // Default to assuming online if check fails
+    }
+  }
+
+  // Clear local orders cache when network is restored or on demand
+  Future<void> clearLocalOrderCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final allKeys = prefs.getKeys();
+      final orderKeys = allKeys.where((key) => key.startsWith('orders_')).toList();
+      
+      // Delete all order-related keys
+      for (var key in orderKeys) {
+        await prefs.remove(key);
+        // Also remove timestamp key
+        await prefs.remove('${key}_timestamp');
+      }
+      
+      // Clear image cache as well
+      await _clearOrderImagesCache();
+      
+      if (kDebugMode) {
+        print('OrderService: Cleared local order cache: ${orderKeys.length} entries');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('OrderService: Error clearing local order cache: $e');
+      }
+    }
+  }
+  
+  // Clear the order images cache
+  Future<void> _clearOrderImagesCache() async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final imagesDir = Directory('${directory.path}/order_images');
+      
+      if (await imagesDir.exists()) {
+        // Delete and recreate directory
+        await imagesDir.delete(recursive: true);
+        await imagesDir.create(recursive: true);
+        
+        if (kDebugMode) {
+          print('OrderService: Cleared order images cache directory');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('OrderService: Error clearing order images cache: $e');
+      }
+    }
+  }
+}
+
+// Add isOfflineData property to OrderPage class if not already added
+extension OrderPageExtension on OrderPage {
+  static final Map<OrderPage, bool> _offlineFlags = {};
+  
+  bool get isOfflineData => _offlineFlags[this] ?? false;
+  
+  set isOfflineData(bool value) {
+    _offlineFlags[this] = value;
   }
 }
 

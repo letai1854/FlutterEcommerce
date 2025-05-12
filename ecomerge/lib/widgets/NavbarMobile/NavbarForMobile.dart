@@ -7,6 +7,7 @@ import 'package:e_commerce_app/state/Search/SearchStateService.dart'; // Add thi
 import 'package:e_commerce_app/widgets/BottomNavigation.dart';
 import 'package:e_commerce_app/widgets/navbarHomeMobile.dart';
 import 'package:flutter/material.dart';
+import 'package:e_commerce_app/Screens/ChatbotAI/PageChatbotAI.dart';
 
 class NavbarFormobile extends StatefulWidget {
   final Widget? body; // Thêm body để hiển thị nội dung bên trong Scaffold
@@ -199,6 +200,20 @@ class _NavbarmobileDrawerState extends State<NavbarFormobile> {
                 Navigator.pushNamed(context, '/chat');
               },
             ),
+            if(!isMobile) ...[
+            ListTile(
+              leading: const Icon(Icons.smart_toy),
+              title: const Text('AI Chatbot'),
+              onTap: () {
+                // Close drawer first
+                Navigator.pop(context);
+                // Show chatbot as popup instead of navigation
+                Pagechatbotai.showAsPopup(context);
+              },
+            ),
+            ],
+            
+            
           ],
         ),
       ),
