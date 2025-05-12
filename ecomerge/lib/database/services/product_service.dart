@@ -13,6 +13,9 @@ import 'package:http/http.dart' as http;
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/io_client.dart';
+import 'package:path_provider/path_provider.dart'; // For file access
+import 'package:connectivity_plus/connectivity_plus.dart'; // For connectivity checking
+import 'package:crypto/crypto.dart'; // For creating image filename hashes
 
 class ProductService {
   final String baseUrl = baseurl; // Lấy từ database_helper
@@ -45,6 +48,87 @@ class ProductService {
   // Ad a static cache for product images
   static final Map<String, Uint8List> _imageCache = {};
 
+  // Updated static variable to track network status
+  static bool _isNetworkRestored = false;
+
+  // Check if device is currently online
+  Future<bool> isOnline() async {
+    try {
+      var connectivityResult = await Connectivity().checkConnectivity();
+      return connectivityResult != ConnectivityResult.none;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error checking connectivity: $e');
+      }
+      // Default to assuming online if we can't check
+      return true;
+    }
+  }
+  
+  // Get path to save images locally
+  Future<String> get _localPath async {
+    final directory = await getApplicationDocumentsDirectory();
+    
+    // Create a specific directory for product images if it doesn't exist
+    final imageDir = Directory('${directory.path}/product_images');
+    if (!await imageDir.exists()) {
+      await imageDir.create(recursive: true);
+    }
+    
+    return imageDir.path;
+  }
+  
+  // Get a filename for a given image path using hash for consistency
+  String _getImageFileName(String imagePath) {
+    // Create a hash of the image path to use as filename
+    var bytes = utf8.encode(imagePath);
+    var digest = sha256.convert(bytes);
+    return digest.toString() + '.png'; // Always use .png extension for consistency
+  }
+  
+  // Save image to local storage
+  Future<void> _saveImageToLocalStorage(String imagePath, Uint8List imageBytes) async {
+    try {
+      if (imagePath.isEmpty || imageBytes.isEmpty) return;
+      
+      final path = await _localPath;
+      final filename = _getImageFileName(imagePath);
+      final file = File('$path/$filename');
+      
+      await file.writeAsBytes(imageBytes);
+      
+      if (kDebugMode) {
+        print('Saved image to local storage: $filename');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error saving image to local storage: $e');
+      }
+    }
+  }
+  
+  // Load image from local storage
+  Future<Uint8List?> _loadImageFromLocalStorage(String imagePath) async {
+    try {
+      final path = await _localPath;
+      final filename = _getImageFileName(imagePath);
+      final file = File('$path/$filename');
+      
+      if (await file.exists()) {
+        final bytes = await file.readAsBytes();
+        if (kDebugMode) {
+          print('Loaded image from local storage: $filename');
+        }
+        return bytes;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error loading image from local storage: $e');
+      }
+    }
+    
+    return null;
+  }
 
   Future<ProductDTO> getProductById(int id) async {
     final url = Uri.parse('$baseUrl/api/products/$id');
@@ -208,11 +292,51 @@ class ProductService {
   Future<Uint8List?> getImageFromServer(String? imagePath, {bool forceReload = false}) async {
     if (imagePath == null || imagePath.isEmpty) return null;
     
+    // Check if we're online
+    bool online = await isOnline();
+    
+    // Reset network restored flag when we go offline
+    if (!online) {
+      _isNetworkRestored = false;
+    }
+    
+    // Check if network was just restored
+    bool wasNetworkJustRestored = false;
+    if (online && !_isNetworkRestored) {
+      _isNetworkRestored = true;
+      wasNetworkJustRestored = true;
+      
+      // Add this: Clear entire image cache when network is restored
+      if (kDebugMode) {
+        print('Network just restored - clearing all image caches to force reload');
+      }
+      _imageCache.clear();
+      UserInfo.avatarCache.clear();
+      
+      // Also clear local files to prevent inconsistency
+      clearLocalImageCache().catchError((e) {
+        if (kDebugMode) {
+          print('Error clearing local image cache after network restoration: $e');
+        }
+      });
+    }
+    
+    // When network is just restored, we should behave like forceReload
+    forceReload = forceReload || wasNetworkJustRestored;
+    
+    // If online and network was just restored, bypass cache for all image requests
+    if (online && !forceReload && wasNetworkJustRestored) {
+      if (kDebugMode) {
+        print('Network restored - fetching fresh image for $imagePath');
+      }
+      forceReload = true;
+    }
+    
     // Check cache only if not forcing reload
     if (!forceReload) {
       // First check our product-specific image cache
       if (_imageCache.containsKey(imagePath)) {
-        if (kDebugMode) print('Using cached image for $imagePath');
+        if (kDebugMode) print('Using in-memory cached image for $imagePath');
         return _imageCache[imagePath];
       }
       
@@ -220,25 +344,51 @@ class ProductService {
       if (UserInfo.avatarCache.containsKey(imagePath)) {
         return UserInfo.avatarCache[imagePath];
       }
+      
+      // If not in memory, try loading from local storage
+      final localImage = await _loadImageFromLocalStorage(imagePath);
+      if (localImage != null) {
+        // Cache in memory for faster access next time
+        _imageCache[imagePath] = localImage;
+        UserInfo.avatarCache[imagePath] = localImage;
+        return localImage;
+      }
+    }
+
+    // If we're offline and got here, we don't have the image
+    if (!online) {
+      if (kDebugMode) {
+        print('Device is offline and image $imagePath is not in cache');
+      }
+      return null;
     }
 
     try {
       String fullUrl = getImageUrl(imagePath);
-      // Add cache-busting parameter for forceReload
-      if (forceReload) {
+      // Add cache-busting parameter for forceReload or network restoration
+      if (forceReload || wasNetworkJustRestored) {
         final cacheBuster = DateTime.now().millisecondsSinceEpoch;
         fullUrl += '?cacheBust=$cacheBuster';
+        
+        if (kDebugMode) {
+          print('Fetching fresh image from server: $fullUrl');
+        }
       }
       
       final response = await httpClient.get(Uri.parse(fullUrl));
 
       if (response.statusCode == 200) {
         // Cache the image unless we're forcing reload
-        if (!forceReload) {
-          // Cache in both places for maximum compatibility
-          _imageCache[imagePath] = response.bodyBytes;
-          UserInfo.avatarCache[imagePath] = response.bodyBytes;
+        _imageCache[imagePath] = response.bodyBytes;
+        UserInfo.avatarCache[imagePath] = response.bodyBytes;
+          
+        // Also save to local storage for offline access
+        await _saveImageToLocalStorage(imagePath, response.bodyBytes);
+          
+        if (forceReload && kDebugMode) {
+          print('Updated all caches with fresh image from server: $imagePath');
         }
+
         return response.bodyBytes;
       }
     } catch (e) {
@@ -246,6 +396,120 @@ class ProductService {
     }
 
     return null;
+  }
+  
+  // Add a method to force refresh all cached images when online is restored
+  Future<void> refreshAllCachedImages() async {
+    if (!await isOnline()) return;
+    
+    if (kDebugMode) {
+      print('Refreshing all cached images after network restoration');
+    }
+    
+    try {
+      // Get all cached image paths
+      final imagePaths = [..._imageCache.keys];
+      
+      // Refresh each image
+      for (var path in imagePaths) {
+        await getImageFromServer(path, forceReload: true);
+      }
+      
+      if (kDebugMode) {
+        print('Refreshed ${imagePaths.length} cached images');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error refreshing cached images: $e');
+      }
+    }
+  }
+  
+  // // Save image to local storage with improved error handling
+  // Future<void> _saveImageToLocalStorage(String imagePath, Uint8List imageBytes) async {
+  //   try {
+  //     if (imagePath.isEmpty || imageBytes.isEmpty) return;
+      
+  //     final path = await _localPath;
+  //     final filename = _getImageFileName(imagePath);
+  //     final file = File('$path/$filename');
+      
+  //     // Create parent directory if it doesn't exist
+  //     final dir = file.parent;
+  //     if (!await dir.exists()) {
+  //       await dir.create(recursive: true);
+  //     }
+      
+  //     await file.writeAsBytes(imageBytes);
+      
+  //     if (kDebugMode) {
+  //       print('Saved image to local storage: $filename (${imageBytes.length} bytes)');
+  //     }
+  //   } catch (e) {
+  //     if (kDebugMode) {
+  //       print('Error saving image to local storage: $e');
+  //     }
+  //   }
+  // }
+  
+  // Clear all locally cached images - call when refresh is needed
+  Future<void> clearLocalImageCache() async {
+    try {
+      final path = await _localPath;
+      final dir = Directory(path);
+      
+      if (await dir.exists()) {
+        // Get all files in directory
+        final entities = await dir.list().toList();
+        
+        // Delete all files (not directories)
+        for (var entity in entities) {
+          if (entity is File) {
+            await entity.delete();
+          }
+        }
+      }
+      
+      // Also clear memory caches
+      _imageCache.clear();
+      UserInfo.avatarCache.clear();
+      
+      if (kDebugMode) {
+        print('Cleared all locally cached images');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error clearing local image cache: $e');
+      }
+    }
+  }
+  
+  // Refresh specific image, removing from all caches and forcing reload
+  Future<Uint8List?> refreshImage(String imagePath) async {
+    // Remove from caches
+    _imageCache.remove(imagePath);
+    UserInfo.avatarCache.remove(imagePath);
+    
+    try {
+      // Remove from local storage
+      final path = await _localPath;
+      final filename = _getImageFileName(imagePath);
+      final file = File('$path/$filename');
+      
+      if (await file.exists()) {
+        await file.delete();
+        if (kDebugMode) {
+          print('Deleted local image: $filename');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error deleting local image: $e');
+      }
+    }
+    
+    // Force reload
+    return await getImageFromServer(imagePath, forceReload: true);
   }
   
   // Method to check if an image is already cached without fetching
@@ -772,6 +1036,21 @@ class ProductService {
       if (kDebugMode) print('Unexpected Error during submit review: $e');
       throw Exception('An unexpected error occurred: ${e.toString()}');
     }
+  }
+
+  // Add a public getter for network restoration status
+  static bool get isNetworkRestored => _isNetworkRestored;
+  
+  // Add public method to load image from local storage
+  Future<Uint8List?> loadImageFromLocalStorage(String imagePath) async {
+    return _loadImageFromLocalStorage(imagePath);
+  }
+  
+  // Add public method to add image to cache
+  void addImageToCache(String imagePath, Uint8List imageData) {
+    _imageCache[imagePath] = imageData;
+    // Also update UserInfo cache for consistency
+    UserInfo.avatarCache[imagePath] = imageData;
   }
 
   void dispose() {

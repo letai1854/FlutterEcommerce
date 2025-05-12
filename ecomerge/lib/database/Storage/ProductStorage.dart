@@ -4,6 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:e_commerce_app/database/models/product_dto.dart';
 import 'package:e_commerce_app/database/PageResponse.dart';
 import 'package:e_commerce_app/database/services/product_service.dart';
+// Add imports for offline support
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 // Global cache for product data across categories
 class GlobalProductCache {
@@ -14,7 +18,9 @@ class GlobalProductCache {
     return _categoryCache[key];
   }
   
-  static void setConfigCache(String key, CachedConfigData cache) {
+  // Enhanced setConfigCache to also save to local storage
+  static Future<void> setConfigCache(String key, CachedConfigData cache) async {
+    // Update in-memory cache first
     final cachedData = CachedConfigData();
     cachedData.products = List.from(cache.products);
     cachedData.currentPage = cache.currentPage;
@@ -24,13 +30,103 @@ class GlobalProductCache {
     
     _categoryCache[key] = cachedData;
     
-    if (kDebugMode) {
-      print('Saved to global cache - key: $key, products: ${cachedData.products.length}, page: ${cachedData.currentPage}');
+    // Now also save to local storage for offline access
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Convert products list to JSON
+      final productsJson = jsonEncode(cache.products.map((product) => product.toJson()).toList());
+      
+      // Create a metadata object for additional cache info
+      final cacheMetadata = {
+        'currentPage': cache.currentPage,
+        'totalPages': cache.totalPages,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      };
+      
+      // Save both pieces of data with the same key prefix
+      await prefs.setString('products_data_$key', productsJson);
+      await prefs.setString('products_metadata_$key', jsonEncode(cacheMetadata));
+      
+      if (kDebugMode) {
+        print('Saved to global cache AND local storage - key: $key, products: ${cachedData.products.length}, page: ${cachedData.currentPage}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error saving product cache to local storage: $e');
+      }
     }
   }
   
-  static void clear() {
+  // Load cached data from local storage
+  static Future<CachedConfigData?> loadFromLocalStorage(String key) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Check if we have data for this key
+      final productsJson = prefs.getString('products_data_$key');
+      final metadataJson = prefs.getString('products_metadata_$key');
+      
+      if (productsJson == null || metadataJson == null) {
+        return null; // No data found
+      }
+      
+      // Parse metadata
+      final metadata = jsonDecode(metadataJson);
+      
+      // Parse products
+      final List<dynamic> productsData = jsonDecode(productsJson);
+      final List<ProductDTO> products = productsData
+          .map((json) => ProductDTO.fromJson(json))
+          .toList();
+      
+      // Create and return cache object
+      final cachedData = CachedConfigData();
+      cachedData.products = products;
+      cachedData.currentPage = metadata['currentPage'] ?? 0;
+      cachedData.totalPages = metadata['totalPages'] ?? 0;
+      cachedData.isInitialized = true;
+      cachedData.currentCacheKey = key;
+      
+      if (kDebugMode) {
+        print('Loaded from local storage - key: $key, products: ${cachedData.products.length}, page: ${cachedData.currentPage}');
+      }
+      
+      // Also update in-memory cache
+      _categoryCache[key] = cachedData;
+      
+      return cachedData;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error loading product cache from local storage: $e');
+      }
+      return null;
+    }
+  }
+  
+  // Clear both in-memory cache and local storage
+  static Future<void> clear() async {
     _categoryCache.clear();
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys();
+      
+      // Remove all product cache keys
+      for (final key in keys) {
+        if (key.startsWith('products_data_') || key.startsWith('products_metadata_')) {
+          await prefs.remove(key);
+        }
+      }
+      
+      if (kDebugMode) {
+        print('Cleared product cache from both memory and local storage');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error clearing product cache from local storage: $e');
+      }
+    }
   }
   
   // For debugging - print all cached categories
@@ -90,15 +186,162 @@ class ProductStorageSingleton extends ChangeNotifier {
     return _instance;
   }
 
-  ProductStorageSingleton._internal();
+  ProductStorageSingleton._internal() {
+    // Initialize connectivity monitoring
+    _initConnectivityMonitoring();
+  }
 
   final CachedConfigData _cache = CachedConfigData();
   final ProductService _productService = ProductService();
+  
+  // Add connectivity monitoring
+  final Connectivity _connectivity = Connectivity();
+  bool _isOnline = true;
+  bool get isOnline => _isOnline;
   
   // Track if this is a returning visit to a category
   bool _isReturningVisit = false;
   // Flag to track if we're immediately showing cached content
   bool get isShowingCachedContent => _isReturningVisit && !_cache.isLoadingMore;
+  
+  // Initialize connectivity monitoring
+  void _initConnectivityMonitoring() {
+    // Check initial connectivity
+    _checkConnectivity();
+    
+    // Listen for connectivity changes
+    _connectivity.onConnectivityChanged.listen((ConnectivityResult result) {
+      final wasOffline = !_isOnline;
+      _isOnline = (result != ConnectivityResult.none);
+      
+      if (kDebugMode) {
+        print('Connectivity changed: ${result.toString()}');
+        print('Is online: $_isOnline');
+      }
+      
+      // If we just went from offline to online, refresh data from server
+      if (wasOffline && _isOnline) {
+        if (kDebugMode) {
+          print('Network restored - immediately refreshing current data');
+        }
+        
+        // Automatically refresh current category's data if available
+        if (_cache.isInitialized && _cache.currentCacheKey != null) {
+          // Parse the current cache key to get category, sort info
+          final keyParts = _cache.currentCacheKey!.split('_');
+          if (keyParts.length >= 3) {
+            try {
+              final categoryId = int.parse(keyParts[0]);
+              final sortBy = keyParts[1];
+              final sortDir = keyParts[2];
+              
+              if (kDebugMode) {
+                print('Auto-refreshing category $categoryId data with sort $sortBy,$sortDir');
+              }
+              
+              // Force refresh current category data immediately
+              _refreshDataIfOnline(categoryId: categoryId, sortBy: sortBy, sortDir: sortDir);
+            } catch (e) {
+              if (kDebugMode) {
+                print('Error parsing cache key for auto-refresh: $e');
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+  
+  // New private method for internal auto-refresh with no UI blocking
+  Future<void> _refreshDataIfOnline({
+    required int categoryId,
+    required String sortBy,
+    required String sortDir,
+  }) async {
+    if (!_isOnline) return;
+    
+    final cacheKey = _getCacheKey(categoryId: categoryId, sortBy: sortBy, sortDir: sortDir);
+    
+    // Don't set loading flags - we'll refresh quietly in background
+    if (kDebugMode) print('Auto-refreshing data from server for $cacheKey');
+    
+    try {
+      final response = await _productService.fetchProducts(
+        categoryId: categoryId,
+        sortBy: sortBy,
+        sortDir: sortDir,
+        page: 0,
+        size: 4
+      );
+      
+      // Create a temporary cache object to avoid UI flickering
+      final tempCache = CachedConfigData();
+      tempCache.products = response.content;
+      tempCache.currentPage = response.number;
+      tempCache.totalPages = response.totalPages;
+      tempCache.isInitialized = true;
+      tempCache.currentCacheKey = cacheKey;
+      
+      // Save to both global cache and local storage
+      await GlobalProductCache.setConfigCache(cacheKey, tempCache);
+      
+      // Only update current cache if it's still the same category being viewed
+      if (_cache.isValid(cacheKey)) {
+        _cache.products = response.content;
+        _cache.currentPage = response.number;
+        _cache.totalPages = response.totalPages;
+        
+        // Notify listeners of the updated data
+        notifyListeners();
+      }
+      
+      // Preload images in background
+      _productService.preloadProductImages(response.content).catchError((e) {
+        if (kDebugMode) print('Error preloading refreshed product images: $e');
+      });
+      
+      if (kDebugMode) {
+        print('Successfully auto-refreshed data from server for $cacheKey');
+      }
+    } catch (e) {
+      if (kDebugMode) print('Error auto-refreshing data from server: $e');
+    }
+  }
+
+  // Update the existing manual refresh method to reuse our new private method
+  Future<void> refreshDataIfOnline({
+    required int categoryId,
+    required String sortBy,
+    required String sortDir,
+  }) async {
+    await _checkConnectivity();
+    
+    if (!_isOnline) {
+      if (kDebugMode) print('Cannot refresh data: Device is offline');
+      return;
+    }
+    
+    final cacheKey = _getCacheKey(categoryId: categoryId, sortBy: sortBy, sortDir: sortDir);
+    
+    if (kDebugMode) print('Manually refreshing data from server for $cacheKey');
+    
+    // Clear cache for this configuration
+    _cache.clear();
+    _cache.currentCacheKey = cacheKey;
+    _cache.isLoadingInitial = true;
+    
+    notifyListeners();
+    
+    // Reuse our shared refresh logic
+    await _refreshDataIfOnline(
+      categoryId: categoryId, 
+      sortBy: sortBy, 
+      sortDir: sortDir
+    );
+    
+    _cache.isLoadingInitial = false;
+    notifyListeners();
+  }
 
   String _getCacheKey({
     required int categoryId,
@@ -274,6 +517,7 @@ class ProductStorageSingleton extends ChangeNotifier {
     return 0;
   }
 
+  // Load initial products for current configuration - enhanced with offline support
   Future<void> loadInitialProducts({
     required int categoryId,
     required String sortBy,
@@ -324,37 +568,92 @@ class ProductStorageSingleton extends ChangeNotifier {
       notifyListeners();
 
       try {
-        final response = await _productService.fetchProducts(
-          categoryId: categoryId,
-          sortBy: sortBy,
-          sortDir: sortDir,
-          page: 0,
-          size: 4
-        );
+        // Check online status first
+        await _checkConnectivity();
+        
+        if (_isOnline) {
+          // ONLINE: Fetch from server
+          final response = await _productService.fetchProducts(
+            categoryId: categoryId,
+            sortBy: sortBy,
+            sortDir: sortDir,
+            page: 0,
+            size: 4
+          );
 
-        _cache.products = response.content;
-        _cache.currentPage = response.number;
-        _cache.totalPages = response.totalPages;
-        _cache.isInitialized = true;
-        
-        // Preload images for better user experience (do this in background)
-        _productService.preloadProductImages(response.content).catchError((e) {
-          if (kDebugMode) print('Error preloading product images: $e');
-        });
-        
-        // Save to global cache immediately
-        // Save to global cache immediately
-        GlobalProductCache.setConfigCache(cacheKey, _cache);
-        
-        if (kDebugMode) {
-          print('Successfully loaded initial products for $cacheKey. Total products: ${_cache.products.length}, Page: ${_cache.currentPage}/${_cache.totalPages}');
+          _cache.products = response.content;
+          _cache.currentPage = response.number;
+          _cache.totalPages = response.totalPages;
+          _cache.isInitialized = true;
+          
+          // Preload images for better user experience (do this in background)
+          _productService.preloadProductImages(response.content).catchError((e) {
+            if (kDebugMode) print('Error preloading product images: $e');
+          });
+          
+          // Save to both global cache and local storage
+          await GlobalProductCache.setConfigCache(cacheKey, _cache);
+          
+          if (kDebugMode) {
+            print('Successfully loaded initial products from SERVER for $cacheKey. Total products: ${_cache.products.length}, Page: ${_cache.currentPage}/${_cache.totalPages}');
+          }
+        } else {
+          // OFFLINE: Try to load from local storage
+          if (kDebugMode) {
+            print('Device is OFFLINE - attempting to load products from local storage for $cacheKey');
+          }
+          
+          final localData = await GlobalProductCache.loadFromLocalStorage(cacheKey);
+          
+          if (localData != null && localData.products.isNotEmpty) {
+            // Use local data
+            _cache.products = localData.products;
+            _cache.currentPage = localData.currentPage;
+            _cache.totalPages = localData.totalPages;
+            _cache.isInitialized = true;
+            _isReturningVisit = true; // Consider it a returning visit when loading from local storage
+            
+            if (kDebugMode) {
+              print('Successfully loaded initial products from LOCAL STORAGE for $cacheKey. Total products: ${_cache.products.length}, Page: ${_cache.currentPage}/${_cache.totalPages}');
+            }
+          } else {
+            // No local data available
+            if (kDebugMode) {
+              print('No local data available for $cacheKey while offline');
+            }
+            _cache.products = [];
+            _cache.currentPage = 0;
+            _cache.totalPages = 0;
+            _cache.isInitialized = true;
+          }
         }
         
       } catch (e) {
         if (kDebugMode) print('Error loading initial products for $cacheKey: $e');
+        
+        // Try loading from local storage as fallback if server request fails
+        try {
+          final localData = await GlobalProductCache.loadFromLocalStorage(cacheKey);
+          
+          if (localData != null && localData.products.isNotEmpty) {
+            // Use local data as fallback
+            _cache.products = localData.products;
+            _cache.currentPage = localData.currentPage;
+            _cache.totalPages = localData.totalPages;
+            _cache.isInitialized = true;
+            _isReturningVisit = true;
+            
+            if (kDebugMode) {
+              print('Fallback: loaded initial products from LOCAL STORAGE after server error for $cacheKey');
+            }
+          }
+        } catch (localError) {
+          if (kDebugMode) {
+            print('Error loading from local storage after server error: $localError');
+          }
+        }
       } finally {
         _cache.isLoadingInitial = false;
-        // Notify listeners AFTER state is updated
         notifyListeners();
       }
     } else {
@@ -400,53 +699,162 @@ class ProductStorageSingleton extends ChangeNotifier {
     notifyListeners(); 
 
     try {
-      // Short delay for loading indicator visibility - increased for better user experience
+      // Check connectivity status
+      await _checkConnectivity();
+
+      // Short delay for loading indicator visibility
       await Future.delayed(const Duration(milliseconds: 800));
       
-      final response = await _productService.fetchProducts(
-        categoryId: categoryId,
-        sortBy: sortBy,
-        sortDir: sortDir,
-        page: _cache.currentPage + 1,
-        size: 4
-      );
+      if (_isOnline) {
+        // ONLINE: Fetch from server
+        final response = await _productService.fetchProducts(
+          categoryId: categoryId,
+          sortBy: sortBy,
+          sortDir: sortDir,
+          page: _cache.currentPage + 1,
+          size: 4
+        );
 
-      if (response.number == _cache.currentPage + 1) {
-        _cache.products.addAll(response.content);
-        _cache.currentPage = response.number;
-        _cache.totalPages = response.totalPages;
-        
-        // Preload images for new products
-        _productService.preloadProductImages(response.content).catchError((e) {
-          if (kDebugMode) print('Error preloading new page product images: $e');
-        });
-        
-        // Update global cache with new data
-        GlobalProductCache.setConfigCache(cacheKey, _cache);
-        
-        if (kDebugMode) {
-          print('Loaded page ${_cache.currentPage} for $cacheKey, total products now: ${_cache.products.length}');
-          GlobalProductCache.printCache();
+        if (response.number == _cache.currentPage + 1) {
+          _cache.products.addAll(response.content);
+          _cache.currentPage = response.number;
+          _cache.totalPages = response.totalPages;
+          
+          // Preload images for new products
+          _productService.preloadProductImages(response.content).catchError((e) {
+            if (kDebugMode) print('Error preloading new page product images: $e');
+          });
+          
+          // Update global cache with new data
+          await GlobalProductCache.setConfigCache(cacheKey, _cache);
+          
+          if (kDebugMode) {
+            print('Loaded page ${_cache.currentPage} from SERVER for $cacheKey, total products now: ${_cache.products.length}');
+            GlobalProductCache.printCache();
+          }
+        } else {
+          if (kDebugMode) {
+            print('Received unexpected page number: ${response.number}. Expected: ${_cache.currentPage + 1}');
+          }
         }
       } else {
-         if (kDebugMode) {
-            print('Received unexpected page number: ${response.number}. Expected: ${_cache.currentPage + 1}');
-         }
+        // OFFLINE: Try to load more from local storage
+        if (kDebugMode) {
+          print('Device is OFFLINE - attempting to load next page from local storage for $cacheKey');
+        }
+        
+        // When offline and trying to load more, we check if local storage has more data than current cache
+        final localData = await GlobalProductCache.loadFromLocalStorage(cacheKey);
+        
+        if (localData != null && 
+            localData.products.length > _cache.products.length && 
+            localData.currentPage >= _cache.currentPage + 1) {
+          
+          // Local storage has more data - add the additional items
+          final nextPageItems = localData.products.sublist(_cache.products.length);
+          
+          _cache.products.addAll(nextPageItems);
+          _cache.currentPage = localData.currentPage;
+          _cache.totalPages = localData.totalPages;
+          
+          if (kDebugMode) {
+            print('Loaded additional ${nextPageItems.length} products from LOCAL STORAGE for $cacheKey, total products now: ${_cache.products.length}');
+          }
+        } else {
+          if (kDebugMode) {
+            print('No additional products available in local storage for $cacheKey while offline');
+          }
+          // No additional data available in local storage
+        }
       }
+      
     } catch (e) {
       if (kDebugMode) print('Error loading more products for $cacheKey: $e');
+      
+      // Try to load next page from local storage as fallback if server request fails
+      try {
+        final localData = await GlobalProductCache.loadFromLocalStorage(cacheKey);
+        
+        if (localData != null && 
+            localData.products.length > _cache.products.length && 
+            localData.currentPage >= _cache.currentPage + 1) {
+          
+          // Local storage has more data - add the additional items
+          final nextPageItems = localData.products.sublist(_cache.products.length);
+          
+          _cache.products.addAll(nextPageItems);
+          _cache.currentPage = localData.currentPage;
+          _cache.totalPages = localData.totalPages;
+          
+          if (kDebugMode) {
+            print('Fallback: Loaded additional ${nextPageItems.length} products from LOCAL STORAGE after server error for $cacheKey');
+          }
+        }
+      } catch (localError) {
+        if (kDebugMode) {
+          print('Error loading next page from local storage after server error: $localError');
+        }
+      }
     } finally {
       _cache.isLoadingMore = false;
-      // Notify listeners AFTER state is updated
       notifyListeners();
     }
   }
-
-  // Reset returning visit flag (call when leaving the page)
   void resetReturnVisitFlag() {
     _isReturningVisit = false;
   }
-
+  // Method to manually refresh all data (call this when coming back online)
+  // Future<void> refreshDataIfOnline({
+  //   required int categoryId,
+  //   required String sortBy,
+  //   required String sortDir,
+  // }) async {
+  //   await _checkConnectivity();
+    
+  //   if (!_isOnline) {
+  //     if (kDebugMode) print('Cannot refresh data: Device is offline');
+  //     return;
+  //   }
+    
+  //   final cacheKey = _getCacheKey(categoryId: categoryId, sortBy: sortBy, sortDir: sortDir);
+    
+  //   if (kDebugMode) print('Manually refreshing data from server for $cacheKey');
+    
+  //   // Clear cache for this configuration
+  //   _cache.clear();
+  //   _cache.currentCacheKey = cacheKey;
+  //   _cache.isLoadingInitial = true;
+    
+  //   notifyListeners();
+    
+  //   try {
+  //     final response = await _productService.fetchProducts(
+  //       categoryId: categoryId,
+  //       sortBy: sortBy,
+  //       sortDir: sortDir,
+  //       page: 0,
+  //       size: 4
+  //     );
+      
+  //     _cache.products = response.content;
+  //     _cache.currentPage = response.number;
+  //     _cache.totalPages = response.totalPages;
+  //     _cache.isInitialized = true;
+      
+  //     // Save to both global cache and local storage
+  //     await GlobalProductCache.setConfigCache(cacheKey, _cache);
+      
+  //     if (kDebugMode) {
+  //       print('Successfully refreshed data from server for $cacheKey');
+  //     }
+  //   } catch (e) {
+  //     if (kDebugMode) print('Error refreshing data from server: $e');
+  //   } finally {
+  //     _cache.isLoadingInitial = false;
+  //     notifyListeners();
+  //   }
+  // }
+  
   // Add search-specific state
   final List<ProductDTO> _searchResults = [];
   int _searchCurrentPage = -1;
@@ -657,5 +1065,23 @@ class ProductStorageSingleton extends ChangeNotifier {
   void dispose() {
     _productService.dispose();
     super.dispose();
+  }
+
+
+
+
+    Future<void> _checkConnectivity() async {
+    try {
+      final result = await _connectivity.checkConnectivity();
+      _isOnline = (result != ConnectivityResult.none);
+      if (kDebugMode) {
+        print('Initial connectivity check: $_isOnline');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error checking connectivity: $e');
+      }
+      _isOnline = true; // Default to assuming online if check fails
+    }
   }
 }

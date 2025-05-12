@@ -780,17 +780,17 @@ class _ProductScreenState extends State<ProductScreen> {
                                             padding: EdgeInsets.zero, // Added const
                                           ),
                                           // Delete button
-                                          IconButton(
-                                            // Disable when processing delete or fetching
-                                            onPressed: _isProcessing || _isLoading ? null : () {
-                                               _deleteProduct(product); // Pass the ProductDTO to delete
-                                            },
-                                            icon: const Icon(Icons.delete, size: 18), // Added const
-                                            tooltip: 'Xóa',
-                                            constraints: const BoxConstraints( // Added const
-                                                minWidth: 36, minHeight: 36),
-                                            padding: EdgeInsets.zero, // Added const
-                                          ),
+                                          // IconButton(
+                                          //   // Disable when processing delete or fetching
+                                          //   onPressed: _isProcessing || _isLoading ? null : () {
+                                          //      _deleteProduct(product); // Pass the ProductDTO to delete
+                                          //   },
+                                          //   icon: const Icon(Icons.delete, size: 18), // Added const
+                                          //   tooltip: 'Xóa',
+                                          //   constraints: const BoxConstraints( // Added const
+                                          //       minWidth: 36, minHeight: 36),
+                                          //   padding: EdgeInsets.zero, // Added const
+                                          // ),
                                         ],
                                       ),
                                     ],
