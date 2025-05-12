@@ -170,7 +170,7 @@ class BodyPayment extends StatelessWidget {
 
   Widget _buildDesktopVoucherSection() {
     final bool hasVoucher = currentVoucher != null;
-    final currencyFormatter = NumberFormat("#,###", "vi_VN");
+    final currencyFormatter = NumberFormat("#,##0 đ", "en_US");
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12.0),
@@ -1306,7 +1306,7 @@ class BodyPayment extends StatelessWidget {
 
   Widget _buildMobileVoucherSection() {
     final bool hasVoucher = currentVoucher != null;
-    final currencyFormatter = NumberFormat("#,###", "vi_VN");
+    final currencyFormatter = NumberFormat("#,##0 đ", "en_US");
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -203,6 +203,13 @@ class _UserInfoTabletState extends State<UserInfoTablet> {
             title: const Text('Nhắn tin'),
             onTap: () {},
           ),
+          ListTile(
+              leading: const Icon(Icons.smart_toy),
+              title: const Text('AI Chatbot'),
+              onTap: () {
+                Navigator.pushNamed(context, '/ai-chat');
+              },
+            ),
         ],
       ),
     );

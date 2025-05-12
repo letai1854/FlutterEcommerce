@@ -1,5 +1,7 @@
 import 'package:e_commerce_app/Constants/productTest.dart';
+import 'package:e_commerce_app/database/Storage/BrandCategoryService.dart';
 import 'package:e_commerce_app/database/models/product_dto.dart'; // Import ProductDTO
+import 'package:e_commerce_app/database/services/product_service.dart';
 import 'package:e_commerce_app/widgets/Product/PaginatedProductGrid.dart';
 import 'package:e_commerce_app/widgets/SortingBar.dart';
 import 'package:e_commerce_app/widgets/footer.dart';
@@ -37,6 +39,9 @@ class CatalogProduct extends StatefulWidget {
   // Add flag to indicate if showing cached content
   final bool isShowingCachedContent;
 
+  // Add property to receive online status from parent
+  final bool isOnline;
+
 
   const CatalogProduct({
     super.key,
@@ -54,6 +59,7 @@ class CatalogProduct extends StatefulWidget {
      required this.isProductsLoading, // <-- Thêm vào constructor
      required this.canLoadMoreProducts, // <-- Thêm vào constructor
      required this.isShowingCachedContent, // Add this parameter
+     required this.isOnline, // Add this parameter
   });
 
   @override
@@ -65,6 +71,13 @@ class _CatalogProductState extends State<CatalogProduct> {
    // --- Service Instance (for getImageUrl) ---
    // Khởi tạo CategoriesService để sử dụng hàm getImageUrl
    final CategoriesService _categoriesService = CategoriesService();
+  
+  // Add a reference to AppDataService for image caching
+  final AppDataService _appDataService = AppDataService();
+
+  // Add a cache for image futures
+  final Map<String, Future<Uint8List?>> _imageFutures = {};
+  final Map<String, Uint8List> _loadedImages = {};
 
 
    @override
@@ -82,44 +95,153 @@ class _CatalogProductState extends State<CatalogProduct> {
 
 
   // Helper function để hiển thị ảnh danh mục
-  // Sử dụng _categoriesService.getImageUrl để lấy URL đầy đủ
   Widget _buildImageWidget(String? imageSource, {double size = 40, BoxFit fit = BoxFit.cover}) {
-     // Hiển thị icon placeholder nếu không có đường dẫn ảnh hoặc service bị null (khả năng thấp)
+    // Hiển thị icon placeholder nếu không có đường dẫn ảnh hoặc service bị null
     if (imageSource == null || imageSource.isEmpty) {
       return Icon(Icons.image, size: size * 0.7, color: Colors.grey); // Placeholder icon
     }
 
-    // Sử dụng helper từ CategoriesService để lấy URL đầy đủ cho NetworkImage
-    String fullImageUrl = _categoriesService.getImageUrl(imageSource);
+    // Create a stable cache key based on online/offline state
+    final cacheKey = widget.isOnline 
+        ? 'online_$imageSource' 
+        : 'offline_$imageSource';
+    
+    // First check if we have image already loaded in memory from AppDataService
+    final appDataCachedImage = _appDataService.getImageFromCache(imageSource);
+    if (appDataCachedImage != null) {
+      return Image.memory(
+        appDataCachedImage,
+        fit: fit,
+        key: ValueKey('appdata_$imageSource'),
+      );
+    }
+    
+    // If we already have a future for this image, reuse it
+    if (!_imageFutures.containsKey(cacheKey)) {
+      if (!widget.isOnline) {
+        // For offline mode, check AppDataService first then fall back to local storage
+        _imageFutures[cacheKey] = _appDataService.getImageFromOfflineStorage(imageSource) ??
+                                  _loadImageOptimized(imageSource);
+      } else {
+        // For online mode, use our optimized loading method
+        _imageFutures[cacheKey] = _loadImageOptimized(imageSource);
+      }
+    }
 
-     if (kDebugMode) {
-         // print('[_buildImageWidget] Using FULL URL for Image.network: $fullImageUrl (Original source: $imageSource)');
-     }
-
-    // Hiển thị ảnh từ Network
-    return Image.network(
-      fullImageUrl,
-      fit: fit,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Center(
-          child: SizedBox(
-            width: size * 0.5,
-            height: size * 0.5,
-            child: CircularProgressIndicator(
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                  : null,
-              strokeWidth: 2,
-            ),
-          ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        if (kDebugMode) print('[_buildImageWidget] Image.network failed for $fullImageUrl (Original: $imageSource): $error');
-        return Icon(Icons.broken_image, size: size * 0.7, color: Colors.red); // Error icon
+    // Use the cached Future
+    return FutureBuilder<Uint8List?>(
+      future: _imageFutures[cacheKey],
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            color: Colors.grey[200],
+            child: Center(child: Icon(Icons.image, size: size * 0.5, color: Colors.grey[400])),
+          );
+        }
+        
+        if (snapshot.hasData && snapshot.data != null) {
+          // Cache the loaded image in memory
+          _loadedImages[cacheKey] = snapshot.data!;
+          
+          // Display the image
+          return Image.memory(
+            snapshot.data!,
+            fit: fit,
+            key: ValueKey('memory_$cacheKey'),
+            errorBuilder: (context, error, stackTrace) {
+              return Icon(Icons.broken_image, size: size * 0.7, color: Colors.red);
+            },
+          );
+        }
+        
+        if (widget.isOnline) {
+          // As a fallback for online mode, use Image.network with less flickering
+          return Image.network(
+            _categoriesService.getImageUrl(imageSource),
+            fit: fit,
+            cacheWidth: (size * 2).toInt(),
+            key: ValueKey('network_$imageSource'),
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: SizedBox(
+                  width: size * 0.5,
+                  height: size * 0.5,
+                  child: CircularProgressIndicator(
+                    value: loadingProgress.expectedTotalBytes != null
+                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                        : null,
+                    strokeWidth: 2,
+                  ),
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              if (kDebugMode) print('[_buildImageWidget] Image.network failed for ${_categoriesService.getImageUrl(imageSource)} (Original: $imageSource): $error');
+              return Icon(Icons.broken_image, size: size * 0.7, color: Colors.red);
+            },
+          );
+        }
+        
+        // No image available in offline mode
+        return Icon(Icons.wifi_off, size: size * 0.7, color: Colors.grey);
       },
     );
+  }
+  
+  // Helper method to optimize image loading
+  Future<Uint8List?> _loadImageOptimized(String imageSource) async {
+    // First check if we already have the image in our local memory cache
+    if (_loadedImages.containsKey('online_$imageSource')) {
+      return _loadedImages['online_$imageSource'];
+    }
+    
+    // Then try to load from local storage via categories service
+    try {
+      final localImage = await _categoriesService.loadImageFromLocalStorage(imageSource);
+      if (localImage != null) {
+        if (kDebugMode) print('Found image in local storage: $imageSource');
+        // Add to our memory cache
+        _loadedImages['online_$imageSource'] = localImage;
+        return localImage;
+      }
+    } catch (e) {
+      if (kDebugMode) print('Error loading image from local storage: $e');
+    }
+    
+    // Finally, try to get from server
+    try {
+      final serverImage = await _categoriesService.getImageFromServer(imageSource);
+      if (serverImage != null) {
+        if (kDebugMode) print('Downloaded image from server: $imageSource');
+        // Add to our memory cache
+        _loadedImages['online_$imageSource'] = serverImage;
+        return serverImage;
+      }
+    } catch (e) {
+      if (kDebugMode) print('Error fetching image from server: $e');
+    }
+    
+    return null;
+  }
+  
+  // Override didUpdateWidget to handle changes in network status
+  @override
+  void didUpdateWidget(CatalogProduct oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // If online status changed, clear the image futures to force refresh
+    if (widget.isOnline != oldWidget.isOnline) {
+      if (kDebugMode) {
+        print('Network status changed: ${oldWidget.isOnline} -> ${widget.isOnline}, clearing cached futures');
+      }
+      _imageFutures.clear();
+      
+      // If coming back online, trigger refresh in AppDataService
+      if (widget.isOnline && !oldWidget.isOnline) {
+        _appDataService.refreshImagesAfterNetworkRestoration();
+      }
+    }
   }
 
 
@@ -272,6 +394,8 @@ class _CatalogProductState extends State<CatalogProduct> {
       drawer: isMobile ? Drawer(
         child: _buildCategoryPanel(min(size.width * 0.6, 280.0), isMobile), // Truyền chiều rộng cho panel trong drawer
       ) : null,
+      // Add offline banner when device is offline
+      
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

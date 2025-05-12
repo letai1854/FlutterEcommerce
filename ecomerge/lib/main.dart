@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:e_commerce_app/Screens/Admin/AdminReponsicve.dart';
 import 'package:e_commerce_app/Screens/Cart/PageCart.dart';
 import 'package:e_commerce_app/Screens/Chat/PageChat.dart';
+import 'package:e_commerce_app/Screens/ChatbotAI/PageChatbotAI.dart';
 import 'package:e_commerce_app/Screens/ForgotPassword/PageForgotPassword.dart';
 import 'package:e_commerce_app/Screens/ListProduct/PageListProduct.dart';
 import 'package:e_commerce_app/Screens/Login/PageLogin.dart';
@@ -26,6 +27,7 @@ import 'package:provider/provider.dart';
 import 'package:e_commerce_app/providers/signup_form_provider.dart';
 import 'package:e_commerce_app/providers/login_form_provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 // Add this class
 class MyHttpOverrides extends HttpOverrides {
@@ -40,13 +42,23 @@ class MyHttpOverrides extends HttpOverrides {
 Future<void> initApp() async {
   WidgetsFlutterBinding.ensureInitialized();
   setPathUrlStrategy();
-  // Only attempt auto-login on non-web platforms
-  if (!kIsWeb) {
-    final userService = UserService();
-    await userService.attemptAutoLogin();
-    print('Auto-login attempted on ${kIsWeb ? 'web' : 'native'} platform');
-  } else {
-    print('Auto-login skipped on web platform');
+  
+  // Initialize connectivity monitoring first, especially for Android
+  if (!kIsWeb && Platform.isAndroid) {
+    // Request initial connectivity status
+    final connectivityResult = await Connectivity().checkConnectivity();
+    print('Initial connectivity status: $connectivityResult');
+    
+    // Setup connectivity change stream for Android
+    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
+      print('Android connectivity changed: $result');
+      
+      // If connectivity restored, refresh app data
+      if (result != ConnectivityResult.none) {
+        // Refresh data services when connection restored
+         CartStorage().loadData();
+      }
+    });
   }
   
   // Initialize CartStorage singleton and load cart data
@@ -147,7 +159,11 @@ class MyApp extends StatelessWidget {
               pageBuilder: (context, _, __) => const PageSignup(),
               settings: settings,
             );
-
+          case '/ai-chat':
+            return PageRouteBuilder(
+              pageBuilder: (context, _, __) => const Pagechatbotai(),
+              settings: settings,
+            );
           case '/catalog_product':
             return PageRouteBuilder(
               pageBuilder: (context, _, __) => const PageListProduct(),

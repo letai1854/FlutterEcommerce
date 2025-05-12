@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:e_commerce_app/Screens/ChatbotAI/PageChatbotAI.dart';
 import 'package:e_commerce_app/constants.dart';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/services/user_service.dart';
@@ -36,6 +37,9 @@ class _NavbarForTabletState extends State<NavbarForTablet> {
 
   @override
   Widget build(BuildContext context) {
+    // Determine if device is mobile by screen width
+    final bool isMobile = MediaQuery.of(context).size.width < 600;
+
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -169,6 +173,20 @@ class _NavbarForTabletState extends State<NavbarForTablet> {
                 Navigator.pushNamed(context, '/chat');
               },
             ),
+            // Add AI Chatbox ListTile - available on all platforms
+            if(!isMobile) ...[
+              ListTile(
+              leading: const Icon(Icons.smart_toy),
+              title: const Text('AI Chatbot'),
+              onTap: () {
+                // Close drawer first
+                Navigator.pop(context);
+                // Show as popup instead of navigation
+                Pagechatbotai.showAsPopup(context);
+              },
+            ),
+            ],
+            
           ],
         ),
       ),

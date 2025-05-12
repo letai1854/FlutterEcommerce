@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'package:e_commerce_app/database/Storage/CartStorage.dart';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/database_helper.dart';
 import 'package:e_commerce_app/database/services/address_service.dart';
@@ -19,6 +20,7 @@ class UserService {
   final String baseUrl = baseurl;
   String? _authToken;
   late final http.Client httpClient;
+  static final Map<String, Uint8List> _imageCache = {};
 
   // Constants for secure storage
   static const String _CREDENTIALS_KEY = 'encrypted_credentials';
@@ -371,7 +373,10 @@ class UserService {
     setAuthToken(null);
     UserInfo().clearUserInfo();
     UserService.clearAvatarCache(); // Clear avatar cache on logout
-
+    
+    // Clear cart data
+    await CartStorage().clearAllCart();
+    
     // Clear stored credentials on logout for non-web platforms
     if (!kIsWeb) {
       await clearStoredCredentials();
@@ -788,6 +793,89 @@ class UserService {
       return false;
     }
   }
+ Future<Uint8List?> getImageFromServer(String? imagePath, {bool forceReload = false}) async {
+    if (imagePath == null || imagePath.isEmpty) return null;
+    
+    // Check cache only if not forcing reload
+    if (!forceReload) {
+      // First check our product-specific image cache
+      if (_imageCache.containsKey(imagePath)) {
+        if (kDebugMode) print('Using cached image for $imagePath');
+        return _imageCache[imagePath];
+      }
+      
+      // Then check UserInfo avatar cache (existing implementation)
+      if (UserInfo.avatarCache.containsKey(imagePath)) {
+        return UserInfo.avatarCache[imagePath];
+      }
+    }
 
+    try {
+      String fullUrl = getImageUrl(imagePath);
+      // Add cache-busting parameter for forceReload
+      if (forceReload) {
+        final cacheBuster = DateTime.now().millisecondsSinceEpoch;
+        fullUrl += '?cacheBust=$cacheBuster';
+      }
+      
+      final response = await httpClient.get(Uri.parse(fullUrl));
+
+      if (response.statusCode == 200) {
+        // Cache the image unless we're forcing reload
+        if (!forceReload) {
+          // Cache in both places for maximum compatibility
+          _imageCache[imagePath] = response.bodyBytes;
+          UserInfo.avatarCache[imagePath] = response.bodyBytes;
+        }
+        return response.bodyBytes;
+      }
+    } catch (e) {
+      print('Error fetching image: $e');
+    }
+
+    return null;
+  }
+  
+  // Method to efficiently get avatar from cache or server for any user object
+  Future<Uint8List?> getUserAvatar(String? avatarPath, {bool forceReload = false}) async {
+    if (avatarPath == null || avatarPath.isEmpty) return null;
+    
+    // Check in the class-level cache first if not forcing reload
+    if (!forceReload) {
+      // First check our image cache
+      if (_imageCache.containsKey(avatarPath)) {
+        if (kDebugMode) print('Using cached user avatar for $avatarPath');
+        return _imageCache[avatarPath];
+      }
+      
+      // Then check UserInfo avatar cache as fallback
+      if (UserInfo.avatarCache.containsKey(avatarPath)) {
+        return UserInfo.avatarCache[avatarPath];
+      }
+    }
+
+    try {
+      // If not found in cache or forcing reload, fetch from server
+      final imageBytes = await getImageFromServer(avatarPath, forceReload: forceReload);
+      
+      // Cache the result if successfully fetched and not forcing reload
+      if (imageBytes != null && !forceReload) {
+        _imageCache[avatarPath] = imageBytes;
+        UserInfo.avatarCache[avatarPath] = imageBytes; // Keep both caches in sync
+      }
+      
+      return imageBytes;
+    } catch (e) {
+      print('Error fetching user avatar: $e');
+      return null;
+    }
+  }
+  
+  // Helper method to clear avatar caches when needed
+  static void clearUserAvatarCache() {
+    _imageCache.clear();
+    UserInfo.avatarCache.clear();
+  }
+  
   // TODO: Implement methods for admin endpoints if needed
 }

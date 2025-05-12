@@ -25,14 +25,16 @@ class _BottomNavBarState extends State<BottomNavBar> {
       _selectedIndex = index;
     });
 
-    // Điều hướng trực tiếp bằng pushReplacementNamed
-    Navigator.pushReplacementNamed(
-      context,
-      _getRoute(index),
-      arguments: {
-        'selectedIndex': index
-      }, // Truyền trạng thái index khi điều hướng
-    );
+    final route = _getRoute(index);
+    
+    // Special handling for AI chatbot to prevent navigation stack issues
+    if (route == '/ai-chat') {
+      // Replace the current route instead of pushing a new one
+      Navigator.pushReplacementNamed(context, route);
+    } else {
+      // Normal navigation for other routes
+      Navigator.pushNamed(context, route);
+    }
   }
 
   // Hàm lấy đường dẫn tương ứng với index
@@ -43,7 +45,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
       case 1:
         return '/catalog_product';
       case 2:
-        return '/product_detail';
+        return '/ai-chat';
       case 3:
         return '/info';
       default:
