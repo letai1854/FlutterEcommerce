@@ -23,6 +23,7 @@ import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/services/user_service.dart';
 import 'package:e_commerce_app/database/services/categories_service.dart';
 import 'package:e_commerce_app/state/Search/SearchStateService.dart';
+import 'package:e_commerce_app/services/shared_preferences_service.dart';
 
 class ResponsiveHome extends StatefulWidget {
   const ResponsiveHome({super.key});
@@ -47,13 +48,38 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
   final CategoriesService _categoriesService = CategoriesService();
   List<CategoryDTO> _appCategories = [];
   final SearchStateService _searchService = SearchStateService();
+  List<CategoryDTO> _fallbackCategories = []; // For offline fallback
+  final ProductService _productService =
+      ProductService(); // Instance for image loading
 
   @override
   void initState() {
     super.initState();
+    _loadFallbackCategories(); // Load fallback categories first
     _scrollController.addListener(_onScroll);
     AppDataService().addListener(_onAppDataChanged);
     _loadCategories();
+  }
+
+  Future<void> _loadFallbackCategories() async {
+    if (kIsWeb) return;
+    try {
+      final prefsService = await SharedPreferencesService.getInstance();
+      final loadedCategories = await prefsService.loadDisplayedCategories();
+      if (loadedCategories != null && mounted) {
+        setState(() {
+          _fallbackCategories = loadedCategories;
+        });
+        if (kDebugMode) {
+          print(
+              'Loaded ${_fallbackCategories.length} fallback categories from SharedPreferences.');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error loading fallback categories: $e');
+      }
+    }
   }
 
   void _onAppDataChanged() {
@@ -61,6 +87,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
       setState(() {
         _appCategories = AppDataService().categories;
       });
+      _cacheDisplayedCategoriesFromAppData(); // Cache after AppData updates
       _autoSelectInitialCategory(); // Auto-select after categories are updated
     }
   }
@@ -72,6 +99,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
           setState(() {
             _appCategories = AppDataService().categories;
           });
+          _cacheDisplayedCategoriesFromAppData(); // Cache after initial load
           _autoSelectInitialCategory(); // Auto-select after initial load
         }
       }).catchError((error) {
@@ -84,15 +112,46 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
         setState(() {
           _appCategories = AppDataService().categories;
         });
+        _cacheDisplayedCategoriesFromAppData(); // Cache if data was already initialized
         _autoSelectInitialCategory(); // Auto-select if data was already initialized
+      }
+    }
+  }
+
+  Future<void> _cacheDisplayedCategoriesFromAppData() async {
+    if (kIsWeb || _appCategories.isEmpty) return;
+
+    try {
+      final categoriesToCache = _appCategories.take(5).toList();
+      if (categoriesToCache.isNotEmpty) {
+        final prefsService = await SharedPreferencesService.getInstance();
+        await prefsService.saveDisplayedCategories(categoriesToCache);
+        if (kDebugMode) {
+          print(
+              'Saved ${categoriesToCache.length} displayed categories to SharedPreferences from AppData.');
+        }
+        // Prime images in ProductService cache
+        for (var cat in categoriesToCache) {
+          if (cat.imageUrl != null && cat.imageUrl!.isNotEmpty) {
+            // No need to await, let it happen in background
+            _productService.getImageFromServer(cat.imageUrl,
+                forceReload: false);
+          }
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error caching displayed categories from AppData: $e');
       }
     }
   }
 
   void _autoSelectInitialCategory() {
     // Only run if categories are loaded and no category has been manually selected yet.
-    if (_appCategories.isNotEmpty && _selectedCategory == null) {
-      final displayedCategories = _appCategories.take(5).toList();
+    final categoriesToConsider =
+        _appCategories.isNotEmpty ? _appCategories : _fallbackCategories;
+    if (categoriesToConsider.isNotEmpty && _selectedCategory == null) {
+      final displayedCategories = categoriesToConsider.take(5).toList();
       if (displayedCategories.isNotEmpty) {
         // Find the category with the smallest ID among the displayed ones.
         // Treat null IDs as very large numbers for comparison.
@@ -122,6 +181,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     AppDataService().removeListener(_onAppDataChanged);
+    _productService.dispose(); // Dispose ProductService instance
     super.dispose();
   }
 
@@ -583,7 +643,9 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
   }
 
   Widget _buildMobileFloatingCategories({bool isTablet = false}) {
-    final List<CategoryDTO> categoriesToShow = _appCategories.take(5).toList();
+    final List<CategoryDTO> categoriesToShow = _appCategories.isNotEmpty
+        ? _appCategories.take(5).toList()
+        : _fallbackCategories.take(5).toList();
 
     return Positioned(
       right: 0,
@@ -691,7 +753,9 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
   }
 
   Widget _buildFloatingCategories() {
-    final List<CategoryDTO> categoriesToShow = _appCategories.take(5).toList();
+    final List<CategoryDTO> categoriesToShow = _appCategories.isNotEmpty
+        ? _appCategories.take(5).toList()
+        : _fallbackCategories.take(5).toList();
 
     return Positioned(
       right: 0,
@@ -749,10 +813,6 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
 
   Widget _buildVerticalCategoryItem(CategoryDTO category, int itemIndex) {
     bool isSelected = _selectedCategory == itemIndex;
-    String fullImageUrl = _categoriesService.getImageUrl(category.imageUrl);
-
-    // Create a product service instance for using getImageFromServer
-    final productService = ProductService();
 
     return GestureDetector(
       onTap: () {
@@ -772,11 +832,10 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                       borderRadius: BorderRadius.circular(15.0),
                       child: Builder(
                         builder: (context) {
-                          // First check if image is in cache
-                          final cachedImage = productService
+                          // First check if image is in memory cache via ProductService
+                          final cachedImage = _productService
                               .getImageFromCache(category.imageUrl);
 
-                          // If we already have the image in cache, show it immediately
                           if (cachedImage != null) {
                             return Image.memory(
                               cachedImage,
@@ -786,9 +845,10 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                             );
                           }
 
-                          // If not in cache, load it using FutureBuilder
+                          // If not in memory cache, load it using FutureBuilder via ProductService
+                          // getImageFromServer will handle SharedPreferences and network
                           return FutureBuilder<Uint8List?>(
-                            future: productService
+                            future: _productService
                                 .getImageFromServer(category.imageUrl),
                             builder: (context, snapshot) {
                               if (snapshot.connectionState ==
