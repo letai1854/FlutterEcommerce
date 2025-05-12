@@ -6,6 +6,8 @@ import 'package:e_commerce_app/database/services/product_service.dart';
 import 'package:e_commerce_app/Screens/ProductDetail/PageProductDetail.dart';
 import 'package:flutter/foundation.dart';
 import 'package:e_commerce_app/services/product_cache_service.dart';
+import 'package:e_commerce_app/services/shared_preferences_service.dart';
+import 'dart:io'; // Import SocketException
 
 // PromoProductItem displays a single promotional product
 class PromoProductItem extends StatefulWidget {
@@ -34,25 +36,81 @@ class PromoProductItem extends StatefulWidget {
 
 class _PromoProductItemState extends State<PromoProductItem> {
   static final ProductService _productService = ProductService();
-  late Future<dynamic> _imageLoader;
+  // Khởi tạo ngay lập tức với Future.value(null) để tránh LateInitializationError
+  Future<dynamic> _imageLoader = Future.value(null);
+  bool _imageLoadedFromPrefs = false;
 
   @override
   void initState() {
     super.initState();
-    _initializeImageLoader();
+    // _imageLoader đã được khởi tạo. Gọi phương thức này để bắt đầu tải dữ liệu thực tế.
+    _initializeAndLoadImage();
   }
 
   @override
   void didUpdateWidget(PromoProductItem oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.imageUrl != widget.imageUrl) {
-      _initializeImageLoader();
+      // Re-initialize image loader if URL changes
+      _imageLoadedFromPrefs = false; // Reset flag
+      // Gán lại _imageLoader về trạng thái ban đầu (null) ngay lập tức
+      // trước khi bắt đầu tải ảnh mới.
+      _imageLoader = Future.value(null);
+      _initializeAndLoadImage(); // Bắt đầu tải ảnh mới
     }
   }
 
-  void _initializeImageLoader() {
-    if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty) {
-      _imageLoader = _productService.getImageFromServer(widget.imageUrl);
+  Future<void> _initializeAndLoadImage() async {
+    if (widget.imageUrl == null || widget.imageUrl!.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _imageLoader = Future.value(null); // Cập nhật trong setState
+          _imageLoadedFromPrefs = false;
+        });
+      }
+      return;
+    }
+
+    // For non-web platforms, try to load from SharedPreferences first.
+    if (!kIsWeb) {
+      Uint8List? imageDataFromPrefs;
+      try {
+        final prefs = await SharedPreferencesService.getInstance();
+        imageDataFromPrefs = prefs.getImageData(widget.imageUrl!);
+      } catch (e) {
+        if (kDebugMode) {
+          print(
+              "Error accessing SharedPreferences for image '${widget.imageUrl}': $e");
+        }
+      }
+
+      if (mounted) {
+        if (imageDataFromPrefs != null) {
+          // Image found in SharedPreferences
+          setState(() {
+            _imageLoader =
+                Future.value(imageDataFromPrefs); // Cập nhật trong setState
+            _imageLoadedFromPrefs = true;
+          });
+          return; // Exit after loading from SharedPreferences
+        } else {
+          // Image not in SharedPreferences or error during access, so load from server.
+          setState(() {
+            _imageLoader = _productService
+                .getImageFromServer(widget.imageUrl); // Cập nhật trong setState
+            _imageLoadedFromPrefs = false;
+          });
+        }
+      }
+    } else {
+      // For web platforms, load directly from the server.
+      if (mounted) {
+        setState(() {
+          _imageLoader = _productService
+              .getImageFromServer(widget.imageUrl); // Cập nhật trong setState
+          _imageLoadedFromPrefs = false;
+        });
+      }
     }
   }
 
@@ -84,7 +142,7 @@ class _PromoProductItemState extends State<PromoProductItem> {
       );
     }
 
-    return FutureBuilder(
+    return FutureBuilder<dynamic>(
       future: _imageLoader,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -95,54 +153,52 @@ class _PromoProductItemState extends State<PromoProductItem> {
           );
         }
 
-        if (snapshot.hasError) {
-          if (kDebugMode) {
-            print('Error loading promo image: ${snapshot.error}');
+        // Handle error or null data that is not Uint8List
+        if (snapshot.hasError ||
+            snapshot.data == null ||
+            !(snapshot.data is Uint8List)) {
+          if (snapshot.hasError && kDebugMode) {
+            print(
+                'Error in FutureBuilder for promo image (${widget.title}): ${snapshot.error}');
+          }
+          // Also handle the case where _productService.getImageFromServer returned null data on error
+          if (snapshot.connectionState == ConnectionState.done &&
+              snapshot.data == null &&
+              !snapshot.hasError) {
+            if (kDebugMode) {
+              print('Image loading for ${widget.title} returned null data.');
+            }
           }
           return const Center(
             child: Icon(
-              Icons.broken_image,
+              Icons.image_not_supported,
               size: 50,
               color: Colors.grey,
             ),
           );
         }
 
-        if (snapshot.hasData && snapshot.data != null) {
-          if (snapshot.data is Uint8List) {
-            return Image.memory(
-              snapshot.data as Uint8List,
-              fit: BoxFit.cover,
-            );
-          }
-        }
-        return Image.network(
-          _productService.getImageUrl(widget.imageUrl),
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
+        final imageData = snapshot.data as Uint8List;
+
+        // Save image to SharedPreferences if successfully loaded from network (not prefs initially)
+        if (!kIsWeb &&
+            !_imageLoadedFromPrefs &&
+            widget.imageUrl != null &&
+            widget.imageUrl!.isNotEmpty) {
+          // Do not await here to avoid blocking the build method
+          SharedPreferencesService.getInstance().then((prefs) {
+            prefs.saveImageData(widget.imageUrl!, imageData);
+          }).catchError((e) {
             if (kDebugMode) {
-              print('Error loading promo image network: $error');
+              print(
+                  "Error saving image to SharedPreferences from _buildProductImage for ${widget.title}: $e");
             }
-            return const Center(
-              child: Icon(
-                Icons.image_not_supported,
-                size: 50,
-                color: Colors.grey,
-              ),
-            );
-          },
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return Center(
-              child: CircularProgressIndicator(
-                value: loadingProgress.expectedTotalBytes != null
-                    ? loadingProgress.cumulativeBytesLoaded /
-                        loadingProgress.expectedTotalBytes!
-                    : null,
-                strokeWidth: 2,
-              ),
-            );
-          },
+          });
+        }
+
+        return Image.memory(
+          imageData,
+          fit: BoxFit.cover,
         );
       },
     );
@@ -238,10 +294,7 @@ class _PromoProductItemState extends State<PromoProductItem> {
                         displayDescription,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     const SizedBox(height: 4),
                     Row(
@@ -321,6 +374,7 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
   final ScrollController _scrollController = ScrollController();
   final ProductCacheService _cacheService = ProductCacheService();
   late String _cacheKey;
+  SharedPreferencesService? _prefsService; // Added for SharedPreferences
 
   List<PromoProductItem> _displayedProducts = [];
   bool _isLoading = true;
@@ -339,7 +393,25 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
     super.initState();
     _cacheKey = _cacheService
         .getKeyFromProductListKey(widget.productListKey ?? widget.key);
-    _loadInitialProducts();
+
+    if (!kIsWeb) {
+      SharedPreferencesService.getInstance().then((instance) {
+        if (mounted) {
+          setState(() {
+            _prefsService = instance;
+          });
+          _loadInitialProducts(); // Load products after prefs service is available
+        }
+      }).catchError((error) {
+        if (kDebugMode) {
+          print("Failed to initialize SharedPreferencesService: $error");
+        }
+        // Continue loading products even if prefs init fails
+        _loadInitialProducts();
+      });
+    } else {
+      _loadInitialProducts(); // For web, load products directly
+    }
     _scrollController.addListener(_onScroll);
   }
 
@@ -374,26 +446,75 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
     }).toList();
   }
 
+  // Helper to convert PromoProductItem data to Map for SharedPreferences
+  Map<String, dynamic> _promoItemToMap(PromoProductItem item) {
+    return {
+      'productId': item.productId,
+      'imageUrl': item.imageUrl,
+      'title': item.title,
+      'describe': item.describe,
+      'price': item.price,
+      'discount': item.discount,
+      'rating': item.rating,
+    };
+  }
+
+  // Helper to convert Map from SharedPreferences back to PromoProductItem
+  PromoProductItem _mapToPromoItem(Map<String, dynamic> map) {
+    return PromoProductItem(
+      key: ValueKey(
+          '${_cacheKey}_product_prefs_${map['productId']}'), // Unique key for prefs items
+      productId: map['productId'] as int,
+      imageUrl: map['imageUrl'] as String?,
+      title: map['title'] as String,
+      describe: map['describe'] as String?,
+      price: (map['price'] as num).toDouble(),
+      discount: map['discount'] as int?,
+      rating: (map['rating'] as num).toDouble(),
+    );
+  }
+
   Future<void> _loadInitialProducts() async {
+    // Try loading from in-memory cache first
     final cachedData = _cacheService.getData(_cacheKey);
 
     if (cachedData != null) {
-      setState(() {
-        _displayedProducts = List.from(cachedData.products);
-        _nextPageToRequest = cachedData.nextPageToRequest;
-        _hasMorePages = cachedData.hasMorePages;
-        _isLoading = false;
-        _errorMessage = null;
-      });
-      return;
+      if (mounted) {
+        setState(() {
+          _displayedProducts = List.from(cachedData.products);
+          _nextPageToRequest = cachedData.nextPageToRequest;
+          _hasMorePages = cachedData.hasMorePages;
+          _isLoading = false;
+          _errorMessage = null; // Clear error if cache load is successful
+        });
+      }
+      // Save to SharedPreferences if non-web and data loaded from memory cache
+      if (!kIsWeb && _prefsService != null) {
+        final List<Map<String, dynamic>> productsToSaveForPrefs =
+            cachedData.products.map((item) => _promoItemToMap(item)).toList();
+        // Note: This is fire-and-forget, not awaited, as it's a background save
+        _prefsService!
+            .saveProductListData(_cacheKey, productsToSaveForPrefs,
+                cachedData.nextPageToRequest, cachedData.hasMorePages)
+            .catchError((e) {
+          if (kDebugMode) {
+            print("Error saving initial cache data to SharedPreferences: $e");
+          }
+        });
+      }
+      return; // Exit if data loaded from cache
     }
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      _nextPageToRequest = 0;
-      _displayedProducts.clear();
-    });
+    // If no data in memory cache, show loading and attempt to fetch from network or prefs
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+        _nextPageToRequest = 0;
+        _displayedProducts =
+            []; // Clear displayed products before attempting load
+      });
+    }
 
     try {
       PageResponse<ProductDTO> response;
@@ -423,35 +544,102 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
 
       final freshCacheData = _cacheService.getData(_cacheKey);
       if (freshCacheData != null) {
-        setState(() {
-          _displayedProducts = List.from(freshCacheData.products);
-          _nextPageToRequest = freshCacheData.nextPageToRequest;
-          _hasMorePages = freshCacheData.hasMorePages;
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _displayedProducts = List.from(freshCacheData.products);
+            _nextPageToRequest = freshCacheData.nextPageToRequest;
+            _hasMorePages = freshCacheData.hasMorePages;
+            _isLoading = false;
+            _errorMessage = null; // Clear error if network load was successful
+          });
+        }
+        // Save to SharedPreferences if non-web (network load was successful)
+        if (!kIsWeb && _prefsService != null) {
+          final List<Map<String, dynamic>> productsToSaveForPrefs =
+              freshCacheData.products
+                  .map((item) => _promoItemToMap(item))
+                  .toList();
+          // Fire-and-forget save
+          _prefsService!
+              .saveProductListData(_cacheKey, productsToSaveForPrefs,
+                  freshCacheData.nextPageToRequest, freshCacheData.hasMorePages)
+              .catchError((e) {
+            if (kDebugMode) {
+              print("Error saving network data to SharedPreferences: $e");
+            }
+          });
+        }
       } else {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = "Failed to update cache.";
-        });
+        // Should ideally not happen if storeData was successful, but handle defensively
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = "Failed to update cache after network fetch.";
+            _displayedProducts =
+                []; // Ensure list is empty if cache update failed
+          });
+        }
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Không thể tải sản phẩm: ${e.toString()}';
-        _isLoading = false;
-      });
+      // Network or other error occurred
+      if (!kIsWeb && _prefsService != null) {
+        // Try loading from SharedPreferences as a fallback
+        final prefsData = _prefsService!.getProductListData(_cacheKey);
+        if (prefsData != null) {
+          final List<dynamic> productMaps =
+              prefsData['products'] as List<dynamic>;
+          final List<PromoProductItem> prefsProducts = productMaps
+              .map((map) => _mapToPromoItem(map as Map<String, dynamic>))
+              .toList();
+          if (mounted) {
+            setState(() {
+              _displayedProducts = prefsProducts;
+              _nextPageToRequest = prefsData['nextPageToRequest'] as int;
+              _hasMorePages = prefsData['hasMorePages'] as bool;
+              _isLoading = false;
+              // Indicate that it's showing offline data due to a network error
+              _errorMessage = 'Có lỗi mạng. Đang hiển thị dữ liệu ngoại tuyến.';
+            });
+          }
+          return; // Exit if loaded from prefs fallback
+        }
+      }
+
+      // If not loaded from prefs fallback or not applicable
+      String displayError;
+      if (e is SocketException) {
+        // Specific message for network connection issues
+        displayError =
+            'Không thể kết nối internet. Vui lòng kiểm tra mạng của bạn.';
+      } else {
+        // Generic error message for other issues
+        displayError = 'Không thể tải sản phẩm';
+        if (kDebugMode) {
+          print("Error loading products: $e"); // Log other errors in debug
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _errorMessage = displayError;
+          _isLoading = false;
+          _displayedProducts = []; // Ensure list is empty if no data was loaded
+        });
+      }
     }
   }
 
   Future<void> _loadMoreProducts() async {
     if (!_hasMorePages || _isLoadingMore) return;
 
-    setState(() {
-      _isLoadingMore = true;
-      if (_scrollController.position.pixels > 0) {
-        _isScrollingToEnd = true;
-      }
-    });
+    if (mounted) {
+      setState(() {
+        _isLoadingMore = true;
+        if (_scrollController.position.pixels > 0) {
+          _isScrollingToEnd = true;
+        }
+      });
+    }
 
     try {
       final int itemsToFetch = widget.itemsPerPage;
@@ -476,68 +664,118 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
         );
       }
 
-      if (response.content.isEmpty && !response.last) {
-        _cacheService.appendData(_cacheKey, [], response.number + 1, false);
-      } else {
-        final additionalItems = _mapProductDTOsToItems(response.content);
+      // Append new items to cache
+      final additionalItems = _mapProductDTOsToItems(response.content);
+      // Only update cache and state if new items were received or it's the last page
+      if (additionalItems.isNotEmpty || response.last) {
         _cacheService.appendData(
             _cacheKey, additionalItems, response.number + 1, !response.last);
-      }
 
-      final updatedCacheData = _cacheService.getData(_cacheKey);
-      if (updatedCacheData != null) {
-        setState(() {
-          _displayedProducts = List.from(updatedCacheData.products);
-          _nextPageToRequest = updatedCacheData.nextPageToRequest;
-          _hasMorePages = updatedCacheData.hasMorePages;
-          _isLoadingMore = false;
-          _isScrollingToEnd = false;
-        });
-      } else {
-        setState(() {
-          _isLoadingMore = false;
-          _isScrollingToEnd = false;
-        });
+        final updatedCacheData = _cacheService.getData(_cacheKey);
+        if (updatedCacheData != null) {
+          if (mounted) {
+            setState(() {
+              _displayedProducts = List.from(updatedCacheData.products);
+              _nextPageToRequest = updatedCacheData.nextPageToRequest;
+              _hasMorePages = updatedCacheData.hasMorePages;
+              // Error message is primarily for initial load when list is empty,
+              // so don't clear it here unless it was a network error previously
+              // cleared by a successful load more. But usually, loading more
+              // means initial load was successful.
+            });
+          }
+          // Save the complete updated list to SharedPreferences if non-web
+          if (!kIsWeb && _prefsService != null) {
+            final List<Map<String, dynamic>> productsToSaveForPrefs =
+                updatedCacheData.products
+                    .map((item) => _promoItemToMap(item))
+                    .toList();
+            // Fire-and-forget save
+            _prefsService!
+                .saveProductListData(
+                    _cacheKey,
+                    productsToSaveForPrefs,
+                    updatedCacheData.nextPageToRequest,
+                    updatedCacheData.hasMorePages)
+                .catchError((e) {
+              if (kDebugMode) {
+                print("Error saving append data to SharedPreferences: $e");
+              }
+            });
+          }
+        }
       }
     } catch (e) {
-      setState(() {
-        _isLoadingMore = false;
-        _isScrollingToEnd = false;
-      });
+      // Error when loading more (e.g., network error while scrolling)
+      String snackBarMessage;
+      if (e is SocketException) {
+        snackBarMessage =
+            'Không thể tải thêm sản phẩm: Chưa có kết nối internet.';
+      } else {
+        snackBarMessage = 'Không thể tải thêm sản phẩm}';
+        if (kDebugMode) {
+          print("Error loading more products: $e"); // Log other errors in debug
+        }
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Không thể tải thêm sản phẩm: ${e.toString()}'),
+            content: Text(snackBarMessage),
             backgroundColor: Colors.red.shade700,
             duration: const Duration(seconds: 2),
           ),
         );
       }
     } finally {
-      if (mounted && _isButtonTriggeredLoading) {
+      // Ensure loading flags are reset regardless of success or failure
+      if (mounted) {
         setState(() {
+          _isLoadingMore = false;
           _isButtonTriggeredLoading = false;
+          _isScrollingToEnd = false; // Ensure this is reset
         });
       }
     }
   }
 
   void _onScroll() {
+    if (!_scrollController.position.hasContentDimensions) {
+      return; // Avoid errors if scroll controller is not fully initialized
+    }
+
     final double maxScroll = _scrollController.position.maxScrollExtent;
     final double currentScroll = _scrollController.position.pixels;
-    final double loadTriggerOffset = widget.gridWidth * 0.2;
+    final double loadTriggerOffset =
+        widget.gridWidth * 0.2; // Load when within 20% of the end
 
+    // Trigger load more if approaching the end and not already loading/no more pages
     if (maxScroll > 0 && currentScroll >= (maxScroll - loadTriggerOffset)) {
       if (!_isLoadingMore && _hasMorePages) {
-        _loadMoreProducts();
+        // Avoid triggering if the error message is displayed (meaning no items)
+        if (_displayedProducts.isNotEmpty || _isLoading) {
+          // Only load if we have items or are initially loading
+          _loadMoreProducts();
+        }
       }
     }
 
-    final double sideIndicatorActivationThreshold =
-        maxScroll - (widget.gridWidth * 0.8);
+    // Logic for showing/hiding side indicators based on scroll position
+    // This part doesn't directly relate to the network error display logic,
+    // but keeping it for completeness.
+    final double startScrollThreshold =
+        widget.gridWidth * 0.1; // Show left arrow after scrolling a bit
+    final double endScrollThreshold = maxScroll -
+        (widget.gridWidth * 0.1); // Show right arrow until near the end
+
+    // Determine if scrollingToEnd indicator should be shown (adjust threshold)
+    // Let's make the scrollToEnd indicator appear when approaching the very end
+    // to hint that loading more is happening or possible.
+    final double scrollToEndIndicatorThreshold =
+        maxScroll - (widget.gridWidth * 0.05); // Show within 5% of end
+
     if (maxScroll > 0 &&
-        currentScroll > sideIndicatorActivationThreshold &&
+        currentScroll > scrollToEndIndicatorThreshold &&
         !_isLoadingMore &&
         _hasMorePages) {
       if (!_isScrollingToEnd) {
@@ -545,9 +783,10 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
           _isScrollingToEnd = true;
         });
       }
-    } else if (currentScroll <= sideIndicatorActivationThreshold &&
+    } else if (currentScroll <= scrollToEndIndicatorThreshold &&
         _isScrollingToEnd) {
-      if (!_isLoadingMore) {
+      // Only hide the indicator if we are *not* currently loading more
+      if (!_isLoadingMore && !_isButtonTriggeredLoading) {
         setState(() {
           _isScrollingToEnd = false;
         });
@@ -573,16 +812,25 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
     final double targetOffset =
         (currentOffset + scrollAmount).clamp(0.0, maxOffset);
 
-    final bool approachingEnd =
-        maxOffset > 0 && targetOffset >= maxOffset - (widget.gridWidth * 0.3);
+    // Check if approaching the end and more pages exist
+    final bool approachingEnd = maxOffset > 0 &&
+        targetOffset >=
+            maxOffset -
+                (widget.gridWidth *
+                    0.3); // Use a threshold to trigger loading slightly before the end
 
     if (approachingEnd && _hasMorePages && !_isLoadingMore) {
-      setState(() {
-        _isButtonTriggeredLoading = true;
-      });
+      if (mounted) {
+        setState(() {
+          _isButtonTriggeredLoading =
+              true; // Indicate loading was triggered by button
+        });
+      }
 
+      // Trigger loading more and then scroll after loading completes
       _loadMoreProducts().then((_) {
         if (mounted) {
+          // Recalculate maxOffset as it might have changed after loading more
           final newMaxOffset = _scrollController.position.maxScrollExtent;
           final adjustedTargetOffset =
               (currentOffset + scrollAmount).clamp(0.0, newMaxOffset);
@@ -594,6 +842,7 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
         }
       });
     } else {
+      // Just scroll if not approaching the end or no more pages
       _scrollController.animateTo(
         targetOffset,
         duration: const Duration(milliseconds: 500),
@@ -606,186 +855,223 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
   Widget build(BuildContext context) {
     super.build(context);
 
+    // Decide what to show based on state (_isLoading, _errorMessage, _displayedProducts)
+    Widget content;
+
+    if (_isLoading && _displayedProducts.isEmpty && _errorMessage == null) {
+      // Show initial loading indicator if no data and no error yet
+      content = Positioned.fill(
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Đang tải dữ liệu...',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } else if (_errorMessage != null && _displayedProducts.isEmpty) {
+      // Show error message if list is empty and there's an error
+      content = Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            _errorMessage!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.red,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      );
+    } else if (_displayedProducts.isEmpty && !_isLoading) {
+      // Show empty state message if list is empty and not loading
+      content = const Center(
+        child: Text(
+          'Không có sản phẩm khuyến mãi',
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.grey,
+          ),
+        ),
+      );
+    } else {
+      // Show the GridView with products
+      content = GridView.builder(
+        controller: _scrollController,
+        scrollDirection: Axis.horizontal,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: widget.crossAxisCount,
+          childAspectRatio: widget.childAspectRatio,
+          mainAxisSpacing: widget.mainSpace,
+          crossAxisSpacing: widget.crossSpace,
+        ),
+        // Add 1 item for indicator loading ifกำลังโหลด thêm and not triggered by button
+        itemCount: _displayedProducts.length +
+            ((_isLoadingMore && !_isButtonTriggeredLoading)
+                ? 1 // Show loading item at the end
+                : 0),
+        itemBuilder: (context, index) {
+          if (index >= _displayedProducts.length) {
+            // This is the loading item placeholder
+            return _buildLoadingItem();
+          }
+          return _displayedProducts[index];
+        },
+      );
+    }
+
     return SizedBox(
       key: widget.productListKey,
       height: widget.gridHeight,
       width: widget.gridWidth,
-      child: _errorMessage != null && _displayedProducts.isEmpty
-          ? Center(
-              child: Text(_errorMessage!,
-                  style: const TextStyle(color: Colors.red)))
-          : _displayedProducts.isEmpty && !_isLoading
-              ? const Center(child: Text('Không có sản phẩm khuyến mãi'))
-              : Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Container(
-                      color: Colors.white,
-                      child: GridView.builder(
-                        controller: _scrollController,
-                        scrollDirection: Axis.horizontal,
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: widget.crossAxisCount,
-                          childAspectRatio: widget.childAspectRatio,
-                          mainAxisSpacing: widget.mainSpace,
-                          crossAxisSpacing: widget.crossSpace,
-                        ),
-                        itemCount: _displayedProducts.length +
-                            ((_isLoadingMore && !_isButtonTriggeredLoading)
-                                ? 1
-                                : 0),
-                        itemBuilder: (context, index) {
-                          if (index >= _displayedProducts.length) {
-                            return _buildLoadingItem();
-                          }
-                          return _displayedProducts[index];
-                        },
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+              color: Colors.white,
+              child: content), // Display determined content
+          // Side navigation buttons only shown when there are items to scroll
+          if (_displayedProducts.isNotEmpty) ...[
+            Positioned(
+              left: 5,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.8),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.3),
+                        spreadRadius: 1,
+                        blurRadius: 3,
+                        offset: const Offset(0, 1),
                       ),
-                    ),
-                    Positioned(
-                      left: 5,
-                      top: 0,
-                      bottom: 0,
-                      child: Center(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.8),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.3),
-                                spreadRadius: 1,
-                                blurRadius: 3,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                          child: IconButton(
-                            icon: const Icon(Icons.arrow_back_ios_rounded,
-                                color: Colors.blue),
-                            onPressed: _scrollLeft,
-                            iconSize: 20,
-                            padding: const EdgeInsets.only(left: 8, right: 0),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      right: 5,
-                      top: 0,
-                      bottom: 0,
-                      child: Center(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.8),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.3),
-                                spreadRadius: 1,
-                                blurRadius: 3,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                          child: IconButton(
-                            icon: const Icon(Icons.arrow_forward_ios_rounded,
-                                color: Colors.blue),
-                            onPressed: _scrollRight,
-                            iconSize: 20,
-                            padding: const EdgeInsets.only(left: 0, right: 0),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (_isLoading && _displayedProducts.isEmpty)
-                      Positioned.fill(
-                        child: Center(
-                          child: Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.black54,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white),
-                                ),
-                                const SizedBox(height: 10),
-                                const Text(
-                                  'Đang tải dữ liệu...',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    if (_isLoadingMore && _isButtonTriggeredLoading)
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          double spinnerSize = constraints.maxWidth * 0.1;
-                          if (spinnerSize < 40) spinnerSize = 40;
-                          if (spinnerSize > 60) spinnerSize = 60;
-
-                          return Center(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 28, vertical: 20),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.75),
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.25),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 1),
-                                  )
-                                ],
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizedBox(
-                                    width: constraints.maxWidth <= 600
-                                        ? constraints.maxWidth * 0.1
-                                        : 48,
-                                    height: constraints.maxWidth <= 600
-                                        ? constraints.maxWidth * 0.1
-                                        : 48,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 4.0,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          Colors.white),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 18),
-                                  Text(
-                                    'Đang tải sản phẩm...',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                  ],
+                    ],
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_rounded,
+                        color: Colors.blue),
+                    onPressed: _scrollLeft,
+                    iconSize: 20,
+                    padding: const EdgeInsets.only(left: 8, right: 0),
+                  ),
                 ),
+              ),
+            ),
+            Positioned(
+              right: 5,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.8),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.3),
+                        spreadRadius: 1,
+                        blurRadius: 3,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_forward_ios_rounded,
+                        color: Colors.blue),
+                    onPressed: _scrollRight,
+                    iconSize: 20,
+                    padding: const EdgeInsets.only(left: 0, right: 0),
+                  ),
+                ),
+              ),
+            ),
+          ],
+
+          // Overlay loading indicator when triggered by button
+          if (_isLoadingMore && _isButtonTriggeredLoading)
+            LayoutBuilder(
+              builder: (context, constraints) {
+                // Adjusted size calculation slightly
+                double spinnerSize =
+                    (constraints.maxWidth < constraints.maxHeight
+                            ? constraints.maxWidth
+                            : constraints.maxHeight) *
+                        0.1;
+                if (spinnerSize < 40) spinnerSize = 40;
+                if (spinnerSize > 60) spinnerSize = 60;
+
+                return Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 28, vertical: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.75),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.25),
+                          blurRadius: 10,
+                          offset: const Offset(0, 1),
+                        )
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: spinnerSize,
+                          height: spinnerSize,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 4.0,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          'Đang tải sản phẩm...',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
     );
   }
 
+  // Helper widget for the loading indicator item in GridView (when scrolling automatically)
   Widget _buildLoadingItem() {
     return Container(
       margin: EdgeInsets.symmetric(
