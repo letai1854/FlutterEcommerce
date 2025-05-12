@@ -26,8 +26,8 @@ import 'package:provider/provider.dart';
 import 'package:e_commerce_app/providers/signup_form_provider.dart';
 import 'package:e_commerce_app/providers/login_form_provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
-// Add this class
 class MyHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {
@@ -40,15 +40,31 @@ class MyHttpOverrides extends HttpOverrides {
 Future<void> initApp() async {
   WidgetsFlutterBinding.ensureInitialized();
   setPathUrlStrategy();
-  // Only attempt auto-login on non-web platforms
+
+  final userInfo = UserInfo();
+
+  // Only attempt auto-login or load from persistent storage on non-web platforms
   if (!kIsWeb) {
+    final connectivityResult = await (Connectivity().checkConnectivity());
     final userService = UserService();
-    await userService.attemptAutoLogin();
-    print('Auto-login attempted on ${kIsWeb ? 'web' : 'native'} platform');
+
+    if (connectivityResult != ConnectivityResult.none) {
+      // We are online
+      print('Device is online. Attempting auto-login...');
+      await userService.attemptAutoLogin();
+      print('Auto-login attempted on native platform (online).');
+    } else {
+      // We are offline
+      print(
+          'Device is offline. Attempting to load user data from persistent storage...');
+      await userInfo.loadCompleteUserFromPersistentStorage();
+      print(
+          'User data (and avatar if available) loaded from persistent storage on native platform (offline).');
+    }
   } else {
-    print('Auto-login skipped on web platform');
+    print('Auto-login/persistent load skipped on web platform.');
   }
-  
+
   // Initialize CartStorage singleton and load cart data
   try {
     await CartStorage().loadData();
@@ -56,15 +72,19 @@ Future<void> initApp() async {
   } catch (e) {
     print('Error loading CartStorage data: $e');
   }
-  
+
   // Initialize services
   await AppDataService().loadData();
   print('AppDataService loaded successfully during app init.');
 }
 
 void main() async {
-  // Add this block for HttpOverrides
-  if (!kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isLinux || Platform.isMacOS || Platform.isWindows)) {
+  if (!kIsWeb &&
+      (Platform.isAndroid ||
+          Platform.isIOS ||
+          Platform.isLinux ||
+          Platform.isMacOS ||
+          Platform.isWindows)) {
     HttpOverrides.global = MyHttpOverrides();
   }
   await initApp();
@@ -92,16 +112,14 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate, // Cần cho Material DatePicker
-        GlobalWidgetsLocalizations.delegate, // Cần cho các widget cơ bản
-        GlobalCupertinoLocalizations
-            .delegate, // Tùy chọn nếu dùng Cupertino design
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: const [
-        Locale('en', ''), // Hỗ trợ Tiếng Anh
-        Locale('vi', 'VN'), // <-- HỖ TRỢ TIẾNG VIỆT CHO showDateRangePicker
+        Locale('en', ''),
+        Locale('vi', 'VN'),
       ],
-      // Tùy chọn: Logic xác định ngôn ngữ mặc định
       localeResolutionCallback: (locale, supportedLocales) {
         for (var supportedLocale in supportedLocales) {
           if (supportedLocale.languageCode == locale?.languageCode &&
@@ -109,9 +127,9 @@ class MyApp extends StatelessWidget {
             return supportedLocale;
           }
         }
-        return supportedLocales.first; // Mặc định là ngôn ngữ đầu tiên hỗ trợ
+        return supportedLocales.first;
       },
-      initialRoute: '/', // Đảm bảo có route mặc định
+      initialRoute: '/',
       onGenerateRoute: (settings) {
         switch (settings.name) {
           case '/login':
@@ -122,14 +140,13 @@ class MyApp extends StatelessWidget {
               );
             } else {
               return PageRouteBuilder(
-                pageBuilder: (context, _, __) =>
-                    const ResponsiveHome(), //comment
+                pageBuilder: (context, _, __) => const ResponsiveHome(),
                 settings: const RouteSettings(name: '/home'),
               );
             }
           case '/home':
             return PageRouteBuilder(
-              pageBuilder: (context, _, __) => const ResponsiveHome(), //comment
+              pageBuilder: (context, _, __) => const ResponsiveHome(),
               settings: settings,
             );
           case '/info':
@@ -147,7 +164,6 @@ class MyApp extends StatelessWidget {
               pageBuilder: (context, _, __) => const PageSignup(),
               settings: settings,
             );
-
           case '/catalog_product':
             return PageRouteBuilder(
               pageBuilder: (context, _, __) => const PageListProduct(),
@@ -195,7 +211,7 @@ class MyApp extends StatelessWidget {
             );
           default:
             return PageRouteBuilder(
-              pageBuilder: (context, _, __) => const ResponsiveHome(), //commet
+              pageBuilder: (context, _, __) => const ResponsiveHome(),
               settings: settings,
             );
         }
@@ -203,4 +219,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-//commit

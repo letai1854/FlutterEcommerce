@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart'; // Import for kIsWeb
 import 'package:e_commerce_app/database/models/categories.dart';
 import 'package:e_commerce_app/services/product_cache_service.dart'; // For CachedCategoryProductData
 import 'package:e_commerce_app/database/models/product_dto.dart'; // For ProductDTO
+import 'package:e_commerce_app/database/models/user_model.dart'; // Ensure User model is imported if needed for context
 
 class SharedPreferencesService {
   static SharedPreferencesService? _instance;
@@ -30,6 +31,17 @@ class SharedPreferencesService {
 
   // Key for the main list of categories (used by AppDataService)
   static const String _allCategoriesListKey = 'all_categories_list';
+
+  // Key for categories with images (for ResponsiveHome offline display)
+  static const String _cachedCategoriesWithImagesKey =
+      'cached_categories_with_images';
+
+  // Key for displayed categories (DTOs only) for ResponsiveHome fallback
+  static const String _displayedCategoriesKey = 'displayed_categories_key';
+
+  // New key for storing the complete current user object
+  static const String _persistedCompleteUserKey =
+      'persisted_complete_user_data';
 
   SharedPreferencesService._(); // Private constructor
 
@@ -91,10 +103,6 @@ class SharedPreferencesService {
             decodedData.containsKey('products') &&
             decodedData.containsKey('nextPageToRequest') &&
             decodedData.containsKey('hasMorePages')) {
-          if (kDebugMode) {
-            print(
-                'Retrieved product list data from SharedPreferences for key: $dynamicListKey');
-          }
           return decodedData;
         }
       } catch (e) {
@@ -151,6 +159,91 @@ class SharedPreferencesService {
     } catch (e) {
       if (kDebugMode) {
         print('Error loading categories from SharedPreferences: $e');
+      }
+    }
+    return null;
+  }
+
+  // --- Displayed Category List Caching (for ResponsiveHome fallback) ---
+  Future<void> saveDisplayedCategories(List<CategoryDTO> categories) async {
+    if (kIsWeb || _preferences == null) return;
+    try {
+      final String encodedData =
+          jsonEncode(categories.map((c) => c.toJson()).toList());
+      await _preferences!.setString(_displayedCategoriesKey, encodedData);
+      if (kDebugMode) {
+        print(
+            'Saved ${categories.length} displayed categories to SharedPreferences.');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error saving displayed categories to SharedPreferences: $e');
+      }
+    }
+  }
+
+  Future<List<CategoryDTO>?> loadDisplayedCategories() async {
+    if (kIsWeb || _preferences == null) return null;
+    try {
+      final String? encodedData =
+          _preferences!.getString(_displayedCategoriesKey);
+      if (encodedData != null) {
+        final List<dynamic> decodedData = jsonDecode(encodedData);
+        final categories =
+            decodedData.map((json) => CategoryDTO.fromJson(json)).toList();
+        if (kDebugMode) {
+          print(
+              'Loaded ${categories.length} displayed categories from SharedPreferences.');
+        }
+        return categories;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error loading displayed categories from SharedPreferences: $e');
+      }
+    }
+    return null;
+  }
+
+  // --- Category List with Images Caching (for ResponsiveHome) ---
+  Future<void> saveCategoriesWithImages(
+      List<Map<String, dynamic>> categoriesData) async {
+    if (kIsWeb || _preferences == null) return;
+    try {
+      final String encodedData = jsonEncode(categoriesData);
+      await _preferences!
+          .setString(_cachedCategoriesWithImagesKey, encodedData);
+      if (kDebugMode) {
+        print(
+            'Saved ${categoriesData.length} categories with images to SharedPreferences.');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error saving categories with images to SharedPreferences: $e');
+      }
+    }
+  }
+
+  Future<List<Map<String, dynamic>>?> loadCategoriesWithImages() async {
+    if (kIsWeb || _preferences == null) return null;
+    try {
+      final String? encodedData =
+          _preferences!.getString(_cachedCategoriesWithImagesKey);
+      if (encodedData != null) {
+        final List<dynamic> decodedData = jsonDecode(encodedData);
+        // Ensure all items are Map<String, dynamic>
+        final categories =
+            decodedData.map((item) => item as Map<String, dynamic>).toList();
+        if (kDebugMode) {
+          print(
+              'Loaded ${categories.length} categories with images from SharedPreferences.');
+        }
+        return categories;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print(
+            'Error loading categories with images from SharedPreferences: $e');
       }
     }
     return null;
@@ -213,6 +306,31 @@ class SharedPreferencesService {
       }
     }
     return null;
+  }
+
+  Future<bool> removeCategoryProductData(String cacheKey) async {
+    if (kIsWeb || _preferences == null) return false;
+    try {
+      final success = await _preferences!.remove(cacheKey);
+      if (success) {
+        if (kDebugMode) {
+          print(
+              'Removed category product data from SharedPreferences for key: $cacheKey');
+        }
+      } else {
+        if (kDebugMode) {
+          print(
+              'Key not found or failed to remove category product data from SharedPreferences for key: $cacheKey');
+        }
+      }
+      return success;
+    } catch (e) {
+      if (kDebugMode) {
+        print(
+            'Error removing category product data from SharedPreferences for key $cacheKey: $e');
+      }
+      return false;
+    }
   }
 
   // --- Image Caching (Common for all images) ---
@@ -302,6 +420,49 @@ class SharedPreferencesService {
     return _preferences!.remove(_imageCacheKey);
   }
 
+  // --- Persisted Complete User Data Caching ---
+  Future<void> savePersistedCompleteUserData(String userJson) async {
+    if (_preferences == null || kIsWeb) return; // Only for non-web
+    try {
+      await _preferences!.setString(_persistedCompleteUserKey, userJson);
+      if (kDebugMode) {
+        print('Saved complete user data to SharedPreferences.');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error saving complete user data to SharedPreferences: $e');
+      }
+    }
+  }
+
+  Future<String?> loadPersistedCompleteUserData() async {
+    if (_preferences == null || kIsWeb) return null; // Only for non-web
+    try {
+      final String? userJson =
+          _preferences!.getString(_persistedCompleteUserKey);
+      if (userJson != null) {
+        if (kDebugMode) {
+          print('Loaded complete user data from SharedPreferences.');
+        }
+        return userJson;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error loading complete user data from SharedPreferences: $e');
+      }
+    }
+    return null;
+  }
+
+  Future<bool> removePersistedCompleteUserData() async {
+    if (_preferences == null || kIsWeb) return false; // Only for non-web
+    if (kDebugMode) {
+      print('Removing complete user data from SharedPreferences.');
+    }
+    return _preferences!.remove(_persistedCompleteUserKey);
+  }
+  // --- End of Persisted Complete User Data Caching ---
+
   Future<bool> clearAllUserPreferences() async {
     if (_preferences == null) return false;
     if (kDebugMode) {
@@ -313,6 +474,9 @@ class SharedPreferencesService {
           key.startsWith(_categoryProductListDataPrefix) ||
           key == _displayedCategoryListKey ||
           key == _allCategoriesListKey ||
+          key == _cachedCategoriesWithImagesKey ||
+          key == _displayedCategoriesKey || // Added new key
+          key == _persistedCompleteUserKey || // Added new key for complete user
           key == _imageCacheKey) {
         await _preferences!.remove(key);
       }
@@ -326,7 +490,11 @@ class SharedPreferencesService {
         key == promotionalProductsKey) {
       return _preferences?.containsKey(_getActualProductListKey(key)) ?? false;
     }
-    if (key == _imageCacheKey || key == _allCategoriesListKey) {
+    if (key == _imageCacheKey ||
+        key == _allCategoriesListKey ||
+        key == _displayedCategoriesKey || // Added new key
+        key == _persistedCompleteUserKey || // Added new key for complete user
+        key == _cachedCategoriesWithImagesKey) {
       return _preferences?.containsKey(key) ?? false;
     }
     return _preferences?.containsKey(key) ?? false;

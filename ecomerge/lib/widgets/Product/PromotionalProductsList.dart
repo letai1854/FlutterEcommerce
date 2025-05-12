@@ -613,7 +613,8 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
             'Không thể kết nối internet. Vui lòng kiểm tra mạng của bạn.';
       } else {
         // Generic error message for other issues
-        displayError = 'Không thể tải sản phẩm';
+        displayError =
+            'Không thể kết nối internet. Vui lòng kiểm tra mạng của bạn.';
         if (kDebugMode) {
           print("Error loading products: $e"); // Log other errors in debug
         }
@@ -712,7 +713,8 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
         snackBarMessage =
             'Không thể tải thêm sản phẩm: Chưa có kết nối internet.';
       } else {
-        snackBarMessage = 'Không thể tải thêm sản phẩm}';
+        snackBarMessage =
+            'Không thể kết nối internet. Vui lòng kiểm tra mạng của bạn.';
         if (kDebugMode) {
           print("Error loading more products: $e"); // Log other errors in debug
         }

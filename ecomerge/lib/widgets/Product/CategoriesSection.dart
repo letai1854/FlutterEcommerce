@@ -1,3 +1,5 @@
+import 'dart:typed_data'; // Required for Uint8List
+
 import 'package:e_commerce_app/database/Storage/BrandCategoryService.dart';
 import 'package:flutter/material.dart';
 import 'package:e_commerce_app/database/models/categories.dart'; // Import CategoryDTO
@@ -23,10 +25,23 @@ class CategoriesSection extends StatefulWidget {
 class _CategoriesSectionState extends State<CategoriesSection> {
   final CategoriesService _categoriesService =
       CategoriesService(); // Instance of CategoriesService
+  final AppDataService _appDataService =
+      AppDataService(); // Instance of AppDataService
+
+  @override
+  void dispose() {
+    _categoriesService.dispose(); // Dispose the service
+    super.dispose();
+  }
 
   Widget _buildCategoryItem(CategoryDTO category, int index) {
     bool isSelected = widget.selectedIndex == index;
-    String fullImageUrl = _categoriesService.getImageUrl(category.imageUrl);
+
+    // Attempt to get image from AppDataService cache first
+    Uint8List? cachedImage;
+    if (category.imageUrl != null && category.imageUrl!.isNotEmpty) {
+      cachedImage = _appDataService.getCategoryImage(category.imageUrl);
+    }
 
     return Expanded(
       child: GestureDetector(
@@ -54,33 +69,49 @@ class _CategoriesSectionState extends State<CategoriesSection> {
                     shape: BoxShape.circle, // Make it circular for consistency
                   ),
                   child: ClipOval(
-                    child: fullImageUrl.isNotEmpty
-                        ? Image.network(
-                            fullImageUrl,
-                            fit: BoxFit.cover,
-                            height: 60,
-                            width: 60,
-                            errorBuilder: (context, error, stackTrace) {
-                              if (kDebugMode)
-                                print(
-                                    'Error loading category image: $fullImageUrl, $error');
-                              return Icon(Icons.category,
-                                  size: 30, color: Colors.grey[400]);
-                            },
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Center(
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  value: loadingProgress.expectedTotalBytes !=
-                                          null
-                                      ? loadingProgress.cumulativeBytesLoaded /
-                                          loadingProgress.expectedTotalBytes!
-                                      : null,
-                                ),
-                              );
-                            },
-                          )
+                    child: category.imageUrl != null &&
+                            category.imageUrl!.isNotEmpty
+                        ? cachedImage != null
+                            ? Image.memory(
+                                cachedImage,
+                                fit: BoxFit.cover,
+                                height: 60,
+                                width: 60,
+                              )
+                            : FutureBuilder<Uint8List?>(
+                                future: _categoriesService
+                                    .getImageFromServer(category.imageUrl),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return Center(
+                                      child: SizedBox(
+                                        width: 30, // Consistent size
+                                        height: 30,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                    );
+                                  } else if (snapshot.hasError ||
+                                      !snapshot.hasData ||
+                                      snapshot.data == null) {
+                                    if (kDebugMode) {
+                                      print(
+                                          'Error loading category image in CategoriesSection (FutureBuilder): ${category.imageUrl}, ${snapshot.error}');
+                                    }
+                                    return Icon(Icons.category,
+                                        size: 30, color: Colors.grey[400]);
+                                  } else {
+                                    return Image.memory(
+                                      snapshot.data!,
+                                      fit: BoxFit.cover,
+                                      height: 60,
+                                      width: 60,
+                                    );
+                                  }
+                                },
+                              )
                         : Icon(Icons.category,
                             size: 30, color: Colors.grey[400]),
                   ),
@@ -141,7 +172,7 @@ class _CategoriesSectionState extends State<CategoriesSection> {
               padding: const EdgeInsets.all(16.0),
               child: Center(
                 child: Text(
-                  AppDataService().isLoading
+                  _appDataService.isLoading
                       ? 'Đang tải danh mục...'
                       : 'Không có danh mục nào.',
                   style: TextStyle(color: Colors.grey, fontSize: 16),
