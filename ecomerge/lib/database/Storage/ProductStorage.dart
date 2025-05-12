@@ -1,3 +1,6 @@
+import 'dart:async' show TimeoutException;
+import 'dart:io';
+
 import 'package:e_commerce_app/database/Storage/BrandCategoryService.dart';
 import 'package:e_commerce_app/database/models/brand.dart';
 import 'package:flutter/foundation.dart';
@@ -703,7 +706,7 @@ class ProductStorageSingleton extends ChangeNotifier {
       await _checkConnectivity();
 
       // Short delay for loading indicator visibility
-      await Future.delayed(const Duration(milliseconds: 800));
+      await Future.delayed(const Duration(milliseconds: 500));
       
       if (_isOnline) {
         // ONLINE: Fetch from server
@@ -1070,18 +1073,84 @@ class ProductStorageSingleton extends ChangeNotifier {
 
 
 
-    Future<void> _checkConnectivity() async {
-    try {
-      final result = await _connectivity.checkConnectivity();
-      _isOnline = (result != ConnectivityResult.none);
-      if (kDebugMode) {
-        print('Initial connectivity check: $_isOnline');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error checking connectivity: $e');
-      }
-      _isOnline = true; // Default to assuming online if check fails
-    }
+  //   Future<void> _checkConnectivity() async {
+  //   try {
+  //     final result = await _connectivity.checkConnectivity();
+  //     _isOnline = (result != ConnectivityResult.none);
+  //     if (kDebugMode) {
+  //       print('Initial connectivity check: $_isOnline');
+  //     }
+  //   } catch (e) {
+  //     if (kDebugMode) {
+  //       print('Error checking connectivity: $e');
+  //     }
+  //     _isOnline = true; // Default to assuming online if check fails
+  //   }
+  // }
+   Future<void> _checkConnectivity() async {
+  if (kIsWeb) {
+    _isOnline = true; // Luôn giả định online cho web
+    return;
   }
+
+  try {
+    // Kiểm tra xem thiết bị có phần cứng kết nối đang hoạt động không
+    final result = await _connectivity.checkConnectivity();
+
+    // Chỉ kiểm tra sâu hơn nếu có giao diện mạng đang hoạt động
+    if (result == ConnectivityResult.none) {
+      _isOnline = false;
+    } else {
+      // *** THAY ĐỔI CHÍNH: Sử dụng InternetAddress.lookup thay vì Socket.connect ***
+      try {
+        // Chọn một tên miền đáng tin cậy
+        const String lookupHost = 'google.com';
+        // Thêm timeout cho lookup để tránh treo quá lâu trên mạng rất tệ
+        final lookupResult = await InternetAddress.lookup(lookupHost)
+                                     .timeout(const Duration(seconds: 1)); // Timeout ngắn cho lookup
+
+        // Nếu lookup thành công và trả về ít nhất một địa chỉ IP hợp lệ
+        if (lookupResult.isNotEmpty && lookupResult[0].rawAddress.isNotEmpty) {
+          _isOnline = true;
+          if (kDebugMode) {
+            print('DNS lookup successful for $lookupHost');
+          }
+        } else {
+           // Trường hợp hiếm: lookup thành công nhưng không có địa chỉ?
+           _isOnline = false;
+           if (kDebugMode) {
+             print('DNS lookup for $lookupHost returned empty result.');
+           }
+        }
+      } on SocketException catch (e) {
+          // Lỗi phổ biến khi không phân giải được DNS (không có mạng, DNS lỗi)
+          _isOnline = false;
+          if (kDebugMode) {
+            print('DNS lookup failed for: $e');
+          }
+      } on TimeoutException catch (_) {
+          // Lookup mất quá nhiều thời gian
+          _isOnline = false;
+          if (kDebugMode) {
+            print('DNS lookup for  timed out.');
+          }
+      } catch (e) {
+        // Các lỗi không mong muốn khác
+        _isOnline = false;
+        if (kDebugMode) {
+          print('Unexpected error during DNS lookup: $e');
+        }
+      }
+    }
+
+    if (kDebugMode) {
+      print('Connectivity check result: $_isOnline (Device interface: $result)');
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      print('Error checking basic connectivity: $e');
+    }
+    _isOnline = false; // Mặc định là offline nếu kiểm tra cơ bản thất bại
+  }
+}
 }

@@ -3,7 +3,10 @@ import 'package:e_commerce_app/database/services/order_service.dart';
 import 'package:e_commerce_app/widgets/Order/OrderDetailPage.dart';
 import 'package:e_commerce_app/widgets/Order/OrderItem.dart';
 import 'package:e_commerce_app/widgets/Order/OrderStatusHistoryPage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'dart:typed_data';
 
 class OrderHistoryPage extends StatefulWidget {
   const OrderHistoryPage({Key? key}) : super(key: key);
@@ -24,12 +27,17 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
   String? _errorMessage;
   bool _childPageCausedChange =
       false; // Flag to indicate refresh needed for parent
+  bool _isOfflineMode = false; // Add flag for offline mode
 
   @override
   void initState() {
     super.initState();
+    _checkConnectivity(); // Check connectivity on init
     _fetchInitialOrders();
     _scrollController.addListener(_scrollListener);
+    
+    // Set up connectivity listener
+    _setupConnectivityListener();
   }
 
   @override
@@ -49,6 +57,43 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
     }
   }
 
+  Future<void> _checkConnectivity() async {
+    try {
+      var connectivityResult = await Connectivity().checkConnectivity();
+      setState(() {
+        _isOfflineMode = connectivityResult == ConnectivityResult.none;
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error checking connectivity: $e');
+      }
+      setState(() {
+        _isOfflineMode = false; // Default to assuming online
+      });
+    }
+  }
+
+  void _setupConnectivityListener() {
+    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
+      final bool wasOffline = _isOfflineMode;
+      final bool isNowOnline = result != ConnectivityResult.none;
+      
+      if (mounted) {
+        setState(() {
+          _isOfflineMode = !isNowOnline;
+        });
+        
+        // If we just came back online after being offline, refresh data
+        if (wasOffline && isNowOnline && mounted) {
+          if (kDebugMode) {
+            print("OrderHistoryPage: Network restored - refreshing order data and images");
+          }
+          _fetchInitialOrders(); // This will load fresh data and images
+        }
+      }
+    });
+  }
+
   Future<void> _fetchInitialOrders() async {
     setState(() {
       _isLoading = true;
@@ -64,6 +109,10 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
         size: _apiPageSize,
         // No status is passed to fetch all orders
       );
+      
+      // Get online status BEFORE using setState
+      final bool isOnline = await _orderService.isOnline();
+      
       if (mounted) {
         setState(() {
           _orders = orderPage.orders;
@@ -72,6 +121,9 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
             _apiCurrentPage++;
           }
           _isLoading = false;
+          
+          // Now use the pre-fetched online status
+          _isOfflineMode = !isOnline;
         });
       }
     } catch (e) {
@@ -82,12 +134,15 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
           displayError = "Chưa có đơn hàng nào.";
         } else {
           displayError = "Chưa có đơn hàng nào.";
-          // Optionally, log the original error for debugging if needed
-          // print("Error fetching initial orders: ${e.toString()}");
         }
+        
+        // Don't forget to also set the online status here in the error case
+        final bool isOnline = await _orderService.isOnline();
+        
         setState(() {
           _isLoading = false;
           _errorMessage = displayError;
+          _isOfflineMode = !isOnline;
           if (is404) {
             _orders = []; // Ensure orders list is empty
             _hasMore = false; // No more data to fetch
@@ -136,6 +191,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
         "price": d.priceAtPurchase,
         "quantity": d.quantity,
         "discountPercentage": d.productDiscountPercentage ?? 0.0,
+        "isOfflineMode": _isOfflineMode, // Add offline mode flag
       };
     }).toList();
   }
@@ -193,186 +249,196 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
           ),
           iconTheme: const IconThemeData(color: Colors.white),
         ),
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                backgroundColor!,
-                Colors.white,
-              ],
-              stops: const [0.0, 0.4],
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // History info text with decorative elements
-                Container(
-                  margin: const EdgeInsets.only(bottom: 20, top: 10),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      left: BorderSide(color: Colors.red[700]!, width: 5),
-                    ),
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.2),
-                        spreadRadius: 1,
-                        blurRadius: 3,
-                        offset: const Offset(0, 2),
-                      ),
+        body: Column(
+          children: [
+            // Show offline banner when in offline mode
+           
+            
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      backgroundColor!,
+                      Colors.white,
                     ],
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.history, color: headingColor, size: 24),
-                      const SizedBox(width: 10),
-                      Text(
-                        "Thông tin tất cả đơn hàng của bạn",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: headingColor,
-                        ),
-                      ),
-                    ],
+                    stops: const [0.0, 0.4],
                   ),
                 ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // History info text with decorative elements
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 20, top: 10),
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            left: BorderSide(color: Colors.red[700]!, width: 5),
+                          ),
+                          color: Colors.white,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.2),
+                              spreadRadius: 1,
+                              blurRadius: 3,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.history, color: headingColor, size: 24),
+                            const SizedBox(width: 10),
+                            Text(
+                              "Thông tin tất cả đơn hàng của bạn",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: headingColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
-                // Orders list with enhanced styling
-                Expanded(
-                  child: _isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : _errorMessage != null
-                          ? Center(
-                              child: Text(" $_errorMessage",
-                                  style: const TextStyle(color: Colors.black)))
-                          : _orders.isEmpty && !_hasMore
-                              ? Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.receipt_long_outlined,
-                                        size: 80,
-                                        color: Colors.grey[400],
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        "Không có lịch sử đơn hàng nào",
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          color: Colors.grey[600],
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              : ListView.separated(
-                                  controller: _scrollController,
-                                  itemCount:
-                                      _orders.length + (_hasMore ? 1 : 0),
-                                  separatorBuilder: (context, index) =>
-                                      const SizedBox(height: 16),
-                                  itemBuilder: (context, index) {
-                                    if (index == _orders.length) {
-                                      return _isLoadingMore
-                                          ? const Center(
-                                              child: Padding(
-                                              padding: EdgeInsets.all(16.0),
-                                              child:
-                                                  CircularProgressIndicator(),
-                                            ))
-                                          : const SizedBox.shrink();
-                                    }
-
-                                    final order = _orders[index];
-                                    final orderItemsForDisplay =
-                                        _mapOrderDetailsToOrderItemItems(
-                                            order.orderDetails);
-                                    final displayStatus =
-                                        _getDisplayStatus(order.orderStatus);
-
-                                    return GestureDetector(
-                                      onTap: () async {
-                                        final result = await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                OrderDetailPage(
-                                              orderId: order.id.toString(),
+                      // Orders list with enhanced styling
+                      Expanded(
+                        child: _isLoading
+                            ? const Center(child: CircularProgressIndicator())
+                            : _errorMessage != null
+                                ? Center(
+                                    child: Text(" $_errorMessage",
+                                        style: const TextStyle(color: Colors.black)))
+                                : _orders.isEmpty && !_hasMore
+                                    ? Center(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.receipt_long_outlined,
+                                              size: 80,
+                                              color: Colors.grey[400],
                                             ),
-                                          ),
-                                        );
-                                        if (result == true && mounted) {
-                                          _childPageCausedChange =
-                                              true; // Set flag
-                                          _fetchInitialOrders();
-                                        }
-                                      },
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color:
-                                                  Colors.grey.withOpacity(0.2),
-                                              spreadRadius: 1,
-                                              blurRadius: 6,
-                                              offset: const Offset(0, 2),
+                                            const SizedBox(height: 16),
+                                            Text(
+                                              "Không có lịch sử đơn hàng nào",
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                color: Colors.grey[600],
+                                                fontWeight: FontWeight.w500,
+                                              ),
                                             ),
                                           ],
                                         ),
-                                        child: OrderItem(
-                                          orderId: order.id.toString(),
-                                          date: order.orderDate
-                                                  ?.toIso8601String()
-                                                  .split('T')[0] ??
-                                              'N/A',
-                                          items: orderItemsForDisplay,
-                                          status: displayStatus,
-                                          onViewHistory: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    OrderStatusHistoryPage(
-                                                  orderId: order.id.toString(),
-                                                  currentStatus: displayStatus,
+                                      )
+                                    : ListView.separated(
+                                        controller: _scrollController,
+                                        itemCount:
+                                            _orders.length + (_hasMore ? 1 : 0),
+                                        separatorBuilder: (context, index) =>
+                                            const SizedBox(height: 16),
+                                        itemBuilder: (context, index) {
+                                          if (index == _orders.length) {
+                                            return _isLoadingMore
+                                                ? const Center(
+                                                    child: Padding(
+                                                    padding: EdgeInsets.all(16.0),
+                                                    child:
+                                                        CircularProgressIndicator(),
+                                                  ))
+                                                : const SizedBox.shrink();
+                                          }
+
+                                          final order = _orders[index];
+                                          final orderItemsForDisplay =
+                                              _mapOrderDetailsToOrderItemItems(
+                                                  order.orderDetails);
+                                          final displayStatus =
+                                              _getDisplayStatus(order.orderStatus);
+
+                                          return GestureDetector(
+                                            onTap: () async {
+                                              final result = await Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      OrderDetailPage(
+                                                    orderId: order.id.toString(),
+                                                  ),
                                                 ),
+                                              );
+                                              if (result == true && mounted) {
+                                                _childPageCausedChange =
+                                                    true; // Set flag
+                                                _fetchInitialOrders();
+                                              }
+                                            },
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color:
+                                                        Colors.grey.withOpacity(0.2),
+                                                    spreadRadius: 1,
+                                                    blurRadius: 6,
+                                                    offset: const Offset(0, 2),
+                                                  ),
+                                                ],
                                               ),
-                                            );
-                                          },
-                                          subtotal: order.subtotal ?? 0.0,
-                                          shippingFee: order.shippingFee ?? 0.0,
-                                          tax: order.tax ?? 0.0,
-                                          totalAmount: order.totalAmount ?? 0.0,
-                                          couponDiscount: order.couponDiscount,
-                                          pointsDiscount:
-                                              order.pointsDiscount?.toDouble(),
-                                          pointsEarned:
-                                              order.pointsEarned?.toDouble(),
-                                          isSmallScreen: MediaQuery.of(context)
-                                                  .size
-                                                  .width <
-                                              600,
-                                        ),
+                                              child: OrderItem(
+                                                orderId: order.id.toString(),
+                                                date: order.orderDate
+                                                        ?.toIso8601String()
+                                                        .split('T')[0] ??
+                                                    'N/A',
+                                                items: orderItemsForDisplay,
+                                                status: displayStatus,
+                                                onViewHistory: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          OrderStatusHistoryPage(
+                                                        orderId: order.id.toString(),
+                                                        currentStatus: displayStatus,
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                                subtotal: order.subtotal ?? 0.0,
+                                                shippingFee: order.shippingFee ?? 0.0,
+                                                tax: order.tax ?? 0.0,
+                                                totalAmount: order.totalAmount ?? 0.0,
+                                                couponDiscount: order.couponDiscount,
+                                                pointsDiscount:
+                                                    order.pointsDiscount?.toDouble(),
+                                                pointsEarned:
+                                                    order.pointsEarned?.toDouble(),
+                                                isSmallScreen: MediaQuery.of(context)
+                                                        .size
+                                                        .width <
+                                                    600,
+                                                isOfflineMode: _isOfflineMode,
+                                              ),
+                                            ),
+                                          );
+                                        },
                                       ),
-                                    );
-                                  },
-                                ),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

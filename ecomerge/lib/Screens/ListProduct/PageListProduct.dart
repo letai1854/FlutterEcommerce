@@ -10,7 +10,8 @@ import 'package:e_commerce_app/widgets/Product/PaginatedProductGrid.dart';
 import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // Import kDebugMode
-import 'package:connectivity/connectivity.dart'; // Import Connectivity
+// import 'package:connectivity/connectivity.dart'; // Import Connectivity
+import 'package:connectivity_plus/connectivity_plus.dart'; // Import Connectivity
 
 class PageListProduct extends StatefulWidget {
   const PageListProduct({super.key});

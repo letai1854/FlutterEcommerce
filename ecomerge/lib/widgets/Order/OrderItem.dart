@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+import 'package:e_commerce_app/database/services/order_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:e_commerce_app/widgets/Order/OrderStatusHistoryPage.dart';
 import 'package:flutter/material.dart';
 import 'dart:typed_data';
@@ -11,6 +14,7 @@ class OrderItem extends StatefulWidget {
   final bool isClickable;
   final VoidCallback? onViewHistory;
   final bool isSmallScreen;
+  final bool isOfflineMode;
 
   final double subtotal;
   final double shippingFee;
@@ -29,6 +33,7 @@ class OrderItem extends StatefulWidget {
     this.isClickable = false,
     this.onViewHistory,
     this.isSmallScreen = false,
+    this.isOfflineMode = false,
     required this.subtotal,
     required this.shippingFee,
     required this.tax,
@@ -360,16 +365,26 @@ class _OrderItemState extends State<OrderItem> {
 
   Widget _buildOrderItemRow(Map<String, dynamic> item) {
     final String? imageUrl = item["image"] as String?;
-    Future<Uint8List?>? imageFuture;
-
-    if (imageUrl != null && imageUrl.isNotEmpty) {
-      if (!_imageFutures.containsKey(imageUrl)) {
-        _imageFutures[imageUrl] =
-            _categoriesService.getImageFromServer(imageUrl);
+    final orderService = OrderService();
+    
+    // Check if we need to reload images (network status changed)
+    final String cacheKey = imageUrl ?? '';
+    final String networkStatusKey = '${cacheKey}_${widget.isOfflineMode}_${OrderService.networkJustRestored}';
+    
+    // Clear the future cache when network status changes
+    if (imageUrl != null && !_imageFutures.containsKey(networkStatusKey)) {
+      // Remove old cached futures for this URL
+      _imageFutures.removeWhere((key, _) => key.startsWith(cacheKey + '_'));
+      
+      // Create a new future based on online/offline state
+      if (widget.isOfflineMode) {
+        _imageFutures[networkStatusKey] = orderService.loadImageFromLocalStorage(imageUrl);
+      } else {
+        // Online mode - first try local cache, then server
+        _imageFutures[networkStatusKey] = _getCachedOrNetworkImage(imageUrl, orderService);
       }
-      imageFuture = _imageFutures[imageUrl];
     }
-
+    
     final dynamic priceAtPurchase = item["price"];
     final double productDiscountPercentage =
         (item["discountPercentage"] as num?)?.toDouble() ?? 0.0;
@@ -408,14 +423,9 @@ class _OrderItemState extends State<OrderItem> {
                         color: Colors.grey),
                   )
                 : FutureBuilder<Uint8List?>(
-                    future: imageFuture,
+                    future: _imageFutures[networkStatusKey],
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                            child: CircularProgressIndicator(strokeWidth: 2));
-                      } else if (snapshot.hasError ||
-                          !snapshot.hasData ||
-                          snapshot.data == null) {
                         return Container(
                           width: 80,
                           height: 80,
@@ -423,10 +433,26 @@ class _OrderItemState extends State<OrderItem> {
                             border: Border.all(color: Colors.grey.shade200),
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: const Icon(Icons.error_outline,
-                              color: Colors.grey),
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        );
+                      } else if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
+                        // Error or no data
+                        return Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade200),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Icon(
+                            widget.isOfflineMode ? Icons.wifi_off : Icons.error_outline,
+                            color: Colors.grey
+                          ),
                         );
                       } else {
+                        // Success - display image
                         return Container(
                           width: 80,
                           height: 80,
@@ -502,6 +528,119 @@ class _OrderItemState extends State<OrderItem> {
           )
         ],
       ),
+    );
+  }
+  
+  // Helper method to handle image loading logic
+  Future<Uint8List?> _getCachedOrNetworkImage(String imageUrl, OrderService orderService) async {
+    // First try local storage cache
+    final localImage = await orderService.loadImageFromLocalStorage(imageUrl);
+    if (localImage != null) {
+      return localImage;
+    }
+    
+    // If not in cache and online, load from network
+    if (!widget.isOfflineMode) {
+      try {
+        return await orderService.getImageFromServer(imageUrl);
+      } catch (e) {
+        if (kDebugMode) print('Error loading image from server: $e');
+      }
+    }
+    
+    return null;
+  }
+
+  Widget _buildProductImage(String imageUrl, BuildContext context) {
+    final orderService = OrderService();
+    
+    if (widget.isOfflineMode) {
+      return FutureBuilder<Uint8List?>(
+        future: orderService.loadImageFromLocalStorage(imageUrl),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Container(
+              width: 60,
+              height: 60,
+              color: Colors.grey[200],
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            );
+          }
+          
+          if (snapshot.hasData) {
+            // Use cached image from local storage
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.memory(
+                snapshot.data!,
+                width: 60,
+                height: 60,
+                fit: BoxFit.cover,
+              ),
+            );
+          }
+          
+          // No cached image available - show placeholder
+          return Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.image_not_supported, color: Colors.grey),
+          );
+        },
+      );
+    }
+    
+    // Online mode - load from network
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        orderService.getImageUrl(imageUrl),
+        width: 60,
+        height: 60,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            width: 60,
+            height: 60,
+            color: Colors.grey[200],
+            child: Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                    : null,
+                strokeWidth: 2,
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.broken_image, color: Colors.grey),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _itemWidget(Map<String, dynamic> item) {
+    final bool isItemOffline = item['isOfflineMode'] ?? widget.isOfflineMode;
+    
+    return Row(
+      children: [
+        _buildProductImage(item['image'], context),
+        // ...rest of the existing code...
+      ],
     );
   }
 }

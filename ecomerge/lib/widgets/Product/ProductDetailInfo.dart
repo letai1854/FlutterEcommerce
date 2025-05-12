@@ -114,7 +114,7 @@ class ProductDetailInfo extends StatelessWidget {
 
     String formatCurrency(double amount) {
       final format = amount.toStringAsFixed(0).replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.');
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},');
       return '$format đ';
     }
 

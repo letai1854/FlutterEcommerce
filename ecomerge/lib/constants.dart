@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 final String baseUrl = kIsWeb 
-    ? 'http://localhost:8443' // For web
-    : 'http://10.0.2.2:8443'; // For Android emulator
+    ? 'https://localhost:8443' // For web
+    : 'https://10.0.2.2:8443'; // For Android emulator
 
 
 final bool isWeb = kIsWeb;

@@ -111,6 +111,13 @@ class _HomeTabletState extends State<HomeTablet> {
                 Navigator.pushNamed(context, '/chat');
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.smart_toy),
+              title: const Text('AI Chatbot'),
+              onTap: () {
+                Navigator.pushNamed(context, '/ai-chat');
+              },
+            ),
           ],
         ),
       ),
