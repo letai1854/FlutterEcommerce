@@ -314,6 +314,10 @@ class UserService {
         final responseBody = jsonDecode(response.body);
         setAuthToken(responseBody['token']);
         UserInfo().updateUserInfo(responseBody);
+
+        // Call saveCompleteUserToPersistentStorage after updating user info
+        // await UserInfo().saveCompleteUserToPersistentStorage();
+
         print(
             "User logged in successfully--------------------: ${UserInfo().currentUser?.role}");
         String? avatarPath = UserInfo().currentUser?.avatar;
@@ -328,6 +332,8 @@ class UserService {
         // For Windows and mobile platforms, save credentials for auto-login
         // Always overwrite existing credentials with the new login
         if (!kIsWeb) {
+          await UserInfo().saveCompleteUserToPersistentStorage();
+
           await _saveCredentials(email, password);
           print('Updated stored credentials after successful login');
         }
@@ -373,10 +379,10 @@ class UserService {
     setAuthToken(null);
     UserInfo().clearUserInfo();
     UserService.clearAvatarCache(); // Clear avatar cache on logout
-    
+
     // Clear cart data
     await CartStorage().clearAllCart();
-    
+
     // Clear stored credentials on logout for non-web platforms
     if (!kIsWeb) {
       await clearStoredCredentials();
@@ -793,9 +799,11 @@ class UserService {
       return false;
     }
   }
- Future<Uint8List?> getImageFromServer(String? imagePath, {bool forceReload = false}) async {
+
+  Future<Uint8List?> getImageFromServer(String? imagePath,
+      {bool forceReload = false}) async {
     if (imagePath == null || imagePath.isEmpty) return null;
-    
+
     // Check cache only if not forcing reload
     if (!forceReload) {
       // First check our product-specific image cache
@@ -803,7 +811,7 @@ class UserService {
         if (kDebugMode) print('Using cached image for $imagePath');
         return _imageCache[imagePath];
       }
-      
+
       // Then check UserInfo avatar cache (existing implementation)
       if (UserInfo.avatarCache.containsKey(imagePath)) {
         return UserInfo.avatarCache[imagePath];
@@ -817,7 +825,7 @@ class UserService {
         final cacheBuster = DateTime.now().millisecondsSinceEpoch;
         fullUrl += '?cacheBust=$cacheBuster';
       }
-      
+
       final response = await httpClient.get(Uri.parse(fullUrl));
 
       if (response.statusCode == 200) {
@@ -835,11 +843,12 @@ class UserService {
 
     return null;
   }
-  
+
   // Method to efficiently get avatar from cache or server for any user object
-  Future<Uint8List?> getUserAvatar(String? avatarPath, {bool forceReload = false}) async {
+  Future<Uint8List?> getUserAvatar(String? avatarPath,
+      {bool forceReload = false}) async {
     if (avatarPath == null || avatarPath.isEmpty) return null;
-    
+
     // Check in the class-level cache first if not forcing reload
     if (!forceReload) {
       // First check our image cache
@@ -847,7 +856,7 @@ class UserService {
         if (kDebugMode) print('Using cached user avatar for $avatarPath');
         return _imageCache[avatarPath];
       }
-      
+
       // Then check UserInfo avatar cache as fallback
       if (UserInfo.avatarCache.containsKey(avatarPath)) {
         return UserInfo.avatarCache[avatarPath];
@@ -856,26 +865,28 @@ class UserService {
 
     try {
       // If not found in cache or forcing reload, fetch from server
-      final imageBytes = await getImageFromServer(avatarPath, forceReload: forceReload);
-      
+      final imageBytes =
+          await getImageFromServer(avatarPath, forceReload: forceReload);
+
       // Cache the result if successfully fetched and not forcing reload
       if (imageBytes != null && !forceReload) {
         _imageCache[avatarPath] = imageBytes;
-        UserInfo.avatarCache[avatarPath] = imageBytes; // Keep both caches in sync
+        UserInfo.avatarCache[avatarPath] =
+            imageBytes; // Keep both caches in sync
       }
-      
+
       return imageBytes;
     } catch (e) {
       print('Error fetching user avatar: $e');
       return null;
     }
   }
-  
+
   // Helper method to clear avatar caches when needed
   static void clearUserAvatarCache() {
     _imageCache.clear();
     UserInfo.avatarCache.clear();
   }
-  
+
   // TODO: Implement methods for admin endpoints if needed
 }
