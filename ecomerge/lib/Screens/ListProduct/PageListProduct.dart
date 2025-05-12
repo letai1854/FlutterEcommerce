@@ -10,6 +10,7 @@ import 'package:e_commerce_app/widgets/Product/PaginatedProductGrid.dart';
 import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // Import kDebugMode
+import 'package:connectivity/connectivity.dart'; // Import Connectivity
 
 class PageListProduct extends StatefulWidget {
   const PageListProduct({super.key});
@@ -63,6 +64,9 @@ class _PageListProductState extends State<PageListProduct> {
     AppDataService().addListener(_onAppDataServiceChange);
     // Listen to changes in ProductStorageSingleton (for products)
     _productStorage.addListener(_onProductStorageChange);
+
+    // Add connectivity listener
+    _setupConnectivityListener();
 
     // Load AppDataService if not initialized
     if (!AppDataService().isInitialized && !AppDataService().isLoading) {
@@ -119,10 +123,10 @@ class _PageListProductState extends State<PageListProduct> {
       if (mounted && 
           AppDataService().isInitialized && 
           _scrollController.position.maxScrollExtent > 0 &&
-          _scrollController.position.extentAfter < 250.0) {
+          _scrollController.position.extentAfter < 350) {
             
         if (_isConfigInitialized && _canLoadMore && !_isCurrentlyLoadingNextPage) {
-          if (kDebugMode) print("Scroll near bottom (extentAfter < 200.0), attempting to load next page.");
+          if (kDebugMode) print("Scroll near bottom (extentAfter < 250.0), attempPting to load next page.");
           _loadNextPage();
         } else {
           if (kDebugMode) {
@@ -357,6 +361,7 @@ class _PageListProductState extends State<PageListProduct> {
           isProductsLoading: currentProductsLoadingState, // Pass the combined state
           canLoadMoreProducts: _canLoadMore,
           isShowingCachedContent: _isShowingCachedContent,
+          isOnline: _productStorage.isOnline, // Pass online status
         );
 
         if (screenWidth < 768) {
@@ -379,5 +384,56 @@ class _PageListProductState extends State<PageListProduct> {
         }
       },
     );
+  }
+
+  // Check for connectivity changes when returning to this page
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // Check if we need to refresh data when coming back online
+    if (_productStorage.isOnline && selectedCategoryId != -1) {
+      // When we return to this page and are online, check if we should refresh data
+      // But don't do it immediately - wait for route transitions to complete
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && selectedCategoryId != -1) {
+          // If we're coming back online, refresh data
+          _productStorage.refreshDataIfOnline(
+            categoryId: selectedCategoryId,
+            sortBy: currentSortMethod,
+            sortDir: currentSortDir,
+          );
+        }
+      });
+    }
+  }
+
+  // Add this method to listen for connectivity changes
+  void _setupConnectivityListener() {
+    // Get initial connectivity status
+    final Connectivity _connectivity = Connectivity();
+    bool _previousOnlineStatus = _productStorage.isOnline;
+    
+    // Listen to connectivity changes
+    _connectivity.onConnectivityChanged.listen((ConnectivityResult result) {
+      final bool isNowOnline = result != ConnectivityResult.none;
+      final bool wasOffline = !_previousOnlineStatus;
+      
+      if (wasOffline && isNowOnline && mounted) {
+        // Network restored - refresh data
+        if (kDebugMode) {
+          print("Network restored in PageListProduct - refreshing data");
+        }
+        
+        // Refresh both categories and current products
+        if (selectedCategoryId != -1) {
+          // Refresh current category data (will be done automatically by Storage now)
+          // Just make sure UI updates
+          setState(() {});
+        }
+      }
+      
+      _previousOnlineStatus = isNowOnline;
+    });
   }
 }

@@ -72,9 +72,12 @@ class AppDataService extends ChangeNotifier {
       }
       
       // If we just went from offline to online and data is already initialized,
-      // refresh data from server in the background
+      // refresh data from server immediately and automatically
       if (_isInitialized && wasOffline && _isOnline) {
-        _refreshDataFromServer();
+        if (kDebugMode) {
+          print('Network restored - immediately refreshing categories and brands');
+        }
+        _refreshDataFromServer(silent: true); // Use silent mode
       }
     });
   }
@@ -101,12 +104,23 @@ class AppDataService extends ChangeNotifier {
   }
   
   // Refresh data from server when going back online
-  Future<void> _refreshDataFromServer() async {
+  // Added silent parameter to control whether to show loading state
+  Future<void> _refreshDataFromServer({bool silent = false}) async {
     if (kDebugMode) {
-      print('Network restored - refreshing data from server');
+      print('Refreshing data from server (silent mode: $silent)');
+    }
+    
+    // Only set loading flag if not in silent mode
+    if (!silent) {
+      _isLoading = true;
+      notifyListeners();
     }
     
     try {
+      // Store old data in case we need to restore it
+      final oldCategories = List<CategoryDTO>.from(_categories);
+      final oldBrands = List<BrandDTO>.from(_brands);
+      
       // Fetch categories
       await _fetchCategoriesFromServer();
       
@@ -116,7 +130,7 @@ class AppDataService extends ChangeNotifier {
       // Save to local storage
       await _saveDataToLocalStorage();
       
-      // Notify listeners
+      // Always notify listeners of new data
       notifyListeners();
       
       if (kDebugMode) {
@@ -125,6 +139,20 @@ class AppDataService extends ChangeNotifier {
     } catch (e) {
       if (kDebugMode) {
         print('Error refreshing data from server: $e');
+      }
+      
+      // If in silent mode and we fail, don't disrupt the UI
+      if (silent) {
+        // Just log the error but don't change state
+        if (kDebugMode) {
+          print('Silent refresh failed, keeping existing data');
+        }
+      }
+    } finally {
+      // Only update loading state if not in silent mode
+      if (!silent && _isLoading) {
+        _isLoading = false;
+        notifyListeners();
       }
     }
   }
@@ -312,17 +340,49 @@ class AppDataService extends ChangeNotifier {
     await _preloadCategoryImages();
   }
   
-  // Preload and cache category images
+  // Preload and cache category images with enhanced offline support
   Future<void> _preloadCategoryImages() async {
     for (var category in _categories) {
       if (category.imageUrl != null && category.imageUrl!.isNotEmpty) {
         try {
-          final imageData = await _categoriesService.getImageFromServer(category.imageUrl);
-          if (imageData != null) {
-            _imageCache[category.imageUrl!] = imageData;
+          // First check if the image is already cached in memory or local storage
+          final productService = ProductService();
+          final bool isImageCached = productService.isImageCached(category.imageUrl);
+          
+          // Only fetch from server if not already cached
+          if (!isImageCached && _isOnline) {
+            final imageData = await _categoriesService.getImageFromServer(category.imageUrl);
+            if (imageData != null) {
+              _imageCache[category.imageUrl!] = imageData;
+              
+              // Also ensure it's saved to local storage for offline access
+              productService.addImageToCache(category.imageUrl!, imageData);
+              
+              if (kDebugMode) {
+                print('Cached image for category: ${category.name}');
+              }
+            }
+          } else if (isImageCached) {
+            // If already cached, just load to memory cache if needed
+            if (!_imageCache.containsKey(category.imageUrl)) {
+              final cachedImage = productService.getImageFromCache(category.imageUrl);
+              if (cachedImage != null) {
+                _imageCache[category.imageUrl!] = cachedImage;
+              }
+            }
             
             if (kDebugMode) {
-              print('Cached image for category: ${category.name}');
+              print('Using existing cached image for category: ${category.name}');
+            }
+          } else if (!_isOnline) {
+            // If offline, try to load from local storage
+            final localImage = await productService.loadImageFromLocalStorage(category.imageUrl!);
+            if (localImage != null) {
+              _imageCache[category.imageUrl!] = localImage;
+              
+              if (kDebugMode) {
+                print('Loaded offline image for category: ${category.name}');
+              }
             }
           }
         } catch (e) {

@@ -1,5 +1,6 @@
 import 'package:e_commerce_app/Constants/productTest.dart';
 import 'package:e_commerce_app/database/models/product_dto.dart'; // Import ProductDTO
+import 'package:e_commerce_app/database/services/product_service.dart';
 import 'package:e_commerce_app/widgets/Product/PaginatedProductGrid.dart';
 import 'package:e_commerce_app/widgets/SortingBar.dart';
 import 'package:e_commerce_app/widgets/footer.dart';
@@ -37,6 +38,9 @@ class CatalogProduct extends StatefulWidget {
   // Add flag to indicate if showing cached content
   final bool isShowingCachedContent;
 
+  // Add property to receive online status from parent
+  final bool isOnline;
+
 
   const CatalogProduct({
     super.key,
@@ -54,6 +58,7 @@ class CatalogProduct extends StatefulWidget {
      required this.isProductsLoading, // <-- Thêm vào constructor
      required this.canLoadMoreProducts, // <-- Thêm vào constructor
      required this.isShowingCachedContent, // Add this parameter
+     required this.isOnline, // Add this parameter
   });
 
   @override
@@ -82,44 +87,74 @@ class _CatalogProductState extends State<CatalogProduct> {
 
 
   // Helper function để hiển thị ảnh danh mục
-  // Sử dụng _categoriesService.getImageUrl để lấy URL đầy đủ
   Widget _buildImageWidget(String? imageSource, {double size = 40, BoxFit fit = BoxFit.cover}) {
-     // Hiển thị icon placeholder nếu không có đường dẫn ảnh hoặc service bị null (khả năng thấp)
+    // Hiển thị icon placeholder nếu không có đường dẫn ảnh hoặc service bị null
     if (imageSource == null || imageSource.isEmpty) {
       return Icon(Icons.image, size: size * 0.7, color: Colors.grey); // Placeholder icon
     }
 
-    // Sử dụng helper từ CategoriesService để lấy URL đầy đủ cho NetworkImage
-    String fullImageUrl = _categoriesService.getImageUrl(imageSource);
+    if (!widget.isOnline) {
+      // When offline, use the local storage image
+      return FutureBuilder<Uint8List?>(
+        future: _categoriesService.loadImageFromLocalStorage(imageSource),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Container(
+              color: Colors.grey[200],
+              child: Center(child: Icon(Icons.image, size: size * 0.5, color: Colors.grey[400])),
+            );
+          }
+          
+          if (snapshot.hasData && snapshot.data != null) {
+            // Successfully loaded local image - display it
+            return Image.memory(
+              snapshot.data!,
+              fit: fit,
+              key: ValueKey('offline_${imageSource}'),
+              errorBuilder: (context, error, stackTrace) {
+                return Icon(Icons.broken_image, size: size * 0.7, color: Colors.red);
+              },
+            );
+          }
+          
+          // No local image found while offline
+          return Icon(Icons.wifi_off, size: size * 0.7, color: Colors.grey);
+        },
+      );
+    } else {
+      // ONLINE MODE - Add this else block to handle online case
+      // Sử dụng helper từ CategoriesService để lấy URL đầy đủ cho NetworkImage
+      String fullImageUrl = _categoriesService.getImageUrl(imageSource);
 
-     if (kDebugMode) {
-         // print('[_buildImageWidget] Using FULL URL for Image.network: $fullImageUrl (Original source: $imageSource)');
-     }
-
-    // Hiển thị ảnh từ Network
-    return Image.network(
-      fullImageUrl,
-      fit: fit,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Center(
-          child: SizedBox(
-            width: size * 0.5,
-            height: size * 0.5,
-            child: CircularProgressIndicator(
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                  : null,
-              strokeWidth: 2,
+      // Hiển thị ảnh từ Network với force reload khi network vừa được khôi phục
+      return Image.network(
+        fullImageUrl,
+        fit: fit,
+        // Use cacheWidth for better memory usage
+        cacheWidth: (size * 2).toInt(),
+        // Force reload if network just restored
+        key: ValueKey('online_${imageSource}_${ProductService.isNetworkRestored}'),
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Center(
+            child: SizedBox(
+              width: size * 0.5,
+              height: size * 0.5,
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                    : null,
+                strokeWidth: 2,
+              ),
             ),
-          ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        if (kDebugMode) print('[_buildImageWidget] Image.network failed for $fullImageUrl (Original: $imageSource): $error');
-        return Icon(Icons.broken_image, size: size * 0.7, color: Colors.red); // Error icon
-      },
-    );
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          if (kDebugMode) print('[_buildImageWidget] Image.network failed for $fullImageUrl (Original: $imageSource): $error');
+          return Icon(Icons.broken_image, size: size * 0.7, color: Colors.red); // Error icon
+        },
+      );
+    }
   }
 
 
@@ -271,6 +306,26 @@ class _CatalogProductState extends State<CatalogProduct> {
       // Drawer for mobile view
       drawer: isMobile ? Drawer(
         child: _buildCategoryPanel(min(size.width * 0.6, 280.0), isMobile), // Truyền chiều rộng cho panel trong drawer
+      ) : null,
+      // Add offline banner when device is offline
+      bottomNavigationBar: !widget.isOnline ? Material(
+        color: Colors.orange,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.wifi_off, color: Colors.white),
+                SizedBox(width: 8),
+                Text(
+                  'Bạn đang xem phiên bản offline',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+        ),
       ) : null,
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -122,7 +122,7 @@ class ProductItem extends StatelessWidget {
         }
       );
     }
-    
+    // nếu có mạng
     // For non-search mode, keep existing behavior
     if (isFromCache) {
       // Try to get image directly from cache first
@@ -161,23 +161,61 @@ class ProductItem extends StatelessWidget {
             ),
           ),
           
-          // Load the image without a loading indicator
-          Positioned.fill(
-            child: Image.network(
-              productService.getImageUrl(imageUrl!),
-              fit: BoxFit.cover,
-              // Remove the loadingBuilder to prevent showing a loading spinner
-              errorBuilder: (context, error, stackTrace) {
-                print('Error loading image: $error');
-                return const Center(
-                  child: Icon(
-                    Icons.broken_image,
-                    size: 50,
-                    color: Colors.grey,
-                  ),
+          // Check if we're offline first
+          FutureBuilder<bool>(
+            future: productService.isOnline(),
+            builder: (context, snapshot) {
+              final isOnline = snapshot.data ?? true; // Default to online if not determined yet
+              
+              if (!isOnline) {
+                // OFFLINE: Try to load from local storage without changing existing behavior
+                return FutureBuilder<Uint8List?>(
+                  future: productService.loadImageFromLocalStorage(imageUrl!),
+                  builder: (context, imageSnapshot) {
+                    if (imageSnapshot.hasData && imageSnapshot.data != null) {
+                      // If image is available in local storage, show it
+                      return Positioned.fill(
+                        child: Image.memory(
+                          imageSnapshot.data!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Center(
+                              child: Icon(
+                                Icons.broken_image,
+                                size: 50,
+                                color: Colors.grey,
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    }
+                    
+                    // If no local image, just show placeholder (already visible in background)
+                    return const SizedBox.shrink();
+                  },
                 );
-              },
-            ),
+              }
+              
+              // ONLINE: Use existing behavior - load from network without spinner
+              return Positioned.fill(
+                child: Image.network(
+                  productService.getImageUrl(imageUrl!),
+                  fit: BoxFit.cover,
+                  // Remove the loadingBuilder to prevent showing a loading spinner
+                  errorBuilder: (context, error, stackTrace) {
+                    print('Error loading image: $error');
+                    return const Center(
+                      child: Icon(
+                        Icons.broken_image,
+                        size: 50,
+                        color: Colors.grey,
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
           ),
         ],
       );
