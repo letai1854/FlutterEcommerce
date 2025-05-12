@@ -19,9 +19,7 @@ import 'package:e_commerce_app/database/PageResponse.dart'; // Assuming PageResp
 // Assuming UserInfo class exists for auth token retrieval
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 
-
 class CategoriesService {
-
   // Ensure baseurl is correctly defined in database_helper.dart
   final String baseUrl = baseurl;
   late final http.Client httpClient;
@@ -60,7 +58,6 @@ class CategoriesService {
   // Fetch Categories with Pagination and Date Filters (if backend supports it)
   // Corresponds to backend GET /api/categories
   // Java snippet shows pageable, startDate, endDate. Assuming these are used.
-  
 
   // Get Category by ID
   // Corresponds to backend GET /api/categories/{id}
@@ -77,9 +74,10 @@ class CategoriesService {
 
       if (kDebugMode) {
         print('Get Category By ID Response Status: ${response.statusCode}');
-         if (response.bodyBytes.isNotEmpty) {
-           print('Get Category By ID Response Body: ${utf8.decode(response.bodyBytes)}');
-         }
+        if (response.bodyBytes.isNotEmpty) {
+          print(
+              'Get Category By ID Response Body: ${utf8.decode(response.bodyBytes)}');
+        }
       }
 
       switch (response.statusCode) {
@@ -88,57 +86,59 @@ class CategoriesService {
           if (responseBody is Map<String, dynamic>) {
             return CategoryDTO.fromJson(responseBody);
           } else {
-             throw FormatException('Invalid response format for category ID $id: Expected a JSON object, got ${responseBody.runtimeType}.');
+            throw FormatException(
+                'Invalid response format for category ID $id: Expected a JSON object, got ${responseBody.runtimeType}.');
           }
 
         case 404: // Not Found
-           String errorMessage = 'Category not found for ID $id.';
-            try {
-              if (response.bodyBytes.isNotEmpty) {
-                 final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
-                 if (errorBody is Map && errorBody.containsKey('message')) {
-                    errorMessage = errorBody['message'];
-                 } else if (errorBody is String && errorBody.isNotEmpty) {
-                    errorMessage = errorBody;
-                 }
+          String errorMessage = 'Category not found for ID $id.';
+          try {
+            if (response.bodyBytes.isNotEmpty) {
+              final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
+              if (errorBody is Map && errorBody.containsKey('message')) {
+                errorMessage = errorBody['message'];
+              } else if (errorBody is String && errorBody.isNotEmpty) {
+                errorMessage = errorBody;
               }
-            } catch (_) {}
-           throw Exception('Category not found: $errorMessage (Status: 404)');
+            }
+          } catch (_) {}
+          throw Exception('Category not found: $errorMessage (Status: 404)');
 
         default:
           String errorMessage = 'Failed to fetch category details for ID $id.';
-           try {
-             if (response.bodyBytes.isNotEmpty) {
-                 final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
-                 if (errorBody is Map && errorBody.containsKey('message')) {
-                    errorMessage = errorBody['message'];
-                 } else if (errorBody is String && errorBody.isNotEmpty) {
-                    errorMessage = errorBody;
-                 }
-             }
-           } catch (_) {}
-           errorMessage = '$errorMessage (Status: ${response.statusCode})';
+          try {
+            if (response.bodyBytes.isNotEmpty) {
+              final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
+              if (errorBody is Map && errorBody.containsKey('message')) {
+                errorMessage = errorBody['message'];
+              } else if (errorBody is String && errorBody.isNotEmpty) {
+                errorMessage = errorBody;
+              }
+            }
+          } catch (_) {}
+          errorMessage = '$errorMessage (Status: ${response.statusCode})';
           throw Exception('Failed to fetch category: $errorMessage');
       }
     } on SocketException catch (e) {
-       if (kDebugMode) print('SocketException during getCategoryById: $e');
-       throw Exception('Network Error: Could not connect to server.');
+      if (kDebugMode) print('SocketException during getCategoryById: $e');
+      throw Exception('Network Error: Could not connect to server.');
     } on FormatException catch (e) {
-       if (kDebugMode) print('FormatException during getCategoryById: $e');
-       throw Exception('Server response format error for category details.');
+      if (kDebugMode) print('FormatException during getCategoryById: $e');
+      throw Exception('Server response format error for category details.');
     } catch (e) {
-      if (kDebugMode) print('Unexpected Error during getCategoryById: ${e.toString()}');
+      if (kDebugMode)
+        print('Unexpected Error during getCategoryById: ${e.toString()}');
       throw Exception('An unexpected error occurred: ${e.toString()}');
     }
   }
 
-
   // Create Category
   // Corresponds to backend POST /api/categories
   // Requires ADMIN role
-  Future<CategoryDTO> createCategory(CreateCategoryRequestDTO requestDTO) async {
+  Future<CategoryDTO> createCategory(
+      CreateCategoryRequestDTO requestDTO) async {
     final url = Uri.parse('$baseUrl/api/categories');
-     if (kDebugMode) print('Create Category Request URL: $url');
+    if (kDebugMode) print('Create Category Request URL: $url');
 
     try {
       final response = await httpClient.post(
@@ -148,77 +148,82 @@ class CategoriesService {
       );
 
       if (kDebugMode) {
-          print('Create Category Response Status: ${response.statusCode}');
-           if (response.bodyBytes.isNotEmpty) {
-              print('Create Category Response Body: ${utf8.decode(response.bodyBytes)}');
-           }
+        print('Create Category Response Status: ${response.statusCode}');
+        if (response.bodyBytes.isNotEmpty) {
+          print(
+              'Create Category Response Body: ${utf8.decode(response.bodyBytes)}');
+        }
       }
 
       switch (response.statusCode) {
         case 201: // Created
           final responseBody = jsonDecode(utf8.decode(response.bodyBytes));
-           if (responseBody is Map<String, dynamic>) {
-             return CategoryDTO.fromJson(responseBody);
-           } else {
-              throw FormatException('Invalid response format for create category: Expected a JSON object, got ${responseBody.runtimeType}.');
-           }
+          if (responseBody is Map<String, dynamic>) {
+            return CategoryDTO.fromJson(responseBody);
+          } else {
+            throw FormatException(
+                'Invalid response format for create category: Expected a JSON object, got ${responseBody.runtimeType}.');
+          }
 
         case 400: // Bad Request (e.g., validation errors, duplicate name)
-           String errorMessage = 'Invalid category data.';
-            try {
-              if (response.bodyBytes.isNotEmpty) {
-                 final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
-                 if (errorBody is Map && errorBody.containsKey('message')) {
-                    errorMessage = errorBody['message'];
-                 } else if (errorBody is String && errorBody.isNotEmpty) {
-                    errorMessage = errorBody;
-                 }
+          String errorMessage = 'Invalid category data.';
+          try {
+            if (response.bodyBytes.isNotEmpty) {
+              final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
+              if (errorBody is Map && errorBody.containsKey('message')) {
+                errorMessage = errorBody['message'];
+              } else if (errorBody is String && errorBody.isNotEmpty) {
+                errorMessage = errorBody;
               }
-            } catch (_) {}
-           throw Exception('Failed to create category: $errorMessage (Status: 400)');
+            }
+          } catch (_) {}
+          throw Exception(
+              'Failed to create category: $errorMessage (Status: 400)');
 
         case 403: // Forbidden (Missing or invalid ADMIN token)
-           String errorMessage = 'Permission denied.';
-            try {
-              if (response.bodyBytes.isNotEmpty) {
-                 final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
-                 if (errorBody is Map && errorBody.containsKey('message')) {
-                    errorMessage = errorBody['message'];
-                 } else if (errorBody is String && errorBody.isNotEmpty) {
-                    errorMessage = errorBody;
-                 }
+          String errorMessage = 'Permission denied.';
+          try {
+            if (response.bodyBytes.isNotEmpty) {
+              final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
+              if (errorBody is Map && errorBody.containsKey('message')) {
+                errorMessage = errorBody['message'];
+              } else if (errorBody is String && errorBody.isNotEmpty) {
+                errorMessage = errorBody;
               }
-            } catch (_) {}
-           throw Exception('Permission denied: $errorMessage (Status: 403)'); // Specific error for 403
+            }
+          } catch (_) {}
+          throw Exception(
+              'Permission denied: $errorMessage (Status: 403)'); // Specific error for 403
 
         default:
           String errorMessage = 'Failed to create category.';
-           try {
-             if (response.bodyBytes.isNotEmpty) {
-                 final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
-                 if (errorBody is Map && errorBody.containsKey('message')) {
-                    errorMessage = errorBody['message'];
-                 } else if (errorBody is String && errorBody.isNotEmpty) {
-                    errorMessage = errorBody;
-                 }
-             }
-           } catch (_) {}
-           errorMessage = '$errorMessage (Status: ${response.statusCode})';
+          try {
+            if (response.bodyBytes.isNotEmpty) {
+              final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
+              if (errorBody is Map && errorBody.containsKey('message')) {
+                errorMessage = errorBody['message'];
+              } else if (errorBody is String && errorBody.isNotEmpty) {
+                errorMessage = errorBody;
+              }
+            }
+          } catch (_) {}
+          errorMessage = '$errorMessage (Status: ${response.statusCode})';
           throw Exception('Failed to create category: $errorMessage');
       }
     } on SocketException catch (e) {
-       if (kDebugMode) print('SocketException during createCategory: $e');
-       throw Exception('Network Error: Could not connect to server.');
+      if (kDebugMode) print('SocketException during createCategory: $e');
+      throw Exception('Network Error: Could not connect to server.');
     } on FormatException catch (e) {
-       if (kDebugMode) print('FormatException during createCategory: $e');
-       throw Exception('Server response format error for create category.');
+      if (kDebugMode) print('FormatException during createCategory: $e');
+      throw Exception('Server response format error for create category.');
     } catch (e) {
-      if (kDebugMode) print('Unexpected Error during createCategory: ${e.toString()}');
+      if (kDebugMode)
+        print('Unexpected Error during createCategory: ${e.toString()}');
       throw Exception('An unexpected error occurred: ${e.toString()}');
     }
   }
 
-Future<String?> uploadImage(List<int> imageBytes, String fileName) async {
+  Future<String?> uploadImage(List<int> imageBytes, String fileName) async {
     final url = Uri.parse('$baseUrl/api/images/upload');
     print(
         "Starting image upload, bytes: ${imageBytes.length}, filename: $fileName");
@@ -289,14 +294,7 @@ Future<String?> uploadImage(List<int> imageBytes, String fileName) async {
   Future<Uint8List?> getImageFromServer(String? imagePath) async {
     if (imagePath == null || imagePath.isEmpty) return null;
 
-    // First check AppDataService image cache
-    final appDataService = AppDataService();
-    final cachedImage = appDataService.getCategoryImage(imagePath);
-    if (cachedImage != null) {
-      return cachedImage;
-    }
-
-    // Then check UserInfo cache
+    // Check UserInfo cache (primarily for avatars, but ProductService is more general)
     if (UserInfo.avatarCache.containsKey(imagePath)) {
       return UserInfo.avatarCache[imagePath];
     }
@@ -305,39 +303,34 @@ Future<String?> uploadImage(List<int> imageBytes, String fileName) async {
       // Leverage ProductService's implementation for consistency and better offline support
       final productService = ProductService();
       final imageData = await productService.getImageFromServer(imagePath);
-      
-      // If we got data from ProductService, store it in our caches too
+
+      // If we got data from ProductService, store it in UserInfo.avatarCache as well (maintaining original behavior)
       if (imageData != null) {
         UserInfo.avatarCache[imagePath] = imageData;
-        // Instead of directly accessing the private field, use the public method:
-        // Pass to AppDataService using its public methods to store in cache
-        if (appDataService is AppDataService) {
-          // Note: This assumes the AppDataService has a method to store images.
-          // If it doesn't have such a method, we don't need to store it there.
-          // The image is already cached in UserInfo.avatarCache and ProductService's cache
-        }
       }
-      
+
       return imageData;
     } catch (e) {
       if (kDebugMode) {
-        print('Error fetching category image: $e');
+        print('Error fetching category image via ProductService: $e');
       }
-      
+
       // Fallback to direct network request if ProductService fails
       try {
         String fullUrl = getImageUrl(imagePath);
         final response = await httpClient.get(Uri.parse(fullUrl));
 
         if (response.statusCode == 200) {
-          // Store in both caches
+          // Store in UserInfo.avatarCache on successful fallback
           UserInfo.avatarCache[imagePath] = response.bodyBytes;
           return response.bodyBytes;
         }
-      } catch (e) {
-        print('Error in fallback image fetch: $e');
+      } catch (networkError) {
+        if (kDebugMode) {
+          print('Error in fallback image fetch for category: $networkError');
+        }
       }
-      
+
       return null;
     }
   }
@@ -356,12 +349,14 @@ Future<String?> uploadImage(List<int> imageBytes, String fileName) async {
     String path = imagePath.startsWith('/') ? imagePath : '/$imagePath';
     return '$baseUrl$path';
   }
+
   // Update Category
   // Corresponds to backend PUT /api/categories/{id}
   // Requires ADMIN role
-  Future<CategoryDTO> updateCategory(int id, UpdateCategoryRequestDTO requestDTO) async {
+  Future<CategoryDTO> updateCategory(
+      int id, UpdateCategoryRequestDTO requestDTO) async {
     final url = Uri.parse('$baseUrl/api/categories/$id');
-     if (kDebugMode) print('Update Category Request URL: $url');
+    if (kDebugMode) print('Update Category Request URL: $url');
 
     try {
       final response = await httpClient.put(
@@ -371,90 +366,94 @@ Future<String?> uploadImage(List<int> imageBytes, String fileName) async {
       );
 
       if (kDebugMode) {
-          print('Update Category Response Status: ${response.statusCode}');
-           if (response.bodyBytes.isNotEmpty) {
-               print('Update Category Response Body: ${utf8.decode(response.bodyBytes)}');
-           }
+        print('Update Category Response Status: ${response.statusCode}');
+        if (response.bodyBytes.isNotEmpty) {
+          print(
+              'Update Category Response Body: ${utf8.decode(response.bodyBytes)}');
+        }
       }
 
       switch (response.statusCode) {
         case 200: // OK
           final responseBody = jsonDecode(utf8.decode(response.bodyBytes));
-           if (responseBody is Map<String, dynamic>) {
-             return CategoryDTO.fromJson(responseBody);
-           } else {
-              throw FormatException('Invalid response format for update category $id: Expected a JSON object, got ${responseBody.runtimeType}.');
-           }
+          if (responseBody is Map<String, dynamic>) {
+            return CategoryDTO.fromJson(responseBody);
+          } else {
+            throw FormatException(
+                'Invalid response format for update category $id: Expected a JSON object, got ${responseBody.runtimeType}.');
+          }
 
         case 400: // Bad Request
-           String errorMessage = 'Invalid category data for update.';
-            try {
-              if (response.bodyBytes.isNotEmpty) {
-                 final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
-                 if (errorBody is Map && errorBody.containsKey('message')) {
-                    errorMessage = errorBody['message'];
-                 } else if (errorBody is String && errorBody.isNotEmpty) {
-                    errorMessage = errorBody;
-                 }
+          String errorMessage = 'Invalid category data for update.';
+          try {
+            if (response.bodyBytes.isNotEmpty) {
+              final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
+              if (errorBody is Map && errorBody.containsKey('message')) {
+                errorMessage = errorBody['message'];
+              } else if (errorBody is String && errorBody.isNotEmpty) {
+                errorMessage = errorBody;
               }
-            } catch (_) {}
-           throw Exception('Failed to update category: $errorMessage (Status: 400)');
+            }
+          } catch (_) {}
+          throw Exception(
+              'Failed to update category: $errorMessage (Status: 400)');
 
         case 403: // Forbidden
-            String errorMessage = 'Permission denied.';
-            try {
-              if (response.bodyBytes.isNotEmpty) {
-                 final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
-                 if (errorBody is Map && errorBody.containsKey('message')) {
-                    errorMessage = errorBody['message'];
-                 } else if (errorBody is String && errorBody.isNotEmpty) {
-                    errorMessage = errorBody;
-                 }
+          String errorMessage = 'Permission denied.';
+          try {
+            if (response.bodyBytes.isNotEmpty) {
+              final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
+              if (errorBody is Map && errorBody.containsKey('message')) {
+                errorMessage = errorBody['message'];
+              } else if (errorBody is String && errorBody.isNotEmpty) {
+                errorMessage = errorBody;
               }
-            } catch (_) {}
-           throw Exception('Permission denied: $errorMessage (Status: 403)');
+            }
+          } catch (_) {}
+          throw Exception('Permission denied: $errorMessage (Status: 403)');
 
         case 404: // Not Found
-           String errorMessage = 'Category not found for update.';
-             try {
-               if (response.bodyBytes.isNotEmpty) {
-                 final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
-                 if (errorBody is Map && errorBody.containsKey('message')) {
-                    errorMessage = errorBody['message'];
-                 } else if (errorBody is String && errorBody.isNotEmpty) {
-                  errorMessage = errorBody;
-                 }
-               }
-             } catch (_) {}
-            throw Exception('Category not found for update: $errorMessage (Status: 404)');
+          String errorMessage = 'Category not found for update.';
+          try {
+            if (response.bodyBytes.isNotEmpty) {
+              final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
+              if (errorBody is Map && errorBody.containsKey('message')) {
+                errorMessage = errorBody['message'];
+              } else if (errorBody is String && errorBody.isNotEmpty) {
+                errorMessage = errorBody;
+              }
+            }
+          } catch (_) {}
+          throw Exception(
+              'Category not found for update: $errorMessage (Status: 404)');
 
         default:
           String errorMessage = 'Failed to update category.';
-           try {
-             if (response.bodyBytes.isNotEmpty) {
-                 final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
-                 if (errorBody is Map && errorBody.containsKey('message')) {
-                    errorMessage = errorBody['message'];
-                 } else if (errorBody is String && errorBody.isNotEmpty) {
-                    errorMessage = errorBody;
-                 }
-             }
-           } catch (_) {}
-           errorMessage = '$errorMessage (Status: ${response.statusCode})';
+          try {
+            if (response.bodyBytes.isNotEmpty) {
+              final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
+              if (errorBody is Map && errorBody.containsKey('message')) {
+                errorMessage = errorBody['message'];
+              } else if (errorBody is String && errorBody.isNotEmpty) {
+                errorMessage = errorBody;
+              }
+            }
+          } catch (_) {}
+          errorMessage = '$errorMessage (Status: ${response.statusCode})';
           throw Exception('Failed to update category: $errorMessage');
       }
     } on SocketException catch (e) {
-       if (kDebugMode) print('SocketException during updateCategory: $e');
-       throw Exception('Network Error: Could not connect to server.');
+      if (kDebugMode) print('SocketException during updateCategory: $e');
+      throw Exception('Network Error: Could not connect to server.');
     } on FormatException catch (e) {
-       if (kDebugMode) print('FormatException during updateCategory: $e');
-       throw Exception('Server response format error for update category.');
+      if (kDebugMode) print('FormatException during updateCategory: $e');
+      throw Exception('Server response format error for update category.');
     } catch (e) {
-      if (kDebugMode) print('Unexpected Error during updateCategory: ${e.toString()}');
+      if (kDebugMode)
+        print('Unexpected Error during updateCategory: ${e.toString()}');
       throw Exception('An unexpected error occurred: ${e.toString()}');
     }
   }
-
 
   // Delete Category
   // Corresponds to backend DELETE /api/categories/{id}
@@ -471,9 +470,10 @@ Future<String?> uploadImage(List<int> imageBytes, String fileName) async {
 
       if (kDebugMode) {
         print('Delete Category Response Status: ${response.statusCode}');
-         if (response.bodyBytes.isNotEmpty) {
-           print('Delete Category Response Body: ${utf8.decode(response.bodyBytes)}');
-         }
+        if (response.bodyBytes.isNotEmpty) {
+          print(
+              'Delete Category Response Body: ${utf8.decode(response.bodyBytes)}');
+        }
       }
 
       switch (response.statusCode) {
@@ -481,67 +481,70 @@ Future<String?> uploadImage(List<int> imageBytes, String fileName) async {
           return; // Return void on success
 
         case 403: // Forbidden
-           String errorMessage = 'Permission denied.';
-            try {
-              if (response.bodyBytes.isNotEmpty) {
-                 final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
-                 if (errorBody is Map && errorBody.containsKey('message')) {
-                    errorMessage = errorBody['message'];
-                 } else if (errorBody is String && errorBody.isNotEmpty) {
-                    errorMessage = errorBody;
-                 }
+          String errorMessage = 'Permission denied.';
+          try {
+            if (response.bodyBytes.isNotEmpty) {
+              final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
+              if (errorBody is Map && errorBody.containsKey('message')) {
+                errorMessage = errorBody['message'];
+              } else if (errorBody is String && errorBody.isNotEmpty) {
+                errorMessage = errorBody;
               }
-            } catch (_) {}
-           throw Exception('Permission denied: $errorMessage (Status: 403)'); // Specific error for 403
+            }
+          } catch (_) {}
+          throw Exception(
+              'Permission denied: $errorMessage (Status: 403)'); // Specific error for 403
 
         case 404: // Not Found
-           String errorMessage = 'Category not found for deletion.';
-            try {
-              if (response.bodyBytes.isNotEmpty) {
-                 final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
-                 if (errorBody is Map && errorBody.containsKey('message')) {
-                    errorMessage = errorBody['message'];
-                 } else if (errorBody is String && errorBody.isNotEmpty) {
-                    errorMessage = errorBody;
-                 }
+          String errorMessage = 'Category not found for deletion.';
+          try {
+            if (response.bodyBytes.isNotEmpty) {
+              final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
+              if (errorBody is Map && errorBody.containsKey('message')) {
+                errorMessage = errorBody['message'];
+              } else if (errorBody is String && errorBody.isNotEmpty) {
+                errorMessage = errorBody;
               }
-            } catch (_) {}
-           throw Exception('Category not found for deletion: $errorMessage (Status: 404)');
+            }
+          } catch (_) {}
+          throw Exception(
+              'Category not found for deletion: $errorMessage (Status: 404)');
 
         default:
           String errorMessage = 'Failed to delete category.';
-           try {
-             if (response.bodyBytes.isNotEmpty) {
-                 final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
-                 if (errorBody is Map && errorBody.containsKey('message')) {
-                    errorMessage = errorBody['message'];
-                 } else if (errorBody is String && errorBody.isNotEmpty) {
-                    errorMessage = errorBody;
-                 }
-             }
-           } catch (_) {}
-           errorMessage = '$errorMessage (Status: ${response.statusCode})';
+          try {
+            if (response.bodyBytes.isNotEmpty) {
+              final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
+              if (errorBody is Map && errorBody.containsKey('message')) {
+                errorMessage = errorBody['message'];
+              } else if (errorBody is String && errorBody.isNotEmpty) {
+                errorMessage = errorBody;
+              }
+            }
+          } catch (_) {}
+          errorMessage = '$errorMessage (Status: ${response.statusCode})';
           throw Exception('Failed to delete category: $errorMessage');
       }
     } on SocketException catch (e) {
-       if (kDebugMode) print('SocketException during deleteCategory: $e');
-       throw Exception('Network Error: Could not connect to server.');
+      if (kDebugMode) print('SocketException during deleteCategory: $e');
+      throw Exception('Network Error: Could not connect to server.');
     } catch (e) {
-      if (kDebugMode) print('Unexpected Error during deleteCategory: ${e.toString()}');
+      if (kDebugMode)
+        print('Unexpected Error during deleteCategory: ${e.toString()}');
       throw Exception('An unexpected error occurred: ${e.toString()}');
     }
   }
 
-   // Dispose the httpClient when the service is no longer needed
-   void dispose() {
-     httpClient.close();
-     if (kDebugMode) print('CategoriesService httpClient disposed.');
-   }
+  // Dispose the httpClient when the service is no longer needed
+  void dispose() {
+    httpClient.close();
+    if (kDebugMode) print('CategoriesService httpClient disposed.');
+  }
 
   // Add public method to load image from local storage, similar to ProductService
   Future<Uint8List?> loadImageFromLocalStorage(String imagePath) async {
     if (imagePath == null || imagePath.isEmpty) return null;
-    
+
     try {
       // First check if ProductService already has this image cached
       final ProductService productService = ProductService();
@@ -560,5 +563,3 @@ Future<String?> uploadImage(List<int> imageBytes, String fileName) async {
     }
   }
 }
-
-

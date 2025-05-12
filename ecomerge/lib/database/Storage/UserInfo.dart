@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../database/models/user_model.dart';
 import '../services/user_service.dart';
 import '../Storage/CartStorage.dart';
+import '../../services/shared_preferences_service.dart'; // Import SharedPreferencesService
 
 class UserInfo extends ChangeNotifier {
   // Singleton instance
@@ -47,15 +48,15 @@ class UserInfo extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final userJson = prefs.getString(_userKey);
       final token = prefs.getString(_tokenKey);
-      
+
       if (userJson != null) {
         _currentUser = User.fromMap(jsonDecode(userJson));
       }
-      
+
       if (token != null) {
         _authToken = token;
       }
-      
+
       notifyListeners();
       print('User data loaded from local storage');
     } catch (e) {
@@ -67,19 +68,19 @@ class UserInfo extends ChangeNotifier {
   Future<void> saveUserData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       if (_currentUser != null) {
         await prefs.setString(_userKey, jsonEncode(_currentUser!.toMap()));
       } else {
         await prefs.remove(_userKey);
       }
-      
+
       if (_authToken != null) {
         await prefs.setString(_tokenKey, _authToken!);
       } else {
         await prefs.remove(_tokenKey);
       }
-      
+
       print('User data saved to local storage');
     } catch (e) {
       print('Error saving user data: $e');
@@ -94,16 +95,15 @@ class UserInfo extends ChangeNotifier {
     if (loginResponse['user'] != null) {
       _currentUser = User.fromMap(loginResponse['user']);
     }
-    
+
     // Save user data to local storage after updating
     await saveUserData();
-    
+
     // First notify listeners that login state has changed
     notifyListeners();
-    
+
     // Then sync cart data after successful login
     await syncCartAfterLogin();
-
   }
 
   // Method to fetch latest user data (including points) and update
@@ -186,7 +186,7 @@ class UserInfo extends ChangeNotifier {
       }
       notifyListeners(); // Notify listeners about the change
     }
-    
+
     // Save changes to local storage
     saveUserData();
   }
@@ -208,7 +208,7 @@ class UserInfo extends ChangeNotifier {
       print('Updated customer points to: $newPoints');
       notifyListeners(); // Notify listeners about the change
     }
-    
+
     // Save changes to local storage
     saveUserData();
   }
@@ -217,10 +217,10 @@ class UserInfo extends ChangeNotifier {
   void clearUserInfo() {
     _currentUser = null;
     _authToken = null;
-    
+
     // Clear saved data from local storage
     saveUserData();
-    
+
     notifyListeners(); // Notify listeners about the change
   }
 
@@ -240,5 +240,72 @@ class UserInfo extends ChangeNotifier {
   // Method to get user avatar URL
   String? getUserAvatar() {
     return _currentUser?.avatar;
+  }
+
+  // New method to save the complete _currentUser object to SharedPreferences via SharedPreferencesService
+  Future<void> saveCompleteUserToPersistentStorage() async {
+    if (_currentUser == null) {
+      print('No current user to save to persistent storage.');
+      return;
+    }
+    try {
+      final SharedPreferencesService prefsService =
+          await SharedPreferencesService.getInstance();
+      final String userJson = jsonEncode(_currentUser!.toMap());
+      await prefsService.savePersistedCompleteUserData(userJson);
+      print('Complete user data saved to persistent storage.');
+
+      // Also save avatar if it exists in cache
+      if (_currentUser!.avatar != null && _currentUser!.avatar!.isNotEmpty) {
+        final String avatarPath = _currentUser!.avatar!;
+        if (_avatarCache.containsKey(avatarPath)) {
+          final Uint8List? imageData = _avatarCache[avatarPath];
+          if (imageData != null) {
+            await prefsService.saveImageData(avatarPath, imageData);
+            print('Avatar for $avatarPath saved to persistent storage.');
+          }
+        }
+      }
+    } catch (e) {
+      print('Error saving complete user data to persistent storage: $e');
+    }
+  }
+
+  // New method to load the complete user object from SharedPreferences via SharedPreferencesService
+  Future<void> loadCompleteUserFromPersistentStorage() async {
+    try {
+      final SharedPreferencesService prefsService =
+          await SharedPreferencesService.getInstance();
+      final String? userJson =
+          await prefsService.loadPersistedCompleteUserData();
+
+      if (userJson != null) {
+        _currentUser = User.fromMap(jsonDecode(userJson));
+        // notifyListeners(); // Notify after avatar is potentially loaded too
+        print('Complete user data loaded from persistent storage.');
+
+        // After loading user, try to load their avatar from persistent storage
+        if (_currentUser!.avatar != null && _currentUser!.avatar!.isNotEmpty) {
+          final String avatarPath = _currentUser!.avatar!;
+          final Uint8List? imageData =
+              await prefsService.getImageData(avatarPath);
+          if (imageData != null) {
+            _avatarCache[avatarPath] = imageData;
+            print(
+                'Avatar for $avatarPath loaded from persistent storage into _avatarCache.');
+          } else {
+            print('Avatar for $avatarPath not found in persistent storage.');
+          }
+        }
+        notifyListeners(); // Notify after user and potentially avatar are loaded
+      } else {
+        print('No complete user data found in persistent storage.');
+      }
+    } catch (e) {
+      print('Error loading complete user data from persistent storage: $e');
+      // Optionally, clear corrupted data or handle error
+      // final SharedPreferencesService prefsService = await SharedPreferencesService.getInstance();
+      // await prefsService.removePersistedCompleteUserData();
+    }
   }
 }

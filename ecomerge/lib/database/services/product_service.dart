@@ -16,6 +16,7 @@ import 'package:http/io_client.dart';
 import 'package:path_provider/path_provider.dart'; // For file access
 import 'package:connectivity_plus/connectivity_plus.dart'; // For connectivity checking
 import 'package:crypto/crypto.dart'; // For creating image filename hashes
+import 'package:e_commerce_app/services/shared_preferences_service.dart'; // Added for SharedPreferences
 
 class ProductService {
   final String baseUrl = baseurl; // Lấy từ database_helper
@@ -64,69 +65,70 @@ class ProductService {
       return true;
     }
   }
-  
+
   // Get path to save images locally
   Future<String> get _localPath async {
     final directory = await getApplicationDocumentsDirectory();
-    
+
     // Create a specific directory for product images if it doesn't exist
     final imageDir = Directory('${directory.path}/product_images');
     if (!await imageDir.exists()) {
       await imageDir.create(recursive: true);
     }
-    
+
     return imageDir.path;
   }
-  
+
   // Get a filename for a given image path using hash for consistency
   String _getImageFileName(String imagePath) {
     // Create a hash of the image path to use as filename
     var bytes = utf8.encode(imagePath);
     var digest = sha256.convert(bytes);
-    return digest.toString() + '.png'; // Always use .png extension for consistency
+    return digest.toString() +
+        '.png'; // Always use .png extension for consistency
   }
-  
+
   // Save image to local storage
-  Future<void> _saveImageToLocalStorage(String imagePath, Uint8List imageBytes) async {
+  Future<void> _saveImageToLocalStorage(
+      String imagePath, Uint8List imageBytes) async {
     try {
-      if (imagePath.isEmpty || imageBytes.isEmpty) return;
-      
-      final path = await _localPath;
-      final filename = _getImageFileName(imagePath);
-      final file = File('$path/$filename');
-      
-      await file.writeAsBytes(imageBytes);
-      
-      if (kDebugMode) {
-        print('Saved image to local storage: $filename');
+      // Use SharedPreferencesService to save image data on non-web platforms
+      if (!kIsWeb) {
+        final prefsService = await SharedPreferencesService.getInstance();
+        await prefsService.saveImageData(imagePath, imageBytes);
+        if (kDebugMode) {
+          print(
+              'Saved image to SharedPreferences via ProductService: $imagePath');
+        }
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error saving image to local storage: $e');
+        print('Error saving image to local storage in ProductService: $e');
       }
     }
   }
-  
+
   // Load image from local storage
   Future<Uint8List?> _loadImageFromLocalStorage(String imagePath) async {
     try {
-      final path = await _localPath;
-      final filename = _getImageFileName(imagePath);
-      final file = File('$path/$filename');
-      
-      if (await file.exists()) {
-        final bytes = await file.readAsBytes();
-        if (kDebugMode) {
-          print('Loaded image from local storage: $filename');
+      // Use SharedPreferencesService to load image data on non-web platforms
+      if (!kIsWeb) {
+        final prefsService = await SharedPreferencesService.getInstance();
+        final imageData = prefsService.getImageData(imagePath);
+        if (imageData != null) {
+          if (kDebugMode) {
+            print(
+                'Loaded image from SharedPreferences via ProductService: $imagePath');
+          }
+          return imageData;
         }
-        return bytes;
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error loading image from local storage: $e');
+        print('Error loading image from local storage in ProductService: $e');
       }
     }
-    
+
     return null;
   }
 
@@ -215,9 +217,8 @@ class ProductService {
       if (kDebugMode) print('SocketException during create product: $e');
       throw Exception('Network Error: Could not connect to server.');
     } catch (e) {
-       if (kDebugMode) print('Unexpected Error during create product: $e');
-       throw Exception('Không hợp lệ');
-
+      if (kDebugMode) print('Unexpected Error during create product: $e');
+      throw Exception('Không hợp lệ');
     }
   }
 
@@ -289,41 +290,44 @@ class ProductService {
   }
 
   // Enhanced method to get image from cache or server with better caching
-  Future<Uint8List?> getImageFromServer(String? imagePath, {bool forceReload = false}) async {
+  Future<Uint8List?> getImageFromServer(String? imagePath,
+      {bool forceReload = false}) async {
     if (imagePath == null || imagePath.isEmpty) return null;
-    
+
     // Check if we're online
     bool online = await isOnline();
-    
+
     // Reset network restored flag when we go offline
     if (!online) {
       _isNetworkRestored = false;
     }
-    
+
     // Check if network was just restored
     bool wasNetworkJustRestored = false;
     if (online && !_isNetworkRestored) {
       _isNetworkRestored = true;
       wasNetworkJustRestored = true;
-      
+
       // Add this: Clear entire image cache when network is restored
       if (kDebugMode) {
-        print('Network just restored - clearing all image caches to force reload');
+        print(
+            'Network just restored - clearing all image caches to force reload');
       }
       _imageCache.clear();
       UserInfo.avatarCache.clear();
-      
+
       // Also clear local files to prevent inconsistency
       clearLocalImageCache().catchError((e) {
         if (kDebugMode) {
-          print('Error clearing local image cache after network restoration: $e');
+          print(
+              'Error clearing local image cache after network restoration: $e');
         }
       });
     }
-    
+
     // When network is just restored, we should behave like forceReload
     forceReload = forceReload || wasNetworkJustRestored;
-    
+
     // If online and network was just restored, bypass cache for all image requests
     if (online && !forceReload && wasNetworkJustRestored) {
       if (kDebugMode) {
@@ -331,7 +335,7 @@ class ProductService {
       }
       forceReload = true;
     }
-    
+
     // Check cache only if not forcing reload
     if (!forceReload) {
       // First check our product-specific image cache
@@ -339,12 +343,12 @@ class ProductService {
         if (kDebugMode) print('Using in-memory cached image for $imagePath');
         return _imageCache[imagePath];
       }
-      
+
       // Then check UserInfo avatar cache (existing implementation)
       if (UserInfo.avatarCache.containsKey(imagePath)) {
         return UserInfo.avatarCache[imagePath];
       }
-      
+
       // If not in memory, try loading from local storage
       final localImage = await _loadImageFromLocalStorage(imagePath);
       if (localImage != null) {
@@ -369,22 +373,22 @@ class ProductService {
       if (forceReload || wasNetworkJustRestored) {
         final cacheBuster = DateTime.now().millisecondsSinceEpoch;
         fullUrl += '?cacheBust=$cacheBuster';
-        
+
         if (kDebugMode) {
           print('Fetching fresh image from server: $fullUrl');
         }
       }
-      
+
       final response = await httpClient.get(Uri.parse(fullUrl));
 
       if (response.statusCode == 200) {
         // Cache the image unless we're forcing reload
         _imageCache[imagePath] = response.bodyBytes;
         UserInfo.avatarCache[imagePath] = response.bodyBytes;
-          
+
         // Also save to local storage for offline access
         await _saveImageToLocalStorage(imagePath, response.bodyBytes);
-          
+
         if (forceReload && kDebugMode) {
           print('Updated all caches with fresh image from server: $imagePath');
         }
@@ -397,24 +401,24 @@ class ProductService {
 
     return null;
   }
-  
+
   // Add a method to force refresh all cached images when online is restored
   Future<void> refreshAllCachedImages() async {
     if (!await isOnline()) return;
-    
+
     if (kDebugMode) {
       print('Refreshing all cached images after network restoration');
     }
-    
+
     try {
       // Get all cached image paths
       final imagePaths = [..._imageCache.keys];
-      
+
       // Refresh each image
       for (var path in imagePaths) {
         await getImageFromServer(path, forceReload: true);
       }
-      
+
       if (kDebugMode) {
         print('Refreshed ${imagePaths.length} cached images');
       }
@@ -424,24 +428,24 @@ class ProductService {
       }
     }
   }
-  
+
   // // Save image to local storage with improved error handling
   // Future<void> _saveImageToLocalStorage(String imagePath, Uint8List imageBytes) async {
   //   try {
   //     if (imagePath.isEmpty || imageBytes.isEmpty) return;
-      
+
   //     final path = await _localPath;
   //     final filename = _getImageFileName(imagePath);
   //     final file = File('$path/$filename');
-      
+
   //     // Create parent directory if it doesn't exist
   //     final dir = file.parent;
   //     if (!await dir.exists()) {
   //       await dir.create(recursive: true);
   //     }
-      
+
   //     await file.writeAsBytes(imageBytes);
-      
+
   //     if (kDebugMode) {
   //       print('Saved image to local storage: $filename (${imageBytes.length} bytes)');
   //     }
@@ -451,17 +455,17 @@ class ProductService {
   //     }
   //   }
   // }
-  
+
   // Clear all locally cached images - call when refresh is needed
   Future<void> clearLocalImageCache() async {
     try {
       final path = await _localPath;
       final dir = Directory(path);
-      
+
       if (await dir.exists()) {
         // Get all files in directory
         final entities = await dir.list().toList();
-        
+
         // Delete all files (not directories)
         for (var entity in entities) {
           if (entity is File) {
@@ -469,11 +473,11 @@ class ProductService {
           }
         }
       }
-      
+
       // Also clear memory caches
       _imageCache.clear();
       UserInfo.avatarCache.clear();
-      
+
       if (kDebugMode) {
         print('Cleared all locally cached images');
       }
@@ -483,19 +487,19 @@ class ProductService {
       }
     }
   }
-  
+
   // Refresh specific image, removing from all caches and forcing reload
   Future<Uint8List?> refreshImage(String imagePath) async {
     // Remove from caches
     _imageCache.remove(imagePath);
     UserInfo.avatarCache.remove(imagePath);
-    
+
     try {
       // Remove from local storage
       final path = await _localPath;
       final filename = _getImageFileName(imagePath);
       final file = File('$path/$filename');
-      
+
       if (await file.exists()) {
         await file.delete();
         if (kDebugMode) {
@@ -507,38 +511,40 @@ class ProductService {
         print('Error deleting local image: $e');
       }
     }
-    
+
     // Force reload
     return await getImageFromServer(imagePath, forceReload: true);
   }
-  
+
   // Method to check if an image is already cached without fetching
   bool isImageCached(String? imagePath) {
     if (imagePath == null || imagePath.isEmpty) return false;
-    return _imageCache.containsKey(imagePath) || UserInfo.avatarCache.containsKey(imagePath);
+    return _imageCache.containsKey(imagePath) ||
+        UserInfo.avatarCache.containsKey(imagePath);
   }
-  
+
   // New method to get image directly from cache without network request
   Uint8List? getImageFromCache(String? imagePath) {
     if (imagePath == null || imagePath.isEmpty) return null;
-    
+
     // Check product cache first
     if (_imageCache.containsKey(imagePath)) {
       return _imageCache[imagePath];
     }
-    
+
     // Then check avatar cache
     if (UserInfo.avatarCache.containsKey(imagePath)) {
       return UserInfo.avatarCache[imagePath];
     }
-    
+
     return null; // Not found in any cache
   }
-  
+
   // New method to preload images for a list of products
   Future<void> preloadProductImages(List<ProductDTO> products) async {
     for (var product in products) {
-      if (product.mainImageUrl != null && !isImageCached(product.mainImageUrl)) {
+      if (product.mainImageUrl != null &&
+          !isImageCached(product.mainImageUrl)) {
         await getImageFromServer(product.mainImageUrl);
       }
     }
@@ -688,13 +694,13 @@ class ProductService {
         .replace(queryParameters: queryParameters);
 
     try {
-        final response = await httpClient.get(
-            url,
-            headers: _getHeaders(includeAuth: false), // Make this a public API call
-        );
+      final response = await httpClient.get(
+        url,
+        headers: _getHeaders(includeAuth: false), // Make this a public API call
+      );
 
       if (kDebugMode) {
-          print("data: ${response.body}");
+        print("data: ${response.body}");
         print('Fetch Products Request URL: $url');
         print('Fetch Products Response Status: ${response.statusCode}');
       }
@@ -801,7 +807,7 @@ class ProductService {
           print('Fetch Categories (Paginated) Response Body: (Empty or 204)');
         }
       }
-    print(response.body);
+      print(response.body);
       switch (response.statusCode) {
         case 200:
           final responseBody = jsonDecode(utf8.decode(response.bodyBytes));
@@ -996,7 +1002,8 @@ class ProductService {
   }
 
   // Add Product Review
-  Future<ProductReviewDTO> submitReview(int productId, CreateProductReviewRequestDTO reviewDto) async {
+  Future<ProductReviewDTO> submitReview(
+      int productId, CreateProductReviewRequestDTO reviewDto) async {
     final url = Uri.parse('$baseUrl/api/products/$productId/reviews');
     final userInfo = UserInfo();
     final bool isLoggedIn = userInfo.currentUser != null;
@@ -1004,7 +1011,8 @@ class ProductService {
     try {
       final response = await httpClient.post(
         url,
-        headers: _getHeaders(includeAuth: isLoggedIn), // Token needed if user is logged in
+        headers: _getHeaders(
+            includeAuth: isLoggedIn), // Token needed if user is logged in
         body: jsonEncode(reviewDto.toJson()),
       );
 
@@ -1012,11 +1020,13 @@ class ProductService {
         print('Submit Review Request URL: $url');
         print('Submit Review Request Body: ${jsonEncode(reviewDto.toJson())}');
         print('Submit Review Response Status: ${response.statusCode}');
-        print('Submit Review Response Body: ${utf8.decode(response.bodyBytes)}');
+        print(
+            'Submit Review Response Body: ${utf8.decode(response.bodyBytes)}');
       }
 
       if (response.statusCode == 201) {
-        return ProductReviewDTO.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
+        return ProductReviewDTO.fromJson(
+            jsonDecode(utf8.decode(response.bodyBytes)));
       } else {
         String errorMessage = 'Failed to submit review.';
         try {
@@ -1027,7 +1037,8 @@ class ProductService {
             errorMessage = errorBody;
           }
         } catch (_) {}
-        throw Exception('Failed to submit review: $errorMessage (Status: ${response.statusCode})');
+        throw Exception(
+            'Failed to submit review: $errorMessage (Status: ${response.statusCode})');
       }
     } on SocketException catch (e) {
       if (kDebugMode) print('SocketException during submit review: $e');
@@ -1040,12 +1051,12 @@ class ProductService {
 
   // Add a public getter for network restoration status
   static bool get isNetworkRestored => _isNetworkRestored;
-  
+
   // Add public method to load image from local storage
   Future<Uint8List?> loadImageFromLocalStorage(String imagePath) async {
     return _loadImageFromLocalStorage(imagePath);
   }
-  
+
   // Add public method to add image to cache
   void addImageToCache(String imagePath, Uint8List imageData) {
     _imageCache[imagePath] = imageData;

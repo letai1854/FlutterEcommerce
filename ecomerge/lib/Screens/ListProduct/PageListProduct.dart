@@ -10,7 +10,7 @@ import 'package:e_commerce_app/widgets/Product/PaginatedProductGrid.dart';
 import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // Import kDebugMode
-// import 'package:connectivity/connectivity.dart'; // Import Connectivity
+
 import 'package:connectivity_plus/connectivity_plus.dart'; // Import Connectivity
 
 class PageListProduct extends StatefulWidget {
@@ -27,7 +27,8 @@ class _PageListProductState extends State<PageListProduct> {
   // Sort state
   String currentSortMethod = 'createdDate'; // Default sort method
   String currentSortDir = 'desc'; // Default sort direction
-  int selectedCategoryId = -1; // Use -1 to indicate no category selected initially
+  int selectedCategoryId =
+      -1; // Use -1 to indicate no category selected initially
 
   // Category data - Access from AppDataService
   List<CategoryDTO> get _allCategories => AppDataService().categories;
@@ -37,7 +38,7 @@ class _PageListProductState extends State<PageListProduct> {
   final ProductService _productService = ProductService();
 
   // --- Add this flag ---
-  bool _isCurrentlyLoadingNextPage = false; 
+  bool _isCurrentlyLoadingNextPage = false;
   // --------------------
 
   // Listener for AppDataService changes (for categories)
@@ -71,7 +72,8 @@ class _PageListProductState extends State<PageListProduct> {
 
     // Load AppDataService if not initialized
     if (!AppDataService().isInitialized && !AppDataService().isLoading) {
-      print("AppDataService not initialized, calling loadData from PageListProduct initState");
+      print(
+          "AppDataService not initialized, calling loadData from PageListProduct initState");
       AppDataService().loadData().then((_) {
         // Ensure first category is selected after data loads if nothing is selected
         if (selectedCategoryId == -1 && _allCategories.isNotEmpty) {
@@ -118,20 +120,24 @@ class _PageListProductState extends State<PageListProduct> {
   void _onScroll() {
     // First check if ScrollController has attached clients to avoid errors
     if (!_scrollController.hasClients) return;
-    
+
     try {
       // More reliable scroll detection with proper bounds checking
-      if (mounted && 
-          AppDataService().isInitialized && 
+      if (mounted &&
+          AppDataService().isInitialized &&
           _scrollController.position.maxScrollExtent > 0 &&
           _scrollController.position.extentAfter < 350) {
-            
-        if (_isConfigInitialized && _canLoadMore && !_isCurrentlyLoadingNextPage) {
-          if (kDebugMode) print("Scroll near bottom (extentAfter < 250.0), attempPting to load next page.");
+        if (_isConfigInitialized &&
+            _canLoadMore &&
+            !_isCurrentlyLoadingNextPage) {
+          if (kDebugMode)
+            print(
+                "Scroll near bottom (extentAfter < 250.0), attempPting to load next page.");
           _loadNextPage();
         } else {
           if (kDebugMode) {
-            print("Scroll near bottom, but cannot load next page. Config Initialized: $_isConfigInitialized, Can Load More: $_canLoadMore, Currently Loading: $_isCurrentlyLoadingNextPage");
+            print(
+                "Scroll near bottom, but cannot load next page. Config Initialized: $_isConfigInitialized, Can Load More: $_canLoadMore, Currently Loading: $_isCurrentlyLoadingNextPage");
           }
         }
       }
@@ -143,10 +149,10 @@ class _PageListProductState extends State<PageListProduct> {
 
   // Add a getter to check if we have cached data for current configuration
   bool get _hasDataInCache => _productStorage.hasDataInCache(
-    categoryId: selectedCategoryId,
-    sortBy: currentSortMethod,
-    sortDir: currentSortDir,
-  );
+        categoryId: selectedCategoryId,
+        sortBy: currentSortMethod,
+        sortDir: currentSortDir,
+      );
 
   // Add a getter to check if we're showing cached content immediately
   bool get _isShowingCachedContent => _productStorage.isShowingCachedContent;
@@ -216,7 +222,7 @@ class _PageListProductState extends State<PageListProduct> {
       });
     } else {
       setState(() {
-      currentSortMethod = method;
+        currentSortMethod = method;
         currentSortDir = 'desc'; // Default to descending for new sort method
       });
     }
@@ -229,8 +235,9 @@ class _PageListProductState extends State<PageListProduct> {
     if (selectedCategoryId == -1) return;
     // Prevent loading if AppData is still loading, to avoid race conditions with category selection
     if (AppDataService().isLoading && !AppDataService().isInitialized) {
-        if (kDebugMode) print("Skipping initial product load as AppData is still loading.");
-        return;
+      if (kDebugMode)
+        print("Skipping initial product load as AppData is still loading.");
+      return;
     }
 
     // Reset the loading flag before starting, useful if a previous load was interrupted.
@@ -250,10 +257,13 @@ class _PageListProductState extends State<PageListProduct> {
   // Load next page of products
   Future<void> _loadNextPage() async {
     // Ensure a category is selected, more products can be loaded, and not already loading
-    if (selectedCategoryId == -1 || !_canLoadMore || _isCurrentlyLoadingNextPage) {
-       if (kDebugMode) {
-          print("Skipping loadNextPage. Category: $selectedCategoryId, Can Load More: $_canLoadMore, Currently Loading: $_isCurrentlyLoadingNextPage");
-       }
+    if (selectedCategoryId == -1 ||
+        !_canLoadMore ||
+        _isCurrentlyLoadingNextPage) {
+      if (kDebugMode) {
+        print(
+            "Skipping loadNextPage. Category: $selectedCategoryId, Can Load More: $_canLoadMore, Currently Loading: $_isCurrentlyLoadingNextPage");
+      }
       return;
     }
 
@@ -288,10 +298,10 @@ class _PageListProductState extends State<PageListProduct> {
   bool get _isAppDataInitialized => AppDataService().isInitialized;
 
   bool get _isConfigInitialized => _productStorage.isConfigInitialized(
-    categoryId: selectedCategoryId,
-    sortBy: currentSortMethod,
-    sortDir: currentSortDir,
-  );
+        categoryId: selectedCategoryId,
+        sortBy: currentSortMethod,
+        sortDir: currentSortDir,
+      );
 
   // Explicitly handle both local and storage loading state for better visibility
   bool get _isLoadingMore {
@@ -300,40 +310,46 @@ class _PageListProductState extends State<PageListProduct> {
       sortBy: currentSortMethod,
       sortDir: currentSortDir,
     );
-    
+
     // Either our local flag or the storage flag can indicate loading
     return _isCurrentlyLoadingNextPage || storageIsLoading;
   }
 
   bool get _canLoadMore => _productStorage.canLoadMore(
-    categoryId: selectedCategoryId,
-    sortBy: currentSortMethod,
-    sortDir: currentSortDir,
-  );
+        categoryId: selectedCategoryId,
+        sortBy: currentSortMethod,
+        sortDir: currentSortDir,
+      );
 
   List<ProductDTO> get _currentProducts => _productStorage.getProductsForConfig(
-    categoryId: selectedCategoryId,
-    sortBy: currentSortMethod,
-    sortDir: currentSortDir,
-  );
+        categoryId: selectedCategoryId,
+        sortBy: currentSortMethod,
+        sortDir: currentSortDir,
+      );
 
   @override
   Widget build(BuildContext context) {
     if (kDebugMode) print('Building PageListProduct...');
     final List<CategoryDTO> currentCategories = _allCategories;
-    if (kDebugMode) print('Current categories count from AppDataService: ${currentCategories.length}');
+    if (kDebugMode)
+      print(
+          'Current categories count from AppDataService: ${currentCategories.length}');
     // If no category is selected yet and categories are available, select the first one.
     // This can happen if initial loadData completes after first build.
-    if (selectedCategoryId == -1 && currentCategories.isNotEmpty && AppDataService().isInitialized && !AppDataService().isLoading) {
-        final firstCategoryId = currentCategories.first.id;
-        if (firstCategoryId != null) {
-            // Call updateSelectedCategory in a post-frame callback to avoid setState during build
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted && selectedCategoryId == -1) { // Double check selection hasn't changed
-                    updateSelectedCategory(firstCategoryId);
-                }
-            });
-        }
+    if (selectedCategoryId == -1 &&
+        currentCategories.isNotEmpty &&
+        AppDataService().isInitialized &&
+        !AppDataService().isLoading) {
+      final firstCategoryId = currentCategories.first.id;
+      if (firstCategoryId != null) {
+        // Call updateSelectedCategory in a post-frame callback to avoid setState during build
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && selectedCategoryId == -1) {
+            // Double check selection hasn't changed
+            updateSelectedCategory(firstCategoryId);
+          }
+        });
+      }
     }
 
     return LayoutBuilder(
@@ -343,8 +359,8 @@ class _PageListProductState extends State<PageListProduct> {
 
         // Determine the combined loading state to pass to CatalogProduct
         // Only show loading if we're actually loading new data, not using cached data
-        bool currentProductsLoadingState = 
-            (_isInitialLoading || _isLoadingMore) && 
+        bool currentProductsLoadingState = (_isInitialLoading ||
+                _isLoadingMore) &&
             (!_isShowingCachedContent || (_isLoadingMore && !_hasDataInCache));
 
         Widget body = CatalogProduct(
@@ -359,7 +375,8 @@ class _PageListProductState extends State<PageListProduct> {
           updateSortMethod: updateSortMethod,
           isAppDataLoading: _isAppDataLoading,
           isAppDataInitialized: _isAppDataInitialized,
-          isProductsLoading: currentProductsLoadingState, // Pass the combined state
+          isProductsLoading:
+              currentProductsLoadingState, // Pass the combined state
           canLoadMoreProducts: _canLoadMore,
           isShowingCachedContent: _isShowingCachedContent,
           isOnline: _productStorage.isOnline, // Pass online status
@@ -391,7 +408,7 @@ class _PageListProductState extends State<PageListProduct> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    
+
     // Check if we need to refresh data when coming back online
     if (_productStorage.isOnline && selectedCategoryId != -1) {
       // When we return to this page and are online, check if we should refresh data
@@ -414,18 +431,18 @@ class _PageListProductState extends State<PageListProduct> {
     // Get initial connectivity status
     final Connectivity _connectivity = Connectivity();
     bool _previousOnlineStatus = _productStorage.isOnline;
-    
+
     // Listen to connectivity changes
     _connectivity.onConnectivityChanged.listen((ConnectivityResult result) {
       final bool isNowOnline = result != ConnectivityResult.none;
       final bool wasOffline = !_previousOnlineStatus;
-      
+
       if (wasOffline && isNowOnline && mounted) {
         // Network restored - refresh data
         if (kDebugMode) {
           print("Network restored in PageListProduct - refreshing data");
         }
-        
+
         // Refresh both categories and current products
         if (selectedCategoryId != -1) {
           // Refresh current category data (will be done automatically by Storage now)
@@ -433,7 +450,7 @@ class _PageListProductState extends State<PageListProduct> {
           setState(() {});
         }
       }
-      
+
       _previousOnlineStatus = isNowOnline;
     });
   }
