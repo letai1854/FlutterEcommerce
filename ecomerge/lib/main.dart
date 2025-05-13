@@ -97,7 +97,8 @@ Future<void> initApp() async {
 }
 
 void main() async {
-  if (!kIsWeb &&
+  if (kDebugMode &&
+      !kIsWeb &&
       (Platform.isAndroid ||
           Platform.isIOS ||
           Platform.isLinux ||

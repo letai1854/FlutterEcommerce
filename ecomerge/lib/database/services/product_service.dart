@@ -30,9 +30,11 @@ class ProductService {
       return http.Client();
     } else {
       // For mobile and desktop platforms
-      final HttpClient ioClient = HttpClient()
-        ..badCertificateCallback =
+      final HttpClient ioClient = HttpClient();
+      if (kDebugMode) {
+        ioClient.badCertificateCallback =
             ((X509Certificate cert, String host, int port) => true);
+      }
       return IOClient(ioClient);
     }
   }

@@ -15,7 +15,6 @@ class _CarouseldesktopState extends State<Carouseldesktop> {
   //late double screenWidth;
 
   final carouselHeight = 230.0;
-  int _current = 0;
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -49,7 +48,7 @@ class _CarouseldesktopState extends State<Carouseldesktop> {
                 height: carouselHeight,
                 onPageChanged: (index, reason) {
                   setState(() {
-                    _current = index;
+                    // _current = index; // Assignment removed
                   });
                 },
               ),
