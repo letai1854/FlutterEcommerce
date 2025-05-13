@@ -1,7 +1,7 @@
 class ImageAssets {
   static const List<String> imgList = [
-    'assets/bannerMain.jpg',
-    'assets/banner2.jpg',
-    'assets/banner6.jpg',
+    'assets/poster3.png',
+    'assets/poster1.jpg',
+    'assets/poster4.jpg',
   ];
 }

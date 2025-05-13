@@ -512,8 +512,8 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                                     child: Container(
                                       decoration: BoxDecoration(
                                         image: DecorationImage(
-                                          image: AssetImage(
-                                              'assets/bannerMain.jpg'),
+                                          image:
+                                              AssetImage('assets/poster1.jpg'),
                                           fit: BoxFit.cover,
                                           alignment: Alignment.center,
                                         ),
@@ -1066,12 +1066,12 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
             },
           ),
           ListTile(
-              leading: const Icon(Icons.smart_toy),
-              title: const Text('AI Chatbot'),
-              onTap: () {
-                Navigator.pushNamed(context, '/ai-chat');
-              },
-            ),
+            leading: const Icon(Icons.smart_toy),
+            title: const Text('AI Chatbot'),
+            onTap: () {
+              Navigator.pushNamed(context, '/ai-chat');
+            },
+          ),
         ],
       ),
     );
