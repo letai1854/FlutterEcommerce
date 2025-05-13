@@ -11,10 +11,9 @@ import 'package:http/io_client.dart';
 
 final String baseurl = !isMobile
     ? 'https://localhost:8443'
-    : 'https://192.168.1.8:8443'; 
-// final String baseurl = !isMobile
-//     ? 'https://localhost:8443'
-//     : 'https://10.0.2.2:8443'; // Example for Web/Android Emulator HTTPS
+    : 'https://192.168.1.4:8443'; // Example for Web/Android Emulator HTTPS
+// ? 'https://localhost:8443'
+// : 'https://10.0.2.2:8443';
 
 // Khai báo biến client ở tầm vực top-level, nhưng không khởi tạo ngay
 // Sử dụng kiểu động 'dynamic' hoặc kiểu chung nhất 'http.Client'

@@ -33,7 +33,8 @@ class ProductService {
       // For mobile and desktop platforms
       final HttpClient ioClient = HttpClient()
         ..badCertificateCallback =
-          ((X509Certificate cert, String host, int port) => true);
+            ((X509Certificate cert, String host, int port) => true);
+
       return IOClient(ioClient);
     }
   }
@@ -66,30 +67,33 @@ class ProductService {
   //     return true;
   //   }
   // }
-Future<bool> isOnline() async {
-  final ConnectivityResult result = await Connectivity().checkConnectivity();
-  print("ConnectivityResult: $result"); // In ra để debug
+  Future<bool> isOnline() async {
+    final ConnectivityResult result = await Connectivity().checkConnectivity();
+    print("ConnectivityResult: $result"); // In ra để debug
 
-  if (result == ConnectivityResult.none) {
-    print("Không có kết nối mạng (ConnectivityResult.none)");
-    return false;
+    if (result == ConnectivityResult.none) {
+      print("Không có kết nối mạng (ConnectivityResult.none)");
+      return false;
+    }
+
+    final InternetConnectionChecker customChecker =
+        InternetConnectionChecker.createInstance(
+      checkTimeout: const Duration(milliseconds: 1000),
+    );
+
+    print(
+        "Đang kiểm tra kết nối internet thực sự (timeout mỗi địa chỉ ~1 giây)...");
+    final bool isConnected = await customChecker.hasConnection;
+
+    if (isConnected) {
+      print("Đã kết nối mạng (InternetConnectionChecker)");
+    } else {
+      print(
+          "Mất kết nối mạng (InternetConnectionChecker) hoặc kiểm tra timeout");
+    }
+    return isConnected;
   }
 
-  final InternetConnectionChecker customChecker = InternetConnectionChecker.createInstance(
-    checkTimeout: const Duration(milliseconds: 1000),
-
-  );
-
-  print("Đang kiểm tra kết nối internet thực sự (timeout mỗi địa chỉ ~1 giây)...");
-  final bool isConnected = await customChecker.hasConnection;
-
-  if (isConnected) {
-    print("Đã kết nối mạng (InternetConnectionChecker)");
-  } else {
-    print("Mất kết nối mạng (InternetConnectionChecker) hoặc kiểm tra timeout");
-  }
-  return isConnected;
-}
   // Get path to save images locally
   Future<String> get _localPath async {
     final directory = await getApplicationDocumentsDirectory();

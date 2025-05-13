@@ -794,7 +794,7 @@ class _OfflineAwareProductItemState extends State<_OfflineAwareProductItem> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment:
-                        MainAxisAlignment.spaceBetween, // Distribute space
+                        MainAxisAlignment.start, // Changed from spaceBetween
                     children: [
                       Text(
                         product.name,
@@ -805,7 +805,22 @@ class _OfflineAwareProductItemState extends State<_OfflineAwareProductItem> {
                           fontSize: 13,
                         ),
                       ),
-                      // SizedBox(height: 2),
+                      if (product.description != null &&
+                          product.description!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                              top: 2.0, bottom: 4.0), // Adjusted bottom padding
+                          child: Text(
+                            product.description!,
+                            maxLines:
+                                1, // Keep it to one line for brevity in the grid
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ),
                       Row(
                         children: [
                           Icon(Icons.star, color: Colors.amber, size: 14),
@@ -817,7 +832,9 @@ class _OfflineAwareProductItemState extends State<_OfflineAwareProductItem> {
                           ),
                         ],
                       ),
-                      // SizedBox(height: 2),
+                      SizedBox(
+                          height:
+                              4), // Added SizedBox for controlled spacing before price
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
