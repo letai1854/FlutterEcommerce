@@ -6,6 +6,7 @@ import 'package:e_commerce_app/database/models/categories.dart';
 import 'package:e_commerce_app/services/product_cache_service.dart'; // For CachedCategoryProductData
 import 'package:e_commerce_app/database/models/product_dto.dart'; // For ProductDTO
 import 'package:e_commerce_app/database/models/user_model.dart'; // Ensure User model is imported if needed for context
+import 'package:e_commerce_app/database/models/address_model.dart'; // Import Address model
 
 class SharedPreferencesService {
   static SharedPreferencesService? _instance;
@@ -42,6 +43,9 @@ class SharedPreferencesService {
   // New key for storing the complete current user object
   static const String _persistedCompleteUserKey =
       'persisted_complete_user_data';
+
+  // New key for storing user addresses
+  static const String _userAddressesKey = 'user_addresses_list';
 
   SharedPreferencesService._(); // Private constructor
 
@@ -463,6 +467,55 @@ class SharedPreferencesService {
   }
   // --- End of Persisted Complete User Data Caching ---
 
+  // --- User Addresses Caching ---
+  Future<void> saveUserAddresses(List<Address> addresses) async {
+    if (_preferences == null || kIsWeb) return; // Only for non-web
+    try {
+      final List<String> addressesJson =
+          addresses.map((address) => jsonEncode(address.toJson())).toList();
+      await _preferences!.setStringList(_userAddressesKey, addressesJson);
+      if (kDebugMode) {
+        print('Saved ${addresses.length} user addresses to SharedPreferences.');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error saving user addresses to SharedPreferences: $e');
+      }
+    }
+  }
+
+  Future<List<Address>?> loadUserAddresses() async {
+    if (_preferences == null || kIsWeb) return null; // Only for non-web
+    try {
+      final List<String>? addressesJson =
+          _preferences!.getStringList(_userAddressesKey);
+      if (addressesJson != null) {
+        final addresses = addressesJson
+            .map((addressString) => Address.fromJson(jsonDecode(addressString)))
+            .toList();
+        if (kDebugMode) {
+          print(
+              'Loaded ${addresses.length} user addresses from SharedPreferences.');
+        }
+        return addresses;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error loading user addresses from SharedPreferences: $e');
+      }
+    }
+    return null;
+  }
+
+  Future<bool> removeUserAddresses() async {
+    if (_preferences == null || kIsWeb) return false; // Only for non-web
+    if (kDebugMode) {
+      print('Removing user addresses from SharedPreferences.');
+    }
+    return _preferences!.remove(_userAddressesKey);
+  }
+  // --- End of User Addresses Caching ---
+
   Future<bool> clearAllUserPreferences() async {
     if (_preferences == null) return false;
     if (kDebugMode) {
@@ -477,6 +530,7 @@ class SharedPreferencesService {
           key == _cachedCategoriesWithImagesKey ||
           key == _displayedCategoriesKey || // Added new key
           key == _persistedCompleteUserKey || // Added new key for complete user
+          key == _userAddressesKey || // Added new key for user addresses
           key == _imageCacheKey) {
         await _preferences!.remove(key);
       }
@@ -494,6 +548,7 @@ class SharedPreferencesService {
         key == _allCategoriesListKey ||
         key == _displayedCategoriesKey || // Added new key
         key == _persistedCompleteUserKey || // Added new key for complete user
+        key == _userAddressesKey || // Added new key for user addresses
         key == _cachedCategoriesWithImagesKey) {
       return _preferences?.containsKey(key) ?? false;
     }

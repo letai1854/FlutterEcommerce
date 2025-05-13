@@ -372,9 +372,33 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
 
                         try {
                           String? avatarPath;
+                          Uint8List?
+                              uploadedImageBytes; // To store the bytes of the image that was uploaded
+
                           if (_webImageBytes != null ||
                               _selectedImageFile != null) {
-                            avatarPath = await _uploadSelectedImage();
+                            // Determine which bytes to upload and cache
+                            if (kIsWeb && _webImageBytes != null) {
+                              uploadedImageBytes = _webImageBytes;
+                            } else if (_selectedImageFile != null) {
+                              // Ensure _selectedImageFile is not null before reading bytes
+                              uploadedImageBytes =
+                                  await _selectedImageFile!.readAsBytes();
+                            }
+
+                            if (uploadedImageBytes != null) {
+                              // Upload the image using the determined bytes
+                              avatarPath = await _userService.uploadImage(
+                                uploadedImageBytes,
+                                _selectedImagePath ??
+                                    (_selectedImageFile?.path
+                                            .split('/')
+                                            .last
+                                            .split('\\')
+                                            .last ??
+                                        'uploaded_image.png'),
+                              );
+                            }
                           }
 
                           final updates = {
@@ -389,13 +413,21 @@ class _PersonalInfoFormState extends State<PersonalInfoForm> {
                               .updateCurrentUserProfile(updates);
 
                           if (updatedUser != null) {
+                            UserInfo().updateUserProperty(
+                                'fullName', widget.nameController.text);
                             if (avatarPath != null) {
                               UserInfo()
                                   .updateUserProperty('avatar', avatarPath);
+                              // **Crucial Fix**: Cache the uploaded image bytes with the new avatarPath
+                              if (uploadedImageBytes != null) {
+                                UserInfo.avatarCache[avatarPath] =
+                                    uploadedImageBytes;
+                                print(
+                                    'Manually cached new avatar bytes for $avatarPath in UserInfo.avatarCache');
+                              }
                             }
-                            UserInfo().updateUserProperty(
-                                'fullName', widget.nameController.text);
-
+                            await UserInfo()
+                                .saveCompleteUserToPersistentStorage(); // Now it should find the avatar in cache
                             widget.onSave();
 
                             if (mounted) {
