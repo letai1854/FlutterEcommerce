@@ -31,7 +31,7 @@ class NavbarAdmin extends StatelessWidget {
                 child: Row(
                   children: [
                     Image.asset(
-                      '/logoS.jpg',
+                      'assets/logoSNew.png',
                       height: 60,
                       width: 60,
                     ),
