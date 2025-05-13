@@ -20,6 +20,7 @@ import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/services/user_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:url_strategy/url_strategy.dart';
 import 'package:e_commerce_app/Screens/Home/home_responsive.dart';
 import 'package:http/http.dart' as http;
@@ -37,7 +38,30 @@ class MyHttpOverrides extends HttpOverrides {
           (X509Certificate cert, String host, int port) => true;
   }
 }
+Future<bool> checkConnection() async {
+  final ConnectivityResult result = await Connectivity().checkConnectivity();
+  print("ConnectivityResult: $result"); // In ra để debug
 
+  if (result == ConnectivityResult.none) {
+    print("Không có kết nối mạng (ConnectivityResult.none)");
+    return false;
+  }
+
+  final InternetConnectionChecker customChecker = InternetConnectionChecker.createInstance(
+    checkTimeout: const Duration(milliseconds: 1000),
+
+  );
+
+  print("Đang kiểm tra kết nối internet thực sự (timeout mỗi địa chỉ ~1 giây)...");
+  final bool isConnected = await customChecker.hasConnection;
+
+  if (isConnected) {
+    print("Đã kết nối mạng (InternetConnectionChecker)");
+  } else {
+    print("Mất kết nối mạng (InternetConnectionChecker) hoặc kiểm tra timeout");
+  }
+  return isConnected;
+}
 Future<void> initApp() async {
   WidgetsFlutterBinding.ensureInitialized();
   setPathUrlStrategy();
@@ -46,10 +70,10 @@ Future<void> initApp() async {
 
   // Only attempt auto-login or load from persistent storage on non-web platforms
   if (!kIsWeb) {
-    final connectivityResult = await (Connectivity().checkConnectivity());
+    bool connectivityResult = await checkConnection();
     final userService = UserService();
 
-    if (connectivityResult != ConnectivityResult.none) {
+    if (connectivityResult) {
       // We are online
       print('Device is online. Attempting auto-login...');
       await userService.attemptAutoLogin();
@@ -65,25 +89,7 @@ Future<void> initApp() async {
   } else {
     print('Auto-login/persistent load skipped on web platform.');
   }
-  // Initialize connectivity monitoring first, especially for Android
-  if (!kIsWeb && Platform.isAndroid) {
-    // Request initial connectivity status
-    final connectivityResult = await Connectivity().checkConnectivity();
-    print('Initial connectivity status: $connectivityResult');
 
-    // Setup connectivity change stream for Android
-    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
-      print('Android connectivity changed: $result');
-
-      // If connectivity restored, refresh app data
-      if (result != ConnectivityResult.none) {
-        // Refresh data services when connection restored
-        CartStorage().loadData();
-      }
-    });
-  }
-
-  // Initialize CartStorage singleton and load cart data
   try {
     await CartStorage().loadData();
     print('CartStorage data loaded successfully during app init.');
