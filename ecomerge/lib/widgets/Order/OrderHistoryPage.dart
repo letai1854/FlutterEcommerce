@@ -98,19 +98,17 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _orders = []; // Reset orders list
-      _apiCurrentPage = 0; // Reset current page
-      _hasMore = true; // Assume there's more data initially
+      _orders = [];
+      _apiCurrentPage = 0;
+      _hasMore = true;
     });
 
     try {
       final orderPage = await _orderService.getCurrentUserOrders(
         page: _apiCurrentPage,
         size: _apiPageSize,
-        // No status is passed to fetch all orders
       );
       
-      // Get online status BEFORE using setState
       final bool isOnline = await _orderService.isOnline();
       
       if (mounted) {
@@ -121,8 +119,6 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
             _apiCurrentPage++;
           }
           _isLoading = false;
-          
-          // Now use the pre-fetched online status
           _isOfflineMode = !isOnline;
         });
       }
@@ -130,13 +126,22 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
       if (mounted) {
         String displayError;
         bool is404 = e.toString().toLowerCase().contains('(status: 404)');
+        
+        // Log the actual error in both debug and release modes
+        print('Error fetching orders: $e');
+        
         if (is404) {
           displayError = "Chưa có đơn hàng nào.";
+        } else if (e.toString().toLowerCase().contains('certificate')) {
+          displayError = "Không thể kết nối đến máy chủ. Lỗi chứng chỉ bảo mật.";
+        } else if (e.toString().toLowerCase().contains('network')) {
+          displayError = "Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.";
+        } else if (e.toString().toLowerCase().contains('timeout')) {
+          displayError = "Kết nối máy chủ quá thời gian. Vui lòng thử lại sau.";
         } else {
-          displayError = "Chưa có đơn hàng nào.";
+          displayError = "Không thể tải đơn hàng. Lỗi: ${e.toString().split('Exception:').last}";
         }
         
-        // Don't forget to also set the online status here in the error case
         final bool isOnline = await _orderService.isOnline();
         
         setState(() {
@@ -144,8 +149,8 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
           _errorMessage = displayError;
           _isOfflineMode = !isOnline;
           if (is404) {
-            _orders = []; // Ensure orders list is empty
-            _hasMore = false; // No more data to fetch
+            _orders = [];
+            _hasMore = false;
           }
         });
       }
