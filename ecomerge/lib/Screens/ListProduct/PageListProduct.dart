@@ -44,19 +44,30 @@ class _PageListProductState extends State<PageListProduct> {
   // Listener for AppDataService changes (for categories)
   void _onAppDataServiceChange() {
     print("AppDataService categories updated, rebuilding PageListProduct");
-    if (selectedCategoryId == -1 && _allCategories.isNotEmpty) {
-      final firstCategoryId = _allCategories.first.id ?? -1;
-      if (firstCategoryId != -1) {
-        updateSelectedCategory(firstCategoryId);
+    // Use post-frame callback to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        if (selectedCategoryId == -1 && _allCategories.isNotEmpty) {
+          final firstCategoryId = _allCategories.first.id ?? -1;
+          if (firstCategoryId != -1) {
+            updateSelectedCategory(firstCategoryId);
+            return; // Return early as updateSelectedCategory already calls setState
+          }
+        }
+        setState(() {}); // Only call if needed
       }
-    }
-    setState(() {});
+    });
   }
 
   // Listener for ProductStorageSingleton changes (for products)
   void _onProductStorageChange() {
     print("ProductStorageSingleton data updated, rebuilding PageListProduct");
-    setState(() {});
+    // Use post-frame callback to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
   }
 
   @override
@@ -93,7 +104,17 @@ class _PageListProductState extends State<PageListProduct> {
       if (selectedCategoryId == -1) {
         final firstCategoryId = _allCategories.first.id ?? -1;
         if (firstCategoryId != -1) {
+          // Don't just call updateSelectedCategory, but also explicitly load products
           updateSelectedCategory(firstCategoryId);
+          // Additional explicit product load to ensure it happens
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && selectedCategoryId != -1) {
+              if (kDebugMode) {
+                print('Explicitly triggering initial product load for first category: $firstCategoryId');
+              }
+              _loadInitialProducts();
+            }
+          });
         }
       } else {
         // If a category is already selected, ensure its products are loaded
@@ -103,6 +124,28 @@ class _PageListProductState extends State<PageListProduct> {
 
     // Add scroll listener to load more products
     _scrollController.addListener(_onScroll);
+    
+    // This post-frame callback ensures we request initial products
+    // even if something interferes with the normal flow
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && selectedCategoryId != -1) {
+        // Force initial products load after UI is built
+        if (kDebugMode) {
+          print('Post-frame callback forcing initial product load for category: $selectedCategoryId');
+        }
+        _loadInitialProducts();
+        
+        // Add a second delayed call to make absolutely sure products load
+        Future.delayed(Duration(milliseconds: 300), () {
+          if (mounted && selectedCategoryId != -1) {
+            if (kDebugMode) {
+              print('Delayed callback forcing initial product load for category: $selectedCategoryId');
+            }
+            _loadInitialProducts();
+          }
+        });
+      }
+    });
   }
 
   @override
@@ -157,36 +200,22 @@ class _PageListProductState extends State<PageListProduct> {
   // Add a getter to check if we're showing cached content immediately
   bool get _isShowingCachedContent => _productStorage.isShowingCachedContent;
 
-  // Update category selection
+  // Update category selection - don't use cached data
   void updateSelectedCategory(int categoryId) {
     if (selectedCategoryId == categoryId) return;
 
-    // Check if we already have cached data for this category
-    final bool hasCachedData = _productStorage.hasDataInCache(
-      categoryId: categoryId,
-      sortBy: currentSortMethod,
-      sortDir: currentSortDir,
-    );
-
-    if (hasCachedData) {
-      if (kDebugMode) print('Using cached data for category $categoryId');
-    }
-
+    // No longer check for cached data
     setState(() {
       selectedCategoryId = categoryId;
-      // Don't reset sort method when using cached data
-      if (!hasCachedData) {
-        currentSortMethod = 'createdDate';
-        currentSortDir = 'desc';
-      }
+      // Always reset sort method to default
+      currentSortMethod = 'createdDate';
+      currentSortDir = 'desc';
     });
 
-    // Load products for the new category
-    // Will automatically use cached data if available
+    // Load products for the new category - will now always fetch fresh data
     _loadInitialProducts();
 
-    // Safely scroll to top when category changes - use post-frame callback
-    // to ensure the scroll view is built and controller is attached
+    // Safely scroll to top when category changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -200,12 +229,9 @@ class _PageListProductState extends State<PageListProduct> {
     });
   }
 
-  // Modify isInitialLoading to respect cache status
+  // Remove showing cached content flag since we don't use cached data anymore
   bool get _isInitialLoading {
-    // Don't show loading if we have cached data and are showing it immediately
-    if (_hasDataInCache && _isShowingCachedContent) {
-      return false;
-    }
+    // Always show loading indicator when loading initial data
     return _productStorage.isInitialLoading(
       categoryId: selectedCategoryId,
       sortBy: currentSortMethod,
@@ -346,7 +372,20 @@ class _PageListProductState extends State<PageListProduct> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted && selectedCategoryId == -1) {
             // Double check selection hasn't changed
+            if (kDebugMode) {
+              print('Auto-selecting first category in build: $firstCategoryId');
+            }
             updateSelectedCategory(firstCategoryId);
+            
+            // Add an explicit call to load products after selection
+            Future.delayed(Duration(milliseconds: 200), () {
+              if (mounted && selectedCategoryId == firstCategoryId) {
+                if (kDebugMode) {
+                  print('Delayed product load after auto-selecting category: $firstCategoryId');
+                }
+                _loadInitialProducts();
+              }
+            });
           }
         });
       }
@@ -358,10 +397,8 @@ class _PageListProductState extends State<PageListProduct> {
         Widget appBar;
 
         // Determine the combined loading state to pass to CatalogProduct
-        // Only show loading if we're actually loading new data, not using cached data
-        bool currentProductsLoadingState = (_isInitialLoading ||
-                _isLoadingMore) &&
-            (!_isShowingCachedContent || (_isLoadingMore && !_hasDataInCache));
+        // Always show loading indicator when loading
+        bool currentProductsLoadingState = _isInitialLoading || _isLoadingMore;
 
         Widget body = CatalogProduct(
           filteredProducts: _currentProducts,
@@ -378,7 +415,7 @@ class _PageListProductState extends State<PageListProduct> {
           isProductsLoading:
               currentProductsLoadingState, // Pass the combined state
           canLoadMoreProducts: _canLoadMore,
-          isShowingCachedContent: _isShowingCachedContent,
+          isShowingCachedContent: false, // Always set to false since we don't use cached data
           isOnline: _productStorage.isOnline, // Pass online status
         );
 

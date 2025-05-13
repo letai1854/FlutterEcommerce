@@ -34,6 +34,10 @@ class SearchStateService extends ChangeNotifier {
   // Flag to prevent duplicate searches
   bool _isExecutingSearch = false;
 
+  // Add the isPriceFilterApplied field to the SearchStateService class
+  bool _isPriceFilterApplied = false;
+  bool get isPriceFilterApplied => _isPriceFilterApplied;
+
   // Getters
   bool get isSearchMode => _isSearchMode;
   String get currentSearchQuery => _currentSearchQuery;
@@ -54,13 +58,24 @@ class SearchStateService extends ChangeNotifier {
     notifyListeners();
   }
   
-  void setFilters({int? categoryId, String? brandName, int? minPrice, int? maxPrice}) {
+  // Update the setFilters method to include the isPriceFilterApplied parameter
+  void setFilters({
+    int? categoryId,
+    String? brandName,
+    int minPrice = 0,
+    int maxPrice = 10000000,
+    bool isPriceFilterApplied = false, // Add this parameter
+  }) {
     _selectedCategoryId = categoryId;
     _selectedBrandName = brandName;
-    if (minPrice != null) _minPrice = minPrice;
-    if (maxPrice != null) _maxPrice = maxPrice;
-    // Setting filters indicates we're past initial search
+    _minPrice = minPrice;
+    _maxPrice = maxPrice;
+    _isPriceFilterApplied = isPriceFilterApplied; // Store the flag
+    
+    // If we're setting filters, we're no longer in an initial search state
     _isInitialSearch = false;
+    
+    // Notify listeners about the state change
     notifyListeners();
   }
 
@@ -163,7 +178,8 @@ class SearchStateService extends ChangeNotifier {
           sortBy: _sortBy,
           sortDir: _sortDir,
           clearCache: shouldClearCache,
-          skipPriceFilter: false // Explicitly apply price filters
+          skipPriceFilter: false, // Explicitly apply price filters
+          isPriceFilterApplied: _isPriceFilterApplied, // Pass the flag
         );
       }
     } finally {

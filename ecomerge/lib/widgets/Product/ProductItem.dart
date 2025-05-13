@@ -59,81 +59,54 @@ class ProductItem extends StatelessWidget {
 
     final productService = ProductService();
     
-    // For search mode, ALWAYS load from server with spinner
-    if (isSearchMode) {
-      // Generate a unique timestamp for each image request to prevent caching
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final cacheBuster = '&t=$timestamp';
-      
-      // Create a combined Future that includes both the image loading and a fixed delay
-      return FutureBuilder<List<dynamic>>(
-        // Wait for both the image to load AND a minimum delay to complete
-        future: Future.wait([
-          productService.getImageFromServer(imageUrl!, forceReload: true),
-          // Add a minimum 1.5 second delay to show the spinner
-          Future.delayed(const Duration(milliseconds: 1500))
-        ]),
-        builder: (context, snapshot) {
-          // Always show spinner while loading or within minimum delay time
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-              ),
-            );
-          }
-          
-          if (snapshot.hasData && snapshot.data != null && snapshot.data![0] != null) {
-            // First item in the list is the image data
-            final imageData = snapshot.data![0] as Uint8List;
-            return Image.memory(
-              imageData,
-              fit: BoxFit.cover,
-            );
-          }
-          
-          // Fallback to direct network image if needed
-          return Image.network(
-            // Add cache buster to URL to ensure fresh load
-            productService.getImageUrl(imageUrl!) + cacheBuster,
-            fit: BoxFit.cover,
-            // Force a loading spinner for network image too
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress != null) {
-                return const Center(
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                  ),
-                );
-              }
-              return child;
-            },
-            errorBuilder: (context, error, stackTrace) {
-              if (kDebugMode) print('Error loading search image: $error');
-              return const Center(
-                child: Icon(
-                  Icons.broken_image,
-                  size: 50,
-                  color: Colors.grey,
-                ),
-              );
-            },
+    // Always force reload images from server, with a loading indicator
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final cacheBuster = '&t=$timestamp';
+    
+    // Create a combined Future that includes both the image loading and a fixed delay
+    return FutureBuilder<List<dynamic>>(
+      // Wait for both the image to load AND a minimum delay to complete
+      future: Future.wait([
+        productService.getImageFromServer(imageUrl!, forceReload: true),
+        // Add a minimum delay to show the spinner
+        Future.delayed(const Duration(milliseconds: 800))
+      ]),
+      builder: (context, snapshot) {
+        // Always show spinner while loading or within minimum delay time
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+            ),
           );
         }
-      );
-    }
-    // nếu có mạng
-    // For non-search mode, keep existing behavior
-    if (isFromCache) {
-      // Try to get image directly from cache first
-      final cachedImage = productService.getImageFromCache(imageUrl);
-      
-      if (cachedImage != null) {
-        // If image is in cache, show it immediately without any spinner
-        return Image.memory(
-          cachedImage,
+        
+        if (snapshot.hasData && snapshot.data != null && snapshot.data![0] != null) {
+          // First item in the list is the image data
+          final imageData = snapshot.data![0] as Uint8List;
+          return Image.memory(
+            imageData,
+            fit: BoxFit.cover,
+          );
+        }
+        
+        // Fallback to direct network image if needed
+        return Image.network(
+          // Add cache buster to URL to ensure fresh load
+          productService.getImageUrl(imageUrl!) + cacheBuster,
           fit: BoxFit.cover,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress != null) {
+              return const Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                ),
+              );
+            }
+            return child;
+          },
           errorBuilder: (context, error, stackTrace) {
+            if (kDebugMode) print('Error loading image: $error');
             return const Center(
               child: Icon(
                 Icons.broken_image,
@@ -144,156 +117,6 @@ class ProductItem extends StatelessWidget {
           },
         );
       }
-      
-      // If claimed to be from cache but not found in cache, 
-      // load without ANY loading spinner - just show a placeholder until loaded
-      return Stack(
-        children: [
-          // Background placeholder
-          Container(
-            color: Colors.grey[200],
-            child: Center(
-              child: Icon(
-                Icons.image,
-                size: 40,
-                color: Colors.grey[400],
-              ),
-            ),
-          ),
-          
-          // Check if we're offline first
-          FutureBuilder<bool>(
-            future: productService.isOnline(),
-            builder: (context, snapshot) {
-              final isOnline = snapshot.data ?? true; // Default to online if not determined yet
-              
-              if (!isOnline) {
-                // OFFLINE: Try to load from local storage without changing existing behavior
-                return FutureBuilder<Uint8List?>(
-                  future: productService.loadImageFromLocalStorage(imageUrl!),
-                  builder: (context, imageSnapshot) {
-                    if (imageSnapshot.hasData && imageSnapshot.data != null) {
-                      // If image is available in local storage, show it
-                      return Positioned.fill(
-                        child: Image.memory(
-                          imageSnapshot.data!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Center(
-                              child: Icon(
-                                Icons.broken_image,
-                                size: 50,
-                                color: Colors.grey,
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    }
-                    
-                    // If no local image, just show placeholder (already visible in background)
-                    return const SizedBox.shrink();
-                  },
-                );
-              }
-              
-              // ONLINE: Use existing behavior - load from network without spinner
-              return Positioned.fill(
-                child: Image.network(
-                  productService.getImageUrl(imageUrl!),
-                  fit: BoxFit.cover,
-                  // Remove the loadingBuilder to prevent showing a loading spinner
-                  errorBuilder: (context, error, stackTrace) {
-                    print('Error loading image: $error');
-                    return const Center(
-                      child: Icon(
-                        Icons.broken_image,
-                        size: 50,
-                        color: Colors.grey,
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
-          ),
-        ],
-      );
-    }
-    
-    // For non-cached, non-search products, keep existing behavior
-    final Future<List<dynamic>> combinedFuture = Future.wait([
-      productService.getImageFromServer(imageUrl!).catchError((e) {
-        print('Error in getImageFromServer: $e');
-        return null; 
-      }),
-      Future.delayed(const Duration(milliseconds: 1500)),
-    ]);
-
-    return FutureBuilder<List<dynamic>>(
-      future: combinedFuture,
-      builder: (context, snapshot) {
-        // The FutureBuilder remains in 'waiting' state until both futures complete.
-        // So, the CircularProgressIndicator will be shown for at least 1 second.
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-            ),
-          );
-        }
-
-        // After waiting, check the result of getImageFromServer
-        final imageData = snapshot.data?[0]; // Data from getImageFromServer future
-
-        if (snapshot.hasError || (imageData == null && !(snapshot.data?[0] is Uint8List) ) ) {
-          // This handles errors from Future.wait or if getImageFromServer returned null/error marker
-          // Fallback to Image.network if getImageFromServer failed
-          print('FutureBuilder error or getImageFromServer failed, falling back to Image.network for: $imageUrl');
-          return Image.network(
-            ProductService().getImageUrl(imageUrl!), // imageUrl is not null here due to earlier check
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              print('Image.network Error: $error');
-              return const Center(
-                child: Icon(
-                  Icons.broken_image,
-                  size: 50,
-                  color: Colors.grey,
-                ),
-              );
-            },
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Center(
-                child: CircularProgressIndicator(
-                  value: loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
-                      : null,
-                  strokeWidth: 2,
-                ),
-              );
-            },
-          );
-        }
-        
-        if (imageData is Uint8List) {
-          return Image.memory(
-            imageData,
-            fit: BoxFit.cover,
-          );
-        }
-        
-        // Should ideally not be reached if error handling is correct, but as a final fallback:
-        return const Center(
-            child: Icon(
-              Icons.broken_image, // Fallback for unexpected state
-              size: 50,
-              color: Colors.grey,
-            ),
-          );
-      },
     );
   }
 

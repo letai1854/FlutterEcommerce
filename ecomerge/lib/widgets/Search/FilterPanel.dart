@@ -22,6 +22,8 @@ class FilterPanel extends StatefulWidget {
   final Function(int) updateMaxPrice;
   final String Function(int) formatPrice;
   final int Function(String) parsePrice;
+  // Add flag to track if price filter was explicitly applied
+  final bool isPriceFilterApplied;
 
   const FilterPanel({
     Key? key,
@@ -39,6 +41,7 @@ class FilterPanel extends StatefulWidget {
     required this.updateMaxPrice,
     required this.formatPrice,
     required this.parsePrice,
+    this.isPriceFilterApplied = false, // Default to not applied
   }) : super(key: key);
 
   @override
@@ -151,7 +154,7 @@ class _FilterPanelState extends State<FilterPanel> {
               _buildBrandRadioItem(brand, brand)
             ).toList(),
             
-            SizedBox(height: 16),
+             SizedBox(height: 16),
             Divider(),
             
             // Price Range Filter

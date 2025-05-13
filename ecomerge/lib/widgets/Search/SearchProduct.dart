@@ -38,6 +38,9 @@ class SearchProduct extends StatefulWidget {
   final String Function(int) formatPrice;
   final int Function(String) parsePrice;
   
+  // Add flag for price filter application
+  final bool isPriceFilterApplied;
+  
   // Add search-specific props
   final bool isSearching;
   final bool canLoadMore;
@@ -73,6 +76,7 @@ class SearchProduct extends StatefulWidget {
     required this.updateMaxPrice,
     required this.formatPrice,
     required this.parsePrice,
+    this.isPriceFilterApplied = false, // Add with default false
     this.isSearching = false,
     this.canLoadMore = false,
     this.searchQuery = '',
@@ -154,6 +158,7 @@ class _SearchProductState extends State<SearchProduct> {
             updateMaxPrice: widget.updateMaxPrice,
             formatPrice: widget.formatPrice,
             parsePrice: widget.parsePrice,
+            isPriceFilterApplied: widget.isPriceFilterApplied, // Pass the flag
           ),
         ) : null,
       body: Container(
@@ -375,9 +380,6 @@ class _SearchProductState extends State<SearchProduct> {
                           width: mainContentWidth,
                           child: LayoutBuilder(
                             builder: (context, constraints) {
-                              // final double minItemWidth = 200.0;
-                              // final int maxColumns = (constraints.maxWidth / minItemWidth).floor();
-                              // final int columns = max(2, min(maxColumns, 5));
                               final double minItemWidth = isMobile ? 160.0 : 200.0;
                               final int maxColumns = (constraints.maxWidth / minItemWidth).floor();
                               final int columns = max(2, min(maxColumns, isMobile ? 2 : 4));
@@ -400,15 +402,8 @@ class _SearchProductState extends State<SearchProduct> {
                           ),
                         ),
 
-                      // Loading indicator or end of results message
-                      if (widget.isSearching)
-                        Padding(
-                          padding: EdgeInsets.symmetric(vertical: spacing),
-                          child: Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        )
-                      else if (!widget.isSearching && !widget.canLoadMore && widget.searchResults.isNotEmpty)
+                      // End of results message can stay
+                      if (!widget.isSearching && !widget.canLoadMore && widget.searchResults.isNotEmpty)
                         Padding(
                           padding: EdgeInsets.symmetric(vertical: spacing),
                           child: Text(
@@ -419,7 +414,6 @@ class _SearchProductState extends State<SearchProduct> {
                             ),
                           ),
                         ),
-
 
                     ],
                   ),

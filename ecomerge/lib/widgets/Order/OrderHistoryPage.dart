@@ -88,13 +88,24 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
           if (kDebugMode) {
             print("OrderHistoryPage: Network restored - refreshing order data and images");
           }
-          _fetchInitialOrders(); // This will load fresh data and images
+          // Don't force a refresh here - let the OrderService handle the caching strategy
+          // The service will detect network restoration and handle accordingly
+          _fetchInitialOrders(forceRefresh: false);
+          
+          // After a delay, set childPageCausedChange to ensure data is refreshed for parent too
+          Future.delayed(const Duration(seconds: 3), () {
+            if (mounted) {
+              setState(() {
+                _childPageCausedChange = true;
+              });
+            }
+          });
         }
       }
     });
   }
 
-  Future<void> _fetchInitialOrders() async {
+  Future<void> _fetchInitialOrders({bool forceRefresh = false}) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -129,6 +140,42 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
         
         // Log the actual error in both debug and release modes
         print('Error fetching orders: $e');
+        
+        // Don't show error immediately if network was just restored
+        // Give the system a chance to recover by retrying once
+        if (OrderService.networkJustRestored && !_isOfflineMode) {
+          if (kDebugMode) {
+            print('Network was just restored, retrying fetch after 2 seconds');
+          }
+          
+          await Future.delayed(const Duration(seconds: 2));
+          
+          // Retry the fetch once
+          try {
+            final orderPage = await _orderService.getCurrentUserOrders(
+              page: _apiCurrentPage,
+              size: _apiPageSize,
+            );
+            
+            if (mounted) {
+              setState(() {
+                _orders = orderPage.orders;
+                _hasMore = !orderPage.isLast;
+                if (_hasMore) {
+                  _apiCurrentPage++;
+                }
+                _isLoading = false;
+                _isOfflineMode = false;
+              });
+            }
+            return;
+          } catch (retryError) {
+            if (kDebugMode) {
+              print('Retry after network restoration also failed: $retryError');
+            }
+            // Fall through to normal error handling
+          }
+        }
         
         if (is404) {
           displayError = "Chưa có đơn hàng nào.";
@@ -256,7 +303,6 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
         ),
         body: Column(
           children: [
-            // Show offline banner when in offline mode
            
             
             Expanded(
@@ -318,125 +364,103 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                             ? const Center(child: CircularProgressIndicator())
                             : _errorMessage != null
                                 ? Center(
-                                    child: Text(" $_errorMessage",
-                                        style: const TextStyle(color: Colors.black)))
-                                : _orders.isEmpty && !_hasMore
-                                    ? Center(
-                                        child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              Icons.receipt_long_outlined,
-                                              size: 80,
-                                              color: Colors.grey[400],
-                                            ),
-                                            const SizedBox(height: 16),
-                                            Text(
-                                              "Không có lịch sử đơn hàng nào",
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                color: Colors.grey[600],
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      )
-                                    : ListView.separated(
-                                        controller: _scrollController,
-                                        itemCount:
-                                            _orders.length + (_hasMore ? 1 : 0),
-                                        separatorBuilder: (context, index) =>
-                                            const SizedBox(height: 16),
-                                        itemBuilder: (context, index) {
-                                          if (index == _orders.length) {
-                                            return _isLoadingMore
-                                                ? const Center(
-                                                    child: Padding(
-                                                    padding: EdgeInsets.all(16.0),
-                                                    child:
-                                                        CircularProgressIndicator(),
-                                                  ))
-                                                : const SizedBox.shrink();
-                                          }
+                                    child: Text(
+                                      _errorMessage!,
+                                      style: const TextStyle(color: Colors.black),
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    controller: _scrollController,
+                                    itemCount: _orders.length + (_isLoadingMore ? 1 : 0),
+                                    itemBuilder: (context, index) {
+                                      if (index == _orders.length) {
+                                        return _isLoadingMore
+                                            ? const Center(
+                                                child: Padding(
+                                                padding: EdgeInsets.all(16.0),
+                                                child:
+                                                    CircularProgressIndicator(),
+                                              ))
+                                            : const SizedBox.shrink();
+                                      }
 
-                                          final order = _orders[index];
-                                          final orderItemsForDisplay =
-                                              _mapOrderDetailsToOrderItemItems(
-                                                  order.orderDetails);
-                                          final displayStatus =
-                                              _getDisplayStatus(order.orderStatus);
+                                      final order = _orders[index];
+                                      final orderItemsForDisplay =
+                                          _mapOrderDetailsToOrderItemItems(
+                                              order.orderDetails);
+                                      final displayStatus =
+                                          _getDisplayStatus(order.orderStatus);
 
-                                          return GestureDetector(
-                                            onTap: () async {
-                                              final result = await Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      OrderDetailPage(
-                                                    orderId: order.id.toString(),
-                                                  ),
-                                                ),
-                                              );
-                                              if (result == true && mounted) {
-                                                _childPageCausedChange =
-                                                    true; // Set flag
-                                                _fetchInitialOrders();
-                                              }
-                                            },
-                                            child: Container(
-                                              decoration: BoxDecoration(
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color:
-                                                        Colors.grey.withOpacity(0.2),
-                                                    spreadRadius: 1,
-                                                    blurRadius: 6,
-                                                    offset: const Offset(0, 2),
-                                                  ),
-                                                ],
-                                              ),
-                                              child: OrderItem(
+                                      return GestureDetector(
+                                        onTap: () async {
+                                          final result = await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  OrderDetailPage(
                                                 orderId: order.id.toString(),
-                                                date: order.orderDate
-                                                        ?.toIso8601String()
-                                                        .split('T')[0] ??
-                                                    'N/A',
-                                                items: orderItemsForDisplay,
-                                                status: displayStatus,
-                                                onViewHistory: () {
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) =>
-                                                          OrderStatusHistoryPage(
-                                                        orderId: order.id.toString(),
-                                                        currentStatus: displayStatus,
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                                subtotal: order.subtotal ?? 0.0,
-                                                shippingFee: order.shippingFee ?? 0.0,
-                                                tax: order.tax ?? 0.0,
-                                                totalAmount: order.totalAmount ?? 0.0,
-                                                couponDiscount: order.couponDiscount,
-                                                pointsDiscount:
-                                                    order.pointsDiscount?.toDouble(),
-                                                pointsEarned:
-                                                    order.pointsEarned?.toDouble(),
-                                                isSmallScreen: MediaQuery.of(context)
-                                                        .size
-                                                        .width <
-                                                    600,
-                                                isOfflineMode: _isOfflineMode,
                                               ),
                                             ),
                                           );
+                                          if (result == true && mounted) {
+                                            _childPageCausedChange =
+                                                true; // Set flag
+                                            _fetchInitialOrders();
+                                          }
                                         },
-                                      ),
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color:
+                                                    Colors.grey.withOpacity(0.2),
+                                                spreadRadius: 1,
+                                                blurRadius: 6,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ],
+                                          ),
+                                          child: OrderItem(
+                                            orderId: order.id.toString(),
+                                            date: order.orderDate
+                                                    ?.toIso8601String()
+                                                    .split('T')[0] ??
+                                                'N/A',
+                                            items: orderItemsForDisplay,
+                                            status: displayStatus,
+                                            onViewHistory: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      OrderStatusHistoryPage(
+                                                    orderId: order.id.toString(),
+                                                    currentStatus: displayStatus,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            subtotal: order.subtotal ?? 0.0,
+                                            shippingFee: order.shippingFee ?? 0.0,
+                                            tax: order.tax ?? 0.0,
+                                            totalAmount: order.totalAmount ?? 0.0,
+                                            couponDiscount: order.couponDiscount,
+                                            pointsDiscount:
+                                                order.pointsDiscount?.toDouble(),
+                                            pointsEarned:
+                                                order.pointsEarned?.toDouble(),
+                                            isSmallScreen: MediaQuery.of(context)
+                                                    .size
+                                                    .width <
+                                                600,
+                                            isOfflineMode: _isOfflineMode,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
                       ),
                     ],
                   ),

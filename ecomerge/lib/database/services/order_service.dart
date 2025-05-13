@@ -36,6 +36,12 @@ class OrderService {
   static bool _networkJustRestored = false;
   static bool get networkJustRestored => _networkJustRestored;
 
+  // Add variables to track the last order query parameters
+  static OrderStatus? _lastOrderStatus;
+  static int _lastPage = 0;
+  static int _lastSize = 10;
+  static String _lastSort = 'orderDate,desc';
+
   OrderService() {
     httpClient = _createSecureClient();
     _initConnectivityMonitoring();
@@ -182,21 +188,71 @@ class OrderService {
     int size = 10, // Default page size
     String sort = 'orderDate,desc', // Default sort
   }) async {
+    // Save the current query parameters for potential network restoration
+    _lastOrderStatus = status;
+    _lastPage = page;
+    _lastSize = size;
+    _lastSort = sort;
+    
     // Refresh connectivity status
     await _checkConnectivity();
     
-    // If we just came back online, always fetch fresh data from server and clear cache
+    // If we just came back online, always fetch fresh data from server
     if (_wasOffline && _isOnline) {
       _wasOffline = false; // Reset the flag
-      
-      // Clear local cache first
-      await clearLocalOrderCache();
       
       if (kDebugMode) {
         print('OrderService: Network just restored - fetching fresh data from server');
       }
       
-      // Continue with online path to fetch fresh data
+      // When network is restored, prioritize fetching from server before touching cache
+      try {
+        // Make API call without clearing cache first - so we still have local data as fallback
+        final Map<String, String> queryParams = {
+          'page': page.toString(),
+          'size': size.toString(),
+          'sort': sort,
+        };
+        if (status != null) {
+          queryParams['status'] = orderStatusToString(status);
+        }
+        final url = Uri.parse('$_baseUrl/api/orders/me')
+            .replace(queryParameters: queryParams);
+        
+        if (kDebugMode) {
+          print('Network restored - Get Current User Orders Request URL: $url');
+        }
+        
+        final response = await httpClient.get(
+          url,
+          headers: _getHeaders(includeAuth: true),
+        );
+        
+        if (response.statusCode == 200) {
+          final responseBody = jsonDecode(utf8.decode(response.bodyBytes));
+          if (responseBody is Map<String, dynamic>) {
+            final orderPage = OrderPage.fromJson(responseBody);
+            
+            // Only AFTER successful fetch, clear old cache and save new data
+            await clearLocalOrderCache();
+            await saveOrdersToLocalStorage(orderPage, status: status, page: page, size: size, sort: sort);
+            
+            // Mark as online data
+            orderPage.isOfflineData = false;
+            _networkJustRestored = false; // Reset the flag after successful data fetch
+            return orderPage;
+          }
+        }
+        
+        // If we reach here, the API call wasn't successful, continue with normal flow
+        // which will try to use existing cache
+      } catch (e) {
+        if (kDebugMode) {
+          print('OrderService: Error fetching fresh data after network restoration: $e');
+          print('OrderService: Will try normal flow with existing cache');
+        }
+        // Don't clear cache if fetch failed - we'll need it
+      }
     }
     
     if (_isOnline) {
@@ -1175,6 +1231,9 @@ class OrderService {
             print('OrderService: Local order cache cleared after network restoration');
           }
           
+          // After clearing cache, automatically request fresh data from server
+          _refreshOrderDataAfterNetworkRestoration();
+          
           // Reset the networkJustRestored flag after a delay
           Future.delayed(const Duration(seconds: 10), () {
             _networkJustRestored = false;
@@ -1263,6 +1322,35 @@ Future<void> _checkConnectivity() async {
     } catch (e) {
       if (kDebugMode) {
         print('OrderService: Error clearing order images cache: $e');
+      }
+    }
+  }
+
+  // Add a method to fetch fresh data after network restoration
+  Future<void> _refreshOrderDataAfterNetworkRestoration() async {
+    try {
+      if (kDebugMode) {
+        print('OrderService: Auto-refreshing order data with last parameters:');
+        print('Status: $_lastOrderStatus, Page: $_lastPage, Size: $_lastSize, Sort: $_lastSort');
+      }
+      
+      // Request fresh data using last known parameters
+      final orderPage = await getCurrentUserOrders(
+        status: _lastOrderStatus,
+        page: _lastPage,
+        size: _lastSize,
+        sort: _lastSort,
+      );
+      
+      if (kDebugMode) {
+        print('OrderService: Successfully refreshed ${orderPage.orders.length} orders from server after network restoration');
+      }
+      
+      // getCurrentUserOrders already handles saving to local storage
+      
+    } catch (e) {
+      if (kDebugMode) {
+        print('OrderService: Error refreshing order data after network restoration: $e');
       }
     }
   }

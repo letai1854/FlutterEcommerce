@@ -468,8 +468,8 @@ class _CatalogProductState extends State<CatalogProduct> {
                             final int columns = max(2, min(maxColumns, isMobile ? 2 : 4));
 
                             // Create a stable key that only changes when sort or category changes
-                            // DON'T include filteredProducts.length in the key to prevent rebuilds when loading more
-                            final gridKey = ValueKey('${widget.selectedCategoryId}_${widget.currentSortMethod}');
+                            // Include sort direction in the key to ensure proper cache handling
+                            final gridKey = ValueKey('${widget.selectedCategoryId}_${widget.currentSortMethod}_${widget.currentSortDir}');
                             
                             // Wrap in RepaintBoundary to prevent repainting when parent rebuilds
                             return RepaintBoundary(
@@ -485,7 +485,7 @@ class _CatalogProductState extends State<CatalogProduct> {
                                   crossSpace: spacing,
                                   isProductsLoading: widget.isProductsLoading,
                                   canLoadMoreProducts: widget.canLoadMoreProducts,
-                                  isShowingCachedContent: widget.isShowingCachedContent, // Pass this flag
+                                  isShowingCachedContent: false, // Always set to false since we don't use cached data
                                 ),
                               ),
                             );

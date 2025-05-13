@@ -291,10 +291,11 @@ class _ProductScreenState extends State<ProductScreen> {
 
   // Helper to build a row for displaying key-value info
   Widget _buildInfoRow(String label, String value, {int maxLength = 80}) {
-    String displayValue = value;
-    // Apply maxLength only if value is not null
-    if (value.isNotEmpty && value.length > maxLength) {
-      displayValue = value.substring(0, maxLength) + '...';
+    String displayValue = value.isEmpty ? "N/A" : value;
+    
+    // Apply maxLength only if value is not empty
+    if (displayValue.isNotEmpty && displayValue.length > maxLength) {
+      displayValue = displayValue.substring(0, maxLength) + '...';
     }
 
     return Padding(
@@ -302,17 +303,27 @@ class _ProductScreenState extends State<ProductScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Label with fixed width
           SizedBox(
-            width: 100, // Increased width for labels
+            width: 100, // Fixed width for labels
             child: Text(
               label,
               style: const TextStyle(fontWeight: FontWeight.w500),
+              overflow: TextOverflow.ellipsis, // Add ellipsis to label if needed
             ),
           ),
+          // Value with responsive handling
           Expanded(
             child: Text(
               displayValue,
               style: const TextStyle(color: Colors.black87),
+              overflow: TextOverflow.ellipsis,
+              maxLines: label == 'Mô tả:' ? 2 : 1, // More lines for descriptions
+              softWrap: true,
+              // Prevent individual character breaks
+              textWidthBasis: TextWidthBasis.longestLine,
+              // Add proper text scaling for small screens
+              textScaleFactor: 1.0,
             ),
           ),
         ],
@@ -603,20 +614,17 @@ class _ProductScreenState extends State<ProductScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Calculate available width considering padding
-    // Not strictly needed for this simplified layout, but kept for consistency
-    // final double availableWidth = MediaQuery.of(context).size.width - 2 * 16.0; // Removed as it's unused
-
     return Scaffold(
-      appBar: AppBar( // Added AppBar for title
-        title: const Text('Quản lý sản phẩm'), // Added const
+      appBar: AppBar(
+        title: const Text('Quản lý sản phẩm'),
+        automaticallyImplyLeading: false, // Remove back button
       ),
-      body: AbsorbPointer( // Use AbsorbPointer to block interaction when processing (e.g., deleting or loading)
-        absorbing: _isProcessing || _isLoading, // Absorb when deleting or loading
-        child: SingleChildScrollView( // Use SingleChildScrollView to handle overflow
+      body: AbsorbPointer(
+        absorbing: _isProcessing || _isLoading,
+        child: SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.all(16.0), // Added const
-                child: _buildLayout(), // Use the simplified layout function without width param
+                padding: const EdgeInsets.all(16.0),
+                child: _buildLayout(),
               ),
             ),
       ),
