@@ -26,11 +26,11 @@ class PageSearch extends StatefulWidget {
 
 class _PageSearchState extends State<PageSearch> {
   int _current = 0;
-  
+
   // Using real singletons for state management
   final ProductStorageSingleton _productStorage = ProductStorageSingleton();
   final SearchStateService _searchService = SearchStateService();
-  
+
   // Scrolling and scaffolding
   final ScrollController _scrollController = ScrollController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -52,7 +52,7 @@ class _PageSearchState extends State<PageSearch> {
   int minPrice = 0;
   int maxPrice = 10000000; // 10 million VND default max
   final int priceStep = 1000000; // Step by 1 million VND
-  
+
   // Sort settings
   String currentSortMethod = 'createdDate'; // Default sort method
   String currentSortDir = 'desc'; // Default sort direction
@@ -64,27 +64,27 @@ class _PageSearchState extends State<PageSearch> {
   @override
   void initState() {
     super.initState();
-    
+
     // Set up listeners for changes
     _productStorage.addListener(_onProductStorageChange);
     _searchService.addListener(_onSearchServiceChange);
-    
+
     // Initialize the price filter controllers
     minPriceController.text = formatPrice(minPrice);
     maxPriceController.text = formatPrice(maxPrice);
-    
+
     // Set up scroll listener for "load more" with a slight delay to ensure proper initialization
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollController.addListener(_onScroll);
     });
-    
+
     // Sync with search service state
     _syncWithSearchService();
-    
+
     // Execute search if there's a query
     _executeInitialSearch();
   }
-  
+
   // Sync local state with SearchStateService
   void _syncWithSearchService() {
     // Get current values from search service
@@ -94,7 +94,7 @@ class _PageSearchState extends State<PageSearch> {
     maxPrice = _searchService.maxPrice;
     currentSortMethod = _searchService.sortBy;
     currentSortDir = _searchService.sortDir;
-    
+
     // Update controllers
     minPriceController.text = formatPrice(minPrice);
     maxPriceController.text = formatPrice(maxPrice);
@@ -111,7 +111,7 @@ class _PageSearchState extends State<PageSearch> {
     _searchService.removeListener(_onSearchServiceChange);
     super.dispose();
   }
-  
+
   // Execute search with current query if there is one
   void _executeInitialSearch() {
     final query = _searchService.currentSearchQuery;
@@ -120,7 +120,7 @@ class _PageSearchState extends State<PageSearch> {
         print('Initial search execution for: "$query"');
         print('isInitialSearch flag: ${_searchService.isInitialSearch}');
       }
-      
+
       // If this is a brand new search (like coming directly from search bar),
       // we need to execute it as an initial search without filters
       if (_searchService.isInitialSearch) {
@@ -132,14 +132,14 @@ class _PageSearchState extends State<PageSearch> {
       }
     }
   }
-  
+
   // Listener for product storage changes
   void _onProductStorageChange() {
     if (mounted) {
       setState(() {});
     }
   }
-  
+
   // Listener for search service changes
   void _onSearchServiceChange() {
     if (mounted) {
@@ -149,26 +149,26 @@ class _PageSearchState extends State<PageSearch> {
       });
     }
   }
-  
+
   // Scroll handler for "load more" functionality
   void _onScroll() {
     // First check if ScrollController has attached clients to avoid errors
     if (!_scrollController.hasClients) return;
-    
+
     // Match the category browsing scroll trigger threshold approach
-    if (mounted && 
+    if (mounted &&
         _scrollController.position.maxScrollExtent > 0 &&
         _scrollController.position.extentAfter < 50) {
-      
-      if (!_productStorage.isSearchLoading && 
+      if (!_productStorage.isSearchLoading &&
           _productStorage.canSearchLoadMore) {
-        
         if (kDebugMode) {
-          print('Near bottom of search scroll view, loading more search results');
-          print('Position: ${_scrollController.position.pixels}, Max: ${_scrollController.position.maxScrollExtent}');
+          print(
+              'Near bottom of search scroll view, loading more search results');
+          print(
+              'Position: ${_scrollController.position.pixels}, Max: ${_scrollController.position.maxScrollExtent}');
           print('ExtentAfter: ${_scrollController.position.extentAfter}');
         }
-        
+
         _productStorage.loadMoreSearchResults();
       }
     }
@@ -221,24 +221,23 @@ class _PageSearchState extends State<PageSearch> {
       this.minPrice = minPrice;
       this.maxPrice = maxPrice;
     });
-    
+
     // Close drawer on mobile
     if (MediaQuery.of(context).size.width < 1100) {
       Navigator.of(context).pop(); // Close drawer on mobile
     }
-    
+
     // Update search service state
     _searchService.setFilters(
-      categoryId: categoryId,
-      brandName: brandName,
-      minPrice: minPrice,
-      maxPrice: maxPrice
-    );
-    
+        categoryId: categoryId,
+        brandName: brandName,
+        minPrice: minPrice,
+        maxPrice: maxPrice);
+
     // Execute search with current parameters and force refresh
     _searchService.executeSearch(forceRefresh: true);
   }
-  
+
   // Update sort method and execute search
   void updateSortMethod(String method) {
     setState(() {
@@ -250,10 +249,10 @@ class _PageSearchState extends State<PageSearch> {
         currentSortDir = 'desc'; // Default for new sort
       }
     });
-    
+
     // Update search service state
     _searchService.setSort(currentSortMethod, currentSortDir);
-    
+
     // Execute search with current parameters (sort is now included)
     _searchService.executeSearch(forceRefresh: true);
   }
@@ -263,20 +262,24 @@ class _PageSearchState extends State<PageSearch> {
     // Get AppData service state
     final bool isAppDataLoading = AppDataService().isLoading;
     final bool isAppDataInitialized = AppDataService().isInitialized;
-    
+
     // Get list of all categories
     final categories = AppDataService().categories;
-    
+
     // Get search results
     final List<ProductDTO> searchResults = _productStorage.searchResults;
     final bool isSearching = _productStorage.isSearchLoading;
     final bool canLoadMore = _productStorage.canSearchLoadMore;
-    
+
     // Extract brand names from AppDataService - fixed to handle null/empty cases
-    final List<String> brandNames = AppDataService().isInitialized ?
-        AppDataService().brands.where((b) => b.name != null).map((b) => b.name!).toList() :
-        [];
-    
+    final List<String> brandNames = AppDataService().isInitialized
+        ? AppDataService()
+            .brands
+            .where((b) => b.name != null)
+            .map((b) => b.name!)
+            .toList()
+        : [];
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final screenWidth = constraints.maxWidth;

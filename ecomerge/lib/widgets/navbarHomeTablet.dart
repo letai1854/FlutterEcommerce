@@ -125,7 +125,7 @@ class _NavbarhomeTabletState extends State<NavbarhomeTablet> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Image.asset(
-                '/logoSNew.png',
+                'assets/logoSNew.png',
                 height: 70,
                 width: 70,
               ),
@@ -173,7 +173,9 @@ class _NavbarhomeTabletState extends State<NavbarhomeTablet> {
                         child: GestureDetector(
                           onTap: () {
                             // Only execute search and navigate if text isn't empty
-                            if (searchService.searchController.text.trim().isNotEmpty) {
+                            if (searchService.searchController.text
+                                .trim()
+                                .isNotEmpty) {
                               // Use the centralized executeSearch method
                               searchService.executeSearch().then((_) {
                                 Navigator.pushNamed(context, '/search');

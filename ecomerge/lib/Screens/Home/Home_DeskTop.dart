@@ -45,9 +45,9 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   int _current = 0;
   final List<String> imgList = [
-    'assets/bannerMain.jpg',
-    'assets/banner2.jpg',
-    'assets/banner6.jpg', // Thay thế bằng đường dẫn ảnh thực tế// Thay thế bằng đường dẫn ảnh thực tế
+    'assets/poster3.png',
+    'assets/poster1.jpg',
+    'assets/post4.jpg', // Thay thế bằng đường dẫn ảnh thực tế// Thay thế bằng đường dẫn ảnh thực tế
   ];
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _categoriesSectionKey = GlobalKey();

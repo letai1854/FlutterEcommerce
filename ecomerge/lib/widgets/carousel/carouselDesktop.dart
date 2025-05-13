@@ -1,6 +1,7 @@
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:e_commerce_app/Constants/ImageCarousel.dart';
+import 'package:flutter/foundation.dart' show kIsWeb; // Import kIsWeb
 
 class Carouseldesktop extends StatefulWidget {
   final double screeWidth;
@@ -65,7 +66,9 @@ class _CarouseldesktopState extends State<Carouseldesktop> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(3), // Bo tròn góc
                       image: DecorationImage(
-                        image: AssetImage('assets/banner6.jpg'),
+                        image: AssetImage(kIsWeb
+                            ? 'poster7.png'
+                            : 'assets/poster7.png'), // Conditional path
                         fit: BoxFit.cover,
                         alignment: Alignment.center,
                       ),
@@ -80,7 +83,9 @@ class _CarouseldesktopState extends State<Carouseldesktop> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(3), // Bo tròn góc
                       image: DecorationImage(
-                        image: AssetImage('assets/banner7.jpg'),
+                        image: AssetImage(kIsWeb
+                            ? 'poster10.png'
+                            : 'assets/poster10.png'), // Conditional path
                         fit: BoxFit.cover,
                         alignment: Alignment.center,
                       ),
