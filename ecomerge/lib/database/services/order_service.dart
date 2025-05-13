@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io'; // For SocketException and HttpClient
 import 'dart:typed_data';
@@ -11,6 +12,7 @@ import 'package:e_commerce_app/database/Storage/UserInfo.dart'; // For auth toke
 import 'package:flutter/foundation.dart'; // For kDebugMode, kIsWeb
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart'; // For IOClient
+import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -45,7 +47,7 @@ class OrderService {
     } else {
       final HttpClient ioClient = HttpClient()
         ..badCertificateCallback =
-            ((X509Certificate cert, String host, int port) => kDebugMode);
+            ((X509Certificate cert, String host, int port) => true); // Accept all certificates in all modes, not just debug
       return IOClient(ioClient);
     }
   }
@@ -1183,20 +1185,38 @@ class OrderService {
   }
   
   // Check current connectivity status
-  Future<void> _checkConnectivity() async {
-    try {
-      final result = await _connectivity.checkConnectivity();
-      _isOnline = result != ConnectivityResult.none;
-      if (kDebugMode) {
-        print('OrderService: Initial connectivity check: $_isOnline');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('OrderService: Error checking connectivity: $e');
-      }
-      _isOnline = true; // Default to assuming online if check fails
+Future<void> _checkConnectivity() async {
+  try {
+    final ConnectivityResult connectivityResult = await Connectivity().checkConnectivity();
+    print("ConnectivityResult: $connectivityResult");
+
+    if (connectivityResult == ConnectivityResult.none) {
+      print("Không có kết nối mạng cục bộ (Wi-Fi/Mobile Data).");
+      _isOnline = false;
+      return;
     }
+
+    // Try a simple connectivity test that works in all build modes
+    bool hasInternetAccess = false;
+    try {
+      // Try a simple HTTP request to a reliable server
+      final response = await httpClient.get(Uri.parse('https://www.google.com')).timeout(
+        const Duration(seconds: 1),
+        onTimeout: () => throw TimeoutException('Connection timeout'),
+      );
+      hasInternetAccess = response.statusCode == 200;
+    } catch (e) {
+      print("Lỗi kiểm tra kết nối internet: $e");
+      hasInternetAccess = false;
+    }
+
+    _isOnline = hasInternetAccess;
+    print(_isOnline ? "Đã kết nối internet." : "Không có kết nối internet.");
+  } catch (e) {
+    print("Lỗi tổng thể khi kiểm tra kết nối: $e");
+    _isOnline = false;
   }
+}
 
   // Clear local orders cache when network is restored or on demand
   Future<void> clearLocalOrderCache() async {

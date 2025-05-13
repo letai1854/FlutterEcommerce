@@ -13,6 +13,7 @@ import 'package:http/http.dart' as http;
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/io_client.dart';
+import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:path_provider/path_provider.dart'; // For file access
 import 'package:connectivity_plus/connectivity_plus.dart'; // For connectivity checking
 import 'package:crypto/crypto.dart'; // For creating image filename hashes
@@ -30,11 +31,10 @@ class ProductService {
       return http.Client();
     } else {
       // For mobile and desktop platforms
-      final HttpClient ioClient = HttpClient();
-      if (kDebugMode) {
-        ioClient.badCertificateCallback =
+      final HttpClient ioClient = HttpClient()
+        ..badCertificateCallback =
             ((X509Certificate cert, String host, int port) => true);
-      }
+
       return IOClient(ioClient);
     }
   }
@@ -55,17 +55,43 @@ class ProductService {
   static bool _isNetworkRestored = false;
 
   // Check if device is currently online
+  // Future<bool> isOnline() async {
+  //   try {
+  //     var connectivityResult = await Connectivity().checkConnectivity();
+  //     return connectivityResult != ConnectivityResult.none;
+  //   } catch (e) {
+  //     if (kDebugMode) {
+  //       print('Error checking connectivity: $e');
+  //     }
+  //     // Default to assuming online if we can't check
+  //     return true;
+  //   }
+  // }
   Future<bool> isOnline() async {
-    try {
-      var connectivityResult = await Connectivity().checkConnectivity();
-      return connectivityResult != ConnectivityResult.none;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error checking connectivity: $e');
-      }
-      // Default to assuming online if we can't check
-      return true;
+    final ConnectivityResult result = await Connectivity().checkConnectivity();
+    print("ConnectivityResult: $result"); // In ra để debug
+
+    if (result == ConnectivityResult.none) {
+      print("Không có kết nối mạng (ConnectivityResult.none)");
+      return false;
     }
+
+    final InternetConnectionChecker customChecker =
+        InternetConnectionChecker.createInstance(
+      checkTimeout: const Duration(milliseconds: 1000),
+    );
+
+    print(
+        "Đang kiểm tra kết nối internet thực sự (timeout mỗi địa chỉ ~1 giây)...");
+    final bool isConnected = await customChecker.hasConnection;
+
+    if (isConnected) {
+      print("Đã kết nối mạng (InternetConnectionChecker)");
+    } else {
+      print(
+          "Mất kết nối mạng (InternetConnectionChecker) hoặc kiểm tra timeout");
+    }
+    return isConnected;
   }
 
   // Get path to save images locally

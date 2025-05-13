@@ -11,6 +11,7 @@ import 'package:e_commerce_app/database/PageResponse.dart'; // Assuming PageResp
 import 'package:flutter/foundation.dart'; // For kDebugMode, ChangeNotifier
 // Add imports for connectivity and storage
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:io';
@@ -87,74 +88,37 @@ class AppDataService extends ChangeNotifier {
   }
 
   // Check current connectivity status
-  Future<void> _checkConnectivity() async {
-    if (kIsWeb) {
-      _isOnline = true; // Luôn giả định online cho web
-      return;
-    }
+Future<void> _checkConnectivity() async {
+  final ConnectivityResult connectivityResult = await Connectivity().checkConnectivity();
+  print("ConnectivityResult: $connectivityResult");
 
-    try {
-      // Kiểm tra xem thiết bị có phần cứng kết nối đang hoạt động không
-      final result = await _connectivity.checkConnectivity();
-
-      // Chỉ kiểm tra sâu hơn nếu có giao diện mạng đang hoạt động
-      if (result == ConnectivityResult.none) {
-        _isOnline = false;
-      } else {
-        // *** THAY ĐỔI CHÍNH: Sử dụng InternetAddress.lookup thay vì Socket.connect ***
-        try {
-          // Chọn một tên miền đáng tin cậy
-          const String lookupHost = 'google.com';
-          // Thêm timeout cho lookup để tránh treo quá lâu trên mạng rất tệ
-          final lookupResult = await InternetAddress.lookup(lookupHost)
-              .timeout(const Duration(seconds: 1)); // Timeout ngắn cho lookup
-
-          // Nếu lookup thành công và trả về ít nhất một địa chỉ IP hợp lệ
-          if (lookupResult.isNotEmpty &&
-              lookupResult[0].rawAddress.isNotEmpty) {
-            _isOnline = true;
-            if (kDebugMode) {
-              print('DNS lookup successful for $lookupHost');
-            }
-          } else {
-            // Trường hợp hiếm: lookup thành công nhưng không có địa chỉ?
-            _isOnline = false;
-            if (kDebugMode) {
-              print('DNS lookup for $lookupHost returned empty result.');
-            }
-          }
-        } on SocketException catch (e) {
-          // Lỗi phổ biến khi không phân giải được DNS (không có mạng, DNS lỗi)
-          _isOnline = false;
-          if (kDebugMode) {
-            print('DNS lookup failed for: $e');
-          }
-        } on TimeoutException catch (_) {
-          // Lookup mất quá nhiều thời gian
-          _isOnline = false;
-          if (kDebugMode) {
-            print('DNS lookup for  timed out.');
-          }
-        } catch (e) {
-          // Các lỗi không mong muốn khác
-          _isOnline = false;
-          if (kDebugMode) {
-            print('Unexpected error during DNS lookup: $e');
-          }
-        }
-      }
-
-      if (kDebugMode) {
-        print(
-            'Connectivity check result: $_isOnline (Device interface: $result)');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error checking basic connectivity: $e');
-      }
-      _isOnline = false; // Mặc định là offline nếu kiểm tra cơ bản thất bại
-    }
+  if (connectivityResult == ConnectivityResult.none) {
+    print("Không có kết nối mạng cục bộ (Wi-Fi/Mobile Data).");
+    _isOnline = false;
+    return;
   }
+
+  final InternetConnectionChecker customChecker = InternetConnectionChecker.createInstance(
+    checkTimeout: const Duration(milliseconds: 1000),
+  );
+
+  print("Đang kiểm tra kết nối internet thực sự (timeout mỗi địa chỉ ~1 giây)...");
+  bool hasInternetAccess = false;
+  try {
+    hasInternetAccess = await customChecker.hasConnection;
+  } catch (e) {
+    print("Lỗi khi kiểm tra InternetConnectionChecker: $e");
+  hasInternetAccess = false;
+  }
+
+  if (hasInternetAccess) {
+    print("Đã kết nối internet (InternetConnectionChecker).");
+  } else {
+    print("Mất kết nối internet (InternetConnectionChecker) hoặc kiểm tra timeout.");
+  }
+
+  _isOnline = hasInternetAccess;
+}
 
   // Refresh data from server when going back online
   Future<void> _refreshDataFromServer() async {
@@ -188,7 +152,7 @@ class AppDataService extends ChangeNotifier {
   // --- Local Storage Methods ---
   // Check if local storage is available (not on web)
   bool get _canUseLocalStorage =>
-      !kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isWindows);
+       (Platform.isAndroid || Platform.isIOS || Platform.isWindows);
 
   // Save category and brand data to local storage
   Future<void> _saveDataToLocalStorage() async {
