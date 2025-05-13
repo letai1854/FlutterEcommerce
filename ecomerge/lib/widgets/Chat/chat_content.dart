@@ -65,8 +65,8 @@ class _ChatContentState extends State<ChatContent> {
 
   @override
   Widget build(BuildContext context) {
-    final String partnerName = widget.chatPartnerData['name'] ?? 'Người dùng';
-    final String partnerAvatar = widget.chatPartnerData['avatar'] ?? 'assets/default_avatar.png';
+    final String partnerName = widget.chatPartnerData['name'] ?? 'User';
+    final Future<String?> partnerAvatarUrlFuture = widget.chatPartnerData['avatar'] as Future<String?>;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -84,10 +84,38 @@ class _ChatContentState extends State<ChatContent> {
               )
             else
               SizedBox(width: MediaQuery.of(context).size.width < 768 ? 0 : 10),
-            CircleAvatar(
-              backgroundImage: AssetImage(partnerAvatar),
-              radius: 18,
-              backgroundColor: Colors.grey[300],
+            FutureBuilder<String?>(
+              future: partnerAvatarUrlFuture,
+              builder: (context, snapshot) {
+                ImageProvider partnerAvatarImage;
+                bool isPartnerAvatarNetwork = false;
+                String? resolvedAvatarUrl;
+
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  partnerAvatarImage = const AssetImage('assets/default_avatar.png');
+                } else if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
+                  partnerAvatarImage = const AssetImage('assets/default_avatar.png');
+                } else {
+                  resolvedAvatarUrl = snapshot.data!;
+                  if (resolvedAvatarUrl.startsWith('http://') || resolvedAvatarUrl.startsWith('https://')) {
+                    partnerAvatarImage = NetworkImage(resolvedAvatarUrl);
+                    isPartnerAvatarNetwork = true;
+                  } else {
+                    partnerAvatarImage = AssetImage(resolvedAvatarUrl);
+                  }
+                }
+
+                return CircleAvatar(
+                  backgroundImage: partnerAvatarImage,
+                  onBackgroundImageError: isPartnerAvatarNetwork
+                    ? (exception, stackTrace) {
+                        // print('Error loading partner network avatar: $exception');
+                      }
+                    : null,
+                  radius: 18,
+                  backgroundColor: Colors.grey[300],
+                );
+              },
             ),
             SizedBox(width: 10),
             Expanded(
@@ -133,10 +161,10 @@ class _ChatContentState extends State<ChatContent> {
                         );
                       }
                       final messageIndex = widget.isLoadingMoreMessages ? index - 1 : index;
-                      final message = widget.messages[messageIndex]; // message is ChatMessageUI
+                      final message = widget.messages[messageIndex];
                       final bool isMe = message.senderId == widget.currentUserId.toString();
                       return ChatBubble(
-                        message: message, // This is ChatMessageUI, ChatBubble needs to accept this type
+                        message: message,
                         isMe: isMe,
                         chatService: widget.chatService,
                       );
