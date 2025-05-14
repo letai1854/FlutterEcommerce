@@ -36,6 +36,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Calendar;
+import java.util.TimeZone;
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -355,23 +357,32 @@ public class OrderServiceImpl implements OrderService {
         }
         
         if (startDate != null && endDate != null) {
+            // Adjust endDate to include the entire day in UTC
+            Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+            calendar.setTime(endDate);
+            calendar.set(Calendar.HOUR_OF_DAY, 23);
+            calendar.set(Calendar.MINUTE, 59);
+            calendar.set(Calendar.SECOND, 59);
+            calendar.set(Calendar.MILLISECOND, 999);
+            Date adjustedEndDate = calendar.getTime();
+
             List<Order> filteredList = orderPage.getContent().stream()
                     .filter(order -> {
                         Date orderDate = order.getOrderDate();
-                        return orderDate != null && 
-                               (orderDate.after(startDate) || orderDate.equals(startDate)) && 
-                               (orderDate.before(endDate) || orderDate.equals(endDate));
+                        return orderDate != null &&
+                               (orderDate.after(startDate) || orderDate.equals(startDate)) &&
+                               (orderDate.before(adjustedEndDate) || orderDate.equals(adjustedEndDate));
                     })
                     .collect(Collectors.toList());
-            
+
             int start = (int) pageable.getOffset();
             int end = Math.min((start + pageable.getPageSize()), filteredList.size());
-            
+
             if (start > filteredList.size()) {
                 start = 0;
                 end = 0;
             }
-            
+
             List<Order> pageContent = (start < end) ? filteredList.subList(start, end) : new ArrayList<>();
             return new org.springframework.data.domain.PageImpl<>(
                     pageContent.stream().map(order -> orderMapper.toOrderDTO(order)).collect(Collectors.toList()),
@@ -379,7 +390,7 @@ public class OrderServiceImpl implements OrderService {
                     filteredList.size()
             );
         }
-        
+
         return orderPage.map(order -> orderMapper.toOrderDTO(order));
     }
 }
