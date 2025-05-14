@@ -50,6 +50,17 @@ public class ProductDenormalizationService {
         product.setMaxPrice(maxPrice);
         logger.debug("Calculated minPrice: {}, maxPrice: {} for product ID: {}", minPrice, maxPrice, productId);
 
+        // Calculate price of the first variant
+        BigDecimal variantZeroPrice = null;
+        if (product.getVariants() != null && !product.getVariants().isEmpty()) {
+            ProductVariant firstVariant = product.getVariants().get(0);
+            if (firstVariant != null) {
+                variantZeroPrice = firstVariant.getPrice();
+            }
+        }
+        product.setVariantZeroPrice(variantZeroPrice);
+        logger.debug("Calculated variantZeroPrice: {} for product ID: {}", variantZeroPrice, productId);
+
         // Calculate average rating from reviews
         Double averageRating = null;
         if (product.getReviews() != null && !product.getReviews().isEmpty()) {
