@@ -294,15 +294,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
     
     // Check if image is already cached
-    final cachedImage = _orderService.getImageFromCache(imageSource);
-    if (cachedImage != null) {
-      return Image.memory(
-        cachedImage,
-        fit: BoxFit.cover,
-        width: size,
-        height: size,
-      );
-    }
+    // final cachedImage = _orderService.getImageFromCache(imageSource);
+    // if (cachedImage != null) {
+    //   return Image.memory(
+    //     cachedImage,
+    //     fit: BoxFit.cover,
+    //     width: size,
+    //     height: size,
+    //   );
+    // }
 
     return FutureBuilder<Uint8List?>(
       future: _orderService.getImageFromServer(imageSource, forceReload: false),
