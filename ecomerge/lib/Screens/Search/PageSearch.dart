@@ -52,6 +52,9 @@ class _PageSearchState extends State<PageSearch> {
   int minPrice = 0;
   int maxPrice = 10000000; // 10 million VND default max
   final int priceStep = 1000000; // Step by 1 million VND
+  
+  // Add a flag to track if price filter has been explicitly applied
+  bool isPriceFilterApplied = false;
 
   // Sort settings
   String currentSortMethod = 'createdDate'; // Default sort method
@@ -94,6 +97,9 @@ class _PageSearchState extends State<PageSearch> {
     maxPrice = _searchService.maxPrice;
     currentSortMethod = _searchService.sortBy;
     currentSortDir = _searchService.sortDir;
+    
+    // Sync our price filter applied flag
+    isPriceFilterApplied = _searchService.isPriceFilterApplied;
 
     // Update controllers
     minPriceController.text = formatPrice(minPrice);
@@ -135,19 +141,25 @@ class _PageSearchState extends State<PageSearch> {
 
   // Listener for product storage changes
   void _onProductStorageChange() {
-    if (mounted) {
-      setState(() {});
-    }
+    // Use post-frame callback to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
   }
 
   // Listener for search service changes
   void _onSearchServiceChange() {
-    if (mounted) {
-      setState(() {
-        // Sync local state with search service
-        _syncWithSearchService();
-      });
-    }
+    // Use post-frame callback to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          // Sync local state with search service
+          _syncWithSearchService();
+        });
+      }
+    });
   }
 
   // Scroll handler for "load more" functionality
@@ -220,6 +232,7 @@ class _PageSearchState extends State<PageSearch> {
       selectedBrandName = brandName;
       this.minPrice = minPrice;
       this.maxPrice = maxPrice;
+      isPriceFilterApplied = true; // Mark that price filter has been explicitly applied
     });
 
     // Close drawer on mobile
@@ -232,7 +245,8 @@ class _PageSearchState extends State<PageSearch> {
         categoryId: categoryId,
         brandName: brandName,
         minPrice: minPrice,
-        maxPrice: maxPrice);
+        maxPrice: maxPrice,
+        isPriceFilterApplied: true); // Tell service price filter is explicitly applied
 
     // Execute search with current parameters and force refresh
     _searchService.executeSearch(forceRefresh: true);
@@ -306,6 +320,7 @@ class _PageSearchState extends State<PageSearch> {
           updateMaxPrice: updateMaxPrice,
           formatPrice: formatPrice,
           parsePrice: parsePrice,
+          isPriceFilterApplied: isPriceFilterApplied, // Pass the flag to SearchProduct
           // Search specific state
           isSearching: isSearching,
           canLoadMore: canLoadMore,

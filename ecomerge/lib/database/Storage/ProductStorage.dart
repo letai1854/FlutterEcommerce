@@ -368,32 +368,7 @@ class ProductStorageSingleton extends ChangeNotifier {
     required String sortBy,
     required String sortDir,
   }) {
-    final cacheKey = _getCacheKey(categoryId: categoryId, sortBy: sortBy, sortDir: sortDir);
-    
-    // If not current config, check global cache
-    if (!_cache.isValid(cacheKey)) {
-      final cachedConfig = GlobalProductCache.getConfigCache(cacheKey);
-      if (cachedConfig != null && cachedConfig.products.isNotEmpty) {
-        // Use the cached data
-        if (kDebugMode) {
-          print('Found cached data for $cacheKey with ${cachedConfig.products.length} products, page ${cachedConfig.currentPage}');
-        }
-        
-        _isReturningVisit = true;
-        
-        // Copy cached data to current cache
-        _cache.products = List.from(cachedConfig.products);
-        _cache.currentPage = cachedConfig.currentPage;
-        _cache.totalPages = cachedConfig.totalPages;
-        _cache.isInitialized = true;
-        _cache.currentCacheKey = cacheKey;
-        _cache.isLoadingInitial = false;
-        _cache.isLoadingMore = false;
-        
-        // No notify needed - caller will use returned product list
-      }
-    }
-    
+    // Always return current cache products, don't check global cache
     return _cache.products;
   }
 
@@ -469,17 +444,8 @@ class ProductStorageSingleton extends ChangeNotifier {
     required String sortBy,
     required String sortDir,
   }) {
-    // First check current cache
-    if (_isSameConfig(categoryId: categoryId, sortBy: sortBy, sortDir: sortDir) && 
-        _cache.isInitialized && 
-        _cache.products.isNotEmpty) {
-      return true;
-    }
-    
-    // Then check global cache
-    final cacheKey = _getCacheKey(categoryId: categoryId, sortBy: sortBy, sortDir: sortDir);
-    final cachedConfig = GlobalProductCache.getConfigCache(cacheKey);
-    return cachedConfig != null && cachedConfig.isInitialized && cachedConfig.products.isNotEmpty;
+    // Always return false to prevent using cached data
+    return false;
   }
 
   int getCachedPage({
@@ -528,141 +494,127 @@ class ProductStorageSingleton extends ChangeNotifier {
   }) async {
     final cacheKey = _getCacheKey(categoryId: categoryId, sortBy: sortBy, sortDir: sortDir);
 
+    if (kDebugMode) {
+      print('loadInitialProducts called for $cacheKey');
+    }
+
     // If already loading, don't start another load
     if (_cache.isLoadingInitial && _cache.isValid(cacheKey)) {
+      if (kDebugMode) {
+        print('Already loading initial products for $cacheKey, skipping duplicate request');
+      }
       return;
     }
     
     // Reset returning visit flag when loading initial products
     _isReturningVisit = false;
 
-    // Check global cache for this config
-    if (!_cache.isValid(cacheKey)) {
-      final cachedConfig = GlobalProductCache.getConfigCache(cacheKey);
-      if (cachedConfig != null && cachedConfig.products.isNotEmpty) {
-        // Use cached data
+    // REMOVE GLOBAL CACHE CHECK - Always clear cache to fetch fresh data
+    // Clear cache regardless of whether config changed
+    _cache.clear();
+    _cache.currentCacheKey = cacheKey;
+
+    // Only start loading if we need data 
+    _cache.isLoadingInitial = true;
+    notifyListeners();
+
+    try {
+      // Check online status first
+      await _checkConnectivity();
+      
+      if (_isOnline) {
+        // ONLINE: Always fetch from server
         if (kDebugMode) {
-          print('Using cached data for $cacheKey with ${cachedConfig.products.length} products');
+          print('ONLINE: Always fetching fresh data from server for $cacheKey');
         }
         
-        _isReturningVisit = true;
-        
-        // Copy cached data to current cache
-        _cache.products = List.from(cachedConfig.products);
-        _cache.currentPage = cachedConfig.currentPage;
-        _cache.totalPages = cachedConfig.totalPages;
+        final response = await _productService.fetchProducts(
+          categoryId: categoryId,
+          sortBy: sortBy,
+          sortDir: sortDir,
+          page: 0,
+          size: 4
+        );
+
+        _cache.products = response.content;
+        _cache.currentPage = response.number;
+        _cache.totalPages = response.totalPages;
         _cache.isInitialized = true;
-        _cache.currentCacheKey = cacheKey;
-        _cache.isLoadingInitial = false;
-        _cache.isLoadingMore = false;
         
-        notifyListeners();
-        return;
-      }
-      
-      // Clear cache if changing config
-      _cache.clear();
-      _cache.currentCacheKey = cacheKey;
-    }
-
-    // Only start loading if we need data
-    if (!_cache.isInitialized || _cache.products.isEmpty) {
-      _cache.isLoadingInitial = true;
-      notifyListeners();
-
-      try {
-        // Check online status first
-        await _checkConnectivity();
+        if (kDebugMode) {
+          print('Product load success! Total: ${response.content.length} products from server.');
+          print('Category: $categoryId, Page: ${response.number}/${response.totalPages}');
+        }
         
-        if (_isOnline) {
-          // ONLINE: Fetch from server
-          final response = await _productService.fetchProducts(
-            categoryId: categoryId,
-            sortBy: sortBy,
-            sortDir: sortDir,
-            page: 0,
-            size: 4
-          );
-
-          _cache.products = response.content;
-          _cache.currentPage = response.number;
-          _cache.totalPages = response.totalPages;
+        // Preload images for better user experience (do this in background)
+        _productService.preloadProductImages(response.content).catchError((e) {
+          if (kDebugMode) print('Error preloading product images: $e');
+        });
+        
+        // Still save to local storage for offline fallback only
+        await GlobalProductCache.setConfigCache(cacheKey, _cache);
+        
+        if (kDebugMode) {
+          print('Successfully loaded fresh products from SERVER for $cacheKey. Total products: ${_cache.products.length}, Page: ${_cache.currentPage}/${_cache.totalPages}');
+        }
+      } else {
+        // OFFLINE: Try to load from local storage
+        if (kDebugMode) {
+          print('Device is OFFLINE - attempting to load products from local storage for $cacheKey');
+        }
+        
+        final localData = await GlobalProductCache.loadFromLocalStorage(cacheKey);
+        
+        if (localData != null && localData.products.isNotEmpty) {
+          // Use local data
+          _cache.products = localData.products;
+          _cache.currentPage = localData.currentPage;
+          _cache.totalPages = localData.totalPages;
           _cache.isInitialized = true;
-          
-          // Preload images for better user experience (do this in background)
-          _productService.preloadProductImages(response.content).catchError((e) {
-            if (kDebugMode) print('Error preloading product images: $e');
-          });
-          
-          // Save to both global cache and local storage
-          await GlobalProductCache.setConfigCache(cacheKey, _cache);
+          _isReturningVisit = true; // Consider it a returning visit when loading from local storage
           
           if (kDebugMode) {
-            print('Successfully loaded initial products from SERVER for $cacheKey. Total products: ${_cache.products.length}, Page: ${_cache.currentPage}/${_cache.totalPages}');
+            print('Successfully loaded initial products from LOCAL STORAGE for $cacheKey. Total products: ${_cache.products.length}, Page: ${_cache.currentPage}/${_cache.totalPages}');
           }
         } else {
-          // OFFLINE: Try to load from local storage
+          // No local data available
           if (kDebugMode) {
-            print('Device is OFFLINE - attempting to load products from local storage for $cacheKey');
+            print('No local data available for $cacheKey while offline');
           }
-          
-          final localData = await GlobalProductCache.loadFromLocalStorage(cacheKey);
-          
-          if (localData != null && localData.products.isNotEmpty) {
-            // Use local data
-            _cache.products = localData.products;
-            _cache.currentPage = localData.currentPage;
-            _cache.totalPages = localData.totalPages;
-            _cache.isInitialized = true;
-            _isReturningVisit = true; // Consider it a returning visit when loading from local storage
-            
-            if (kDebugMode) {
-              print('Successfully loaded initial products from LOCAL STORAGE for $cacheKey. Total products: ${_cache.products.length}, Page: ${_cache.currentPage}/${_cache.totalPages}');
-            }
-          } else {
-            // No local data available
-            if (kDebugMode) {
-              print('No local data available for $cacheKey while offline');
-            }
-            _cache.products = [];
-            _cache.currentPage = 0;
-            _cache.totalPages = 0;
-            _cache.isInitialized = true;
-          }
+          _cache.products = [];
+          _cache.currentPage = 0;
+          _cache.totalPages = 0;
+          _cache.isInitialized = true;
         }
-        
-      } catch (e) {
-        if (kDebugMode) print('Error loading initial products for $cacheKey: $e');
-        
-        // Try loading from local storage as fallback if server request fails
-        try {
-          final localData = await GlobalProductCache.loadFromLocalStorage(cacheKey);
-          
-          if (localData != null && localData.products.isNotEmpty) {
-            // Use local data as fallback
-            _cache.products = localData.products;
-            _cache.currentPage = localData.currentPage;
-            _cache.totalPages = localData.totalPages;
-            _cache.isInitialized = true;
-            _isReturningVisit = true;
-            
-            if (kDebugMode) {
-              print('Fallback: loaded initial products from LOCAL STORAGE after server error for $cacheKey');
-            }
-          }
-        } catch (localError) {
-          if (kDebugMode) {
-            print('Error loading from local storage after server error: $localError');
-          }
-        }
-      } finally {
-        _cache.isLoadingInitial = false;
-        notifyListeners();
       }
-    } else {
-       if (kDebugMode) {
-          print('Initial products for $cacheKey already loaded or cached.');
-       }
+      
+    } catch (e) {
+      if (kDebugMode) print('Error loading initial products for $cacheKey: $e');
+      
+      // Try loading from local storage as fallback if server request fails
+      try {
+        final localData = await GlobalProductCache.loadFromLocalStorage(cacheKey);
+        
+        if (localData != null && localData.products.isNotEmpty) {
+          // Use local data as fallback
+          _cache.products = localData.products;
+          _cache.currentPage = localData.currentPage;
+          _cache.totalPages = localData.totalPages;
+          _cache.isInitialized = true;
+          _isReturningVisit = true;
+          
+          if (kDebugMode) {
+            print('Fallback: loaded initial products from LOCAL STORAGE after server error for $cacheKey');
+          }
+        }
+      } catch (localError) {
+        if (kDebugMode) {
+          print('Error loading from local storage after server error: $localError');
+        }
+      }
+    } finally {
+      _cache.isLoadingInitial = false;
+      notifyListeners();
     }
   }
 
@@ -894,7 +846,8 @@ class ProductStorageSingleton extends ChangeNotifier {
     String sortBy = 'createdDate',
     String sortDir = 'desc',
     bool clearCache = true,
-    bool skipPriceFilter = false // <-- ADD THIS PARAMETER
+    bool skipPriceFilter = false, // <-- EXISTING PARAMETER 
+    bool isPriceFilterApplied = false, // <-- NEW PARAMETER
   }) async {
     // Clear all search-related cache if needed
     if (clearCache) {
@@ -912,10 +865,18 @@ class ProductStorageSingleton extends ChangeNotifier {
     // Store current filter and sort parameters for pagination
     _searchCategoryId = categoryId;
     _searchBrandName = brandName;
-    _searchMinPrice = skipPriceFilter ? null : minPrice; // <-- SET TO NULL IF SKIPPING
-    _searchMaxPrice = skipPriceFilter ? null : maxPrice; // <-- SET TO NULL IF SKIPPING
+    
+    // Only apply price filter if explicitly requested OR if skipPriceFilter is false and isPriceFilterApplied is true
+    bool shouldApplyPriceFilter = !skipPriceFilter && isPriceFilterApplied;
+    
+    _searchMinPrice = shouldApplyPriceFilter ? minPrice : null;
+    _searchMaxPrice = shouldApplyPriceFilter ? maxPrice : null;
+    
     _searchSortBy = sortBy;
     _searchSortDir = sortDir;
+    
+    // Store the price filter application state for future reference
+    _isPriceFilterApplied = isPriceFilterApplied;
     
     notifyListeners();
     
@@ -928,10 +889,10 @@ class ProductStorageSingleton extends ChangeNotifier {
         print('Query: $query');
         print('Category ID: $categoryId');
         print('Brand Name: $brandName');
-        if (skipPriceFilter) {
-          print('Price Range: NO PRICE FILTER APPLIED (returning ALL prices)');
+        if (shouldApplyPriceFilter) {
+          print('Price Range: $minPrice - $maxPrice (FILTER APPLIED)');
         } else {
-          print('Price Range: $minPrice - $maxPrice');
+          print('Price Range: FILTER NOT APPLIED');
         }
         print('Sort: $sortBy $sortDir');
       }
@@ -955,10 +916,10 @@ class ProductStorageSingleton extends ChangeNotifier {
         search: query,
         categoryId: categoryId,
         brandId: brandId,
-        minPrice: skipPriceFilter ? null : minPrice.toDouble(), // <-- PASS NULL IF SKIPPING
-        maxPrice: skipPriceFilter ? null : maxPrice.toDouble(), // <-- PASS NULL IF SKIPPING
+        minPrice: shouldApplyPriceFilter ? minPrice.toDouble() : null,
+        maxPrice: shouldApplyPriceFilter ? maxPrice.toDouble() : null,
         page: 0,
-        size: 4, // Explicitly set to load only 3 products initially, matching category behavior
+        size: 4,
         sortBy: sortBy,
         sortDir: sortDir
       );
@@ -985,10 +946,14 @@ class ProductStorageSingleton extends ChangeNotifier {
   // Store current search parameters for pagination - update to use nullable types for price
   int? _searchCategoryId;
   String? _searchBrandName;
-  int? _searchMinPrice = 0; // <-- CHANGE TO NULLABLE
-  int? _searchMaxPrice = 10000000; // <-- CHANGE TO NULLABLE
+  int? _searchMinPrice = null; // <-- CHANGE DEFAULT TO NULL 
+  int? _searchMaxPrice = null; // <-- CHANGE DEFAULT TO NULL
   String _searchSortBy = 'createdDate';
   String _searchSortDir = 'desc';
+  bool _isPriceFilterApplied = false; // <-- ADD THIS FIELD
+  
+  // Add getter for price filter applied state
+  bool get isPriceFilterApplied => _isPriceFilterApplied;
   
   // Method to load next page of search results
   Future<void> loadMoreSearchResults() async {
@@ -1017,10 +982,11 @@ class ProductStorageSingleton extends ChangeNotifier {
         brandId = brand.id;
       }
       
-      // Check if we're using price filters
-      final bool usingPriceFilter = _searchMinPrice != null && _searchMaxPrice != null;
+      // Check if we're using price filters - use the stored flag for consistency
+      final bool shouldApplyPriceFilter = _isPriceFilterApplied && _searchMinPrice != null && _searchMaxPrice != null;
+      
       if (kDebugMode) {
-        if (usingPriceFilter) {
+        if (shouldApplyPriceFilter) {
           print('Loading more search results with price filter: $_searchMinPrice - $_searchMaxPrice');
         } else {
           print('Loading more search results WITHOUT price filter');
@@ -1031,10 +997,10 @@ class ProductStorageSingleton extends ChangeNotifier {
         search: _currentSearchQuery,
         categoryId: _searchCategoryId,
         brandId: brandId,
-        minPrice: _searchMinPrice?.toDouble(), // <-- USE NULL-AWARE OPERATOR
-        maxPrice: _searchMaxPrice?.toDouble(), // <-- USE NULL-AWARE OPERATOR
+        minPrice: shouldApplyPriceFilter ? _searchMinPrice?.toDouble() : null,
+        maxPrice: shouldApplyPriceFilter ? _searchMaxPrice?.toDouble() : null,
         page: _searchCurrentPage + 1,
-        size: 4, // Consistently use 3 products per page to match category browsing
+        size: 4,
         sortBy: _searchSortBy,
         sortDir: _searchSortDir
       );

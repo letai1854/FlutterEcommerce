@@ -130,7 +130,7 @@ class _PageloginState extends State<Pagelogin> {
           setState(() {
             // Hiển thị thông báo lỗi chung
             _errorMessage =
-                'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin hoặc kết nối mạng.';
+                'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin hoặc kết nối mạng (hoặc tài khóa đã bị khóa).';
           });
           // Focus vào trường email hoặc mật khẩu khi thất bại
           _emailFocusNode

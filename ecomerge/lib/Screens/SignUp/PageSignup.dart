@@ -188,6 +188,15 @@ class _PageSignupState extends State<PageSignup> {
       return;
     }
 
+    // Check password length (minimum 8 characters)
+    if (_passwordController.text.length < 8) {
+      setState(() {
+        _errorMessage = 'Mật khẩu phải có ít nhất 8 ký tự';
+      });
+      _passwordFocusNode.requestFocus();
+      return;
+    }
+
     // Validate passwords match (using local controllers)
     if (_passwordController.text != _rePasswordController.text) {
       setState(() {

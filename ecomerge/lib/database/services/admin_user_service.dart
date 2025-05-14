@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/database_helper.dart';
 import 'package:e_commerce_app/database/models/UserDTO.dart';
+import 'package:e_commerce_app/database/services/product_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
@@ -181,5 +182,22 @@ class AdminUserService {
 
     String path = imagePath.startsWith('/') ? imagePath : '/$imagePath';
     return '$baseUrl$path';
+  }
+
+    Future<Uint8List?> getImageFromServer(String? imagePath) async {
+    if (imagePath == null || imagePath.isEmpty) return null;
+
+    try {
+      // Leverage ProductService's implementation for consistency and better offline support
+      final productService = ProductService();
+      final imageData = await productService.getImageFromServer(imagePath);
+
+
+      return imageData;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching category image via ProductService: $e');
+      }
+    }
   }
 }

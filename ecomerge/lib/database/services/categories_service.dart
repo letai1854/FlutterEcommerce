@@ -294,44 +294,17 @@ class CategoriesService {
   Future<Uint8List?> getImageFromServer(String? imagePath) async {
     if (imagePath == null || imagePath.isEmpty) return null;
 
-    // Check UserInfo cache (primarily for avatars, but ProductService is more general)
-    if (UserInfo.avatarCache.containsKey(imagePath)) {
-      return UserInfo.avatarCache[imagePath];
-    }
-
     try {
       // Leverage ProductService's implementation for consistency and better offline support
       final productService = ProductService();
       final imageData = await productService.getImageFromServer(imagePath);
 
-      // If we got data from ProductService, store it in UserInfo.avatarCache as well (maintaining original behavior)
-      if (imageData != null) {
-        UserInfo.avatarCache[imagePath] = imageData;
-      }
 
       return imageData;
     } catch (e) {
       if (kDebugMode) {
         print('Error fetching category image via ProductService: $e');
       }
-
-      // Fallback to direct network request if ProductService fails
-      try {
-        String fullUrl = getImageUrl(imagePath);
-        final response = await httpClient.get(Uri.parse(fullUrl));
-
-        if (response.statusCode == 200) {
-          // Store in UserInfo.avatarCache on successful fallback
-          UserInfo.avatarCache[imagePath] = response.bodyBytes;
-          return response.bodyBytes;
-        }
-      } catch (networkError) {
-        if (kDebugMode) {
-          print('Error in fallback image fetch for category: $networkError');
-        }
-      }
-
-      return null;
     }
   }
 

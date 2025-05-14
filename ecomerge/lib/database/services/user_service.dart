@@ -5,6 +5,8 @@ import 'package:e_commerce_app/database/Storage/CartStorage.dart';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:e_commerce_app/database/database_helper.dart';
 import 'package:e_commerce_app/database/services/address_service.dart';
+import 'package:e_commerce_app/database/services/cart_service.dart';
+import 'package:e_commerce_app/database/services/order_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
@@ -346,7 +348,7 @@ class UserService {
         return false;
       }
     } catch (e) {
-      print('Error during user login: $e');
+      print('Đăng nhập thất bại');
       return false;
     }
   }
@@ -379,9 +381,13 @@ class UserService {
     setAuthToken(null);
     UserInfo().clearUserInfo();
     UserService.clearAvatarCache(); // Clear avatar cache on logout
-
+    
     // Clear cart data
     await CartStorage().clearAllCart();
+    
+    // Clear order data
+    final orderService = OrderService();
+    await orderService.clearLocalOrderCache();
 
     // Clear stored credentials on logout for non-web platforms
     if (!kIsWeb) {

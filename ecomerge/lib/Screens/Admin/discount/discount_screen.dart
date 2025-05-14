@@ -190,6 +190,7 @@ class _DiscountScreenState extends State<DiscountScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false, // Remove back button
         title: const Text('Quản lý Mã giảm giá'),
         actions: [
           TextButton(
@@ -269,8 +270,8 @@ class _DiscountScreenState extends State<DiscountScreen> {
                                 color: Colors.red, size: 50),
                             const SizedBox(height: 10),
                             Text(
-                              'Lỗi: $_errorMessage',
-                              style: const TextStyle(color: Colors.red),
+                              'Không có kết nối internet',
+                              style: const TextStyle(color: Color.fromARGB(255, 0, 0, 0)),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 10),

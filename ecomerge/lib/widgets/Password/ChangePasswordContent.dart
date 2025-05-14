@@ -95,6 +95,14 @@ class _ChangePasswordContentState extends State<ChangePasswordContent> {
                   widget.onNewPasswordChanged,
                   widget.obscureNewPassword,
                   widget.onToggleNewPasswordVisibility,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Vui lòng nhập mật khẩu mới';
+                    } else if (value.length < 8) {
+                      return 'Mật khẩu phải có ít nhất 8 ký tự';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 24),
                 _buildPasswordField(
@@ -232,8 +240,8 @@ class _ChangePasswordContentState extends State<ChangePasswordContent> {
           (value) {
             if (value == null || value.isEmpty) {
               return 'Vui lòng nhập $label';
-            } else if (value.length < 6) {
-              return 'Mật khẩu phải có ít nhất 6 ký tự';
+            } else if (value.length < 8) {
+              return 'Mật khẩu phải có ít nhất 8 ký tự';
             }
             return null;
           },
