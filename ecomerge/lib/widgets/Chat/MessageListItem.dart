@@ -15,20 +15,37 @@ class MessageListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Lấy dữ liệu từ map, có kiểm tra null hoặc giá trị mặc định
-    final String avatarUrl = chatData['avatar'] ?? 'assets/default_avatar.png'; // Ảnh mặc định nếu null
+    final String? avatarUrl = chatData['avatar']; // Can be null or a URL or an asset path
     final String name = chatData['name'] ?? 'Unknown User';
     final String lastMessage = chatData['message'] ?? '';
     final bool isOnline = chatData['isOnline'] ?? false;
+
+    ImageProvider backgroundImage;
+    bool isNetwork = false;
+
+    if (avatarUrl != null && (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://'))) {
+      backgroundImage = NetworkImage(avatarUrl);
+      isNetwork = true;
+    } else {
+      backgroundImage = AssetImage(avatarUrl ?? 'assets/default_avatar.png'); // Default local asset
+    }
 
     return ListTile(
       onTap: onTap, // Gọi callback khi nhấn vào ListTile
       leading: Stack( // Stack để hiển thị trạng thái online
         children: [
           CircleAvatar(
-            backgroundImage: AssetImage(avatarUrl), // Sử dụng AssetImage nếu là local asset
-            // backgroundImage: NetworkImage(avatarUrl), // Hoặc NetworkImage nếu là URL
+            backgroundImage: backgroundImage,
+            onBackgroundImageError: isNetwork 
+              ? (exception, stackTrace) {
+                  // This callback is triggered if NetworkImage fails.
+                  // The CircleAvatar will use its backgroundColor.
+                  // You can log the error if needed:
+                  // print('Error loading network avatar: $exception');
+                }
+              : null, // No specific error handling for AssetImage, it assumes asset exists
             radius: 24, // Kích thước avatar
-            backgroundColor: Colors.grey[200], // Màu nền nếu ảnh lỗi
+            backgroundColor: Colors.grey[200], // Màu nền nếu ảnh lỗi hoặc không có ảnh
           ),
           if (isOnline) // Chỉ hiển thị chấm xanh nếu isOnline là true
             Positioned(
@@ -63,15 +80,6 @@ class MessageListItem extends StatelessWidget {
         maxLines: 1, // Chỉ hiển thị 1 dòng
         overflow: TextOverflow.ellipsis, // Thêm dấu ... nếu quá dài
       ),
-      // trailing: Column( // Ví dụ thêm thời gian và biểu tượng đọc/chưa đọc
-      //   mainAxisAlignment: MainAxisAlignment.center,
-      //   crossAxisAlignment: CrossAxisAlignment.end,
-      //   children: [
-      //     Text("10:30", style: TextStyle(fontSize: 11, color: Colors.grey)),
-      //     SizedBox(height: 4),
-      //     Icon(Icons.done_all, color: Colors.blue, size: 16), // Ví dụ đã đọc
-      //   ],
-      // ),
       tileColor: isSelected ? Colors.blue.shade50 : Colors.transparent, // Highlight nếu được chọn
       contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0), // Padding
     );

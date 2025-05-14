@@ -205,12 +205,19 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public MessageDTO convertToMessageDTO(Message message) {
         if (message == null) return null;
+        User sender = message.getSender();
+        Integer finalSenderId = sender.getId();
+
+        if (sender.getRole() == User.UserRole.quan_tri && finalSenderId == null) {
+            finalSenderId = 1; // Default admin ID if sender is admin and ID is null
+        }
+
         return new MessageDTO(
                 message.getId(),
                 message.getConversation().getId(),
-                message.getSender().getId(),
-                message.getSender().getEmail(),
-                message.getSender().getFullName(),
+                finalSenderId, // Use the potentially defaulted ID
+                sender.getEmail(),
+                sender.getFullName(),
                 message.getContent(),
                 message.getImageUrl(),
                 message.getSendTime()
@@ -234,9 +241,15 @@ public class ChatServiceImpl implements ChatService {
 
         Message lastMessage = messageRepository.findTopByConversationOrderBySendTimeDesc(conversation);
         if (lastMessage != null) {
-            dto.setLastMessage(convertToMessageDTO(lastMessage));
+            dto.setLastMessage(convertToMessageDTO(lastMessage)); // This will use the updated convertToMessageDTO
+
+            Integer adminId = 1;
+            dto.setAdminId(adminId);
+            dto.setAdminEmail(null);
+            dto.setAdminFullName("Admin");
         }
-        dto.setUnreadMessagesCount(0);
+        // TODO: Implement actual unread messages count logic if needed
+        dto.setUnreadMessagesCount(0); 
         return dto;
     }
 }

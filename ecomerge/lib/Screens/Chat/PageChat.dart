@@ -532,10 +532,32 @@ class _PagechatState extends State<Pagechat> {
         .map((dto) => messageDtoToChatMessageUI(dto, _chatService))
         .toList();
 
-    // Determine the name to display. If admin, use customerName. Otherwise, use the conversation title.
     final String chatPartnerName = _isAdmin 
         ? _selectedConversation!.customerName 
         : _selectedConversation!.title;
+    
+    // chatPartnerAvatarUrl will now be a Future<String?>
+    Future<String?> chatPartnerAvatarUrlFuture;
+    if (_selectedConversation != null) {
+      int partnerId;
+      if (_isAdmin) {
+        // Admin is chatting with a customer
+        partnerId = _selectedConversation!.customerId;
+      } else {
+        // Customer is chatting with an admin
+        // Assuming adminId is always present for user-to-admin chats.
+        // If adminId can be null, add a fallback.
+        partnerId = _selectedConversation!.adminId ?? 0; // Use a default/invalid ID if null
+      }
+      if (partnerId != 0) { // Check if partnerId is valid before fetching
+        chatPartnerAvatarUrlFuture = _chatService.getFullUserAvatarUrl(partnerId);
+      } else {
+        // Fallback if partnerId is not available (e.g. system message or unassigned admin)
+        chatPartnerAvatarUrlFuture = Future.value(null); // Or Future.value('assets/default_avatar.png') if ChatContent handles local asset strings
+      }
+    } else {
+      chatPartnerAvatarUrlFuture = Future.value(null); // Should not happen if _selectedConversation is not null
+    }
 
     return ChatContent(
       messages: uiMessages,
@@ -543,8 +565,8 @@ class _PagechatState extends State<Pagechat> {
       scrollController: _messageScrollControllersMap[_selectedConversation!.id] ?? ScrollController(),
       onMessageSubmitted: (text) => _sendMessage(text: text),
       chatPartnerData: {
-        'name': chatPartnerName, // Updated to use customerName for admin
-        'avatar': '', // Placeholder for avatar, can be enhanced later
+        'name': chatPartnerName, 
+        'avatar': chatPartnerAvatarUrlFuture, // Pass the Future<String?>
         'isOnline': false, // Placeholder for online status
       },
       currentUserId: _currentUserId!,
@@ -616,6 +638,7 @@ class _PagechatState extends State<Pagechat> {
                         selectedChatId: _selectedConversation?.id,
                         scrollController: _adminConversationListScrollController,
                         isLoadingMore: _isLoadingMoreAdminConversations,
+                        chatService: _chatService, // Pass ChatService instance
                       )
                     : _buildChatContent())
                 : _buildChatContent(),
@@ -641,6 +664,7 @@ class _PagechatState extends State<Pagechat> {
                         selectedChatId: _selectedConversation?.id,
                         scrollController: _adminConversationListScrollController,
                         isLoadingMore: _isLoadingMoreAdminConversations,
+                        chatService: _chatService, // Pass ChatService instance
                       ),
                     ),
                   ),

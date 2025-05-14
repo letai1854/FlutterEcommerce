@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:e_commerce_app/services/api_service.dart'; // Import the GeminiChatService
 
 class ChatMessage {
   final String text;
@@ -54,9 +55,12 @@ class _PagechatbotaiState extends State<Pagechatbotai> {
   final ScrollController _scrollController = ScrollController();
   bool _isTyping = false;
   
+  late final GeminiChatService _chatService;
+
   @override
   void initState() {
     super.initState();
+    _chatService = GeminiChatService(); // Initialize the chat service
     
     // Add welcome message
     _addBotMessage("Xin chào! Tôi là trợ lý AI của E-Commerce. Tôi có thể giúp gì cho bạn?");
@@ -69,14 +73,15 @@ class _PagechatbotaiState extends State<Pagechatbotai> {
     super.dispose();
   }
 
-  void _handleSubmitted(String text) {
+  void _handleSubmitted(String text) async {
     if (text.trim().isEmpty) return;
     
+    final userMessageText = text.trim();
     _textController.clear();
     
     setState(() {
       _messages.add(ChatMessage(
-        text: text,
+        text: userMessageText,
         isUser: true,
       ));
       _isTyping = true;
@@ -84,36 +89,14 @@ class _PagechatbotaiState extends State<Pagechatbotai> {
     
     _scrollToBottom();
     
-    // Simulate AI response
-    Future.delayed(const Duration(seconds: 1), () {
-      _handleAIResponse(text);
-    });
-  }
-  
-  void _handleAIResponse(String userMessage) {
-    // Simple responses for demonstration
-    String response = "";
+    // Get AI response from Gemini
+    final aiResponse = await _chatService.sendMessage(userMessageText);
     
-    if (userMessage.toLowerCase().contains('xin chào') || 
-        userMessage.toLowerCase().contains('chào') ||
-        userMessage.toLowerCase().contains('hi') ||
-        userMessage.toLowerCase().contains('hello')) {
-      response = "Xin chào! Tôi có thể giúp gì cho bạn hôm nay?";
-    } else if (userMessage.toLowerCase().contains('sản phẩm')) {
-      response = "Chúng tôi có nhiều sản phẩm đa dạng. Bạn muốn tìm loại sản phẩm nào?";
-    } else if (userMessage.toLowerCase().contains('giá')) {
-      response = "Giá sản phẩm của chúng tôi phụ thuộc vào từng mặt hàng cụ thể. Bạn quan tâm đến sản phẩm nào?";
-    } else if (userMessage.toLowerCase().contains('đặt hàng') || userMessage.toLowerCase().contains('mua')) {
-      response = "Để đặt hàng, bạn có thể thêm sản phẩm vào giỏ hàng và tiến hành thanh toán. Bạn cần hỗ trợ thêm về quy trình đặt hàng không?";
-    } else if (userMessage.toLowerCase().contains('vận chuyển') || userMessage.toLowerCase().contains('giao hàng')) {
-      response = "Chúng tôi giao hàng trong vòng 3-5 ngày làm việc. Phí giao hàng tùy thuộc vào địa điểm và kích thước đơn hàng.";
-    } else if (userMessage.toLowerCase().contains('tài khoản') || userMessage.toLowerCase().contains('đăng ký') || userMessage.toLowerCase().contains('đăng nhập')) {
-      response = "Bạn có thể đăng ký tài khoản hoặc đăng nhập tại trang đăng nhập. Nếu gặp vấn đề với tài khoản, vui lòng liên hệ hỗ trợ khách hàng.";
+    if (aiResponse != null) {
+      _addBotMessage(aiResponse);
     } else {
-      response = "Cảm ơn câu hỏi của bạn. Bạn có thể nêu rõ hơn về điều bạn đang tìm kiếm không?";
+      _addBotMessage("Xin lỗi, tôi không thể xử lý yêu cầu của bạn lúc này.");
     }
-    
-    _addBotMessage(response);
   }
   
   void _addBotMessage(String text) {
@@ -187,6 +170,7 @@ class _PagechatbotaiState extends State<Pagechatbotai> {
               onPressed: () {
                 setState(() {
                   _messages.clear();
+                  _chatService.resetChatSession(); // Reset Gemini chat session
                   _addBotMessage("Xin chào! Tôi là trợ lý AI của E-Commerce. Tôi có thể giúp gì cho bạn?");
                 });
               },

@@ -24,6 +24,7 @@ void _stompDebugNoOp(String message) {
 class ChatService {
   final String _chatApiBaseUrl = '$baseurl/api/chat'; // baseurl from database_helper
   final String _imagesApiBaseUrl = '$baseurl/api/images'; // For image uploads
+  final String _usersApiBaseUrl = '$baseurl/api/users'; // For user-related endpoints like avatar
   final String _webSocketUrl = '${baseurl.replaceFirst("http", "ws")}/ws/websocket'; // Adjust if baseurl includes https
 
   late http.Client _httpClient;
@@ -84,17 +85,11 @@ class ChatService {
       if (response.statusCode == 200) {
         try {
           final decodedBody = jsonDecode(utf8.decode(response.bodyBytes));
-          // The TypeError "Null is not a subtype of type 'String'" likely originates from this next line.
-          // Ensure ConversationDTO.fromJson correctly handles nullable fields from the JSON,
-          // such as adminEmail, adminFullName, adminId, and lastMessage, by defining them as nullable
-          // (e.g., String?, int?, LastMessageInfo?) in the Dart model and parsing them accordingly.
           return ConversationDTO.fromJson(decodedBody);
         } on TypeError catch (e, s) {
-          // Log the error and the response body that caused it for easier debugging
           print('TypeError during JSON deserialization for getMyConversations: $e');
           print('Stacktrace: $s');
           print('Response body: ${utf8.decode(response.bodyBytes)}');
-          // Re-throw a more specific exception
           throw Exception('Failed to parse user conversation response. Original error: $e');
         }
       } else if (response.statusCode == 404) {
@@ -103,8 +98,6 @@ class ChatService {
         throw Exception('Failed to get conversation: ${response.statusCode} ${response.body}');
       }
     } catch (e) {
-      // This will catch errors from _getAuthHeaders, _httpClient.get, network issues,
-      // or the re-thrown exception from the new inner try-catch.
       throw Exception('Error getting conversation: $e');
     }
   }
@@ -185,13 +178,12 @@ class ChatService {
       }
       request.files.add(http.MultipartFile.fromBytes('file', imageBytes, filename: fileName));
       
-      // Use the custom _httpClient for sending the multipart request
       final streamedResponse = await _httpClient.send(request);
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 201) {
         final responseData = jsonDecode(response.body);
-        return responseData['imagePath'] as String?; // e.g., "/api/images/filename.jpg"
+        return responseData['imagePath'] as String?;
       } else {
         print('Failed to upload image: ${response.statusCode} ${response.body}');
         return null;
@@ -204,12 +196,59 @@ class ChatService {
 
   String getImageUrl(String? relativePath) {
     if (relativePath == null || relativePath.isEmpty) {
-      // Return a placeholder or handle appropriately
       return 'https://via.placeholder.com/150'; 
     }
-    // relativePath is like "/api/images/filename.jpg"
-    // baseurl is like "https://localhost:8443"
+    // Ensure no double slashes if baseurl ends with / and relativePath starts with /
+    if (baseurl.endsWith('/') && relativePath.startsWith('/')) {
+      return '$baseurl${relativePath.substring(1)}';
+    }
+    if (!baseurl.endsWith('/') && !relativePath.startsWith('/')) {
+      return '$baseurl/$relativePath';
+    }
     return '$baseurl$relativePath';
+  }
+
+  String _getUserAvatarPathApiEndpoint(int userId) {
+    return '$_usersApiBaseUrl/$userId/avatar';
+  }
+
+  Future<String?> getFullUserAvatarUrl(int userId) async {
+    final url = Uri.parse(_getUserAvatarPathApiEndpoint(userId));
+    final token = _userInfo.authToken;
+
+    if (token == null) {
+      // Optionally handle missing token, though _getAuthHeaders would throw
+      print('Auth token is null, cannot fetch avatar path.');
+      return null;
+    }
+
+    try {
+      final response = await _httpClient.get(
+        url,
+        headers: { // Only send Authorization header, Content-Type not needed for GETting plain text
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final relativePath = response.body;
+        if (relativePath.isNotEmpty) {
+          return getImageUrl(relativePath);
+        } else {
+          // Endpoint returned 200 but empty path, treat as no avatar
+          return null; 
+        }
+      } else if (response.statusCode == 404) {
+        // User or avatar not found
+        return null;
+      } else {
+        print('Failed to get user avatar path: ${response.statusCode} ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Error fetching user avatar path: $e');
+      return null;
+    }
   }
 
   // --- WebSocket Methods ---
@@ -228,12 +267,10 @@ class ChatService {
     final webSocketConnectHeaders = {'Authorization': 'Bearer $token'};
 
     Future<WebSocketChannel> customConnectorForNative() async {
-      // This function will be used for webSocketConnector on non-web platforms
       final client = HttpClient()
         ..badCertificateCallback =
             (X509Certificate cert, String host, int port) => true;
       
-      // Convert Map<String, String> to Map<String, dynamic> for WebSocket.connect
       final Map<String, dynamic> dynamicHeaders = Map<String, dynamic>.from(webSocketConnectHeaders);
 
       final webSocket = await WebSocket.connect(
@@ -250,7 +287,7 @@ class ChatService {
         onConnect: onConnect,
         onWebSocketError: (dynamic error) => onError(error.toString()),
         stompConnectHeaders: stompConnectHeaders,
-        webSocketConnectHeaders: webSocketConnectHeaders, // Still useful for default web connector
+        webSocketConnectHeaders: webSocketConnectHeaders,
         onDebugMessage: kDebugMode 
             ? (String message) => print("STOMP_DEBUG: $message") 
             : _stompDebugNoOp,
@@ -262,7 +299,7 @@ class ChatService {
   StompUnsubscribe? subscribeToConversation(
     int conversationId, 
     Function(MessageDTO message) onMessageReceived,
-    Function(dynamic joinNotification) onJoinNotification, // Assuming JoinNotification DTO
+    Function(dynamic joinNotification) onJoinNotification,
     Function(dynamic error) onErrorCallback
   ) {
     if (_stompClient == null || !_stompClient!.connected) {
@@ -274,11 +311,9 @@ class ChatService {
       callback: (frame) {
         try {
           final data = jsonDecode(frame.body!);
-          // Differentiate message types, e.g., MessageDTO vs JoinNotification
-          if (data['type'] == 'JOIN') { // Assuming JoinNotification has a 'type' field
-             // onJoinNotification(JoinNotification.fromJson(data));
+          if (data['type'] == 'JOIN') {
              print("Join notification received: ${frame.body}");
-          } else if (data.containsKey('senderId')) { // Heuristic for MessageDTO
+          } else if (data.containsKey('senderId')) {
             onMessageReceived(MessageDTO.fromJson(data));
           } else {
             print("Received unknown message type on conversation topic: ${frame.body}");
@@ -333,7 +368,6 @@ class ChatService {
       );
     } else {
       print('STOMP client not connected. Cannot send message.');
-      // Optionally, implement a retry mechanism or queue messages.
     }
   }
 
@@ -341,7 +375,6 @@ class ChatService {
     if (_stompClient != null && _stompClient!.connected) {
       _stompClient?.send(
         destination: '/app/chat.joinConversation/$conversationId',
-        // Payload is null as per documentation
       );
     } else {
       print('STOMP client not connected. Cannot send join notification.');
