@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
+import java.util.Calendar; // Added import
+import java.util.TimeZone; // Added import
 
 import demo.com.example.testserver.coupon.model.Coupon;
 import demo.com.example.testserver.user.model.User;
@@ -98,13 +100,17 @@ public class Order {
     // Lifecycle Callbacks
     @PrePersist
     protected void onCreate() {
-        orderDate = new Date();
-        updatedDate = new Date();
+        TimeZone hanoiTimeZone = TimeZone.getTimeZone("Asia/Ho_Chi_Minh");
+        Calendar calendar = Calendar.getInstance(hanoiTimeZone);
+        orderDate = calendar.getTime();
+        updatedDate = calendar.getTime();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedDate = new Date();
+        TimeZone hanoiTimeZone = TimeZone.getTimeZone("Asia/Ho_Chi_Minh");
+        Calendar calendar = Calendar.getInstance(hanoiTimeZone);
+        updatedDate = calendar.getTime();
     }
 
     // Constructors

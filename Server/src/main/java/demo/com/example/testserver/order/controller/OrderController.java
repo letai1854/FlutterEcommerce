@@ -31,9 +31,22 @@ import java.util.Date; // Import Date
 public class OrderController {
 
     private static final Logger logger = LoggerFactory.getLogger(OrderController.class);
+    private static final long GMT_PLUS_7_OFFSET_MILLIS = 7 * 60 * 60 * 1000;
 
     @Autowired
     private OrderService orderService;
+
+    private void adjustDatesToGmtPlus7(OrderDTO dto) {
+        if (dto == null) {
+            return;
+        }
+        if (dto.getOrderDate() != null) {
+            dto.setOrderDate(new Date(dto.getOrderDate().getTime() + GMT_PLUS_7_OFFSET_MILLIS));
+        }
+        if (dto.getUpdatedDate() != null) {
+            dto.setUpdatedDate(new Date(dto.getUpdatedDate().getTime() + GMT_PLUS_7_OFFSET_MILLIS));
+        }
+    }
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
@@ -45,6 +58,7 @@ public class OrderController {
         }
         try {
             OrderDTO createdOrder = orderService.createOrder(userDetails.getUsername(), requestDTO);
+            adjustDatesToGmtPlus7(createdOrder); // Adjust dates
             logger.info("Order created successfully with ID: {} for user: {}", createdOrder.getId(), userDetails.getUsername());
             return new ResponseEntity<>(createdOrder, HttpStatus.CREATED);
         } catch (IllegalArgumentException e) {
@@ -66,11 +80,12 @@ public class OrderController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated.");
         }
         try {
-            Page<OrderDTO> orders = orderService.getCurrentUserOrders(userDetails.getUsername(), status, pageable);
-            if (orders.isEmpty()) {
+            Page<OrderDTO> ordersPage = orderService.getCurrentUserOrders(userDetails.getUsername(), status, pageable);
+            ordersPage.getContent().forEach(this::adjustDatesToGmtPlus7); // Adjust dates for each order in page
+            if (ordersPage.isEmpty()) {
                 return ResponseEntity.noContent().build();
             }
-            return ResponseEntity.ok(orders);
+            return ResponseEntity.ok(ordersPage);
         } catch (Exception e) {
             logger.error("Error fetching orders for user {}: {}", userDetails.getUsername(), e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred while fetching orders.");
@@ -87,6 +102,7 @@ public class OrderController {
         }
         try {
             OrderDTO order = orderService.getOrderByIdForCurrentUser(userDetails.getUsername(), orderId);
+            adjustDatesToGmtPlus7(order); // Adjust dates
             return ResponseEntity.ok(order);
         } catch (IllegalArgumentException e) { // Or a custom NotFoundException
             logger.warn("Order with ID {} not found for user {}: {}", orderId, userDetails.getUsername(), e.getMessage());
@@ -108,11 +124,7 @@ public class OrderController {
         try {
             List<OrderStatusHistoryDTO> history = orderService.getOrderStatusHistoryForCurrentUser(userDetails.getUsername(), orderId);
             if (history.isEmpty()) {
-                // This could mean the order exists but has no history entries yet, or order not found.
-                // The service should ideally throw an exception if order not found/not accessible.
-                // If order exists but no history, an empty list is acceptable.
-                // For now, let's assume service handles "order not found" by throwing IllegalArgumentException.
-                 return ResponseEntity.ok(history); // Return empty list if no history, or 404 if order not found by service
+                return ResponseEntity.ok(history); // Return empty list if no history, or 404 if order not found by service
             }
             return ResponseEntity.ok(history);
         } catch (IllegalArgumentException e) { // Or a custom NotFoundException
@@ -134,6 +146,7 @@ public class OrderController {
         }
         try {
             OrderDTO cancelledOrder = orderService.cancelOrderForCurrentUser(userDetails.getUsername(), orderId);
+            adjustDatesToGmtPlus7(cancelledOrder); // Adjust dates
             logger.info("User {} cancelled order ID {}", userDetails.getUsername(), orderId);
             return ResponseEntity.ok(cancelledOrder);
         } catch (IllegalArgumentException e) {
@@ -152,6 +165,7 @@ public class OrderController {
             @Valid @RequestBody UpdateOrderStatusRequestDTO requestDTO) {
         try {
             OrderDTO updatedOrder = orderService.updateOrderStatusByAdmin(orderId, requestDTO.getNewStatus(), requestDTO.getAdminNotes());
+            adjustDatesToGmtPlus7(updatedOrder); // Adjust dates
             logger.info("Admin updated status for order ID {} to {}", orderId, requestDTO.getNewStatus());
             return ResponseEntity.ok(updatedOrder);
         } catch (IllegalArgumentException e) { // e.g., Order not found, invalid status transition
@@ -180,11 +194,12 @@ public class OrderController {
                 return ResponseEntity.badRequest().body("startDate cannot be after endDate.");
             }
 
-            Page<OrderDTO> orders = orderService.getOrdersForAdmin(searchOrderId, status, startDate, endDate, pageable);
-            if (orders.isEmpty()) {
+            Page<OrderDTO> ordersPage = orderService.getOrdersForAdmin(searchOrderId, status, startDate, endDate, pageable);
+            ordersPage.getContent().forEach(this::adjustDatesToGmtPlus7); // Adjust dates for each order in page
+            if (ordersPage.isEmpty()) {
                 return ResponseEntity.noContent().build();
             }
-            return ResponseEntity.ok(orders);
+            return ResponseEntity.ok(ordersPage);
         } catch (IllegalArgumentException e) {
             logger.warn("Invalid argument for admin order search: {}", e.getMessage());
             return ResponseEntity.badRequest().body(e.getMessage());
