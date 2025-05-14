@@ -625,16 +625,20 @@ class OrderService {
       queryParams['status'] = orderStatusToString(status);
     }
     if (startDate != null) {
-      queryParams['startDate'] = _formatDate(startDate);
+      // Always set start time to 00:00:00 with explicit timezone (Z = UTC)
+      final startOfDay = DateTime(startDate.year, startDate.month, startDate.day, 0, 0, 0);
+      queryParams['startDate'] = _formatDateTimeWithTimezone(startOfDay);
     }
     if (endDate != null) {
-      queryParams['endDate'] = _formatDate(endDate);
+      // Always set end time to 23:59:59 with explicit timezone (Z = UTC)
+      final endOfDay = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+      queryParams['endDate'] = _formatDateTimeWithTimezone(endOfDay);
     }
 
     // Updated URL path to match Java @GetMapping("/admin/search") endpoint
     final url = Uri.parse('$_baseUrl/api/orders/admin/search')
         .replace(queryParameters: queryParams);
-    
+    print("URL: $url");
     if (kDebugMode) {
       print('Get Admin Orders Request URL: $url');
     }
@@ -1374,5 +1378,15 @@ extension OrderPageExtension on OrderPage {
     _offlineFlags[this] = value;
   }
 }
+
+  // Add the new method to format DateTime with time components
+  String _formatDateTime(DateTime dateTime) {
+    return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}T${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}:${dateTime.second.toString().padLeft(2, '0')}';
+  }
+
+// Format DateTime with explicit UTC timezone indicator (Z)
+  String _formatDateTimeWithTimezone(DateTime dateTime) {
+    return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}T${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}:${dateTime.second.toString().padLeft(2, '0')}Z';
+  }
 
 
