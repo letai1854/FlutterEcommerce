@@ -301,7 +301,7 @@ if(!kIsWeb){
             'Network just restored - clearing all image caches to force reload');
       }
       _imageCache.clear();
-      UserInfo.avatarCache.clear();
+      // UserInfo.avatarCache.clear();
 
       clearLocalImageCache().catchError((e) {
         if (kDebugMode) {
@@ -320,23 +320,23 @@ if(!kIsWeb){
       forceReload = true;
     }
 
-    if (!forceReload) {
-      if (_imageCache.containsKey(imagePath)) {
-        if (kDebugMode) print('Using in-memory cached image for $imagePath');
-        return _imageCache[imagePath];
-      }
+    // if (!forceReload) {
+    //   if (_imageCache.containsKey(imagePath)) {
+    //     if (kDebugMode) print('Using in-memory cached image for $imagePath');
+    //     return _imageCache[imagePath];
+    //   }
 
-      if (UserInfo.avatarCache.containsKey(imagePath)) {
-        return UserInfo.avatarCache[imagePath];
-      }
+    //   // if (UserInfo.avatarCache.containsKey(imagePath)) {
+    //   //   return UserInfo.avatarCache[imagePath];
+    //   // }
 
-      final localImage = await _loadImageFromLocalStorage(imagePath);
-      if (localImage != null) {
-        _imageCache[imagePath] = localImage;
-        UserInfo.avatarCache[imagePath] = localImage;
-        return localImage;
-      }
-    }
+    //   final localImage = await _loadImageFromLocalStorage(imagePath);
+    //   if (localImage != null) {
+    //     _imageCache[imagePath] = localImage;
+    //     // UserInfo.avatarCache[imagePath] = localImage;
+    //     return localImage;
+    //   }
+    // }
 
     if (!online) {
       if (kDebugMode) {
@@ -354,7 +354,7 @@ if(!kIsWeb){
             print('Found image in local storage on second attempt: $imagePath');
           }
           // Cache in memory for future use
-          _imageCache[imagePath] = localImage;
+          // _imageCache[imagePath] = localImage;
           return localImage;
         }
         
@@ -366,7 +366,7 @@ if(!kIsWeb){
             if (kDebugMode) {
               print('Found image with alternate path in local storage: $trimmedPath');
             }
-            _imageCache[imagePath] = altLocalImage; // Store with original path
+            // _imageCache[imagePath] = altLocalImage; // Store with original path
             return altLocalImage;
           }
         } else {
@@ -377,7 +377,7 @@ if(!kIsWeb){
             if (kDebugMode) {
               print('Found image with alternate path in local storage: $altPath');
             }
-            _imageCache[imagePath] = altLocalImage; // Store with original path
+            // _imageCache[imagePath] = altLocalImage; // Store with original path
             return altLocalImage;
           }
         }
@@ -408,8 +408,8 @@ if(!kIsWeb){
       final response = await httpClient.get(Uri.parse(fullUrl));
 
       if (response.statusCode == 200) {
-        _imageCache[imagePath] = response.bodyBytes;
-        UserInfo.avatarCache[imagePath] = response.bodyBytes;
+        // _imageCache[imagePath] = response.bodyBytes;
+        // UserInfo.avatarCache[imagePath] = response.bodyBytes;
 
         await _saveImageToLocalStorage(imagePath, response.bodyBytes);
 
@@ -466,7 +466,7 @@ if(!kIsWeb){
       }
 
       _imageCache.clear();
-      UserInfo.avatarCache.clear();
+      // UserInfo.avatarCache.clear();
 
       if (kDebugMode) {
         print('Cleared all locally cached images');
@@ -480,7 +480,7 @@ if(!kIsWeb){
 
   Future<Uint8List?> refreshImage(String imagePath) async {
     _imageCache.remove(imagePath);
-    UserInfo.avatarCache.remove(imagePath);
+    // UserInfo.avatarCache.remove(imagePath);
 
     try {
       final path = await _localPath;
@@ -504,8 +504,7 @@ if(!kIsWeb){
 
   bool isImageCached(String? imagePath) {
     if (imagePath == null || imagePath.isEmpty) return false;
-    return _imageCache.containsKey(imagePath) ||
-        UserInfo.avatarCache.containsKey(imagePath);
+    return _imageCache.containsKey(imagePath);
   }
 
   Uint8List? getImageFromCache(String? imagePath) {
@@ -515,9 +514,9 @@ if(!kIsWeb){
       return _imageCache[imagePath];
     }
 
-    if (UserInfo.avatarCache.containsKey(imagePath)) {
-      return UserInfo.avatarCache[imagePath];
-    }
+    // if (UserInfo.avatarCache.containsKey(imagePath)) {
+    //   return UserInfo.avatarCache[imagePath];
+    // }
 
     return null;
   }
@@ -1014,10 +1013,6 @@ if(!kIsWeb){
     return _loadImageFromLocalStorage(imagePath);
   }
 
-  void addImageToCache(String imagePath, Uint8List imageData) {
-    _imageCache[imagePath] = imageData;
-    UserInfo.avatarCache[imagePath] = imageData;
-  }
 
   void dispose() {
     httpClient.close();

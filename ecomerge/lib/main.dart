@@ -17,6 +17,7 @@ import 'package:e_commerce_app/database/Storage/BrandCategoryService.dart';
 import 'package:e_commerce_app/database/Storage/CartStorage.dart';
 import 'package:e_commerce_app/database/Storage/ProductStorage.dart';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
+import 'package:e_commerce_app/database/services/product_service.dart';
 import 'package:e_commerce_app/database/services/user_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -72,12 +73,14 @@ Future<void> initApp() async {
   if (!kIsWeb) {
     bool connectivityResult = await checkConnection();
     final userService = UserService();
-
+    
     if (connectivityResult) {
       // We are online
       print('Device is online. Attempting auto-login...');
       await userService.attemptAutoLogin();
       print('Auto-login attempted on native platform (online).');
+
+
     } else {
       // We are offline
       print(
@@ -103,8 +106,7 @@ Future<void> initApp() async {
 }
 
 void main() async {
-  if (!kIsWeb &&
-      (Platform.isAndroid ||
+  if (!kIsWeb &&(Platform.isAndroid ||
           Platform.isIOS ||
           Platform.isLinux ||
           Platform.isMacOS ||
