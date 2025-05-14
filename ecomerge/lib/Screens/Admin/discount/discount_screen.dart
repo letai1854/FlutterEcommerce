@@ -190,6 +190,7 @@ class _DiscountScreenState extends State<DiscountScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false, // Remove back button
         title: const Text('Quản lý Mã giảm giá'),
         actions: [
           TextButton(

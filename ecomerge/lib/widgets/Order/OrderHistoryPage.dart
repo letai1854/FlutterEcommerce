@@ -186,7 +186,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
         } else if (e.toString().toLowerCase().contains('timeout')) {
           displayError = "Kết nối máy chủ quá thời gian. Vui lòng thử lại sau.";
         } else {
-          displayError = "Không thể tải đơn hàng. Lỗi: ${e.toString().split('Exception:').last}";
+          displayError = "Không thể tải đơn hàng";
         }
         
         final bool isOnline = await _orderService.isOnline();

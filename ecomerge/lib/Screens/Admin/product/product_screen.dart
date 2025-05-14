@@ -332,130 +332,55 @@ class _ProductScreenState extends State<ProductScreen> {
   }
 
   // Helper to build image widget from path (Handles Asset, File, and Network based on platform)
-  // Modified to get the source string
-  // This helper is used for displaying images within the ProductScreen list.
   Widget _buildImageWidget(String? imageSource, {double size = 40, double iconSize = 40, BoxFit fit = BoxFit.cover}) {
     if (imageSource == null || imageSource.isEmpty) {
       return Icon(Icons.image, size: iconSize, color: Colors.grey); // Placeholder icon
     }
 
-     // Prefix baseUrl if the imageSource looks like a relative path
-    String finalImageSource = imageSource;
-    // Simple check if it doesn't look like a full URL or asset path
-    if (!imageSource.startsWith('http://') && !imageSource.startsWith('https://') && !imageSource.startsWith('assets/')) {
-       // Use the helper from ProductService to get the full URL for relative paths
-       // Assuming your ProductService has a getImageUrl method
-       try {
-            // Check if _productService is null before calling getImageUrl
-            if (_productService == null) {
-                 if (kDebugMode) print('[_buildImageWidget] Error: ProductService is null when getting URL.');
-                 return Icon(Icons.error_outline, size: iconSize, color: Colors.red); // Show error placeholder
-            }
-            finalImageSource = _productService.getImageUrl(imageSource);
-       } catch (e) {
-            // Handle case where ProductService or getImageUrl is not accessible/throws
-            if (kDebugMode) print('Error getting image URL from ProductService: $e');
-            return Icon(Icons.error_outline, size: iconSize, color: Colors.red); // Show error placeholder
-       }
-
-    }
-
-
     // Check if it's an asset path (simple check)
-    if (finalImageSource.startsWith('assets/')) {
-       return Image.asset(
-            finalImageSource,
+    if (imageSource.startsWith('assets/')) {
+      return Image.asset(
+        imageSource,
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) {
+          print('Error loading asset: $imageSource, Error: $error'); 
+          return Icon(Icons.broken_image, size: iconSize, color: Colors.red);
+        },
+      );
+    } 
+    
+    // For network/remote images, use getImageFromServer instead of getImageUrl
+    return FutureBuilder<Uint8List?>(
+      future: _productService.getImageFromServer(imageSource),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          // Show loading indicator while image is being fetched
+          return Center(
+            child: SizedBox(
+              width: size * 0.8,
+              height: size * 0.8,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+              ),
+            ),
+          );
+        } else if (snapshot.hasError || snapshot.data == null) {
+          // Show error icon if there's an error or data is null
+          print('Error loading image: $imageSource, Error: ${snapshot.error}');
+          return Icon(Icons.broken_image, size: iconSize, color: Colors.red);
+        } else {
+          // Success - display the image from Uint8List
+          return Image.memory(
+            snapshot.data!,
             fit: fit,
-             errorBuilder: (context, error, stackTrace) {
-                 // Show placeholder if asset fails to load
-                 if (kDebugMode) print('Error loading asset: $finalImageSource, Error: $error'); // Debugging
-                 return Icon(Icons.broken_image, size: iconSize, color: Colors.red);
-             },
-       );
-    } else if (finalImageSource.startsWith('http') || finalImageSource.startsWith('https')) {
-        // Assume it's a network URL
-         return Image.network(
-             finalImageSource,
-             fit: fit,
-              // Add loading builder for network images
-             loadingBuilder: (context, child, loadingProgress) {
-               if (loadingProgress == null) return child;
-               return Center(
-                 child: SizedBox( // Use SizedBox to prevent layout changes during loading
-                    width: size * 0.8, // Make indicator slightly smaller than container
-                    height: size * 0.8,
-                   child: CircularProgressIndicator(
-                     value: loadingProgress.expectedTotalBytes != null
-                         ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                         : null,
-                     strokeWidth: 2,
-                   ),
-                 ),
-               );
-             },
-              errorBuilder: (context, error, stackTrace) {
-                 // Show placeholder if network image fails
-                 if (kDebugMode) print('Error loading network image: $finalImageSource, Error: $error'); // Debugging
-                 return Icon(Icons.broken_image, size: iconSize, color: Colors.red);
-             },
-         );
-    }
-    else if (!kIsWeb) {
-      // On non-web, if not asset or http, assume it's a file path
-       try {
-         final file = File(finalImageSource); // Use the potential file path
-         // Check if file exists before trying to load, prevents crashes on invalid paths
-         if (file.existsSync()) {
-            return Image.file(
-                file,
-                fit: fit,
-                 errorBuilder: (context, error, stackTrace) {
-                    // Show placeholder if file fails to load
-                    if (kDebugMode) print('Error loading file: $finalImageSource, Error: $error'); // Debugging
-                    return Icon(Icons.broken_image, size: iconSize, color: Colors.red);
-                },
-            );
-         } else {
-             // File does not exist, show placeholder
-             if (kDebugMode) print('File does not exist: $finalImageSource');
-             return Icon(Icons.insert_drive_file, size: iconSize, color: Colors.grey); // File placeholder
-         }
-
-       } catch (e) {
-         // Handle potential errors during file creation or checking existence
-         if (kDebugMode) print('Exception handling file path: $finalImageSource, Exception: $e'); // Debugging
-         return Icon(Icons.error_outline, size: iconSize, color: Colors.red); // Error placeholder
-       }
-    }
-     else {
-        // On web, if not asset or http, and not File path (because File doesn't exist on web),
-        // it might be a temporary blob URL or something else. Treat as network for web.
-        // Use network image with error handling for any other path type on web
-         return Image.network( // Treat potential web-specific paths like network images
-             finalImageSource,
-             fit: fit,
-             // Add loading builder for web network images
-             loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return Center(
-                   child: SizedBox(
-                      width: size * 0.8, height: size * 0.8,
-                      child: CircularProgressIndicator(
-                         value: loadingProgress.expectedTotalBytes != null
-                             ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                             : null,
-                         strokeWidth: 2,
-                      ),
-                   ),
-                );
-             },
-              errorBuilder: (context, error, stackTrace) {
-                 // Show placeholder if web path fails
-                 if (kDebugMode) print('Error loading web path: $finalImageSource, Error: $error'); // Debugging
-                 return Icon(Icons.broken_image, size: iconSize, color: Colors.red);
-             },
-         );
-    }
+            errorBuilder: (context, error, stackTrace) {
+              print('Error displaying image: $imageSource, Error: $error');
+              return Icon(Icons.broken_image, size: iconSize, color: Colors.red);
+            },
+          );
+        }
+      },
+    );
   }
 
 
