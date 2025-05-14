@@ -111,7 +111,7 @@ class _ProductScreenState extends State<ProductScreen> {
       } catch (e) {
           if (kDebugMode) print('Error fetching products: $e');
           setState(() {
-              _error = 'Không thể tải dữ liệu sản phẩm: ${e.toString()}';
+              _error = 'Không thể tải dữ liệu sản phẩm';
               _isLoading = false;
               _fetchedProducts = []; // Clear products on error
               _totalProductsCount = 0; // Reset count on error
@@ -121,7 +121,7 @@ class _ProductScreenState extends State<ProductScreen> {
                  ScaffoldMessenger.of(context).showSnackBar(
                      SnackBar(
                          content: Text(_error!),
-                         backgroundColor: Colors.red,
+                         backgroundColor: const Color.fromARGB(255, 0, 0, 0),
                      ),
                  );
             }

@@ -155,7 +155,9 @@ class ProductService {
       }
 
       if (response.statusCode == 200) {
-        return ProductDTO.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
+        final responseJson = jsonDecode(utf8.decode(response.bodyBytes));
+        print('Product JSON data: brandName=${responseJson["brandName"]}, categoryName=${responseJson["categoryName"]}');
+        return ProductDTO.fromJson(responseJson);
       } else {
         String errorMessage = 'Failed to fetch product details.';
         try {

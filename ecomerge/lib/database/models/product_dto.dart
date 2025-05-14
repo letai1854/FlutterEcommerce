@@ -123,6 +123,9 @@ class ProductDTO {
         id: json['id'],
         name: json['name'] ?? 'Unknown Product',
         description: json['description'] ?? '',
+        // Extract categoryName and brandName fields properly
+        categoryName: json['categoryName'],
+        brandName: json['brandName'],
         mainImageUrl: json['mainImageUrl'],
         imageUrls: json['imageUrls'] != null
             ? List<String>.from(json['imageUrls'])

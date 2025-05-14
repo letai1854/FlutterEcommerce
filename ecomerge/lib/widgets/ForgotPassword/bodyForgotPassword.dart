@@ -112,7 +112,7 @@ class _bodyForgotPasswordState extends State<bodyForgotPassword> {
                         padding: const EdgeInsets.only(bottom: 16.0), // Sử dụng const
                         child: Text(
                           widget.errorMessage!,
-                          style: const TextStyle(color: Colors.red, fontSize: 14.0), // Sử dụng const
+                          style: const TextStyle(color: Colors.black, fontSize: 14.0), // Sử dụng const
                           textAlign: TextAlign.center,
                         ),
                       ),

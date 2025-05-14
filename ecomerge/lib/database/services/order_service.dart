@@ -233,13 +233,22 @@ class OrderService {
           if (responseBody is Map<String, dynamic>) {
             final orderPage = OrderPage.fromJson(responseBody);
             
-            // Only AFTER successful fetch, clear old cache and save new data
+            if (kDebugMode) {
+              print('OrderService: Successfully fetched fresh data, now clearing cache and saving new data');
+            }
+            
+            // First clear the cache, then save the new data
             await clearLocalOrderCache();
             await saveOrdersToLocalStorage(orderPage, status: status, page: page, size: size, sort: sort);
             
             // Mark as online data
             orderPage.isOfflineData = false;
             _networkJustRestored = false; // Reset the flag after successful data fetch
+            
+            if (kDebugMode) {
+              print('OrderService: Successfully refreshed and saved ${orderPage.orders.length} orders to local storage');
+            }
+            
             return orderPage;
           }
         }
@@ -1225,19 +1234,13 @@ class OrderService {
           print('OrderService: Network restored - auto-refreshing order data');
         }
         
-        // Clear local cache to ensure we get the freshest data
-        clearLocalOrderCache().then((_) {
-          if (kDebugMode) {
-            print('OrderService: Local order cache cleared after network restoration');
-          }
-          
-          // After clearing cache, automatically request fresh data from server
-          _refreshOrderDataAfterNetworkRestoration();
-          
-          // Reset the networkJustRestored flag after a delay
-          Future.delayed(const Duration(seconds: 10), () {
-            _networkJustRestored = false;
-          });
+        // Don't clear the cache here - let getCurrentUserOrders handle it
+        // Instead, just trigger the refresh
+        _refreshOrderDataAfterNetworkRestoration();
+        
+        // Reset the networkJustRestored flag after a delay
+        Future.delayed(const Duration(seconds: 10), () {
+          _networkJustRestored = false;
         });
       }
     });
