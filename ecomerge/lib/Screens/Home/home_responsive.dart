@@ -49,7 +49,9 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
   List<CategoryDTO> _appCategories = [];
   final SearchStateService _searchService = SearchStateService();
   List<CategoryDTO> _fallbackCategories = []; // For offline fallback
-  final int countProudct = kIsWeb ? 13 : 6;
+  final int countProudctPromo = constants.isMobile ? 4 : 13;
+  final int countProudctNew = constants.isMobile ? 4 : 10;
+  final int countProudctSell = constants.isMobile ? 4 : 13;
   final ProductService _productService =
       ProductService(); // Instance for image loading
 
@@ -443,7 +445,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                         height: isMobile ? 400 : 400,
                         child: PromotionalProductsList(
                           productListKey: _promoProductsKey,
-                          itemsPerPage: isMobile ? countProudct : 7,
+                          itemsPerPage: isMobile ? countProudctPromo : 7,
                           gridHeight: isMobile ? 400 : 400,
                           gridWidth: screenWidth,
                           childAspectRatio: isMobile ? 1.8 : 1.9,
@@ -494,7 +496,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                             sectionHeight = 400;
                             listEffectiveGridWidth = contentAreaWidth;
 
-                            itemsPerPage = countProudct;
+                            itemsPerPage = countProudctNew;
                             listCrossAxisCount = 1;
                             listChildAspectRatio = 1.8;
                             listMainSpace = 10;
@@ -551,7 +553,7 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                         height: isMobile ? 400 : 700,
                         child: PromotionalProductsList(
                           productListKey: _bestSellerKey,
-                          itemsPerPage: isMobile ? countProudct : 14,
+                          itemsPerPage: isMobile ? countProudctSell : 14,
                           gridHeight: isMobile ? 400 : 700,
                           gridWidth: screenWidth,
                           childAspectRatio: isMobile ? 1.8 : 1.85,
