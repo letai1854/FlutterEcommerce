@@ -38,23 +38,23 @@ class CategoryFilteredProductGrid extends StatefulWidget {
 class _CategoryFilteredProductGridState
     extends State<CategoryFilteredProductGrid> {
   final ProductService _productService = ProductService();
-  final ProductCacheService _cacheService =
-      ProductCacheService(); // Instantiate cache service
-  SharedPreferencesService? _prefsService; // Added for SharedPreferences
+  SharedPreferencesService? _prefsService; // For offline mode only
   late String _cacheKey;
+
+  final Map<String?, bool> _loadedImages = {}; // Track loaded images
 
   List<ProductDTO> _products = [];
   int _currentPage = 0;
-  bool _isLoadingFirstLoad = true; // For initial loading state
-  bool _isLoadingMore = false; // For loading more items
+  bool _isLoadingFirstLoad = true;
+  bool _isLoadingMore = false;
   bool _hasMore = true;
   String? _error;
-  ScrollPosition? _scrollPosition; // To listen to parent scroll
+  ScrollPosition? _scrollPosition;
 
   @override
   void initState() {
     super.initState();
-    _cacheKey = _cacheService.getCategoryCacheKey(widget.categoryId);
+    _cacheKey = 'category_${widget.categoryId}';
 
     if (!kIsWeb) {
       SharedPreferencesService.getInstance().then((instance) {
@@ -62,7 +62,6 @@ class _CategoryFilteredProductGridState
           setState(() {
             _prefsService = instance;
           });
-          // Fetch products after prefs service is initialized
           _fetchProducts(page: 0, isInitialLoad: true);
         }
       }).catchError((e) {
@@ -70,11 +69,9 @@ class _CategoryFilteredProductGridState
           print(
               "CategoryFilteredProductGrid: Error initializing SharedPreferencesService: $e");
         }
-        // Still attempt to fetch products even if prefs init fails
         _fetchProducts(page: 0, isInitialLoad: true);
       });
     } else {
-      // For web, fetch products directly
       _fetchProducts(page: 0, isInitialLoad: true);
     }
 
@@ -84,25 +81,22 @@ class _CategoryFilteredProductGridState
   }
 
   void _setupScrollListener() {
-    // Find the ancestor Scrollable's position
     _scrollPosition = Scrollable.of(context)?.position;
     _scrollPosition?.addListener(_onScroll);
-    // Initial check in case the content is already scrollable and near the end
-    WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
+    if (_scrollPosition?.hasContentDimensions == true) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
+    }
   }
 
   void _onScroll() {
     if (_scrollPosition != null && _scrollPosition!.hasPixels) {
       final currentScroll = _scrollPosition!.pixels;
       final maxScroll = _scrollPosition!.maxScrollExtent;
-      // Load more when user is near the bottom, e.g., 300 pixels from the end
-      // and not currently loading, and there are more pages, and no critical error preventing load.
-      if (maxScroll > 0 && // Ensure there is scrollable content
-          currentScroll >= maxScroll - 300 &&
+      if (maxScroll > 0 &&
+          currentScroll >= maxScroll - 150 &&
           !_isLoadingMore &&
           _hasMore &&
           _error == null) {
-        // Avoid loading more if there's a persistent error
         _fetchProducts(page: _currentPage + 1, isInitialLoad: false);
       }
     }
@@ -112,8 +106,8 @@ class _CategoryFilteredProductGridState
   void didUpdateWidget(CategoryFilteredProductGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.categoryId != oldWidget.categoryId) {
-      _cacheKey = _cacheService
-          .getCategoryCacheKey(widget.categoryId); // Update cache key
+      _cacheKey = 'category_${widget.categoryId}';
+      _loadedImages.clear();
       _resetAndFetchProducts();
     }
   }
@@ -124,7 +118,7 @@ class _CategoryFilteredProductGridState
       _currentPage = 0;
       _hasMore = true;
       _error = null;
-      _isLoadingFirstLoad = true; // Show initial loader again
+      _isLoadingFirstLoad = true;
     });
     _fetchProducts(page: 0, isInitialLoad: true);
   }
@@ -137,23 +131,7 @@ class _CategoryFilteredProductGridState
         _error = null;
       });
 
-      // 1. Try to load from in-memory cache first
-      final cachedData = _cacheService.getCategoryProducts(_cacheKey);
-      if (cachedData != null) {
-        if (mounted) {
-          setState(() {
-            _products = List.from(cachedData.products); // Use a copy
-            _currentPage = cachedData.currentPage;
-            _hasMore = cachedData.hasMore;
-            _isLoadingFirstLoad = false;
-            _error = null;
-          });
-        }
-        return;
-      }
-
-      // 2. Determine network status (only for non-web)
-      bool isDeviceOnline = true; // Assume online for web or if check fails
+      bool isDeviceOnline = true;
       if (!kIsWeb) {
         try {
           final connectivityResult = await Connectivity().checkConnectivity();
@@ -163,12 +141,9 @@ class _CategoryFilteredProductGridState
             print(
                 "CategoryFilteredProductGrid: Error checking connectivity: $e");
           }
-          // Default to true if connectivity check fails, to attempt network.
         }
       }
 
-      // 3. Initial Load Logic
-      // 3a. Non-Web & Offline: Try SharedPreferences first
       if (!kIsWeb && !isDeviceOnline && _prefsService != null) {
         try {
           final prefsCategoryData =
@@ -181,17 +156,13 @@ class _CategoryFilteredProductGridState
               _isLoadingFirstLoad = false;
               _error = "Đang hiển thị dữ liệu ngoại tuyến.";
             });
-            // Update in-memory cache with data from SharedPreferences
-            _cacheService.storeCategoryProducts(
-                _cacheKey, _products, _currentPage, _hasMore);
             return;
           } else if (mounted) {
-            // SharedPreferences empty or error, and offline
             setState(() {
               _isLoadingFirstLoad = false;
               _error = "Không có kết nối mạng và không có dữ liệu ngoại tuyến.";
               _products = [];
-              _hasMore = true; // Allow retry
+              _hasMore = true;
             });
             return;
           }
@@ -205,20 +176,13 @@ class _CategoryFilteredProductGridState
               _isLoadingFirstLoad = false;
               _error = "Lỗi tải dữ liệu ngoại tuyến. Không có kết nối mạng.";
               _products = [];
-              _hasMore = true; // Allow retry
+              _hasMore = true;
             });
             return;
           }
         }
       }
-      // 3b. Web OR (Non-Web & Online) OR (Non-Web & Offline but Prefs failed/empty): Fetch from Network
-      // This block is reached if:
-      // - It's web.
-      // - It's non-web and online.
-      // - It's non-web and offline, but SharedPreferences attempt above didn't return (e.g., no data or error).
-      //   In this case, the network call will likely fail with SocketException if truly offline.
     } else {
-      // Load More Logic
       if (_isLoadingMore || !_hasMore) return;
       setState(() {
         _isLoadingMore = true;
@@ -252,19 +216,29 @@ class _CategoryFilteredProductGridState
         }
         return;
       }
-      // Proceed to network fetch if online or web for load more
     }
 
-    // Common Network Fetch Logic (for both initial load and load more if applicable)
     try {
       PageResponse<ProductDTO> response;
-      const minSpinnerDuration = Duration(milliseconds: 300); // For smoother UI
 
-      if (isInitialLoad) {
+      if (!isInitialLoad) {
         final results = await Future.wait([
           _productService.fetchProducts(
             categoryId: widget.categoryId,
-            page: page, // page is 0 for initial load
+            page: page,
+            size: widget.itemsToLoadPerPage,
+            sortBy: 'createdDate',
+            sortDir: 'desc',
+          ),
+          Future.delayed(const Duration(milliseconds: 800))
+        ]);
+        response = results[0] as PageResponse<ProductDTO>;
+      } else {
+        const minSpinnerDuration = Duration(milliseconds: 300);
+        final results = await Future.wait([
+          _productService.fetchProducts(
+            categoryId: widget.categoryId,
+            page: page,
             size: widget.itemsToLoadPerPage,
             sortBy: 'createdDate',
             sortDir: 'desc',
@@ -272,42 +246,21 @@ class _CategoryFilteredProductGridState
           Future.delayed(minSpinnerDuration),
         ]);
         response = results[0] as PageResponse<ProductDTO>;
-      } else {
-        response = await _productService.fetchProducts(
-          categoryId: widget.categoryId,
-          page: page,
-          size: widget.itemsToLoadPerPage,
-          sortBy: 'createdDate',
-          sortDir: 'desc',
-        );
       }
 
       if (mounted) {
         final newProducts = response.content;
         setState(() {
           if (page == 0) {
-            // Initial fetch from network (after cache misses or if web/online)
             _products = newProducts;
           } else {
-            // Loading more
             _products.addAll(newProducts);
           }
           _currentPage = response.number;
           _hasMore = !response.last;
-          _error = null; // Clear error on successful fetch
+          _error = null;
         });
 
-        // Update in-memory cache
-        if (page == 0) {
-          _cacheService.storeCategoryProducts(
-              _cacheKey, _products, _currentPage, _hasMore);
-        } else {
-          // For append, newProducts are the ones just fetched for the current page
-          _cacheService.appendCategoryProducts(
-              _cacheKey, newProducts, _currentPage, _hasMore);
-        }
-
-        // Save/Update SharedPreferences if not on web and service is available AND online
         bool canSaveToPrefs = false;
         if (!kIsWeb && _prefsService != null) {
           try {
@@ -322,7 +275,7 @@ class _CategoryFilteredProductGridState
 
         if (canSaveToPrefs) {
           final currentDataToSave = CachedCategoryProductData(
-            products: List.from(_products), // Save the full, updated list
+            products: List.from(_products),
             currentPage: _currentPage,
             hasMore: _hasMore,
             lastFetched: DateTime.now(),
@@ -332,7 +285,7 @@ class _CategoryFilteredProductGridState
                 .saveCategoryProductData(_cacheKey, currentDataToSave);
             if (kDebugMode) {
               print(
-                  "CategoryFilteredProductGrid: Saved/Updated products to SharedPreferences for $_cacheKey.");
+                  "CategoryFilteredProductGrid: Saved offline backup to SharedPreferences for $_cacheKey.");
             }
           } catch (e) {
             if (kDebugMode) {
@@ -348,7 +301,6 @@ class _CategoryFilteredProductGridState
             "Không thể kết nối internet. Vui lòng kiểm tra mạng của bạn.";
         bool loadedFromPrefsFallback = false;
 
-        // Fallback to SharedPreferences on network error for non-web platforms
         if (!kIsWeb &&
             _prefsService != null &&
             (e is SocketException ||
@@ -362,9 +314,6 @@ class _CategoryFilteredProductGridState
                 _products = List.from(prefsCategoryData.products);
                 _currentPage = prefsCategoryData.currentPage;
                 _hasMore = prefsCategoryData.hasMore;
-                // Update in-memory cache with this fallback data
-                _cacheService.storeCategoryProducts(
-                    _cacheKey, _products, _currentPage, _hasMore);
                 errorMessage = "Lỗi mạng. Đang hiển thị dữ liệu ngoại tuyến.";
                 loadedFromPrefsFallback = true;
               });
@@ -379,30 +328,32 @@ class _CategoryFilteredProductGridState
 
         setState(() {
           _error = errorMessage;
-          // If initial load failed completely (no network, no cache, no prefs fallback)
           if (isInitialLoad && !loadedFromPrefsFallback) {
-            _products = []; // Clear products
-            _hasMore = true; // Reset to allow potential retry
-          }
-          // For load more errors, _isLoadingMore will be set to false in finally.
-          // A Snackbar might be more appropriate for load more errors if some data is already visible.
-          if (!isInitialLoad && mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(errorMessage),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-
-          if (kDebugMode) {
-            print(
-                "CategoryFilteredProductGrid: Error fetching products for category ${widget.categoryId} (page $page): $e");
+            _products = [];
+            _hasMore = true;
           }
         });
+
+        if (!isInitialLoad && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+
+        if (kDebugMode) {
+          print(
+              "CategoryFilteredProductGrid: Error fetching products for category ${widget.categoryId} (page $page): $e");
+        }
       }
     } finally {
       if (mounted) {
+        if (!isInitialLoad) {
+          await Future.delayed(Duration(milliseconds: 300));
+        }
+
         setState(() {
           if (isInitialLoad) {
             _isLoadingFirstLoad = false;
@@ -412,53 +363,6 @@ class _CategoryFilteredProductGridState
         });
       }
     }
-  }
-
-  void _loadMoreProducts() {
-    if (_hasMore && !_isLoadingMore && !_isLoadingFirstLoad) {
-      _fetchProducts(page: _currentPage + 1);
-    }
-  }
-
-  Widget _buildLoadingCard() {
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(4.0),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              height: 16,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(4.0),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Container(
-              height: 12,
-              width: double.infinity * 0.7,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(4.0),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
@@ -494,8 +398,9 @@ class _CategoryFilteredProductGridState
       );
     }
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+    return ListView(
+      physics: NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
       children: [
         GridView.builder(
           shrinkWrap: true,
@@ -509,42 +414,71 @@ class _CategoryFilteredProductGridState
           itemCount: _products.length,
           itemBuilder: (context, index) {
             final product = _products[index];
+            if (product.mainImageUrl != null) {
+              _loadedImages[product.mainImageUrl] = true;
+            }
             return _OfflineAwareProductItem(
               key: ValueKey('product_grid_item_${product.id}'),
               product: product,
+              imageAlreadyTracked:
+                  _loadedImages.containsKey(product.mainImageUrl),
             );
           },
         ),
-        if (_isLoadingMore)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20.0),
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 10),
-                  Text('Đang tải thêm sản phẩm...'),
-                ],
-              ),
-            ),
-          ),
+        AnimatedContainer(
+          duration: Duration(milliseconds: 300),
+          height: _isLoadingMore ? 80.0 : 0.0,
+          curve: Curves.easeInOut,
+          child: _isLoadingMore
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.blue),
+                          ),
+                        ),
+                        SizedBox(width: 15),
+                        Text(
+                          'Đang tải thêm sản phẩm...',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.blue.shade700,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : SizedBox.shrink(),
+        ),
         if (!_hasMore &&
             _products.isNotEmpty &&
             !_isLoadingFirstLoad &&
             !_isLoadingMore)
-          Padding(
+          Container(
             padding: const EdgeInsets.symmetric(vertical: 16.0),
-            child: Text("Đã hiển thị tất cả sản phẩm.",
-                style: TextStyle(color: Colors.grey)),
-          )
+            child: Text(
+              "Đã hiển thị tất cả sản phẩm.",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
       ],
     );
   }
 
   @override
   void dispose() {
-    _scrollPosition?.removeListener(_onScroll); // Remove listener
+    _scrollPosition?.removeListener(_onScroll);
     _productService.dispose();
     super.dispose();
   }
@@ -552,10 +486,12 @@ class _CategoryFilteredProductGridState
 
 class _OfflineAwareProductItem extends StatefulWidget {
   final ProductDTO product;
+  final bool imageAlreadyTracked;
 
   const _OfflineAwareProductItem({
     Key? key,
     required this.product,
+    this.imageAlreadyTracked = false,
   }) : super(key: key);
 
   @override
@@ -565,8 +501,11 @@ class _OfflineAwareProductItem extends StatefulWidget {
 
 class _OfflineAwareProductItemState extends State<_OfflineAwareProductItem> {
   static final ProductService _productService = ProductService();
-  Future<dynamic> _imageLoader = Future.value(null);
-  bool _imageLoadedFromPrefs = false;
+  Future<Uint8List?>? _imageLoader;
+  bool _imageLoaded = false;
+  bool _imageLoadAttempted = false;
+  bool _isDisposed = false;
+  bool _hasError = false;
 
   @override
   void initState() {
@@ -575,12 +514,18 @@ class _OfflineAwareProductItemState extends State<_OfflineAwareProductItem> {
   }
 
   @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
+  }
+
+  @override
   void didUpdateWidget(_OfflineAwareProductItem oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.product.mainImageUrl != widget.product.mainImageUrl ||
-        oldWidget.product.id != widget.product.id) {
-      _imageLoadedFromPrefs = false;
-      _imageLoader = Future.value(null); // Reset
+    if (oldWidget.product.mainImageUrl != widget.product.mainImageUrl) {
+      _imageLoaded = false;
+      _imageLoadAttempted = false;
+      _hasError = false;
       _initializeAndLoadImage();
     }
   }
@@ -588,50 +533,84 @@ class _OfflineAwareProductItemState extends State<_OfflineAwareProductItem> {
   Future<void> _initializeAndLoadImage() async {
     final imageUrl = widget.product.mainImageUrl;
     if (imageUrl == null || imageUrl.isEmpty) {
-      if (mounted) {
+      if (mounted && !_isDisposed) {
         setState(() {
           _imageLoader = Future.value(null);
-          _imageLoadedFromPrefs = false;
+          _imageLoaded = false;
+          _imageLoadAttempted = true;
         });
       }
       return;
     }
 
-    if (!kIsWeb) {
-      Uint8List? imageDataFromPrefs;
-      try {
-        final prefs = await SharedPreferencesService.getInstance();
-        imageDataFromPrefs = prefs.getImageData(imageUrl);
-      } catch (e) {
-        if (kDebugMode) {
-          print(
-              "Error accessing SharedPreferences for image '${imageUrl}': $e");
+    if (!_imageLoadAttempted) {
+      // Step 1: Check in-memory cache first
+      final cachedImage = _productService.getImageFromCache(imageUrl);
+      if (cachedImage != null) {
+        if (mounted && !_isDisposed) {
+          setState(() {
+            _imageLoader = Future.value(cachedImage);
+            _imageLoaded = true;
+            _imageLoadAttempted = true;
+          });
         }
+        return;
       }
 
-      if (mounted) {
-        if (imageDataFromPrefs != null) {
-          setState(() {
-            _imageLoader = Future.value(imageDataFromPrefs);
-            _imageLoadedFromPrefs = true;
-          });
-          return;
-        } else {
-          // Image not in SharedPreferences, load from server.
-          setState(() {
-            _imageLoader = _productService.getImageFromServer(imageUrl);
-            _imageLoadedFromPrefs = false;
-          });
-        }
-      }
-    } else {
-      // For web platforms, load directly from the server.
-      if (mounted) {
+      // Step 2: Start loading process with retry and proper error logging
+      if (mounted && !_isDisposed) {
         setState(() {
-          _imageLoader = _productService.getImageFromServer(imageUrl);
-          _imageLoadedFromPrefs = false;
+          _imageLoadAttempted = true;
+          _imageLoader = _loadImageWithRetry(imageUrl);
         });
       }
+    }
+  }
+
+  // Improved image loading method with better error handling
+  Future<Uint8List?> _loadImageWithRetry(String imageUrl,
+      {int retries = 2}) async {
+    if (_isDisposed) return null;
+
+    try {
+      // Use the productService to fetch the image (handles both online and offline cases)
+      final imageData = await _productService.getImageFromServer(imageUrl);
+
+      // If we successfully got image data, return it
+      if (imageData != null && imageData.isNotEmpty) {
+        if (kDebugMode) {
+          print(
+              'Successfully loaded image for ${widget.product.name} (${imageUrl.split('/').last})');
+        }
+        return imageData;
+      } else {
+        throw Exception('Image data is empty or null');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print(
+            'Error loading image for ${widget.product.name} (${imageUrl.split('/').last}): $e');
+      }
+
+      // Only retry if we haven't exceeded retry attempts
+      if (retries > 0 && !_isDisposed) {
+        await Future.delayed(Duration(milliseconds: 800));
+        if (kDebugMode) {
+          print(
+              'Retrying image load for ${widget.product.name} (attempt ${3 - retries}/2)');
+        }
+        return _loadImageWithRetry(imageUrl, retries: retries - 1);
+      }
+
+      // Mark that we had an error if all retries failed
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _hasError = true;
+        });
+      }
+
+      // Return null to indicate failure
+      return null;
     }
   }
 
@@ -647,50 +626,127 @@ class _OfflineAwareProductItemState extends State<_OfflineAwareProductItem> {
       );
     }
 
-    return FutureBuilder<dynamic>(
+    // Unified image loading approach for better consistency
+    return FutureBuilder<Uint8List?>(
       future: _imageLoader,
       builder: (context, snapshot) {
+        // Show loading spinner while waiting
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(strokeWidth: 2),
-          );
-        }
-
-        if (snapshot.hasError ||
-            snapshot.data == null ||
-            !(snapshot.data is Uint8List)) {
-          if (kDebugMode) {
-            print(
-                'Error in FutureBuilder for product image (${widget.product.name}): ${snapshot.error}');
-          }
-          return const Center(
-            child: Icon(
-              Icons.broken_image,
-              size: 50,
-              color: Colors.grey,
+          return Center(
+            child: Container(
+              color: Colors.grey[100],
+              child: SizedBox(
+                width: 30,
+                height: 30,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.0,
+                  color: Colors.blue[300],
+                ),
+              ),
             ),
           );
         }
 
-        final imageData = snapshot.data as Uint8List;
-
-        if (!kIsWeb && !_imageLoadedFromPrefs && imageUrl.isNotEmpty) {
-          // Save to SharedPreferences if loaded from network
-          SharedPreferencesService.getInstance().then((prefs) {
-            prefs.saveImageData(imageUrl, imageData);
-          }).catchError((e) {
-            if (kDebugMode) {
-              print(
-                  "Error saving image to SharedPreferences for ${widget.product.name}: $e");
-            }
-          });
+        // Handle successful image data load
+        if (snapshot.hasData && snapshot.data != null) {
+          _imageLoaded = true;
+          return Image.memory(
+            snapshot.data!,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stackTrace) {
+              if (kDebugMode) {
+                print('Error rendering memory image: $error');
+              }
+              return _buildFallbackImage(imageUrl);
+            },
+          );
         }
 
-        return Image.memory(
-          imageData,
-          fit: BoxFit.cover,
-          width: double.infinity, // Ensure image fills its allocated space
-          height: double.infinity,
+        // Handle errors or no data
+        return _buildFallbackImage(imageUrl);
+      },
+    );
+  }
+
+  // New method to build fallback image with better error handling
+  Widget _buildFallbackImage(String imageUrl) {
+    return FutureBuilder<bool>(
+      future: _productService.isOnline(),
+      builder: (context, snapshot) {
+        final isOnline = snapshot.data ?? false;
+
+        // If online, try direct network image as last resort
+        if (isOnline && !_hasError) {
+          // Generate full URL with cache busting for release builds
+          String fullUrl = _productService.getImageUrl(imageUrl);
+          if (!kDebugMode) {
+            // Add cache busting parameter only in release mode
+            fullUrl += '?cb=${DateTime.now().millisecondsSinceEpoch}';
+          }
+
+          return Stack(
+            children: [
+              // Background placeholder
+              Container(color: Colors.grey[100]),
+
+              // Network image
+              Positioned.fill(
+                child: Image.network(
+                  fullUrl,
+                  fit: BoxFit.cover,
+                  cacheWidth: 500, // Add reasonable cache size
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Center(
+                      child: CircularProgressIndicator(
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
+                            : null,
+                        strokeWidth: 2.0,
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    if (kDebugMode) {
+                      print('Network image error for $imageUrl: $error');
+                    }
+                    return Center(
+                      child: Icon(
+                        Icons.broken_image,
+                        size: 50,
+                        color: Colors.grey,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        }
+
+        // If offline or all methods failed, show appropriate placeholder
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isOnline ? Icons.broken_image : Icons.signal_wifi_off,
+                size: 40,
+                color: Colors.grey,
+              ),
+              if (!isOnline)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    "Offline",
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                ),
+            ],
+          ),
         );
       },
     );
@@ -732,10 +788,10 @@ class _OfflineAwareProductItemState extends State<_OfflineAwareProductItem> {
             : price;
 
     return Hero(
-      tag: 'product_grid_item_${product.id}', // Unique tag for Hero animation
+      tag: 'product_grid_item_${product.id}',
       child: Card(
         elevation: 2,
-        clipBehavior: Clip.antiAlias, // Ensures content respects border radius
+        clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         child: InkWell(
           onTap: _navigateToProductDetail,
@@ -743,8 +799,7 @@ class _OfflineAwareProductItemState extends State<_OfflineAwareProductItem> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                // Image container
-                flex: 3, // Adjust flex factor as needed for image height
+                flex: 3,
                 child: Container(
                   width: double.infinity,
                   decoration: const BoxDecoration(
@@ -787,14 +842,12 @@ class _OfflineAwareProductItemState extends State<_OfflineAwareProductItem> {
                 ),
               ),
               Expanded(
-                // Text content container
-                flex: 2, // Adjust flex factor as needed
+                flex: 2,
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment:
-                        MainAxisAlignment.spaceBetween, // Distribute space
+                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
                       Text(
                         product.name,
@@ -805,7 +858,20 @@ class _OfflineAwareProductItemState extends State<_OfflineAwareProductItem> {
                           fontSize: 13,
                         ),
                       ),
-                      // SizedBox(height: 2),
+                      if (product.description != null &&
+                          product.description!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2.0, bottom: 4.0),
+                          child: Text(
+                            product.description!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ),
                       Row(
                         children: [
                           Icon(Icons.star, color: Colors.amber, size: 14),
@@ -817,7 +883,7 @@ class _OfflineAwareProductItemState extends State<_OfflineAwareProductItem> {
                           ),
                         ],
                       ),
-                      // SizedBox(height: 2),
+                      SizedBox(height: 4),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
