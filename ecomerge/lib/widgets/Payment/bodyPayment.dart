@@ -693,11 +693,13 @@ class BodyPayment extends StatelessWidget {
         sumOriginalItemPrices - totalProductSpecificDiscount;
 
     // Calculate the final displayed total based on the components shown in this widget
-    final displayedTotalAmount = subtotalAfterProductDiscounts +
+    // Ensure the total can never go below zero
+    double calculatedTotal = subtotalAfterProductDiscounts +
         shippingFee +
         taxAmount -
         discountAmount -
         pointsDiscountAmount;
+    final displayedTotalAmount = calculatedTotal < 0 ? 0 : calculatedTotal;
 
     return SingleChildScrollView(
       child: Container(

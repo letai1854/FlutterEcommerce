@@ -39,6 +39,7 @@ class MyHttpOverrides extends HttpOverrides {
           (X509Certificate cert, String host, int port) => true;
   }
 }
+
 Future<bool> checkConnection() async {
   final ConnectivityResult result = await Connectivity().checkConnectivity();
   print("ConnectivityResult: $result"); // In ra để debug
@@ -48,12 +49,13 @@ Future<bool> checkConnection() async {
     return false;
   }
 
-  final InternetConnectionChecker customChecker = InternetConnectionChecker.createInstance(
+  final InternetConnectionChecker customChecker =
+      InternetConnectionChecker.createInstance(
     checkTimeout: const Duration(milliseconds: 1000),
-
   );
 
-  print("Đang kiểm tra kết nối internet thực sự (timeout mỗi địa chỉ ~1 giây)...");
+  print(
+      "Đang kiểm tra kết nối internet thực sự (timeout mỗi địa chỉ ~1 giây)...");
   final bool isConnected = await customChecker.hasConnection;
 
   if (isConnected) {
@@ -63,6 +65,7 @@ Future<bool> checkConnection() async {
   }
   return isConnected;
 }
+
 Future<void> initApp() async {
   WidgetsFlutterBinding.ensureInitialized();
   setPathUrlStrategy();
@@ -73,14 +76,12 @@ Future<void> initApp() async {
   if (!kIsWeb) {
     bool connectivityResult = await checkConnection();
     final userService = UserService();
-    
+
     if (connectivityResult) {
       // We are online
       print('Device is online. Attempting auto-login...');
       await userService.attemptAutoLogin();
       print('Auto-login attempted on native platform (online).');
-
-
     } else {
       // We are offline
       print(
@@ -106,7 +107,8 @@ Future<void> initApp() async {
 }
 
 void main() async {
-  if (!kIsWeb &&(Platform.isAndroid ||
+  if (!kIsWeb &&
+      (Platform.isAndroid ||
           Platform.isIOS ||
           Platform.isLinux ||
           Platform.isMacOS ||

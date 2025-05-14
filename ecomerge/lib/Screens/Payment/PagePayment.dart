@@ -149,12 +149,14 @@ class _PagePaymentState extends State<PagePayment> {
     double subtotalAfterProductDiscounts = _calculateSubtotal();
     double discount = _calculateDiscount();
     double tax = _calculateTax();
-    double total = subtotalAfterProductDiscounts +
-        _shippingFee +
-        tax -
-        discount -
-        _pointsDiscountAmount;
-    return total < 0 ? 0 : total;
+
+    // First calculate the total before points discount
+    double totalBeforePointsDiscount =
+        subtotalAfterProductDiscounts + _shippingFee + tax - discount;
+
+    // Then apply points discount, but ensure total doesn't go below zero
+    double finalTotal = totalBeforePointsDiscount - _pointsDiscountAmount;
+    return finalTotal < 0 ? 0 : finalTotal;
   }
 
   double _calculateSumOfOriginalItemPrices() {
@@ -165,22 +167,22 @@ class _PagePaymentState extends State<PagePayment> {
   double _calculateTotalProductSpecificDiscount() {
     double sumOriginalPrices = 0.0;
     double sumDiscountedPrices = 0.0;
-    
+
     for (var item in widget.cartItems) {
       double price = item.price; // This is already the final discounted price
       double originalPrice = price;
-      
+
       // Calculate the original price if there's a discount percentage
       if (item.discountPercentage != null && item.discountPercentage! > 0) {
         // Original price = discounted price / (1 - discount percentage/100)
         originalPrice = price / (1 - (item.discountPercentage! / 100));
       }
-      
+
       // Add to sums
       sumOriginalPrices += originalPrice * item.quantity;
       sumDiscountedPrices += price * item.quantity;
     }
-    
+
     // Total discount is the difference between original and discounted totals
     return sumOriginalPrices - sumDiscountedPrices;
   }
@@ -302,6 +304,11 @@ class _PagePaymentState extends State<PagePayment> {
         _currentVoucher = null;
         _voucherErrorMessage = null;
         print("PagePayment: Voucher deselected.");
+
+        // If points are being used, recalculate points discount amount
+        if (_useAccumulatedPoints) {
+          _recalculatePointsDiscount();
+        }
         return;
       }
 
@@ -341,6 +348,11 @@ class _PagePaymentState extends State<PagePayment> {
       _currentVoucher = voucher;
       _voucherErrorMessage = null;
       print("PagePayment: Voucher selected - ${voucher.code}");
+
+      // If points are being used, recalculate points discount amount after voucher applied
+      if (_useAccumulatedPoints) {
+        _recalculatePointsDiscount();
+      }
     });
   }
 
@@ -475,17 +487,18 @@ class _PagePaymentState extends State<PagePayment> {
       if (_useAccumulatedPoints && _pointsDiscountAmount > 0) {
         // Calculate points used (1 point = 1000 VND)
         double pointsUsed = _pointsDiscountAmount / 1000;
-        
+
         // Get current points balance
         double currentPoints = UserInfo().currentUser?.customerPoints ?? 0;
-        
+
         // Calculate and update new points balance
         double newPointsBalance = currentPoints - pointsUsed;
         if (newPointsBalance < 0) newPointsBalance = 0; // Ensure non-negative
-        
+
         // Update points in UserInfo
         UserInfo().updateCustomerPoints(newPointsBalance);
-        print("PagePayment: Updated user points balance from $currentPoints to $newPointsBalance");
+        print(
+            "PagePayment: Updated user points balance from $currentPoints to $newPointsBalance");
       }
 
       Map<String, dynamic> paymentSuccessArgs =
@@ -502,28 +515,33 @@ class _PagePaymentState extends State<PagePayment> {
         if (item.discountPercentage != null && item.discountPercentage! > 0) {
           // Calculate the original price before discount
           // Original price = discounted price / (1 - discount percentage/100)
-          double originalPrice = item.price / (1 - (item.discountPercentage! / 100));
-          
+          double originalPrice =
+              item.price / (1 - (item.discountPercentage! / 100));
+
           // Calculate the discount amount for this item
           double discountAmount = (originalPrice - item.price) * item.quantity;
           totalProductDiscount += discountAmount;
         }
       }
 
-      paymentSuccessArgs['sumOriginalItemPrices'] = _calculateSumOfOriginalItemPrices();
+      paymentSuccessArgs['sumOriginalItemPrices'] =
+          _calculateSumOfOriginalItemPrices();
       paymentSuccessArgs['productDiscount'] = totalProductDiscount;
       paymentSuccessArgs['taxRate'] = _taxRate;
-      
+
       // Add points discount information to payment success arguments
       paymentSuccessArgs['pointsDiscount'] = _pointsDiscountAmount;
-      paymentSuccessArgs['usedPoints'] = _useAccumulatedPoints && _pointsDiscountAmount > 0
-          ? (_pointsDiscountAmount / 1000) : 0;
-      paymentSuccessArgs['updatedPointsBalance'] = UserInfo().currentUser?.customerPoints ?? 0;
-      
+      paymentSuccessArgs['usedPoints'] =
+          _useAccumulatedPoints && _pointsDiscountAmount > 0
+              ? (_pointsDiscountAmount / 1000)
+              : 0;
+      paymentSuccessArgs['updatedPointsBalance'] =
+          UserInfo().currentUser?.customerPoints ?? 0;
+
       print("PagePayment: Product discount: $totalProductDiscount");
       print("PagePayment: Points discount: $_pointsDiscountAmount");
       print("PagePayment: Payment success arguments: $paymentSuccessArgs");
-      
+
       if (mounted) {
         // Correct way to pass all data through a single arguments parameter
         Navigator.pushReplacementNamed(
@@ -637,27 +655,42 @@ class _PagePaymentState extends State<PagePayment> {
           return;
         }
 
-        // Calculate discount amount (1 point = 1000 VND)
-        double potentialPointsDiscount = customerPoints * 1000;
-        double currentTotalBeforePoints = _calculateSubtotal() +
-            _shippingFee +
-            _calculateTax() -
-            _calculateDiscount();
-
-        // Limit point usage to the current total
-        _pointsDiscountAmount = 
-            (potentialPointsDiscount > currentTotalBeforePoints)
-                ? currentTotalBeforePoints
-                : potentialPointsDiscount;
-
-        if (_pointsDiscountAmount < 0) _pointsDiscountAmount = 0;
-
         _useAccumulatedPoints = true;
+        _recalculatePointsDiscount();
       } else {
         _useAccumulatedPoints = false;
         _pointsDiscountAmount = 0.0;
       }
     });
+  }
+
+  void _recalculatePointsDiscount() {
+    // Get customer points as double
+    final double customerPoints = UserInfo().currentUser?.customerPoints ?? 0;
+
+    if (customerPoints <= 0 || !_useAccumulatedPoints) {
+      _pointsDiscountAmount = 0.0;
+      return;
+    }
+
+    // Calculate the total before applying points discount
+    double subtotal = _calculateSubtotal();
+    double voucherDiscount = _calculateDiscount();
+    double tax = _calculateTax();
+    double totalBeforePointsDiscount =
+        subtotal + _shippingFee + tax - voucherDiscount;
+
+    // Calculate how much we can discount with points (1 point = 1000 VND)
+    double maxPointsDiscount = customerPoints * 1000;
+
+    // Limit point usage to the current total to prevent negative values
+    _pointsDiscountAmount = (maxPointsDiscount > totalBeforePointsDiscount)
+        ? totalBeforePointsDiscount
+        : maxPointsDiscount;
+
+    if (_pointsDiscountAmount < 0) _pointsDiscountAmount = 0;
+
+    print("Recalculated points discount: $_pointsDiscountAmount");
   }
 
   @override

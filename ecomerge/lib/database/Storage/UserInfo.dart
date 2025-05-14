@@ -229,51 +229,55 @@ class UserInfo extends ChangeNotifier {
   // Global logout method that can be called from anywhere
   Future<void> logout(BuildContext context) async {
     bool checkedConnection = await checkConnection();
-    if(checkedConnection){
-    // Call the UserService logout method which handles server logout and clearing credentials
-    await UserService().logout();
+    if (checkedConnection) {
+      // Call the UserService logout method which handles server logout and clearing credentials
+      await UserService().logout();
 
-    // Navigate to home page and clear navigation stack
-    Navigator.pushNamedAndRemoveUntil(
-      context,
-      '/',
-      (route) => false,
-    );
+      // Clear persisted user data from SharedPreferences
+      final prefsService = await SharedPreferencesService.getInstance();
+      await prefsService.removePersistedCompleteUserData();
 
+      // Navigate to home page and clear navigation stack
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/',
+        (route) => false,
+      );
     }
   }
-Future<bool> checkConnection() async {
-  final ConnectivityResult result = await Connectivity().checkConnectivity();
-  print("ConnectivityResult: $result"); // In ra để debug
-  
 
+  Future<bool> checkConnection() async {
+    final ConnectivityResult result = await Connectivity().checkConnectivity();
+    print("ConnectivityResult: $result"); // In ra để debug
 
-  if (result == ConnectivityResult.none) {
-    print("Không có kết nối mạng (ConnectivityResult.none)");
+    if (result == ConnectivityResult.none) {
+      print("Không có kết nối mạng (ConnectivityResult.none)");
+      return false;
+    }
+    if (kIsWeb) {
+      return true;
+    }
+    if (!kIsWeb) {
+      final InternetConnectionChecker customChecker =
+          InternetConnectionChecker.createInstance(
+        checkTimeout: const Duration(milliseconds: 1000),
+      );
+
+      print(
+          "Đang kiểm tra kết nối internet thực sự (timeout mỗi địa chỉ ~1 giây)...");
+      final bool isConnected = await customChecker.hasConnection;
+
+      if (isConnected) {
+        print("Đã kết nối mạng (InternetConnectionChecker)");
+      } else {
+        print(
+            "Mất kết nối mạng (InternetConnectionChecker) hoặc kiểm tra timeout");
+      }
+      return isConnected;
+    }
     return false;
   }
-  if(kIsWeb){
-    return true;
-  }
-  if(!kIsWeb){
 
-  final InternetConnectionChecker customChecker = InternetConnectionChecker.createInstance(
-    checkTimeout: const Duration(milliseconds: 1000),
-
-  );
-
-  print("Đang kiểm tra kết nối internet thực sự (timeout mỗi địa chỉ ~1 giây)...");
-  final bool isConnected = await customChecker.hasConnection;
-
-  if (isConnected) {
-    print("Đã kết nối mạng (InternetConnectionChecker)");
-  } else {
-    print("Mất kết nối mạng (InternetConnectionChecker) hoặc kiểm tra timeout");
-  }
-  return isConnected;
-  }
-  return false;
-}
   // Method to get user avatar URL
   String? getUserAvatar() {
     return _currentUser?.avatar;
