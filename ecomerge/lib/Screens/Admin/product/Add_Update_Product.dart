@@ -25,12 +25,22 @@ class PickedImage {
   final Uint8List bytes;
   final String fileName;
   bool isUploading;
+  bool uploadSuccess;
+  bool uploadError;
+  String? errorMessage;
 
-  PickedImage({required this.bytes, required this.fileName, this.isUploading = false});
+  PickedImage({
+    required this.bytes, 
+    required this.fileName, 
+    this.isUploading = false, 
+    this.uploadSuccess = false, 
+    this.uploadError = false,
+    this.errorMessage
+  });
 
    @override
    String toString() {
-     return 'PickedImage(fileName: $fileName, bytesLength: ${bytes.length}, isUploading: $isUploading)';
+     return 'PickedImage(fileName: $fileName, bytesLength: ${bytes.length}, isUploading: $isUploading, success: $uploadSuccess, error: $uploadError)';
    }
 }
 
@@ -441,16 +451,33 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
 
      // Check if an image is already pending or uploading for this spot
      if (isDefault) {
-       if (_defaultPickedImage != null && _defaultPickedImage!.isUploading) {
-         if (kDebugMode) print('Default image upload already in progress.'); return;
+       if (_defaultPickedImage != null) {
+         if (_defaultPickedImage!.isUploading) {
+           if (kDebugMode) print('Default image upload already in progress.');
+           ScaffoldMessenger.of(context).showSnackBar(
+             const SnackBar(content: Text('Vui lòng chờ ảnh đang tải lên hoàn tất')),
+           );
+           return;
+         }
        }
      } else {
         // Check if any additional image is already pending/uploading
         if (_additionalImages.any((item) => item is PickedImage && item.isUploading)) {
-             if (kDebugMode) print('Additional image upload already in progress.'); return;
+             if (kDebugMode) print('Additional image upload already in progress.');
+             ScaffoldMessenger.of(context).showSnackBar(
+               const SnackBar(content: Text('Vui lòng chờ ảnh đang tải lên hoàn tất')),
+             );
+             return;
          }
      }
 
+     // Check for any uploads in progress across all variants
+     if (_variants.any((v) => v.pickedImage != null && v.pickedImage!.isUploading)) {
+       ScaffoldMessenger.of(context).showSnackBar(
+         const SnackBar(content: Text('Vui lòng chờ ảnh biến thể đang tải lên hoàn tất')),
+       );
+       return;
+     }
 
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
@@ -478,10 +505,6 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
                        _additionalImages.add(picked); // Add the local image preview and indicator to the list
                    }
                });
-               // Show a transient Snackbar indicating upload started
-               ScaffoldMessenger.of(context).showSnackBar(
-                   SnackBar(content: Text('Đang tải ảnh lên: ${picked!.fileName}'), duration: const Duration(seconds: 2)),
-               );
             }
           });
 
@@ -490,9 +513,6 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
           // but because this function is `async`, the framework handles the blocking.
           final String? imageRelativePath = await _productService.uploadImage(picked.bytes, picked.fileName);
           if (kDebugMode) print('Image RELATIVE path returned from upload: $imageRelativePath');
-
-          // Hide the "Uploading" Snackbar
-          if(mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
           // Use another addPostFrameCallback to update the UI state based on the upload result
           SchedulerBinding.instance.addPostFrameCallback((_) {
@@ -515,34 +535,55 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
 
                          if (imageRelativePath != null && imageRelativePath.isNotEmpty) {
                             // UPLOAD SUCCESS:
-                            // Replace the local PickedImage object in the state with the server path string
-                            if (isDefault) {
-                                _defaultImageUrl = imageRelativePath; // <-- Store the returned RELATIVE path here
-                                _defaultPickedImage = null; // Clear the local data
-                            } else {
-                                // Find the index of the specific PickedImage object
-                                final index = _additionalImages.indexOf(currentPickedState); // Find by reference
-                                if (index != -1) {
-                                   _additionalImages[index] = imageRelativePath; // <-- Replace it with the RELATIVE path String
-                                } else {
-                                    // Fallback - should not happen with correct state management
-                                    if (kDebugMode) print('Error: Could not find PickedImage object to replace with URL after upload.');
-                                    _additionalImages.add(imageRelativePath); // Just add the path if not found
-                                }
-                            }
+                            currentPickedState.uploadSuccess = true;
+                            // Wait briefly to show success indicator before replacing with server path
+                            Future.delayed(const Duration(milliseconds: 800), () {
+                              if (mounted) {
+                                setState(() {
+                                  // Replace the local PickedImage object in the state with the server path string
+                                  if (isDefault) {
+                                      _defaultImageUrl = imageRelativePath; // <-- Store the returned RELATIVE path here
+                                      _defaultPickedImage = null; // Clear the local data
+                                  } else {
+                                      // Find the index of the specific PickedImage object
+                                      final index = _additionalImages.indexOf(currentPickedState); // Find by reference
+                                      if (index != -1) {
+                                         _additionalImages[index] = imageRelativePath; // <-- Replace it with the RELATIVE path String
+                                      } else {
+                                          // Fallback - should not happen with correct state management
+                                          if (kDebugMode) print('Error: Could not find PickedImage object to replace with URL after upload.');
+                                          _additionalImages.add(imageRelativePath); // Just add the path if not found
+                                      }
+                                  }
+                                });
+                              }
+                            });
+                            
                             if (kDebugMode) print('Upload successful. State updated with RELATIVE path.');
-                             ScaffoldMessenger.of(context).showSnackBar(
-                                // Added const
-                               const SnackBar(content: Text('Tải ảnh lên thành công'), backgroundColor: Colors.green),
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Tải ảnh lên thành công'), backgroundColor: Colors.green),
                             );
                          } else {
                              // UPLOAD FAILURE (Server didn't return a path or returned empty):
                              if (kDebugMode) print('Upload failed: Server returned empty path for .');
-                             // Just clear the local PickedImage object (it's already marked isUploading=false)
-                             if (isDefault) { if (_defaultPickedImage == currentPickedState) _defaultPickedImage = null; } // Check if it's still the active default image
-                             else _additionalImages.remove(currentPickedState); // Remove local image
+                             currentPickedState.uploadError = true;
+                             currentPickedState.errorMessage = "Server không trả về đường dẫn ảnh";
+                             
+                             // Show upload failure for a moment before removing
+                             Future.delayed(const Duration(seconds: 2), () {
+                               if (mounted) {
+                                 setState(() {
+                                   // Just clear the local PickedImage object (it's already marked isUploading=false)
+                                   if (isDefault) { 
+                                     if (_defaultPickedImage == currentPickedState) _defaultPickedImage = null; 
+                                   } else {
+                                     _additionalImages.remove(currentPickedState); // Remove local image
+                                   }
+                                 });
+                               }
+                             });
+                             
                              ScaffoldMessenger.of(context).showSnackBar(
-                               // Added const
                                const SnackBar(content: Text('Tải ảnh lên thất bại: Server không trả về đường dẫn ảnh.'), backgroundColor: Colors.red),
                              );
                          }
@@ -576,16 +617,27 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
 
                         if (currentPickedState != null) {
                            currentPickedState.isUploading = false; // Mark as not uploading
-                           // Clear the local PickedImage object from the state on failure
-                           if (isDefault) { if (_defaultPickedImage == currentPickedState) _defaultPickedImage = null; } // Check if it's still the active default
-                           else _additionalImages.remove(currentPickedState); // Remove from list by reference
+                           currentPickedState.uploadError = true;  // Mark as error
+                           currentPickedState.errorMessage = e.toString();
+                           
+                           // Show error state briefly before clearing
+                           Future.delayed(const Duration(seconds: 2), () {
+                             if (mounted) {
+                               setState(() {
+                                 // Clear the local PickedImage object from the state on failure
+                                 if (isDefault) { 
+                                   if (_defaultPickedImage == currentPickedState) _defaultPickedImage = null; 
+                                 } else {
+                                   _additionalImages.remove(currentPickedState); // Remove from list by reference
+                                 }
+                               });
+                             }
+                           });
                         } else {
                              if (kDebugMode) print('Upload failed due to exception, but PickedImage object ${picked?.fileName} was already removed from state.');
                         }
                      }
                  });
-                 // Hide the "Uploading" Snackbar if it's still showing
-                 if(mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
                  ScaffoldMessenger.of(context).showSnackBar(
                    SnackBar(content: Text('Tải ảnh lên thất bại: ${e.toString()}'), backgroundColor: Colors.red),
                  );
@@ -598,8 +650,24 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
   // Function to pick, read bytes, and initiate upload for a variant image
   Future<void> _pickAndUploadVariantImage(Variant variant) async {
     if (_isProcessing) return;
+    
+    // Enhanced check for any ongoing uploads
     if (variant.pickedImage != null && variant.pickedImage!.isUploading) {
-        if (kDebugMode) print('Variant image upload already in progress.'); return;
+        if (kDebugMode) print('Variant image upload already in progress.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Vui lòng chờ ảnh biến thể đang tải lên hoàn tất')),
+        );
+        return;
+    }
+    
+    // Check for any uploads in progress across all variants and main images
+    if (_variants.any((v) => v != variant && v.pickedImage != null && v.pickedImage!.isUploading) ||
+        _defaultPickedImage != null && _defaultPickedImage!.isUploading ||
+        _additionalImages.any((item) => item is PickedImage && item.isUploading)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng chờ các ảnh đang tải lên hoàn tất')),
+      );
+      return;
     }
 
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
@@ -621,17 +689,12 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
                       variant.pickedImage = picked; // Show local preview and indicator for this variant
                       variant.defaultImageUrl = null; // Clear previous server URL for this variant
                   });
-                   ScaffoldMessenger.of(context).showSnackBar(
-                       SnackBar(content: Text('Đang tải ảnh biến thể lên: ${picked!.fileName}'), duration: const Duration(seconds: 2)),
-                   );
               }
            });
 
            // *** CALL UPLOAD API ***
            final String? imageRelativePath = await _productService.uploadImage(picked.bytes, picked.fileName);
            if (kDebugMode) print('Variant Image RELATIVE path returned from upload: $imageRelativePath');
-
-           if(mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar(); // Hide "Uploading" Snackbar
 
            SchedulerBinding.instance.addPostFrameCallback((_) {
              if (mounted) {
@@ -640,23 +703,43 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
                  if (currentVariantState != null && currentVariantState.pickedImage == picked) {
                       currentVariantState.pickedImage!.isUploading = false; // Mark as not uploading
 
-
                       if (imageRelativePath != null && imageRelativePath.isNotEmpty) {
-                         // SUCCESS: Replace PickedImage with the server path string for this variant
-                         currentVariantState.defaultImageUrl = imageRelativePath; // <-- Store the RELATIVE path here
-                         currentVariantState.pickedImage = null; // Clear local data
+                         // SUCCESS: Show success indicator briefly
+                         currentVariantState.pickedImage!.uploadSuccess = true;
+                         
+                         // Wait briefly to show success indicator before replacing with server path
+                         Future.delayed(const Duration(milliseconds: 800), () {
+                           if (mounted) {
+                             setState(() {
+                               // Replace PickedImage with the server path string for this variant
+                               currentVariantState.defaultImageUrl = imageRelativePath; // <-- Store the RELATIVE path here
+                               currentVariantState.pickedImage = null; // Clear local data
+                             });
+                           }
+                         });
+                         
                           if (kDebugMode) print('Variant upload successful. State updated with RELATIVE path.');
                            ScaffoldMessenger.of(context).showSnackBar(
-                             // Added const
-                           const SnackBar(content: Text('Tải ảnh biến thể lên thành công'), backgroundColor: Colors.green),
+                             const SnackBar(content: Text('Tải ảnh biến thể lên thành công'), backgroundColor: Colors.green),
                          );
                      } else {
                           // FAILURE: Server returned empty path
                            if (kDebugMode) print('Variant upload failed: Server returned empty path for.');
-                          // Clear the local PickedImage object for this variant
-                          currentVariantState.pickedImage = null;
+                          // Show error indicator
+                          currentVariantState.pickedImage!.uploadError = true;
+                          currentVariantState.pickedImage!.errorMessage = "Server không trả về đường dẫn ảnh";
+                          
+                          // Show error state briefly before clearing
+                          Future.delayed(const Duration(seconds: 2), () {
+                            if (mounted) {
+                              setState(() {
+                                // Clear the local PickedImage object for this variant
+                                currentVariantState.pickedImage = null;
+                              });
+                            }
+                          });
+                          
                            ScaffoldMessenger.of(context).showSnackBar(
-                             // Added const
                              const SnackBar(content: Text('Tải ảnh biến thể lên thất bại: Server không trả về đường dẫn ảnh.'), backgroundColor: Colors.red),
                            );
                      }
@@ -678,8 +761,21 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
                     // Find the variant again and check if the picked image is still associated
                     final currentVariantState = _variants.firstWhereOrNull((v) => v == variant);
                     if (currentVariantState != null && currentVariantState.pickedImage == picked) {
-                        if (picked != null) picked.isUploading = false; // Mark as not uploading
-                        currentVariantState.pickedImage = null; // Clear local data on failure
+                        if (picked != null) {
+                          picked.isUploading = false; // Mark as not uploading
+                          picked.uploadError = true;  // Mark as error
+                          picked.errorMessage = e.toString();
+                        }
+                        
+                        // Show error state briefly before clearing
+                        Future.delayed(const Duration(seconds: 2), () {
+                          if (mounted) {
+                            setState(() {
+                              currentVariantState.pickedImage = null; // Clear local data on failure
+                            });
+                          }
+                        });
+                        
                         // Trigger rebuild
                         setState(() {});
                     } else {
@@ -687,7 +783,6 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
                             if (kDebugMode) print('Variant upload failed due to exception for ${picked.fileName}, but variant state changed or variant was removed.');
                         }
                     }
-                   if(mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
                    ScaffoldMessenger.of(context).showSnackBar(
                      SnackBar(content: Text('Tải ảnh biến thể lên thất bại: ${e.toString()}'), backgroundColor: Colors.red),
                    );
@@ -1042,7 +1137,7 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
     }
 
     if (source is PickedImage) {
-      // Display locally picked image bytes with potential upload indicator
+      // Display locally picked image bytes with status indicators
       return Stack(
          fit: StackFit.expand,
          children: [
@@ -1055,59 +1150,77 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
                   return Container(color: Colors.orangeAccent.withOpacity(0.5), child: Icon(Icons.warning_amber, size: iconSize * 0.8, color: Colors.deepOrange));
                },
             ),
-            // Show circular progress indicator centered over the image while uploading
+            // Show upload status indicators
             if (source.isUploading)
-               Positioned.fill( // Make the overlay fill the entire image area
+               Positioned.fill(
                    child: Container(
                       color: Colors.black54, // Semi-transparent overlay
-                      child: Center( // Center the indicator
-                         child: SizedBox( // Give the indicator a fixed size
-                            width: size * 0.5, // Make indicator size relative to image size
-                            height: size * 0.5,
-                            child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 2), // Added const
+                      child: Center(
+                         child: SizedBox(
+                            width: size * 0.6,
+                            height: size * 0.6,
+                            child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                          ),
+                      ),
+                   ),
+               ),
+            if (source.uploadSuccess && !source.isUploading)
+               Positioned.fill(
+                   child: Container(
+                      color: Colors.green.withOpacity(0.3),
+                      child: Center(
+                         child: Icon(Icons.check_circle, color: Colors.green, size: size * 0.5),
+                      ),
+                   ),
+               ),
+            if (source.uploadError && !source.isUploading)
+               Positioned.fill(
+                   child: Container(
+                      color: Colors.red.withOpacity(0.3),
+                      child: Center(
+                         child: Icon(Icons.error, color: Colors.red, size: size * 0.5),
                       ),
                    ),
                ),
          ],
       );
     } else if (source is String) { // It's a server relative path (e.g., "/uploads/...")
-       // Use the helper function from ProductService to get the guaranteed FULL URL for network loading
-       final fullImageUrl = _productService.getImageUrl(source);
-
-       if (kDebugMode) {
-         // print('[_buildImageDisplayWidget] Using FULL URL for Image.network: $fullImageUrl (Original relative path: $source)');
-       }
-
-      return Image.network(
-        fullImageUrl,
-        fit: fit,
-        // Add loading builder for network images
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Center(
-            child: SizedBox( // Use SizedBox to prevent layout changes during loading
-              width: size * 0.5, // Make indicator size relative to image size
-              height: size * 0.5,
-              child: CircularProgressIndicator(
-                value: loadingProgress.expectedTotalBytes != null
-                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                    : null,
-                strokeWidth: 2, // Thinner stroke for smaller indicator
-              ),
-            ),
-          );
-        },
-        // Add error builder for network images
-        errorBuilder: (context, error, stackTrace) {
-          if (kDebugMode) {
-            print('[_buildImageDisplayWidget] Image.network failed for $fullImageUrl (Original: $source): $error');
-          }
-          // Show broken image icon if network image fails
-          return Icon(Icons.broken_image, size: iconSize, color: Colors.red);
-        },
-      );
-
+       // Instead of using getImageUrl + Image.network, use getImageFromServer + Image.memory
+       return FutureBuilder<Uint8List?>(
+         future: _productService.getImageFromServer(source),
+         builder: (context, snapshot) {
+           if (snapshot.connectionState == ConnectionState.waiting) {
+             // Show loading indicator while fetching
+             return Center(
+               child: SizedBox(
+                 width: size * 0.5,
+                 height: size * 0.5,
+                 child: CircularProgressIndicator(
+                   strokeWidth: 2,
+                 ),
+               ),
+             );
+           } else if (snapshot.hasError || snapshot.data == null) {
+             // Show error if failed to fetch
+             if (kDebugMode) {
+               print('[_buildImageDisplayWidget] Failed to fetch image data for $source: ${snapshot.error}');
+             }
+             return Icon(Icons.broken_image, size: iconSize, color: Colors.red);
+           } else {
+             // Show the image from fetched bytes
+             return Image.memory(
+               snapshot.data!,
+               fit: fit,
+               errorBuilder: (context, error, stackTrace) {
+                 if (kDebugMode) {
+                   print('[_buildImageDisplayWidget] Image.memory failed for fetched $source: $error');
+                 }
+                 return Icon(Icons.broken_image, size: iconSize, color: Colors.red);
+               },
+             );
+           }
+         },
+       );
     } else {
         // Fallback for unexpected types
         if (kDebugMode) print('[_buildImageDisplayWidget] Unexpected source type: ${source?.runtimeType}');
@@ -1252,17 +1365,7 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
                             ),
                        ],
                     ),
-                     // Display validation error if default image is missing (triggered by _submitForm validator)
-                    // Need to check form state *after* validate call for this to work reliably outside build
-                    // For simplicity, relying on the snackbar from _submitForm validator might be sufficient UX
-                    // if (_formKey.currentState != null && !_formKey.currentState!.validate() && (defaultImageSource == null))
-                    //   const Padding( // Added const
-                    //     padding: EdgeInsets.only(top: 4.0), // Added const
-                    //     child: Text(
-                    //       'Vui lòng chọn ảnh mặc định',
-                    //       style: TextStyle(color: Colors.red, fontSize: 12), // Added const
-                    //     ),
-                    //   ),
+                     
                   ],
                 ),
                 const SizedBox(height: 16), // Added const

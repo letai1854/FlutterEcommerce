@@ -43,14 +43,22 @@ class PaginatedProductGrid extends StatefulWidget {
     _PaginatedProductGridState._currentSearchQuery = '';
   }
 
+  // Add a public static method to clear product cache from outside
+  static void clearProductCache() {
+    if (kDebugMode) print('External call to clear PaginatedProductGrid product cache');
+    _PaginatedProductGridState.clearProductCache();
+  }
+
   @override
   _PaginatedProductGridState createState() => _PaginatedProductGridState();
 }
 
 class _PaginatedProductGridState extends State<PaginatedProductGrid> with AutomaticKeepAliveClientMixin {
-  // Static cache for all product items across all instances
-  // This prevents rebuilding products even when the widget is recreated
+  // Cache only for current category session - will be cleared when category changes
   static final Map<String, Widget> _globalProductCache = {};
+  
+  // Add a new property to track the current category being displayed
+  static String? _currentCategoryKey;
   
   // Separate cache for search results (not persisted between searches)
   static final Map<String, Widget> _searchProductCache = {};
@@ -60,9 +68,16 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
   
   // Force clear search cache when a new search is detected
   static void clearSearchCache() {
-    if (kDebugMode) print('Internal call to clear widget search cache');
+    if (kDebugMode) print('Clearing search widget cache');
     _searchProductCache.clear();
     _currentSearchQuery = '';
+  }
+  
+  // Modify the clearProductCache method to track current category
+  static void clearProductCache() {
+    if (kDebugMode) print('Clearing product widget cache');
+    _globalProductCache.clear();
+    _currentCategoryKey = null; // Reset current category key when clearing
   }
   
   // Track the category and sort method to detect real changes vs just loading more
@@ -220,20 +235,18 @@ class _PaginatedProductGridState extends State<PaginatedProductGrid> with Automa
       if (parentKey is String) {
         final parts = parentKey.split('_');
         if (parts.length >= 2) {
-          final newCategory = parts[0];
-          final newSortMethod = parts[1];
+          final newCategoryKey = parts[0]; // Category ID
           
-          final categoryChanged = _currentCategory != null && _currentCategory != newCategory;
-          final sortMethodChanged = _currentSortMethod != null && _currentSortMethod != newSortMethod;
-          
-          // Clear cache if actual sort or category changed
-          if (categoryChanged || sortMethodChanged) {
-            if (kDebugMode) print('Category or sort method changed, clearing cache');
+          // If category changed, clear the cache
+          if (_currentCategoryKey != null && _currentCategoryKey != newCategoryKey) {
+            if (kDebugMode) print('Category changed from $_currentCategoryKey to $newCategoryKey, clearing product cache');
             _globalProductCache.clear();
           }
           
-          _currentCategory = newCategory;
-          _currentSortMethod = newSortMethod;
+          // Update the current category key
+          _currentCategoryKey = newCategoryKey;
+          _currentCategory = newCategoryKey;
+          _currentSortMethod = parts[1];
         }
       }
     } catch (e) {

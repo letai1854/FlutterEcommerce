@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:e_commerce_app/database/services/admin_user_service.dart';
 import 'package:e_commerce_app/database/models/UserDTO.dart';
+import 'dart:typed_data'; // Add this import at the top of the file
 
 class UserScreen extends StatefulWidget {
   const UserScreen({Key? key}) : super(key: key);
@@ -566,16 +567,43 @@ class _UserScreenState extends State<UserScreen> {
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               // User avatar
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundColor: Colors.grey.shade200,
-                                backgroundImage: user.avatar != null && user.avatar!.isNotEmpty
-                                  ? NetworkImage(_adminUserService.getImageUrl(user.avatar))
-                                  : null,
-                                child: user.avatar == null || user.avatar!.isEmpty
-                                  ? const Icon(Icons.person, color: Colors.grey)
-                                  : null,
-                              ),
+                              user.avatar != null && user.avatar!.isNotEmpty
+                                  ? FutureBuilder<Uint8List?>(
+                                      future: _adminUserService.getImageFromServer(user.avatar),
+                                      builder: (context, snapshot) {
+                                        if (snapshot.connectionState == ConnectionState.waiting) {
+                                          return CircleAvatar(
+                                            radius: 20,
+                                            backgroundColor: Colors.grey.shade200,
+                                            child: SizedBox(
+                                              width: 15,
+                                              height: 15,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
+                                            ),
+                                          );
+                                        } else if (snapshot.hasError || snapshot.data == null) {
+                                          return CircleAvatar(
+                                            radius: 20,
+                                            backgroundColor: Colors.grey.shade200,
+                                            child: Icon(Icons.broken_image, color: Colors.grey),
+                                          );
+                                        } else {
+                                          return CircleAvatar(
+                                            radius: 20,
+                                            backgroundColor: Colors.grey.shade200,
+                                            backgroundImage: MemoryImage(snapshot.data!),
+                                          );
+                                        }
+                                      },
+                                    )
+                                  : CircleAvatar(
+                                      radius: 20,
+                                      backgroundColor: Colors.grey.shade200,
+                                      child: Icon(Icons.person, color: Colors.grey),
+                                    ),
+                              
                               const SizedBox(width: 12),
                               
                               // User information

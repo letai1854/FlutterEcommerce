@@ -314,7 +314,7 @@ class _OrderScreenState extends State<OrderScreen> {
                     children: [
                       Icon(Icons.error_outline, size: 60, color: Colors.red),
                       SizedBox(height: 16),
-                      Text(_errorMessage, textAlign: TextAlign.center),
+                      Text("Không có kết nối internet", textAlign: TextAlign.center),
                       SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: _loadOrders,

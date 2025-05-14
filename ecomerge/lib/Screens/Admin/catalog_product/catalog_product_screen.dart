@@ -127,40 +127,36 @@ class _CatalogProductScreenState extends State<CatalogProductScreen> {
         );
      }
 
-
-    // Assume imageSource is a server relative path (e.g., "/uploads/...")
-    // Use the helper from CategoriesService to get the full URL for network loading
-    String fullImageUrl = _categoriesService.getImageUrl(imageSource.toString()); // Ensure it's treated as string
-
-     if (kDebugMode) {
-         // print('[_buildImageWidget] Using FULL URL for Image.network: $fullImageUrl (Original source: $imageSource)');
-     }
-
-     // Use Image.network for all non-empty string paths, as they are assumed to be URLs or paths resolvable by the service's getImageUrl
-    return Image.network(
-      fullImageUrl,
-      fit: fit,
-       // Add loading builder for network images
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Center(
-          child: SizedBox( // Use SizedBox to prevent layout changes during loading
-            width: size * 0.8, // Make indicator slightly smaller than container
-            height: size * 0.8,
-            child: CircularProgressIndicator(
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                  : null,
-              strokeWidth: 2,
+    // For network/remote images, use getImageFromServer instead of getImageUrl
+    return FutureBuilder<Uint8List?>(
+      future: _categoriesService.getImageFromServer(imageSource.toString()),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          // Show loading indicator while image is being fetched
+          return Center(
+            child: SizedBox(
+              width: size * 0.8,
+              height: size * 0.8,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+              ),
             ),
-          ),
-        );
-      },
-       // Add error builder for network images
-      errorBuilder: (context, error, stackTrace) {
-         if (kDebugMode) print('[_buildImageWidget] Image.network failed for $fullImageUrl (Original: $imageSource): $error');
-         // Show placeholder if network image fails
-        return Icon(Icons.broken_image, size: iconSize, color: Colors.red);
+          );
+        } else if (snapshot.hasError || snapshot.data == null) {
+          // Show error icon if there's an error or data is null
+          if (kDebugMode) print('[_buildImageWidget] Error loading image: $imageSource, Error: ${snapshot.error}');
+          return Icon(Icons.broken_image, size: iconSize, color: Colors.red);
+        } else {
+          // Success - display the image from Uint8List
+          return Image.memory(
+            snapshot.data!,
+            fit: fit,
+            errorBuilder: (context, error, stackTrace) {
+              if (kDebugMode) print('[_buildImageWidget] Error displaying image: $imageSource, Error: $error');
+              return Icon(Icons.broken_image, size: iconSize, color: Colors.red);
+            },
+          );
+        }
       },
     );
   }
@@ -626,6 +622,7 @@ class _CatalogProductScreenState extends State<CatalogProductScreen> {
     // If AppDataService is initialized (and not loading), proceed to build the main UI
     return Scaffold(
        appBar: AppBar(
+          automaticallyImplyLeading: false, // Remove back button
          title: const Text('Quản lý danh mục sản phẩm'),
        ),
       // AbsorbPointer can wrap the main content if you need to block interaction during *any* async operation (e.g., dialog API call)

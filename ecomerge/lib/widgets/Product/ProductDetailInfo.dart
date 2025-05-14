@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:flutter/material.dart';
 import 'package:e_commerce_app/database/services/product_service.dart'; // Add this import
 import 'package:cached_network_image/cached_network_image.dart';
@@ -153,6 +154,9 @@ class ProductDetailInfo extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     // Create ProductService instance for image loading
     final productService = ProductService();
+
+    // Round the rating to 1 decimal place for display
+    final displayRating = (averageRating * 10).round() / 10;
 
     // Function to get image with caching
     Future<Uint8List?> getImage(String imageUrl) {
@@ -547,7 +551,7 @@ class ProductDetailInfo extends StatelessWidget {
                                   Icon(Icons.star,
                                       color: Colors.amber, size: 18),
                                   const SizedBox(width: 4),
-                                  Text('$averageRating ($ratingCount đánh giá)',
+                                  Text('$displayRating',
                                       style: textTheme.bodyMedium)
                                 ]),
                                 Text('Thương hiệu: $brandName',
@@ -1096,21 +1100,26 @@ Widget BuildReviewSection({
               Text('Viết đánh giá của bạn:',
                   style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
-              Row(
+              
+              // Properly formatted conditional star picker for logged-in users
+              if (UserInfo().isLoggedIn) 
+                Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: List.generate(
-                      5,
-                      (index) => IconButton(
-                            icon: Icon(
-                              index < selectedRating
-                                  ? Icons.star
-                                  : Icons.star_border,
-                              color: Colors.amber,
-                            ),
-                            onPressed: () => onRatingChanged(index + 1),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ))),
+                    5,
+                    (index) => IconButton(
+                      icon: Icon(
+                        index < selectedRating
+                            ? Icons.star
+                            : Icons.star_border,
+                        color: Colors.amber,
+                      ),
+                      onPressed: () => onRatingChanged(index + 1),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    )
+                  )
+                ),
               const SizedBox(height: 12),
               TextField(
                 controller: commentController,
@@ -1186,17 +1195,23 @@ Widget BuildReviewSection({
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  // Only show star rating if rating is greater than 0
+                  if (rating > 0)
+                    Row(
                       children: List.generate(
-                          5,
-                          (starIndex) => Icon(
-                                starIndex < rating
-                                    ? Icons.star
-                                    : Icons.star_border,
-                                color: Colors.amber,
-                                size: 16,
-                              ))),
-                  const SizedBox(height: 4),
+                        5,
+                        (starIndex) => Icon(
+                          starIndex < rating
+                              ? Icons.star
+                              : Icons.star_border,
+                          color: Colors.amber,
+                          size: 16,
+                        )
+                      )
+                    ),
+                  // Always show the SizedBox if there's a rating to display
+                  if (rating > 0) const SizedBox(height: 4),
+                  // Always show the comment text
                   Text(comment),
                 ],
               ),

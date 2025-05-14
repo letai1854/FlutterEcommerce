@@ -155,7 +155,9 @@ class ProductService {
       }
 
       if (response.statusCode == 200) {
-        return ProductDTO.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
+        final responseJson = jsonDecode(utf8.decode(response.bodyBytes));
+        print('Product JSON data: brandName=${responseJson["brandName"]}, categoryName=${responseJson["categoryName"]}');
+        return ProductDTO.fromJson(responseJson);
       } else {
         String errorMessage = 'Failed to fetch product details.';
         try {
@@ -334,11 +336,60 @@ class ProductService {
 
     if (!online) {
       if (kDebugMode) {
-        print('Device is offline and image $imagePath is not in cache');
+        print('Device is offline - making additional attempt to find image $imagePath locally');
       }
-      return null;
+      
+      // Try loading from local storage again with more aggressive approach
+      try {
+        // Try using SharedPreferencesService directly, even if we already tried _loadImageFromLocalStorage
+        final prefsService = await SharedPreferencesService.getInstance();
+        final localImage = prefsService.getImageData(imagePath);
+        
+        if (localImage != null) {
+          if (kDebugMode) {
+            print('Found image in local storage on second attempt: $imagePath');
+          }
+          // Cache in memory for future use
+          _imageCache[imagePath] = localImage;
+          return localImage;
+        }
+        
+        // If exact path fails, try variations of the path that might be in storage
+        if (imagePath.startsWith('/')) {
+          final trimmedPath = imagePath.substring(1);
+          final altLocalImage = prefsService.getImageData(trimmedPath);
+          if (altLocalImage != null) {
+            if (kDebugMode) {
+              print('Found image with alternate path in local storage: $trimmedPath');
+            }
+            _imageCache[imagePath] = altLocalImage; // Store with original path
+            return altLocalImage;
+          }
+        } else {
+          // Try with a leading slash if it doesn't have one
+          final altPath = '/$imagePath';
+          final altLocalImage = prefsService.getImageData(altPath);
+          if (altLocalImage != null) {
+            if (kDebugMode) {
+              print('Found image with alternate path in local storage: $altPath');
+            }
+            _imageCache[imagePath] = altLocalImage; // Store with original path
+            return altLocalImage;
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error during additional local image search: $e');
+        }
+      }
+      
+      if (kDebugMode) {
+        print('Device is offline and image $imagePath is not available locally');
+      }
+      return null; // No more options when offline
     }
 
+    // If we're online, continue with server request
     try {
       String fullUrl = getImageUrl(imagePath);
       if (forceReload || wasNetworkJustRestored) {

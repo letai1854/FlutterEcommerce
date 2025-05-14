@@ -14,7 +14,7 @@ import 'package:flutter/foundation.dart'; // Import kDebugMode
 import 'package:connectivity_plus/connectivity_plus.dart'; // Import Connectivity
 
 class PageListProduct extends StatefulWidget {
-  const PageListProduct({super.key});
+const PageListProduct({super.key});
 
   @override
   State<PageListProduct> createState() => _PageListProductState();

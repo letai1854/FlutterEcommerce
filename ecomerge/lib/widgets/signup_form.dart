@@ -194,6 +194,13 @@ class _SignFormState extends State<SignForm> {
                   Icons.lock_outline,
                   color: Colors.grey[600],
                 ),
+                // Thêm helper text để chỉ dẫn yêu cầu về mật khẩu
+                helperText: 'Mật khẩu phải có ít nhất 8 ký tự',
+                helperStyle: TextStyle(
+                  color: widget.passwordController.text.isNotEmpty && 
+                         widget.passwordController.text.length < 8 ? 
+                         Colors.red : Colors.grey[600],
+                ),
                 // Gọi hàm toggle visibility được truyền vào
                 suffixIcon: IconButton(
                   onPressed: widget.togglePasswordVisibility,
