@@ -114,6 +114,12 @@ class NetworkUtil {
   /// Returns true if connected, false otherwise
   Future<bool> checkConnectivity() async {
     if (kIsWeb) {
+       final connectivityResult = await _connectivity.checkConnectivity();
+      
+      if (connectivityResult == ConnectivityResult.none) {
+        _updateConnectionState(false);
+        return false;
+      }
       return true; // Always assume online for web applications
     }
     

@@ -62,7 +62,8 @@ class ProductService {
       print("Không có kết nối mạng (ConnectivityResult.none)");
       return false;
     }
-
+    
+if(!kIsWeb){
     final InternetConnectionChecker customChecker =
         InternetConnectionChecker.createInstance(
       checkTimeout: const Duration(milliseconds: 1000),
@@ -79,6 +80,9 @@ class ProductService {
           "Mất kết nối mạng (InternetConnectionChecker) hoặc kiểm tra timeout");
     }
     return isConnected;
+}else{
+  return true;
+}
   }
 
   Future<String> get _localPath async {

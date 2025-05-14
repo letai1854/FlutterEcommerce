@@ -83,7 +83,7 @@ Future<void> _checkConnectivity() async {
     _isOnline = false;
     return;
   }
-
+if(!kIsWeb){
   final InternetConnectionChecker customChecker = InternetConnectionChecker.createInstance(
     checkTimeout: const Duration(milliseconds: 1000),
   );
@@ -102,16 +102,21 @@ Future<void> _checkConnectivity() async {
   } else {
     print("Mất kết nối internet (InternetConnectionChecker) hoặc kiểm tra timeout.");
   }
-
   _isOnline = hasInternetAccess;
+}
+else{
+  _isOnline = true;
+}
 }
   // Load data from API or local storage
   Future<void> loadData() async {
+    
     try {
        await _checkConnectivity();
       // First try to get data from local storage
+      if(!kIsWeb){
       await _loadFromLocalStorage();
-      
+      }
       // If user is logged in, also try to get data from server
       if (UserInfo().isLoggedIn) {
 
@@ -270,7 +275,9 @@ Future<void> _checkConnectivity() async {
     try {
       // Load local cart first if not already loaded
       if (_cartItems == null) {
-        await _loadFromLocalStorage();
+        if(!kIsWeb){
+          await _loadFromLocalStorage();
+        }
         if (_cartItems == null) {
           _cartItems = []; // Initialize if still null
         }
