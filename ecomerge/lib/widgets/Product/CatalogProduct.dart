@@ -458,40 +458,48 @@ class _CatalogProductState extends State<CatalogProduct> {
 
                       SizedBox(height: spacing),
 
-                      // Khu vực lưới sản phẩm
-                      SizedBox(
-                        width: double.infinity,
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final double minItemWidth = isMobile ? 160.0 : 200.0;
-                            final int maxColumns = (constraints.maxWidth / minItemWidth).floor();
-                            final int columns = max(2, min(maxColumns, isMobile ? 2 : 4));
+                      // Khu vực lưới sản phẩm hoặc spinner khi tải trang đầu
+                      if (widget.isProductsLoading && widget.filteredProducts.isEmpty)
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(spacing * 2),
+                          alignment: Alignment.center,
+                          child: CircularProgressIndicator(),
+                        )
+                      else
+                        SizedBox(
+                          width: double.infinity,
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final double minItemWidth = isMobile ? 160.0 : 200.0;
+                              final int maxColumns = (constraints.maxWidth / minItemWidth).floor();
+                              final int columns = max(2, min(maxColumns, isMobile ? 2 : 4));
 
-                            // Create a stable key that only changes when sort or category changes
-                            // Include sort direction in the key to ensure proper cache handling
-                            final gridKey = ValueKey('${widget.selectedCategoryId}_${widget.currentSortMethod}_${widget.currentSortDir}');
-                            
-                            // Wrap in RepaintBoundary to prevent repainting when parent rebuilds
-                            return RepaintBoundary(
-                              child: KeyedSubtree(
-                                key: gridKey,
-                                child: PaginatedProductGrid(
-                                  productData: widget.filteredProducts,
-                                  itemsPerPage: columns * 2, 
-                                  gridWidth: constraints.maxWidth,
-                                  childAspectRatio: 0.6,
-                                  crossAxisCount: columns,
-                                  mainSpace: spacing,
-                                  crossSpace: spacing,
-                                  isProductsLoading: widget.isProductsLoading,
-                                  canLoadMoreProducts: widget.canLoadMoreProducts,
-                                  isShowingCachedContent: false, // Always set to false since we don't use cached data
+                              // Create a stable key that only changes when sort or category changes
+                              // Include sort direction in the key to ensure proper cache handling
+                              final gridKey = ValueKey('${widget.selectedCategoryId}_${widget.currentSortMethod}_${widget.currentSortDir}');
+                              
+                              // Wrap in RepaintBoundary to prevent repainting when parent rebuilds
+                              return RepaintBoundary(
+                                child: KeyedSubtree(
+                                  key: gridKey,
+                                  child: PaginatedProductGrid(
+                                    productData: widget.filteredProducts,
+                                    itemsPerPage: columns * 2, 
+                                    gridWidth: constraints.maxWidth,
+                                    childAspectRatio: 0.6,
+                                    crossAxisCount: columns,
+                                    mainSpace: spacing,
+                                    crossSpace: spacing,
+                                    isProductsLoading: widget.isProductsLoading,
+                                    canLoadMoreProducts: widget.canLoadMoreProducts,
+                                    isShowingCachedContent: false, // Always set to false since we don't use cached data
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
                         ),
-                      ),
 
                       // Remove duplicate loading indicator since it's now handled in PaginatedProductGrid
                       // The loading indicator in CatalogProduct causes duplicate indicators

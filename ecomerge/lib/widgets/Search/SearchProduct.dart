@@ -374,6 +374,14 @@ class _SearchProductState extends State<SearchProduct> {
                             ],
                           ),
                         )
+                      else if (widget.isSearching && widget.searchResults.isEmpty)
+                        // Loading spinner only for the initial search when results are empty
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(spacing * 2),
+                          alignment: Alignment.center,
+                          child: CircularProgressIndicator(),
+                        )
                       else
                         // Product Grid Section
                         SizedBox(
