@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:e_commerce_app/widgets/Admin/Dashboard/charts/bar_chart_widget.dart';
 import 'package:e_commerce_app/widgets/Admin/Dashboard/charts/line_chart_widget.dart';
-import 'package:e_commerce_app/widgets/Admin/Dashboard/charts/pie_chart_widget.dart';
 import 'package:e_commerce_app/services/admin_dashboard_service.dart';
 import 'package:intl/intl.dart';
 
@@ -18,11 +17,14 @@ class _DashboardContentState extends State<DashboardContent> {
 
   AdminSalesStatisticsDTO? _salesStatistics;
   List<ProductSalesDTO> _topProducts = [];
+  ChartDataDTO? _chartData; // For the new charts
 
   bool _isLoadingSales = true;
   bool _isLoadingTopProducts = true;
+  bool _isLoadingCharts = true; // Loading state for new charts
   String? _salesError;
   String? _topProductsError;
+  String? _chartsError; // Error state for new charts
 
   DateTimeRange? _customDateRange;
 
@@ -33,7 +35,7 @@ class _DashboardContentState extends State<DashboardContent> {
   void initState() {
     super.initState();
     _fetchTopProducts();
-    _fetchSalesDataForSelectedRange();
+    _fetchDataForSelectedRange(); // Combined fetch call
   }
 
   Future<void> _fetchTopProducts() async {
@@ -58,6 +60,11 @@ class _DashboardContentState extends State<DashboardContent> {
       }
       print("Error fetching top products: $e");
     }
+  }
+
+  Future<void> _fetchDataForSelectedRange() async {
+    await _fetchSalesDataForSelectedRange();
+    await _fetchChartDataForSelectedRange();
   }
 
   Future<void> _fetchSalesDataForSelectedRange() async {
@@ -93,6 +100,42 @@ class _DashboardContentState extends State<DashboardContent> {
         });
       }
       print("Error fetching sales statistics: $e");
+    }
+  }
+
+  Future<void> _fetchChartDataForSelectedRange() async {
+    setState(() {
+      _isLoadingCharts = true;
+      _chartsError = null;
+    });
+
+    DateTimeRange range = _getDateTimeRangeForString(_selectedTimeRange);
+    if (_selectedTimeRange == 'Tùy chỉnh' && _customDateRange != null) {
+      range = _customDateRange!;
+    } else if (_selectedTimeRange == 'Tùy chỉnh' && _customDateRange == null) {
+      setState(() {
+        _isLoadingCharts = false;
+        _chartData = null;
+      });
+      return;
+    }
+
+    try {
+      final chartDataResponse = await _dashboardService.getChartData(range.start, range.end);
+      if (mounted) {
+        setState(() {
+          _chartData = chartDataResponse;
+          _isLoadingCharts = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _chartsError = 'Lỗi tải dữ liệu biểu đồ';
+          _isLoadingCharts = false;
+        });
+      }
+      print("Error fetching chart data: $e");
     }
   }
 
@@ -156,7 +199,7 @@ class _DashboardContentState extends State<DashboardContent> {
         );
         _selectedTimeRange = 'Tùy chỉnh';
       });
-      _fetchSalesDataForSelectedRange();
+      _fetchDataForSelectedRange();
     }
   }
 
@@ -283,7 +326,7 @@ class _DashboardContentState extends State<DashboardContent> {
           if (label == 'Tùy chỉnh' && _customDateRange == null) {
             _showCustomDateRangePicker();
           } else {
-            _fetchSalesDataForSelectedRange();
+            _fetchDataForSelectedRange();
           }
         }
       },
@@ -373,12 +416,38 @@ class _DashboardContentState extends State<DashboardContent> {
   }
 
   Widget _buildChartsSection(bool isMobile, bool isTablet) {
+    if (_isLoadingCharts) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_chartsError != null) {
+      return Center(child: Text(_chartsError!, style: const TextStyle(color: Colors.red)));
+    }
+    if (_chartData == null) {
+      return const Center(child: Text('Không có dữ liệu biểu đồ cho khoảng thời gian này.'));
+    }
+
+    final revenueChart = _buildChartCard(
+        'Doanh thu theo thời gian',
+        LineChartWidget(
+            data: _chartData!.revenueOverTime,
+            chartTitle: 'Doanh thu'));
+    final ordersChart = _buildChartCard(
+        'Số lượng đơn hàng theo thời gian',
+        LineChartWidget(
+            data: _chartData!.ordersOverTime,
+            chartTitle: 'Đơn hàng'));
+    final productsSoldChart = _buildChartCard(
+        'Số lượng sản phẩm bán ra theo thời gian',
+        LineChartWidget(
+            data: _chartData!.productsSoldOverTime,
+            chartTitle: 'Sản phẩm bán ra'));
+
     if (isMobile) {
       return Column(
         children: [
-          _buildChartCard('Doanh thu theo thời gian', const LineChartWidget()),
-          _buildChartCard('Lợi nhuận theo thời gian', const LineChartWidget()),
-          _buildChartCard('Phân bổ sản phẩm', const PieChartWidget()),
+          revenueChart,
+          ordersChart,
+          productsSoldChart,
         ],
       );
     } else if (isTablet) {
@@ -386,29 +455,19 @@ class _DashboardContentState extends State<DashboardContent> {
         children: [
           Row(
             children: [
-              Expanded(
-                  child: _buildChartCard(
-                      'Doanh thu theo thời gian', const LineChartWidget())),
-              Expanded(
-                  child: _buildChartCard(
-                      'Lợi nhuận theo thời gian', const LineChartWidget())),
+              Expanded(child: revenueChart),
+              Expanded(child: ordersChart),
             ],
           ),
-          _buildChartCard('Phân bổ sản phẩm', const PieChartWidget()),
+          productsSoldChart,
         ],
       );
     } else {
       return Row(
         children: [
-          Expanded(
-              child: _buildChartCard(
-                  'Doanh thu theo thời gian', const LineChartWidget())),
-          Expanded(
-              child: _buildChartCard(
-                  'Lợi nhuận theo thời gian', const LineChartWidget())),
-          Expanded(
-              child:
-                  _buildChartCard('Phân bổ sản phẩm', const PieChartWidget())),
+          Expanded(child: revenueChart),
+          Expanded(child: ordersChart),
+          Expanded(child: productsSoldChart),
         ],
       );
     }
@@ -432,7 +491,7 @@ class _DashboardContentState extends State<DashboardContent> {
             ),
             const SizedBox(height: 16),
             SizedBox(
-              height: 200,
+              height: 250, // Increased height from 200 to 250
               child: chart,
             ),
           ],

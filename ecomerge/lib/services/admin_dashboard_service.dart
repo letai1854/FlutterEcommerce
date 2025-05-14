@@ -74,6 +74,46 @@ class AdminSalesStatisticsDTO {
   }
 }
 
+class TimeSeriesDataPointDTO {
+  final DateTime date;
+  final double value;
+
+  TimeSeriesDataPointDTO({required this.date, required this.value});
+
+  factory TimeSeriesDataPointDTO.fromJson(Map<String, dynamic> json) {
+    return TimeSeriesDataPointDTO(
+      date: DateTime.parse(json['date'] as String),
+      value: (json['value'] as num).toDouble(),
+    );
+  }
+}
+
+class ChartDataDTO {
+  final List<TimeSeriesDataPointDTO> revenueOverTime;
+  final List<TimeSeriesDataPointDTO> ordersOverTime;
+  final List<TimeSeriesDataPointDTO> productsSoldOverTime;
+
+  ChartDataDTO({
+    required this.revenueOverTime,
+    required this.ordersOverTime,
+    required this.productsSoldOverTime,
+  });
+
+  factory ChartDataDTO.fromJson(Map<String, dynamic> json) {
+    return ChartDataDTO(
+      revenueOverTime: (json['revenueOverTime'] as List)
+          .map((item) => TimeSeriesDataPointDTO.fromJson(item as Map<String, dynamic>))
+          .toList(),
+      ordersOverTime: (json['ordersOverTime'] as List)
+          .map((item) => TimeSeriesDataPointDTO.fromJson(item as Map<String, dynamic>))
+          .toList(),
+      productsSoldOverTime: (json['productsSoldOverTime'] as List)
+          .map((item) => TimeSeriesDataPointDTO.fromJson(item as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
 class AdminDashboardService {
   final String _baseUrl = baseurl;
   late final http.Client _httpClient;
@@ -135,6 +175,29 @@ class AdminDashboardService {
     } catch (e) {
       print('Error fetching sales statistics: $e');
       return null;
+    }
+  }
+
+  Future<ChartDataDTO?> getChartData(DateTime startDate, DateTime endDate) async {
+    final url = Uri.parse('$_baseUrl/api/admin/dashboard/chart-data').replace(queryParameters: {
+      'startDate': DateFormat('yyyy-MM-dd').format(startDate),
+      'endDate': DateFormat('yyyy-MM-dd').format(endDate),
+    });
+
+    print("Fetching chart data from $url");
+
+    try {
+      final response = await _httpClient.get(url, headers: _getHeaders());
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return ChartDataDTO.fromJson(decoded);
+      } else {
+        print('Failed to load chart data: ${response.statusCode} ${response.body}');
+        return null; // Or throw an exception
+      }
+    } catch (e) {
+      print('Error fetching chart data: $e');
+      return null; // Or throw an exception
     }
   }
 }

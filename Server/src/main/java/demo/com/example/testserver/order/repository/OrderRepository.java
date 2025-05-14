@@ -45,4 +45,22 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 
     Page<Order> findByOrderStatusAndOrderDateGreaterThanEqualAndOrderDateLessThan(Order.OrderStatus status, Date startDate, Date endDate, Pageable pageable);
 
+    @Query("SELECT CAST(o.orderDate AS DATE) as orderDay, SUM(o.totalAmount) as dailyRevenue " +
+           "FROM Order o WHERE o.orderDate >= :startDate AND o.orderDate < :endDate " +
+           "AND o.orderStatus <> demo.com.example.testserver.order.model.Order.OrderStatus.da_huy " + // Exclude cancelled orders from revenue
+           "GROUP BY orderDay ORDER BY orderDay ASC")
+    List<Object[]> findRevenueOverTime(@Param("startDate") Date startDate, @Param("endDate") Date endDate);
+
+    @Query("SELECT CAST(o.orderDate AS DATE) as orderDay, COUNT(o) as dailyOrderCount " +
+           "FROM Order o WHERE o.orderDate >= :startDate AND o.orderDate < :endDate " +
+           "GROUP BY orderDay ORDER BY orderDay ASC")
+    List<Object[]> findOrdersOverTime(@Param("startDate") Date startDate, @Param("endDate") Date endDate);
+
+    @Query("SELECT CAST(o.orderDate AS DATE) as orderDay, SUM(od.quantity) as dailyProductsSold " +
+           "FROM Order o JOIN o.orderDetails od " +
+           "WHERE o.orderDate >= :startDate AND o.orderDate < :endDate " +
+           "AND o.orderStatus <> demo.com.example.testserver.order.model.Order.OrderStatus.da_huy " + // Exclude items from cancelled orders
+           "GROUP BY orderDay ORDER BY orderDay ASC")
+    List<Object[]> findProductsSoldOverTime(@Param("startDate") Date startDate, @Param("endDate") Date endDate);
+
 }
