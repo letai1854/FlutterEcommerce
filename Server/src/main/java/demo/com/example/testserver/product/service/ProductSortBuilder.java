@@ -18,7 +18,7 @@ public class ProductSortBuilder {
             // Map API sort fields to entity fields
             String sortField = switch (sortBy.toLowerCase()) {
                 case "name" -> "name";
-                case "price" -> "minPrice"; // Use denormalized minPrice for price sorting
+                case "price" -> "variantZeroPrice"; // Use denormalized price of the first variant for price sorting
                 case "rating" -> "averageRating"; // Use denormalized averageRating for rating sorting
                 case "newest", "createddate" -> "createdDate";
                 default -> {

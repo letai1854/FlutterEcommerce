@@ -154,18 +154,18 @@ class CartService {
     if (imagePath == null || imagePath.isEmpty) return null;
     
     // Check cache only if not forcing reload
-    if (!forceReload) {
-      // First check our product-specific image cache
-      if (_imgCache.containsKey(imagePath)) {
-        if (kDebugMode) print('Using cached image for $imagePath');
-        return _imgCache[imagePath];
-      }
+    // if (!forceReload) {
+    //   // First check our product-specific image cache
+    //   if (_imgCache.containsKey(imagePath)) {
+    //     if (kDebugMode) print('Using cached image for $imagePath');
+    //     return _imgCache[imagePath];
+    //   }
       
-      // Then check UserInfo avatar cache (existing implementation)
-      if (UserInfo.avatarCache.containsKey(imagePath)) {
-        return UserInfo.avatarCache[imagePath];
-      }
-    }
+    //   // Then check UserInfo avatar cache (existing implementation)
+    //   if (UserInfo.avatarCache.containsKey(imagePath)) {
+    //     return UserInfo.avatarCache[imagePath];
+    //   }
+    // }
 
     try {
       String fullUrl = getImageUrl(imagePath);
@@ -179,11 +179,11 @@ class CartService {
 
       if (response.statusCode == 200) {
         // Cache the image unless we're forcing reload
-        if (!forceReload) {
-          // Cache in both places for maximum compatibility
-          _imgCache[imagePath] = response.bodyBytes;
-          UserInfo.avatarCache[imagePath] = response.bodyBytes;
-        }
+        // if (!forceReload) {
+        //   // Cache in both places for maximum compatibility
+        //   _imgCache[imagePath] = response.bodyBytes;
+        //   UserInfo.avatarCache[imagePath] = response.bodyBytes;
+        // }
         return response.bodyBytes;
       }
     } catch (e) {

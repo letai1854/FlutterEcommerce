@@ -31,10 +31,10 @@ class CartStorage {
   List<CartItemDTO>? _cartItems;
   
   // Image cache map
-  final Map<String, Uint8List> _imgCache = {};
+  // final Map<String, Uint8List> _imgCache = {};
   
-  // Track ongoing image fetch requests to avoid duplicate fetches
-  final Map<String, Future<Uint8List?>> _pendingImageFetches = {};
+  // // Track ongoing image fetch requests to avoid duplicate fetches
+  // final Map<String, Future<Uint8List?>> _pendingImageFetches = {};
   
   // Service instance
   final CartService _cartService = CartService();
@@ -419,34 +419,34 @@ else{
     }
     
     // Check if image is in local cache
-    if (_imgCache.containsKey(imagePath)) {
-      return _imgCache[imagePath];
-    }
+    // if (_imgCache.containsKey(imagePath)) {
+    //   return _imgCache[imagePath];
+    // }
     
-    // Check if a fetch is already in progress for this image
-    if (_pendingImageFetches.containsKey(imagePath)) {
-      return _pendingImageFetches[imagePath];
-    }
+    // // Check if a fetch is already in progress for this image
+    // if (_pendingImageFetches.containsKey(imagePath)) {
+    //   return _pendingImageFetches[imagePath];
+    // }
     
     // If not, use CartService to fetch it (with deduplication)
     try {
       final fetchFuture = _cartService.getImageFromServer(imagePath);
-      _pendingImageFetches[imagePath] = fetchFuture;
+      // _pendingImageFetches[imagePath] = fetchFuture;
       
       final imageData = await fetchFuture;
       
       // Cache the image if it was successfully fetched
-      if (imageData != null) {
-        _imgCache[imagePath] = imageData;
-      }
+      // if (imageData != null) {
+      //   _imgCache[imagePath] = imageData;
+      // }
       
-      // Remove from pending fetches
-      _pendingImageFetches.remove(imagePath);
+      // // Remove from pending fetches
+      // _pendingImageFetches.remove(imagePath);
       
       return imageData;
     } catch (e) {
       print('Error fetching image: $e');
-      _pendingImageFetches.remove(imagePath);
+      // _pendingImageFetches.remove(imagePath);
       return null;
     }
   }
@@ -454,27 +454,27 @@ else{
   // Force reload an image from server
   Future<Uint8List?> reloadImage(String imagePath) async {
     // Clear any pending fetch for this image
-    _pendingImageFetches.remove(imagePath);
+    // _pendingImageFetches.remove(imagePath);
     
     final imageData = await _cartService.getImageFromServer(imagePath, forceReload: true);
     
-    if (imageData != null) {
-      _imgCache[imagePath] = imageData;
-    }
+    // if (imageData != null) {
+    //   _imgCache[imagePath] = imageData;
+    // }
     
     return imageData;
   }
   
   // Clear the image cache
   void clearImageCache() {
-    _imgCache.clear();
-    _pendingImageFetches.clear();
+    // _imgCache.clear();
+    // _pendingImageFetches.clear();
   }
   
   // Check if image is cached
-  bool isImageCached(String imagePath) {
-    return _imgCache.containsKey(imagePath);
-  }
+  // bool isImageCached(String imagePath) {
+  //   return _imgCache.containsKey(imagePath);
+  // }
   
   // Set cart items (replace the entire cache)
   void setCartItems(List<CartItemDTO> items) {

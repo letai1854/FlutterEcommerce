@@ -57,7 +57,7 @@ class OrderService {
       return IOClient(ioClient);
     }
   }
-  static final Map<String, Uint8List> _imageCache = {};
+  // static final Map<String, Uint8List> _imageCache = {};
 
   Map<String, String> _getHeaders({bool includeAuth = true}) {
     final headers = {'Content-Type': 'application/json'};
@@ -749,19 +749,19 @@ class OrderService {
     }
     
     // Check cache only if not forcing reload
-    if (!forceReload) {
-      // First check our product-specific image cache
-      if (_imageCache.containsKey(imagePath)) {
-        if (kDebugMode) print('Using cached image for $imagePath');
-        return _imageCache[imagePath];
-      }
+    // if (!forceReload) {
+    //   // First check our product-specific image cache
+    //   if (_imageCache.containsKey(imagePath)) {
+    //     if (kDebugMode) print('Using cached image for $imagePath');
+    //     return _imageCache[imagePath];
+    //   }
       
-      // Then check UserInfo avatar cache (existing implementation)
-      if (UserInfo.avatarCache.containsKey(imagePath)) {
-        if (kDebugMode) print('Using UserInfo cached image for $imagePath');
-        return UserInfo.avatarCache[imagePath];
-      }
-    }
+    //   // Then check UserInfo avatar cache (existing implementation)
+    //   if (UserInfo.avatarCache.containsKey(imagePath)) {
+    //     if (kDebugMode) print('Using UserInfo cached image for $imagePath');
+    //     return UserInfo.avatarCache[imagePath];
+    //   }
+    // }
 
     try {
       String fullUrl = getImageUrl(imagePath);
@@ -786,12 +786,12 @@ class OrderService {
           print('Warning: Response doesn\'t appear to be an image. Content-Type: $contentType');
         }
         
-        // Cache the image unless we're forcing reload
-        if (!forceReload) {
-          // Cache in both places for maximum compatibility
-          _imageCache[imagePath] = response.bodyBytes;
-          UserInfo.avatarCache[imagePath] = response.bodyBytes;
-        }
+        // // Cache the image unless we're forcing reload
+        // if (!forceReload) {
+        //   // Cache in both places for maximum compatibility
+        //   _imageCache[imagePath] = response.bodyBytes;
+        //   UserInfo.avatarCache[imagePath] = response.bodyBytes;
+        // }
         return response.bodyBytes;
       } else {
         if (kDebugMode) {
@@ -831,27 +831,27 @@ class OrderService {
   }
   
   // Method to check if an image is already cached without fetching
-  bool isImageCached(String? imagePath) {
-    if (imagePath == null || imagePath.isEmpty) return false;
-    return _imageCache.containsKey(imagePath) || UserInfo.avatarCache.containsKey(imagePath);
-  }
+  // bool isImageCached(String? imagePath) {
+  //   if (imagePath == null || imagePath.isEmpty) return false;
+  //   return _imageCache.containsKey(imagePath) || UserInfo.avatarCache.containsKey(imagePath);
+  // }
   
   // New method to get image directly from cache without network request
-  Uint8List? getImageFromCache(String? imagePath) {
-    if (imagePath == null || imagePath.isEmpty) return null;
+  // Uint8List? getImageFromCache(String? imagePath) {
+  //   if (imagePath == null || imagePath.isEmpty) return null;
     
-    // Check product cache first
-    if (_imageCache.containsKey(imagePath)) {
-      return _imageCache[imagePath];
-    }
+  //   // Check product cache first
+  //   if (_imageCache.containsKey(imagePath)) {
+  //     return _imageCache[imagePath];
+  //   }
     
-    // Then check avatar cache
-    if (UserInfo.avatarCache.containsKey(imagePath)) {
-      return UserInfo.avatarCache[imagePath];
-    }
+  //   // Then check avatar cache
+  //   if (UserInfo.avatarCache.containsKey(imagePath)) {
+  //     return UserInfo.avatarCache[imagePath];
+  //   }
     
-    return null; // Not found in any cache
-  }
+  //   return null; // Not found in any cache
+  // }
     String getImageUrl(String? imagePath) {
     if (imagePath == null) return '';
 

@@ -77,6 +77,7 @@ CREATE TABLE san_pham (
     min_price DECIMAL(12, 2) NULL DEFAULT NULL,
     max_price DECIMAL(12, 2) NULL DEFAULT NULL,
     average_rating DOUBLE NULL DEFAULT NULL,
+    variant_zero_price DECIMAL(12, 2) NULL DEFAULT NULL, -- Giá của biến thể đầu tiên (hoặc mặc định)
     CHECK (phan_tram_giam_gia IS NULL OR (phan_tram_giam_gia >= 0 AND phan_tram_giam_gia <= 50.00)) -- Giới hạn % giảm giá
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -259,3 +260,4 @@ CREATE INDEX idx_sp_min_price ON san_pham(min_price);
 CREATE INDEX idx_sp_max_price ON san_pham(max_price);
 CREATE INDEX idx_sp_avg_rating ON san_pham(average_rating);
 CREATE INDEX idx_sp_created_date ON san_pham(ngay_tao); -- Thêm nếu chưa có và thường xuyên sắp xếp theo ngày tạo
+CREATE INDEX idx_sp_variant_zero_price ON san_pham(variant_zero_price); -- Index cho giá biến thể đầu tiên

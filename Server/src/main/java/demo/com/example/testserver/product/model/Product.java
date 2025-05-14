@@ -60,6 +60,9 @@ public class Product {
     @Column(name = "average_rating")
     private Double averageRating;
 
+    @Column(name = "variant_zero_price", precision = 12, scale = 2) // New field for the price of the first variant
+    private BigDecimal variantZeroPrice;
+
     @Column(name = "is_enabled", nullable = false)
     private boolean isEnabled = true;
 
@@ -197,6 +200,14 @@ public class Product {
 
     public void setAverageRating(Double averageRating) {
         this.averageRating = averageRating;
+    }
+
+    public BigDecimal getVariantZeroPrice() {
+        return variantZeroPrice;
+    }
+
+    public void setVariantZeroPrice(BigDecimal variantZeroPrice) {
+        this.variantZeroPrice = variantZeroPrice;
     }
 
     public boolean isEnabled() {

@@ -1,12 +1,15 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:e_commerce_app/Screens/Payment/PagePayment.dart';
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForTablet.dart';
 import 'package:e_commerce_app/widgets/NavbarMobile/NavbarForMobile.dart';
 import 'package:e_commerce_app/widgets/Cart/BodyCart.dart';
 import 'package:e_commerce_app/widgets/navbarHomeDesktop.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:e_commerce_app/database/Storage/CartStorage.dart';
 import 'package:e_commerce_app/database/models/CartDTO.dart';
 import 'package:e_commerce_app/database/models/cart_item_model.dart';
+import 'package:internet_connection_checker/internet_connection_checker.dart';
 
 class PageCart extends StatefulWidget {
   const PageCart({super.key});
@@ -181,6 +184,8 @@ class _PageCartState extends State<PageCart> {
   }
 
   void increaseQuantity(int itemId) async {
+        if(await checkConnection()){
+
     final index = _cartStorage.cartItems.indexWhere((item) => item.cartItemId == itemId);
     if (index >= 0) {
       final item = _cartStorage.cartItems[index];
@@ -220,9 +225,11 @@ class _PageCartState extends State<PageCart> {
         _updateStickyPaymentVisibility();
       }
     }
+        }
   }
 
   void decreaseQuantity(int itemId) async {
+    if(await checkConnection()){
     final index = _cartStorage.cartItems.indexWhere((item) => item.cartItemId == itemId);
     if (index >= 0) {
       final item = _cartStorage.cartItems[index];
@@ -264,9 +271,41 @@ class _PageCartState extends State<PageCart> {
         }
       }
     }
+    }
   }
+Future<bool> checkConnection() async {
+  final ConnectivityResult result = await Connectivity().checkConnectivity();
+  print("ConnectivityResult: $result"); // In ra để debug
 
+  if (result == ConnectivityResult.none) {
+    print("Không có kết nối mạng (ConnectivityResult.none)");
+    return false;
+  }
+  if(kIsWeb){
+    return true;
+  }
+  if(!kIsWeb){
+
+  
+  final InternetConnectionChecker customChecker = InternetConnectionChecker.createInstance(
+    checkTimeout: const Duration(milliseconds: 1000),
+
+  );
+
+  print("Đang kiểm tra kết nối internet thực sự (timeout mỗi địa chỉ ~1 giây)...");
+  final bool isConnected = await customChecker.hasConnection;
+
+  if (isConnected) {
+    print("Đã kết nối mạng (InternetConnectionChecker)");
+  } else {
+    print("Mất kết nối mạng (InternetConnectionChecker) hoặc kiểm tra timeout");
+  }
+  return isConnected;
+  }
+  return false;
+}
   void removeItem(int itemId) async {
+    if(await checkConnection()){
     // Get item reference before removal
     final itemIndex = _cartStorage.cartItems.indexWhere((item) => item.cartItemId == itemId);
     final itemToRemove = itemIndex >= 0 ? _cartStorage.cartItems[itemIndex] : null;
@@ -288,6 +327,7 @@ class _PageCartState extends State<PageCart> {
         print('Remaining selected items: ${_selectedCartItemsList.length}');
       });
       _updateStickyPaymentVisibility();
+    }
     }
   }
 
@@ -365,8 +405,11 @@ class _PageCartState extends State<PageCart> {
   }
 
   // Method to navigate to payment with selected items
-  void proceedToPayment() {
-    if (_selectedCartItemsList.isEmpty) {
+  void  proceedToPayment() async{
+   
+    bool check = await checkConnection();
+    if(check){
+     if (_selectedCartItemsList.isEmpty) {
       // If no items are selected, collect all cart items
       if (_cartStorage.cartItems.isNotEmpty) {
         for (var item in _cartStorage.cartItems) {
@@ -393,13 +436,6 @@ class _PageCartState extends State<PageCart> {
         return;
       }
     }
-    
-    // Debug log before navigation
-    print('Navigating to payment with ${_selectedCartItemsList.length} items:');
-    for (var item in _selectedCartItemsList) {
-      print(' - ${item.productName}, Qty: ${item.quantity}, Price: ${item.price}');
-    }
-    
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -409,6 +445,7 @@ class _PageCartState extends State<PageCart> {
         ),
       ),
     );
+    }
   }
 
   @override
