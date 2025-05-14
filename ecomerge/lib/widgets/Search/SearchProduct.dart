@@ -374,8 +374,8 @@ class _SearchProductState extends State<SearchProduct> {
                             ],
                           ),
                         )
-                      else if (widget.isSearching)
-                        // Loading spinner when searching
+                      else if (widget.isSearching && widget.searchResults.isEmpty)
+                        // Loading spinner only for the initial search when results are empty
                         Container(
                           width: double.infinity,
                           padding: EdgeInsets.all(spacing * 2),
