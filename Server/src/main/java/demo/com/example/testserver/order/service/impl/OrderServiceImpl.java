@@ -206,6 +206,19 @@ public class OrderServiceImpl implements OrderService {
         order.getStatusHistory().add(initialHistory);
         
         Order savedOrder = orderRepository.save(order);
+// Gửi email xác nhận đơn hàng
+        try {
+            emailService.sendOrderConfirmationEmail(
+                user.getEmail(), // recipientEmail
+                user.getFullName(), // fullName (assuming User entity has getFullName())
+                savedOrder.getId(), // orderId
+                savedOrder.getTotalAmount() // totalAmount
+            );
+            logger.info("Order confirmation email sent to user: {}", user.getEmail());
+        } catch (Exception e) {
+            logger.error("Failed to send order confirmation email to user: {}", user.getEmail(), e);
+            // Xử lý lỗi gửi email (ví dụ: log lỗi, không ném exception để không ảnh hưởng đến việc tạo đơn hàng)
+        }
 
         logger.info("Order created successfully with ID: {}", savedOrder.getId());
 
