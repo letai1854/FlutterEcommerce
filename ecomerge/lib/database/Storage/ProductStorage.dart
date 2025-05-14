@@ -758,59 +758,7 @@ class ProductStorageSingleton extends ChangeNotifier {
   void resetReturnVisitFlag() {
     _isReturningVisit = false;
   }
-  // Method to manually refresh all data (call this when coming back online)
-  // Future<void> refreshDataIfOnline({
-  //   required int categoryId,
-  //   required String sortBy,
-  //   required String sortDir,
-  // }) async {
-  //   await _checkConnectivity();
-    
-  //   if (!_isOnline) {
-  //     if (kDebugMode) print('Cannot refresh data: Device is offline');
-  //     return;
-  //   }
-    
-  //   final cacheKey = _getCacheKey(categoryId: categoryId, sortBy: sortBy, sortDir: sortDir);
-    
-  //   if (kDebugMode) print('Manually refreshing data from server for $cacheKey');
-    
-  //   // Clear cache for this configuration
-  //   _cache.clear();
-  //   _cache.currentCacheKey = cacheKey;
-  //   _cache.isLoadingInitial = true;
-    
-  //   notifyListeners();
-    
-  //   try {
-  //     final response = await _productService.fetchProducts(
-  //       categoryId: categoryId,
-  //       sortBy: sortBy,
-  //       sortDir: sortDir,
-  //       page: 0,
-  //       size: 4
-  //     );
-      
-  //     _cache.products = response.content;
-  //     _cache.currentPage = response.number;
-  //     _cache.totalPages = response.totalPages;
-  //     _cache.isInitialized = true;
-      
-  //     // Save to both global cache and local storage
-  //     await GlobalProductCache.setConfigCache(cacheKey, _cache);
-      
-  //     if (kDebugMode) {
-  //       print('Successfully refreshed data from server for $cacheKey');
-  //     }
-  //   } catch (e) {
-  //     if (kDebugMode) print('Error refreshing data from server: $e');
-  //   } finally {
-  //     _cache.isLoadingInitial = false;
-  //     notifyListeners();
-  //   }
-  // }
-  
-  // Add search-specific state
+ 
   final List<ProductDTO> _searchResults = [];
   int _searchCurrentPage = -1;
   int _searchTotalPages = 0;
@@ -842,7 +790,7 @@ class ProductStorageSingleton extends ChangeNotifier {
     int? categoryId,
     String? brandName,
     int minPrice = 0,
-    int maxPrice = 10000000,
+    int maxPrice = 100000000,
     String sortBy = 'createdDate',
     String sortDir = 'desc',
     bool clearCache = true,
@@ -866,9 +814,20 @@ class ProductStorageSingleton extends ChangeNotifier {
     _searchCategoryId = categoryId;
     _searchBrandName = brandName;
     
+    // Make sure we use the correct price filter values - very important!
     // Only apply price filter if explicitly requested OR if skipPriceFilter is false and isPriceFilterApplied is true
     bool shouldApplyPriceFilter = !skipPriceFilter && isPriceFilterApplied;
     
+    if (kDebugMode) {
+      print('Price filter settings:');
+      print('skipPriceFilter: $skipPriceFilter');
+      print('isPriceFilterApplied: $isPriceFilterApplied');
+      print('shouldApplyPriceFilter: $shouldApplyPriceFilter');
+      print('minPrice: $minPrice');
+      print('maxPrice: $maxPrice');
+    }
+    
+    // Store the price values for future pagination, but only if filter should be applied
     _searchMinPrice = shouldApplyPriceFilter ? minPrice : null;
     _searchMaxPrice = shouldApplyPriceFilter ? maxPrice : null;
     
@@ -912,6 +871,17 @@ class ProductStorageSingleton extends ChangeNotifier {
         }
       }
       
+      // Special handling for price sorting direction
+      // For price, we might want ascending (low to high) as default behavior
+      String effectiveSortDir = sortDir;
+      if (sortBy == 'price') {
+        // Log the price sorting direction for debugging
+        if (kDebugMode) {
+          print('Price sorting requested with direction: $sortDir');
+        }
+      }
+      
+      // Make sure to use the determined shouldApplyPriceFilter for API call
       final response = await _productService.fetchProducts(
         search: query,
         categoryId: categoryId,
@@ -921,7 +891,7 @@ class ProductStorageSingleton extends ChangeNotifier {
         page: 0,
         size: 4,
         sortBy: sortBy,
-        sortDir: sortDir
+        sortDir: effectiveSortDir
       );
       
       _searchResults.clear(); // Clear again in case other search results were added
@@ -1039,26 +1009,11 @@ class ProductStorageSingleton extends ChangeNotifier {
 
 
 
-  //   Future<void> _checkConnectivity() async {
-  //   try {
-  //     final result = await _connectivity.checkConnectivity();
-  //     _isOnline = (result != ConnectivityResult.none);
-  //     if (kDebugMode) {
-  //       print('Initial connectivity check: $_isOnline');
-  //     }
-  //   } catch (e) {
-  //     if (kDebugMode) {
-  //       print('Error checking connectivity: $e');
-  //     }
-  //     _isOnline = true; // Default to assuming online if check fails
-  //   }
-  // }
    Future<void> _checkConnectivity() async {
-  if (kIsWeb) {
-    _isOnline = true; // Luôn giả định online cho web
-    return;
-  }
+ 
+  if(!kIsWeb){
 
+  
   try {
     // Kiểm tra xem thiết bị có phần cứng kết nối đang hoạt động không
     final result = await _connectivity.checkConnectivity();
@@ -1117,6 +1072,17 @@ class ProductStorageSingleton extends ChangeNotifier {
       print('Error checking basic connectivity: $e');
     }
     _isOnline = false; // Mặc định là offline nếu kiểm tra cơ bản thất bại
+  }
+  }
+  else{
+    final result = await _connectivity.checkConnectivity();
+
+    // Chỉ kiểm tra sâu hơn nếu có giao diện mạng đang hoạt động
+    if (result == ConnectivityResult.none) {
+      _isOnline = false;
+      return;
+    }
+    _isOnline = true;
   }
 }
 }

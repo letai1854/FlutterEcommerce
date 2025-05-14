@@ -97,7 +97,7 @@ Future<void> _checkConnectivity() async {
     _isOnline = false;
     return;
   }
-
+if(!kIsWeb){
   final InternetConnectionChecker customChecker = InternetConnectionChecker.createInstance(
     checkTimeout: const Duration(milliseconds: 1000),
   );
@@ -119,6 +119,10 @@ Future<void> _checkConnectivity() async {
 
   _isOnline = hasInternetAccess;
 }
+else{
+  _isOnline = true;
+}
+}
 
   // Refresh data from server when going back online
   Future<void> _refreshDataFromServer() async {
@@ -132,10 +136,10 @@ Future<void> _checkConnectivity() async {
 
       // Fetch brands
       await _fetchBrandsFromServer();
-
+       if(!kIsWeb){
       // Save to local storage
       await _saveDataToLocalStorage();
-
+       }
       // Notify listeners
       notifyListeners();
 
@@ -311,7 +315,6 @@ Future<void> _checkConnectivity() async {
   // --- Server Data Fetching Methods ---
   // Fetch categories from server with pagination
   Future<void> _fetchCategoriesFromServer() async {
-    if (kDebugMode) print('Fetching categories from server...');
     _categories.clear();
 
     int currentPage = 0;
@@ -319,7 +322,6 @@ Future<void> _checkConnectivity() async {
     const int pageSize = 100;
 
     while (currentPage < totalPages) {
-      if (kDebugMode) print('Fetching category page $currentPage...');
       final categoryPageResponse =
           await _productService.fetchCategoriesPaginated(
               page: currentPage,
@@ -331,10 +333,7 @@ Future<void> _checkConnectivity() async {
       totalPages = categoryPageResponse.totalPages;
       currentPage++;
 
-      if (kDebugMode) {
-        print(
-            'Fetched ${categoryPageResponse.content.length} categories on page $currentPage. Total pages: $totalPages. Total accumulated: ${_categories.length}');
-      }
+
     }
 
     // Preload category images and cache them
@@ -366,22 +365,18 @@ Future<void> _checkConnectivity() async {
 
   // Fetch brands from server
   Future<void> _fetchBrandsFromServer() async {
-    if (kDebugMode) print('Fetching brands from server...');
     _brands = await _productService.getAllBrands();
-    if (kDebugMode) print('Fetched ${_brands.length} brands.');
   }
 
   // --- Initialization Method ---
   // Fetches all initial data from backend APIs
   Future<void> loadData() async {
     if (_isInitialized || _isLoading) {
-      if (kDebugMode)
-        print('AppDataService already initialized or is loading.');
+      
       return;
     }
 
     _isLoading = true;
-    if (kDebugMode) print('Initializing AppDataService...');
 
     try {
       // Check connectivity first
@@ -389,22 +384,20 @@ Future<void> _checkConnectivity() async {
 
       if (_isOnline) {
         // Online path - fetch from server
-        if (kDebugMode) print('Online mode: Fetching data from server');
 
         // Fetch categories with pagination
         await _fetchCategoriesFromServer();
 
         // Fetch brands
         await _fetchBrandsFromServer();
-
+         if(!kIsWeb){
         // Save to local storage for offline use
         if (_canUseLocalStorage) {
           await _saveDataToLocalStorage();
         }
+         }
       } else {
-        // Offline path - try to load from local storage
-        if (kDebugMode)
-          print('Offline mode: Trying to load from local storage');
+       
 
         final loaded = await _loadDataFromLocalStorage();
         if (!loaded) {
@@ -466,10 +459,11 @@ Future<void> _checkConnectivity() async {
     if (kDebugMode)
       print(
           'AppDataService: Added category "${newCategory.name}". New total: ${_categories.length}');
-
+    if(!kIsWeb){
     // Also update local storage if available
     if (_canUseLocalStorage) {
       _saveDataToLocalStorage();
+    }
     }
 
     // If the category has an image, cache it
@@ -502,10 +496,10 @@ Future<void> _checkConnectivity() async {
       if (kDebugMode)
         print(
             'AppDataService: Updated category "${updatedCategory.name}" (ID: ${updatedCategory.id}).');
-
-      // Update local storage
+      if(!kIsWeb){      // Update local storage
       if (_canUseLocalStorage) {
         _saveDataToLocalStorage();
+      }
       }
 
       // If the image URL has changed, cache the new image
@@ -554,8 +548,10 @@ Future<void> _checkConnectivity() async {
             'AppDataService: Deleted category with ID $categoryId. New total: ${_categories.length}');
 
       // Update local storage
+      if(!kIsWeb){
       if (_canUseLocalStorage) {
         _saveDataToLocalStorage();
+      }
       }
 
       // Notify listeners that the data has changed

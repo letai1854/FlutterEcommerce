@@ -1251,13 +1251,16 @@ Future<void> _checkConnectivity() async {
   try {
     final ConnectivityResult connectivityResult = await Connectivity().checkConnectivity();
     print("ConnectivityResult: $connectivityResult");
-
+    if(kIsWeb){
+      _isOnline = true;
+    }
     if (connectivityResult == ConnectivityResult.none) {
       print("Không có kết nối mạng cục bộ (Wi-Fi/Mobile Data).");
       _isOnline = false;
       return;
     }
 
+    if(!kIsWeb){
     // Try a simple connectivity test that works in all build modes
     bool hasInternetAccess = false;
     try {
@@ -1274,10 +1277,12 @@ Future<void> _checkConnectivity() async {
 
     _isOnline = hasInternetAccess;
     print(_isOnline ? "Đã kết nối internet." : "Không có kết nối internet.");
+    }
   } catch (e) {
     print("Lỗi tổng thể khi kiểm tra kết nối: $e");
     _isOnline = false;
   }
+  
 }
 
   // Clear local orders cache when network is restored or on demand
