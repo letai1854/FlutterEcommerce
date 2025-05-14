@@ -203,7 +203,9 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.chat),
-            onPressed: () {},
+            onPressed: () {
+              Navigator.pushNamed(context, '/chat');
+            },
           ),
         ],
       ),
