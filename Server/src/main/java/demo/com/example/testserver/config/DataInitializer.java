@@ -52,8 +52,8 @@ public class DataInitializer implements CommandLineRunner {
     @Transactional
     public void run(String... args) throws Exception {
         createAdminUser();
-        createRegularUser();
-        createSampleProducts();
+        //createRegularUser();
+        //createSampleProducts();
     }
 
     private void createAdminUser() {
