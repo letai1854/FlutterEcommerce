@@ -2,6 +2,7 @@ import 'package:e_commerce_app/models/chat/conversation_dto.dart'; // Updated im
 import 'package:e_commerce_app/widgets/Chat/MessageListItem.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For formatting dates
+import 'package:e_commerce_app/services/chat_service.dart'; // Import ChatService
 
 class MessageList extends StatefulWidget {
   final List<ConversationDTO> conversations; // Changed from Future to List
@@ -9,6 +10,7 @@ class MessageList extends StatefulWidget {
   final int? selectedChatId;
   final ScrollController scrollController; // For pagination
   final bool isLoadingMore; // To show loading indicator at the bottom
+  final ChatService chatService; // Add ChatService
 
   const MessageList({
     Key? key,
@@ -17,6 +19,7 @@ class MessageList extends StatefulWidget {
     this.selectedChatId,
     required this.scrollController,
     required this.isLoadingMore,
+    required this.chatService, // Add ChatService
   }) : super(key: key);
 
   @override
@@ -79,7 +82,6 @@ class _MessageListState extends State<MessageList> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -128,27 +130,40 @@ class _MessageListState extends State<MessageList> {
                     final conversation = _filteredConversations[index];
                     final bool isSelected = widget.selectedChatId == conversation.id;
                     
-                    // Create a map similar to the old chatData for MessageListItem
-                    // You might need to adjust MessageListItem to accept ConversationDTO directly
-                    // or ensure all necessary fields are mapped here.
-                    final chatData = {
-                      'id': conversation.id.toString(), // Assuming MessageListItem expects String ID
-                      'name': conversation.title, // Or customerName, depending on context
-                      'message': conversation.lastMessage != null 
-                          ? "${conversation.lastMessage!.senderFullName}: ${conversation.lastMessage!.content ?? '[Image]'}"
-                          : "No messages yet.",
-                      'time': conversation.lastMessage != null 
-                          ? _formatDateTime(conversation.lastMessage!.sendTime.toLocal())
-                          : _formatDateTime(conversation.updatedDate.toLocal()),
-                      // 'avatar': 'assets/default_avatar.png', // Provide a default or get from user data
-                      'isOnline': false, // This info is not in ConversationDTO, might need to remove or get elsewhere
-                      'unreadCount': conversation.unreadCount,
-                    };
+                    // Use FutureBuilder to get the avatar URL
+                    return FutureBuilder<String?>(
+                      future: widget.chatService.getFullUserAvatarUrl(conversation.customerId),
+                      builder: (context, snapshot) {
+                        String avatarUrl;
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          // You could use a placeholder image or a loading indicator specific to avatar
+                          avatarUrl = 'https://via.placeholder.com/150/cccccc/969696?Text=Loading'; 
+                        } else if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
+                          avatarUrl = 'assets/default_avatar.png'; // Default local asset if fetch fails or no avatar
+                        } else {
+                          avatarUrl = snapshot.data!;
+                        }
 
-                    return MessageListItem(
-                      chatData: chatData,
-                      isSelected: isSelected,
-                      onTap: () => widget.onChatSelected(conversation),
+                        final chatData = {
+                          'id': conversation.id.toString(),
+                          'name': conversation.customerName,
+                          'message': conversation.lastMessage != null 
+                              ? "${conversation.lastMessage!.senderFullName}: ${conversation.lastMessage!.content ?? '[Media]'}" // Changed [Image] to [Media] for generality
+                              : "No messages yet.",
+                          'time': conversation.lastMessage != null 
+                              ? _formatDateTime(conversation.lastMessage!.sendTime.toLocal())
+                              : _formatDateTime(conversation.updatedDate.toLocal()),
+                          'avatar': avatarUrl, // Use the resolved avatarUrl
+                          'isOnline': false, 
+                          'unreadCount': conversation.unreadCount,
+                        };
+
+                        return MessageListItem(
+                          chatData: chatData,
+                          isSelected: isSelected,
+                          onTap: () => widget.onChatSelected(conversation),
+                        );
+                      },
                     );
                   },
                   separatorBuilder: (context, index) => Divider(

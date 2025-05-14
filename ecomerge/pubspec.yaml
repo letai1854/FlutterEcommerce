@@ -54,6 +54,7 @@ dependencies:
   path_provider: ^2.1.1      # For app directory access on mobile/desktop
   crypto: ^3.0.3
   internet_connection_checker: ^1.0.0
+  google_generative_ai: ^0.4.0 # Add Gemini package
 
 dev_dependencies:
   flutter_test:

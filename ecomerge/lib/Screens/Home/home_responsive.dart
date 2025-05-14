@@ -37,9 +37,9 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
   final GlobalKey _categoriesSectionKey = GlobalKey();
   final GlobalKey _paginatedGridKey = GlobalKey();
   final GlobalKey _footerKey = GlobalKey();
-  final GlobalKey _newProductsKey = GlobalKey(debugLabel: 'newProducts');
-  final GlobalKey _promoProductsKey = GlobalKey(debugLabel: 'promoProducts');
-  final GlobalKey _bestSellerKey = GlobalKey(debugLabel: 'bestSeller');
+  final ValueKey<String> _newProductsKey = ValueKey<String>('newProducts');
+  final ValueKey<String> _promoProductsKey = ValueKey<String>('promoProducts');
+  final ValueKey<String> _bestSellerKey = ValueKey<String>('bestSeller');
   bool _showFloatingCategories = false;
   bool _isPanelExpanded = false; // For mobile panel expansion
   int? _selectedCategory;

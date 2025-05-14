@@ -54,19 +54,6 @@ class ProductService {
   // Updated static variable to track network status
   static bool _isNetworkRestored = false;
 
-  // Check if device is currently online
-  // Future<bool> isOnline() async {
-  //   try {
-  //     var connectivityResult = await Connectivity().checkConnectivity();
-  //     return connectivityResult != ConnectivityResult.none;
-  //   } catch (e) {
-  //     if (kDebugMode) {
-  //       print('Error checking connectivity: $e');
-  //     }
-  //     // Default to assuming online if we can't check
-  //     return true;
-  //   }
-  // }
   Future<bool> isOnline() async {
     final ConnectivityResult result = await Connectivity().checkConnectivity();
     print("ConnectivityResult: $result"); // In ra để debug
@@ -94,11 +81,9 @@ class ProductService {
     return isConnected;
   }
 
-  // Get path to save images locally
   Future<String> get _localPath async {
     final directory = await getApplicationDocumentsDirectory();
 
-    // Create a specific directory for product images if it doesn't exist
     final imageDir = Directory('${directory.path}/product_images');
     if (!await imageDir.exists()) {
       await imageDir.create(recursive: true);
@@ -107,20 +92,16 @@ class ProductService {
     return imageDir.path;
   }
 
-  // Get a filename for a given image path using hash for consistency
   String _getImageFileName(String imagePath) {
-    // Create a hash of the image path to use as filename
     var bytes = utf8.encode(imagePath);
     var digest = sha256.convert(bytes);
     return digest.toString() +
         '.png'; // Always use .png extension for consistency
   }
 
-  // Save image to local storage
   Future<void> _saveImageToLocalStorage(
       String imagePath, Uint8List imageBytes) async {
     try {
-      // Use SharedPreferencesService to save image data on non-web platforms
       if (!kIsWeb) {
         final prefsService = await SharedPreferencesService.getInstance();
         await prefsService.saveImageData(imagePath, imageBytes);
@@ -136,10 +117,8 @@ class ProductService {
     }
   }
 
-  // Load image from local storage
   Future<Uint8List?> _loadImageFromLocalStorage(String imagePath) async {
     try {
-      // Use SharedPreferencesService to load image data on non-web platforms
       if (!kIsWeb) {
         final prefsService = await SharedPreferencesService.getInstance();
         final imageData = prefsService.getImageData(imagePath);
@@ -165,7 +144,7 @@ class ProductService {
     try {
       final response = await httpClient.get(
         url,
-        headers: _getHeaders(includeAuth: false), // Public API
+        headers: _getHeaders(includeAuth: false),
       );
 
       if (kDebugMode) {
@@ -176,13 +155,11 @@ class ProductService {
       }
 
       if (response.statusCode == 200) {
-        return ProductDTO.fromJson(jsonDecode(
-            utf8.decode(response.bodyBytes))); // Parse and decode UTF-8
+        return ProductDTO.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
       } else {
         String errorMessage = 'Failed to fetch product details.';
         try {
-          final errorBody =
-              jsonDecode(utf8.decode(response.bodyBytes)); // Decode UTF-8
+          final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
           if (errorBody is Map && errorBody.containsKey('message')) {
             errorMessage = errorBody['message'];
           } else if (errorBody is String && errorBody.isNotEmpty) {
@@ -201,37 +178,28 @@ class ProductService {
     }
   }
 
-  // Create Product
-  // Returns ProductDTO on success (201)
-  // Throws Exception on API error (non-201) or network error
   Future<ProductDTO> createProduct(
       CreateProductRequestDTO productRequest) async {
-    // Đổi tên tham số
     final url = Uri.parse('$baseUrl/api/products/create');
     try {
       final response = await httpClient.post(
-        // Sử dụng _httpClient instance
         url,
-        headers: _getHeaders(includeAuth: true), // Cần token ADMIN
-        body: jsonEncode(productRequest.toJson()), // Chuyển đổi DTO sang JSON
+        headers: _getHeaders(includeAuth: true),
+        body: jsonEncode(productRequest.toJson()),
       );
       print('Create Product Request URL: $response');
       if (kDebugMode) {
         print('Create Product Request URL: $url');
-        // In body, cẩn thận với dữ liệu nhạy cảm như mật khẩu (không có trong DTO này)
-        // print('Create Product Request Body: ${jsonEncode(productRequest.toJson())}');
         print('Create Product Response Status: ${response.statusCode}');
         print('Create Product Response Body: ${response.body}');
       }
 
       if (response.statusCode == 201) {
-        return ProductDTO.fromJson(jsonDecode(
-            utf8.decode(response.bodyBytes))); // Parse và decode UTF-8
+        return ProductDTO.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
       } else {
         String errorMessage = 'Failed to create product.';
         try {
-          final errorBody =
-              jsonDecode(utf8.decode(response.bodyBytes)); // Decode UTF-8
+          final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
           if (errorBody is Map && errorBody.containsKey('message')) {
             errorMessage = errorBody['message'];
           } else if (errorBody is String && errorBody.isNotEmpty) {
@@ -256,15 +224,12 @@ class ProductService {
         "Starting image upload, bytes: ${imageBytes.length}, filename: $fileName");
 
     try {
-      // Create a multipart request
       final request = http.MultipartRequest('POST', url);
 
-      // Add authorization header if user is logged in
       if (UserInfo().authToken != null) {
         request.headers['Authorization'] = 'Bearer ${UserInfo().authToken}';
       }
 
-      // Add file to the request
       final multipartFile = http.MultipartFile.fromBytes(
         'file',
         imageBytes,
@@ -272,23 +237,17 @@ class ProductService {
       );
       request.files.add(multipartFile);
 
-      // Important fix: Instead of using request.send(), which uses the default client,
-      // we'll manually send the request using our SSL-bypassing client
       final stream = await request.finalize();
 
-      // Create a custom request with the same method, url, headers
       final httpRequest = http.Request(request.method, request.url);
       httpRequest.headers.addAll(request.headers);
       httpRequest.bodyBytes = await stream.toBytes();
 
-      // Send the request using our secure client
       final streamedResponse = await httpClient.send(httpRequest);
 
-      // Convert the response stream to a regular response
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 201) {
-        // Parse the response to get the image path
         final responseData = jsonDecode(response.body);
         final imagePath = responseData['imagePath'];
         print('Image uploaded successfully: $imagePath');
@@ -304,7 +263,6 @@ class ProductService {
     }
   }
 
-  // Method to upload image from file path (for mobile platforms)
   Future<String?> uploadImageFile(String filePath) async {
     try {
       final file = File(filePath);
@@ -317,26 +275,21 @@ class ProductService {
     }
   }
 
-  // Enhanced method to get image from cache or server with better caching
   Future<Uint8List?> getImageFromServer(String? imagePath,
       {bool forceReload = false}) async {
     if (imagePath == null || imagePath.isEmpty) return null;
 
-    // Check if we're online
     bool online = await isOnline();
 
-    // Reset network restored flag when we go offline
     if (!online) {
       _isNetworkRestored = false;
     }
 
-    // Check if network was just restored
     bool wasNetworkJustRestored = false;
     if (online && !_isNetworkRestored) {
       _isNetworkRestored = true;
       wasNetworkJustRestored = true;
 
-      // Add this: Clear entire image cache when network is restored
       if (kDebugMode) {
         print(
             'Network just restored - clearing all image caches to force reload');
@@ -344,7 +297,6 @@ class ProductService {
       _imageCache.clear();
       UserInfo.avatarCache.clear();
 
-      // Also clear local files to prevent inconsistency
       clearLocalImageCache().catchError((e) {
         if (kDebugMode) {
           print(
@@ -353,10 +305,8 @@ class ProductService {
       });
     }
 
-    // When network is just restored, we should behave like forceReload
     forceReload = forceReload || wasNetworkJustRestored;
 
-    // If online and network was just restored, bypass cache for all image requests
     if (online && !forceReload && wasNetworkJustRestored) {
       if (kDebugMode) {
         print('Network restored - fetching fresh image for $imagePath');
@@ -364,30 +314,24 @@ class ProductService {
       forceReload = true;
     }
 
-    // Check cache only if not forcing reload
     if (!forceReload) {
-      // First check our product-specific image cache
       if (_imageCache.containsKey(imagePath)) {
         if (kDebugMode) print('Using in-memory cached image for $imagePath');
         return _imageCache[imagePath];
       }
 
-      // Then check UserInfo avatar cache (existing implementation)
       if (UserInfo.avatarCache.containsKey(imagePath)) {
         return UserInfo.avatarCache[imagePath];
       }
 
-      // If not in memory, try loading from local storage
       final localImage = await _loadImageFromLocalStorage(imagePath);
       if (localImage != null) {
-        // Cache in memory for faster access next time
         _imageCache[imagePath] = localImage;
         UserInfo.avatarCache[imagePath] = localImage;
         return localImage;
       }
     }
 
-    // ENHANCED OFFLINE HANDLING: If we're offline, make an extra effort to find the image locally
     if (!online) {
       if (kDebugMode) {
         print('Device is offline - making additional attempt to find image $imagePath locally');
@@ -446,7 +390,6 @@ class ProductService {
     // If we're online, continue with server request
     try {
       String fullUrl = getImageUrl(imagePath);
-      // Add cache-busting parameter for forceReload or network restoration
       if (forceReload || wasNetworkJustRestored) {
         final cacheBuster = DateTime.now().millisecondsSinceEpoch;
         fullUrl += '?cacheBust=$cacheBuster';
@@ -459,11 +402,9 @@ class ProductService {
       final response = await httpClient.get(Uri.parse(fullUrl));
 
       if (response.statusCode == 200) {
-        // Cache the image unless we're forcing reload
         _imageCache[imagePath] = response.bodyBytes;
         UserInfo.avatarCache[imagePath] = response.bodyBytes;
 
-        // Also save to local storage for offline access
         await _saveImageToLocalStorage(imagePath, response.bodyBytes);
 
         if (forceReload && kDebugMode) {
@@ -479,7 +420,6 @@ class ProductService {
     return null;
   }
 
-  // Add a method to force refresh all cached images when online is restored
   Future<void> refreshAllCachedImages() async {
     if (!await isOnline()) return;
 
@@ -488,10 +428,8 @@ class ProductService {
     }
 
     try {
-      // Get all cached image paths
       final imagePaths = [..._imageCache.keys];
 
-      // Refresh each image
       for (var path in imagePaths) {
         await getImageFromServer(path, forceReload: true);
       }
@@ -506,44 +444,14 @@ class ProductService {
     }
   }
 
-  // // Save image to local storage with improved error handling
-  // Future<void> _saveImageToLocalStorage(String imagePath, Uint8List imageBytes) async {
-  //   try {
-  //     if (imagePath.isEmpty || imageBytes.isEmpty) return;
-
-  //     final path = await _localPath;
-  //     final filename = _getImageFileName(imagePath);
-  //     final file = File('$path/$filename');
-
-  //     // Create parent directory if it doesn't exist
-  //     final dir = file.parent;
-  //     if (!await dir.exists()) {
-  //       await dir.create(recursive: true);
-  //     }
-
-  //     await file.writeAsBytes(imageBytes);
-
-  //     if (kDebugMode) {
-  //       print('Saved image to local storage: $filename (${imageBytes.length} bytes)');
-  //     }
-  //   } catch (e) {
-  //     if (kDebugMode) {
-  //       print('Error saving image to local storage: $e');
-  //     }
-  //   }
-  // }
-
-  // Clear all locally cached images - call when refresh is needed
   Future<void> clearLocalImageCache() async {
     try {
       final path = await _localPath;
       final dir = Directory(path);
 
       if (await dir.exists()) {
-        // Get all files in directory
         final entities = await dir.list().toList();
 
-        // Delete all files (not directories)
         for (var entity in entities) {
           if (entity is File) {
             await entity.delete();
@@ -551,7 +459,6 @@ class ProductService {
         }
       }
 
-      // Also clear memory caches
       _imageCache.clear();
       UserInfo.avatarCache.clear();
 
@@ -565,14 +472,11 @@ class ProductService {
     }
   }
 
-  // Refresh specific image, removing from all caches and forcing reload
   Future<Uint8List?> refreshImage(String imagePath) async {
-    // Remove from caches
     _imageCache.remove(imagePath);
     UserInfo.avatarCache.remove(imagePath);
 
     try {
-      // Remove from local storage
       final path = await _localPath;
       final filename = _getImageFileName(imagePath);
       final file = File('$path/$filename');
@@ -589,35 +493,29 @@ class ProductService {
       }
     }
 
-    // Force reload
     return await getImageFromServer(imagePath, forceReload: true);
   }
 
-  // Method to check if an image is already cached without fetching
   bool isImageCached(String? imagePath) {
     if (imagePath == null || imagePath.isEmpty) return false;
     return _imageCache.containsKey(imagePath) ||
         UserInfo.avatarCache.containsKey(imagePath);
   }
 
-  // New method to get image directly from cache without network request
   Uint8List? getImageFromCache(String? imagePath) {
     if (imagePath == null || imagePath.isEmpty) return null;
 
-    // Check product cache first
     if (_imageCache.containsKey(imagePath)) {
       return _imageCache[imagePath];
     }
 
-    // Then check avatar cache
     if (UserInfo.avatarCache.containsKey(imagePath)) {
       return UserInfo.avatarCache[imagePath];
     }
 
-    return null; // Not found in any cache
+    return null;
   }
 
-  // New method to preload images for a list of products
   Future<void> preloadProductImages(List<ProductDTO> products) async {
     for (var product in products) {
       if (product.mainImageUrl != null &&
@@ -627,52 +525,40 @@ class ProductService {
     }
   }
 
-  // Helper method to get the complete image URL
   String getImageUrl(String? imagePath) {
     if (imagePath == null) return '';
 
-    // If the path already starts with http/https, return as is
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
       return imagePath;
     }
 
-    // If it's a relative path, combine with baseUrl
-    // Remove any duplicate slashes between baseUrl and imagePath
     String path = imagePath.startsWith('/') ? imagePath : '/$imagePath';
     return '$baseUrl$path';
   }
 
-  // Update Product
-  // Returns ProductDTO on success (200)
-  // Throws Exception on API error (non-200) or network error
   Future<ProductDTO> updateProduct(
       int id, UpdateProductRequestDTO productRequest) async {
-    // Đổi tên tham số
     final url = Uri.parse('$baseUrl/api/products/$id');
     try {
       final response = await httpClient.put(
-        // Sử dụng _httpClient instance và phương thức PUT
         url,
-        headers: _getHeaders(includeAuth: true), // Cần token ADMIN
-        body: jsonEncode(productRequest.toJson()), // Chuyển đổi DTO sang JSON
+        headers: _getHeaders(includeAuth: true),
+        body: jsonEncode(productRequest.toJson()),
       );
 
       if (kDebugMode) {
         print('Update Product Request URL: $url');
-        // print('Update Product Request Body: ${jsonEncode(productRequest.toJson())}');
         print('Update Product Response Status: ${response.statusCode}');
         print(
             'Update Product Response Body: ${utf8.decode(response.bodyBytes)}');
       }
 
       if (response.statusCode == 200) {
-        return ProductDTO.fromJson(jsonDecode(
-            utf8.decode(response.bodyBytes))); // Parse và decode UTF-8
+        return ProductDTO.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
       } else {
         String errorMessage = 'Failed to update product.';
         try {
-          final errorBody =
-              jsonDecode(utf8.decode(response.bodyBytes)); // Decode UTF-8
+          final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
           if (errorBody is Map && errorBody.containsKey('message')) {
             errorMessage = errorBody['message'];
           } else if (errorBody is String && errorBody.isNotEmpty) {
@@ -691,34 +577,27 @@ class ProductService {
     }
   }
 
-  // Delete Product
-  // Returns void on success (204)
-  // Throws Exception on API error (non-204) or network error
   Future<void> deleteProduct(int id) async {
-    // ID là int
     final url = Uri.parse('$baseUrl/api/products/$id');
     try {
       final response = await httpClient.delete(
-        // Sử dụng _httpClient instance và phương thức DELETE
         url,
-        headers: _getHeaders(includeAuth: true), // Cần token ADMIN
+        headers: _getHeaders(includeAuth: true),
       );
 
       if (kDebugMode) {
         print('Delete Product Request URL: $url');
         print('Delete Product Response Status: ${response.statusCode}');
         print(
-            'Delete Product Response Body: ${utf8.decode(response.bodyBytes)}'); // Decode UTF-8
+            'Delete Product Response Body: ${utf8.decode(response.bodyBytes)}');
       }
       print(response.body);
       if (response.statusCode == 204) {
-        // Thành công (No Content)
-        return; // Return void
+        return;
       } else {
         String errorMessage = 'Failed to delete product.';
         try {
-          final errorBody =
-              jsonDecode(utf8.decode(response.bodyBytes)); // Decode UTF-8
+          final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
           if (errorBody is Map && errorBody.containsKey('message')) {
             errorMessage = errorBody['message'];
           } else if (errorBody is String && errorBody.isNotEmpty) {
@@ -737,15 +616,12 @@ class ProductService {
     }
   }
 
-  // Fetch Products (Basic implementation based on backend GET endpoint)
-  // Returns List<ProductDTO> (for simplified list display without Page object)
-  // Throws Exception on API error or network error
   Future<PageResponse<ProductDTO>> fetchProducts({
     String? search,
     int? categoryId,
     int? brandId,
-    double? minPrice, // Make sure these are nullable
-    double? maxPrice, // Make sure these are nullable
+    double? minPrice,
+    double? maxPrice,
     double? minRating,
     String sortBy = 'createdDate',
     String sortDir = 'desc',
@@ -762,7 +638,6 @@ class ProductService {
     if (categoryId != null)
       queryParameters['categoryId'] = categoryId.toString();
     if (brandId != null) queryParameters['brandId'] = brandId.toString();
-    // Only add price parameters if they are not null
     if (minPrice != null) queryParameters['minPrice'] = minPrice.toString();
     if (maxPrice != null) queryParameters['maxPrice'] = maxPrice.toString();
     if (minRating != null) queryParameters['minRating'] = minRating.toString();
@@ -773,7 +648,7 @@ class ProductService {
     try {
       final response = await httpClient.get(
         url,
-        headers: _getHeaders(includeAuth: false), // Make this a public API call
+        headers: _getHeaders(includeAuth: false),
       );
 
       if (kDebugMode) {
@@ -786,7 +661,6 @@ class ProductService {
         case 200:
           final responseBody = jsonDecode(utf8.decode(response.bodyBytes));
           if (responseBody is Map<String, dynamic>) {
-            // Now, PageResponse.fromJson uses the CORRECT ProductDTO.fromJson
             return PageResponse<ProductDTO>.fromJson(
                 responseBody, ProductDTO.fromJson);
           } else {
@@ -795,10 +669,9 @@ class ProductService {
           }
 
         case 204:
-          // No Content
           return PageResponse.empty();
 
-        case 400: // Bad Request
+        case 400:
           String errorMessage = 'Bad Request';
           try {
             final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
@@ -811,7 +684,7 @@ class ProductService {
           throw Exception(
               'Failed to fetch products: $errorMessage (Status: ${response.statusCode})');
 
-        default: // Other errors like 500
+        default:
           String errorMessage = 'Failed to fetch products.';
           try {
             final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
@@ -840,21 +713,16 @@ class ProductService {
   Future<PageResponse<CategoryDTO>> fetchCategoriesPaginated({
     int page = 0,
     int size = 10,
-    String sortBy = 'createdDate', // Default sort property
-    String sortDir = 'desc', // Default sort direction
+    String sortBy = 'createdDate',
+    String sortDir = 'desc',
     DateTime? startDate,
     DateTime? endDate,
   }) async {
     final Map<String, dynamic> queryParameters = {
       'page': page.toString(),
       'size': size.toString(),
-      // *** SỬA CÁCH GỬI THAM SỐ SORT TẠI ĐÂY ***
-      // Kết hợp property và direction thành một tham số 'sort' duy nhất
-      // Đây là cách client override default sort của server
       'sort': '$sortBy,$sortDir',
     };
-    // Add date parameters if provided, formatted as YYYY-MM-DD strings
-    // (Giữ nguyên logic này nếu server vẫn mong đợi)
     print("");
     if (startDate != null)
       queryParameters['startDate'] = startDate.toIso8601String().split('T')[0];
@@ -863,12 +731,9 @@ class ProductService {
 
     final url = Uri.parse('$baseUrl/api/categories')
         .replace(queryParameters: queryParameters);
-    if (kDebugMode)
-      print(
-          'Fetch Categories (Paginated) Request URL: $url'); // Print URL với tham số sort
+    if (kDebugMode) print('Fetch Categories (Paginated) Request URL: $url');
 
     try {
-      // Sử dụng _httpClient instance
       final response = await httpClient.get(
         url,
         headers: _getHeaders(includeAuth: false),
@@ -889,7 +754,6 @@ class ProductService {
         case 200:
           final responseBody = jsonDecode(utf8.decode(response.bodyBytes));
           if (responseBody is Map<String, dynamic>) {
-            // *** SỬA TYPO PageResponsive -> PageResponse ***
             return PageResponse<CategoryDTO>.fromJson(
                 responseBody, CategoryDTO.fromJson);
           } else {
@@ -898,11 +762,9 @@ class ProductService {
           }
 
         case 204:
-          // *** SỬA TYPO PageResponsive -> PageResponse ***
           return PageResponse.empty();
 
         default:
-          // Xử lý lỗi chung
           String errorMessage = 'Failed to fetch categories.';
           try {
             final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
@@ -933,7 +795,6 @@ class ProductService {
   }
 
   Future<List<BrandDTO>> getAllBrands() async {
-    // ... (keep the existing implementation for getAllBrands)
     final url = Uri.parse('$baseUrl/api/brands');
     if (kDebugMode) print('Get All Brands Request URL: $url');
 
@@ -994,7 +855,6 @@ class ProductService {
     }
   }
 
-  // Method to fetch top-selling products with pagination
   Future<PageResponse<ProductDTO>> getTopSellingProducts(
       {int page = 0, int size = 10}) async {
     final url = Uri.parse(
@@ -1005,17 +865,30 @@ class ProductService {
     try {
       final response = await httpClient.get(
         url,
-        headers:
-            _getHeaders(includeAuth: false), // Top-selling might not need auth
+        headers: _getHeaders(includeAuth: false),
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonData = json.decode(response.body);
-        // Use the PageResponse.fromJson, ensuring ProductDTO.fromJson handles Map<String, dynamic>
-        return PageResponse.fromJson(
-            jsonData,
-            (itemJson) =>
-                ProductDTO.fromJson(itemJson as Map<String, dynamic>));
+        try {
+          final Map<String, dynamic> jsonData = json.decode(response.body);
+          return PageResponse.fromJson(jsonData, (itemJson) {
+            try {
+              if (itemJson is Map<String, dynamic>) {
+                return ProductDTO.fromJson(itemJson);
+              } else {
+                print('Warning: Product data is not a Map: $itemJson');
+                return ProductDTO(
+                    name: "Error", description: "Invalid data format");
+              }
+            } catch (e) {
+              print('Error parsing ProductDTO: $e');
+              return ProductDTO(name: "Error", description: "Parser error");
+            }
+          });
+        } catch (e) {
+          print('Error parsing response JSON: $e');
+          return PageResponse.empty();
+        }
       } else {
         if (kDebugMode) {
           print('Failed to fetch top selling products: ${response.statusCode}');
@@ -1032,7 +905,6 @@ class ProductService {
     }
   }
 
-  // Method to fetch top-discounted products
   Future<PageResponse<ProductDTO>> getTopDiscountedProducts(
       {int page = 0, int size = 10}) async {
     final url =
@@ -1043,20 +915,31 @@ class ProductService {
     try {
       final response = await httpClient.get(
         url,
-        headers: _getHeaders(
-            includeAuth: false), // Top-discounted might not need auth
+        headers: _getHeaders(includeAuth: false),
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonData = json.decode(response.body);
-        // If content is empty but status is 200, PageResponse.fromJson should handle it.
-        // If server sends 204 for no content, it will now be caught by the 'else' block.
-        return PageResponse.fromJson(
-            jsonData,
-            (itemJson) =>
-                ProductDTO.fromJson(itemJson as Map<String, dynamic>));
+        try {
+          final Map<String, dynamic> jsonData = json.decode(response.body);
+          return PageResponse.fromJson(jsonData, (itemJson) {
+            try {
+              if (itemJson is Map<String, dynamic>) {
+                return ProductDTO.fromJson(itemJson);
+              } else {
+                print('Warning: Product data is not a Map: $itemJson');
+                return ProductDTO(
+                    name: "Error", description: "Invalid data format");
+              }
+            } catch (e) {
+              print('Error parsing ProductDTO: $e');
+              return ProductDTO(name: "Error", description: "Parser error");
+            }
+          });
+        } catch (e) {
+          print('Error parsing response JSON: $e');
+          return PageResponse.empty();
+        }
       } else {
-        // This block will now handle 204 No Content as well, by throwing an exception.
         if (kDebugMode) {
           print(
               'Failed to fetch top discounted products: ${response.statusCode}');
@@ -1069,16 +952,10 @@ class ProductService {
       if (kDebugMode) {
         print('Error fetching top discounted products: $e');
       }
-      // Ensure the re-thrown exception includes the original error if it's not an HTTP status exception
-      if (e is Exception &&
-          e.toString().contains('Failed to load top discounted products')) {
-        throw e; // Re-throw the specific HTTP status exception
-      }
       throw Exception('Error fetching top discounted products: $e');
     }
   }
 
-  // Add Product Review
   Future<ProductReviewDTO> submitReview(
       int productId, CreateProductReviewRequestDTO reviewDto) async {
     final url = Uri.parse('$baseUrl/api/products/$productId/reviews');
@@ -1088,8 +965,7 @@ class ProductService {
     try {
       final response = await httpClient.post(
         url,
-        headers: _getHeaders(
-            includeAuth: isLoggedIn), // Token needed if user is logged in
+        headers: _getHeaders(includeAuth: isLoggedIn),
         body: jsonEncode(reviewDto.toJson()),
       );
 
@@ -1126,18 +1002,14 @@ class ProductService {
     }
   }
 
-  // Add a public getter for network restoration status
   static bool get isNetworkRestored => _isNetworkRestored;
 
-  // Add public method to load image from local storage
   Future<Uint8List?> loadImageFromLocalStorage(String imagePath) async {
     return _loadImageFromLocalStorage(imagePath);
   }
 
-  // Add public method to add image to cache
   void addImageToCache(String imagePath, Uint8List imageData) {
     _imageCache[imagePath] = imageData;
-    // Also update UserInfo cache for consistency
     UserInfo.avatarCache[imagePath] = imageData;
   }
 

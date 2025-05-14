@@ -6,6 +6,9 @@ final String baseUrl = kIsWeb
     ? 'https://localhost:8443' // For web
     : 'https://10.0.2.2:8443'; // For Android emulator
 
+// IMPORTANT: Replace with your actual Gemini API Key.
+// For production, use environment variables or a secure key management solution.
+const String geminiApiKey = "AIzaSyDTjMKiwUQHn7f6DH_DqsK-ckRS3LY2eFM";
 
 final bool isWeb = kIsWeb;
 var myDeflaultBackground = const Color.fromARGB(255, 213, 213, 213);

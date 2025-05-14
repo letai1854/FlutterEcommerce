@@ -9,7 +9,8 @@ class ProductReviewDTO {
   final int? rating; // Dart uses int for Byte
   final String? comment;
   final DateTime? reviewTime;
-  final int? userId; // Dart uses int for Long if values are within int range, otherwise BigInt or String
+  final int?
+      userId; // Dart uses int for Long if values are within int range, otherwise BigInt or String
   final int? productId; // Dart uses int for Long
   final String? reviewerAvatarUrl; // Added reviewerAvatarUrl
 
@@ -30,10 +31,13 @@ class ProductReviewDTO {
       reviewerName: json['reviewerName'] as String?,
       rating: json['rating'] as int?, // Assuming Byte maps to int
       comment: json['comment'] as String?,
-      reviewTime: json['reviewTime'] != null ? DateTime.parse(json['reviewTime']) : null,
+      reviewTime: json['reviewTime'] != null
+          ? DateTime.parse(json['reviewTime'])
+          : null,
       userId: json['userId'] as int?, // Assuming Long maps to int
       productId: json['productId'] as int?, // Assuming Long maps to int
-      reviewerAvatarUrl: json['reviewerAvatarUrl'] as String?, // Added parsing for reviewerAvatarUrl
+      reviewerAvatarUrl: json['reviewerAvatarUrl']
+          as String?, // Added parsing for reviewerAvatarUrl
     );
   }
 
@@ -46,7 +50,8 @@ class ProductReviewDTO {
       'reviewTime': reviewTime?.toIso8601String(),
       'userId': userId,
       'productId': productId,
-      'reviewerAvatarUrl': reviewerAvatarUrl, // Added serialization for reviewerAvatarUrl
+      'reviewerAvatarUrl':
+          reviewerAvatarUrl, // Added serialization for reviewerAvatarUrl
     };
   }
 }
@@ -54,7 +59,7 @@ class ProductReviewDTO {
 class ProductDTO {
   final int? id;
   final String name;
-  final String description; 
+  final String description;
   final String? categoryName;
   final String? brandName;
   final String? mainImageUrl;
@@ -89,28 +94,61 @@ class ProductDTO {
   });
 
   factory ProductDTO.fromJson(Map<String, dynamic> json) {
-    return ProductDTO(
-      id: json['id'] as int?,
-      name: json['name'] as String,
-      description: json['description'] as String,
-      categoryName: json['categoryName'] as String?,
-      brandName: json['brandName'] as String?,
-      mainImageUrl: json['mainImageUrl'] as String?,
-      imageUrls: (json['imageUrls'] as List<dynamic>?)?.map((e) => e as String).toList(),
-      discountPercentage: (json['discountPercentage'] as num?)?.toDouble(),
-      createdDate: json['createdDate'] != null ? DateTime.parse(json['createdDate']) : null,
-      updatedDate: json['updatedDate'] != null ? DateTime.parse(json['updatedDate']) : null,
-      averageRating: (json['averageRating'] as num?)?.toDouble(),
-      minPrice: (json['minPrice'] as num?)?.toDouble(),
-      maxPrice: (json['maxPrice'] as num?)?.toDouble(),
-      variantCount: json['variantCount'] as int?,
-      variants: (json['variants'] as List<dynamic>?)
-          ?.map((e) => ProductVariantDTO.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      reviews: (json['reviews'] as List<dynamic>?) // Added parsing for reviews
-          ?.map((e) => ProductReviewDTO.fromJson(e as Map<String, dynamic>))
-          .toList(),
-    );
+    try {
+      // Create safer parsing of nested objects and lists
+      List<ProductVariantDTO>? variants;
+      if (json['variants'] != null) {
+        try {
+          variants = (json['variants'] as List)
+              .map((e) => ProductVariantDTO.fromJson(e))
+              .toList();
+        } catch (e) {
+          print('Error parsing product variants: $e');
+        }
+      }
+
+      List<ProductReviewDTO>? reviews;
+      if (json['reviews'] != null) {
+        try {
+          reviews = (json['reviews'] as List)
+              .map((e) => ProductReviewDTO.fromJson(e))
+              .toList();
+        } catch (e) {
+          print('Error parsing product reviews: $e');
+        }
+      }
+
+      // Parse the rest of the fields safely
+      return ProductDTO(
+        id: json['id'],
+        name: json['name'] ?? 'Unknown Product',
+        description: json['description'] ?? '',
+        mainImageUrl: json['mainImageUrl'],
+        imageUrls: json['imageUrls'] != null
+            ? List<String>.from(json['imageUrls'])
+            : null,
+        variants: variants,
+        reviews: reviews,
+        averageRating: json['averageRating']?.toDouble(),
+        minPrice: json['minPrice']?.toDouble(),
+        maxPrice: json['maxPrice']?.toDouble(),
+        discountPercentage: json['discountPercentage']?.toDouble(),
+        createdDate: json['createdDate'] != null
+            ? DateTime.parse(json['createdDate'])
+            : null,
+        updatedDate: json['updatedDate'] != null
+            ? DateTime.parse(json['updatedDate'])
+            : null,
+        variantCount: json['variantCount'],
+      );
+    } catch (e) {
+      print('Error in ProductDTO.fromJson: $e');
+      // Return a minimal valid object instead of throwing
+      return ProductDTO(
+        name: 'Error Loading Product',
+        description: 'There was an error parsing this product data.',
+      );
+    }
   }
 
   Map<String, dynamic> toJson() {
@@ -130,7 +168,9 @@ class ProductDTO {
       'maxPrice': maxPrice,
       'variantCount': variantCount,
       'variants': variants?.map((e) => e.toJson()).toList(),
-      'reviews': reviews?.map((e) => e.toJson()).toList(), // Added serialization for reviews
+      'reviews': reviews
+          ?.map((e) => e.toJson())
+          .toList(), // Added serialization for reviews
     };
   }
 }

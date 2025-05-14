@@ -505,27 +505,55 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
   }
 
   List<PromoProductItem> _mapProductDTOsToItems(List<ProductDTO> products) {
-    return products.map((product) {
-      double price = 0.0;
-      if (product.variants != null &&
-          product.variants!.isNotEmpty &&
-          product.variants![0].price != null) {
-        price = product.variants![0].price!;
-      } else {
-        price = product.minPrice ?? 0.0;
-      }
+    try {
+      debugPrint('Mapping ${products.length} ProductDTOs to UI items');
 
-      return PromoProductItem(
-        key: ValueKey('${_cacheKey}_product_${product.id}'),
-        productId: product.id ?? 0,
-        imageUrl: product.mainImageUrl,
-        title: product.name,
-        describe: product.description,
-        price: price,
-        discount: product.discountPercentage?.toInt(),
-        rating: product.averageRating ?? 0.0,
-      );
-    }).toList();
+      return products.map((product) {
+        try {
+          double price = 0.0;
+          if (product.variants != null &&
+              product.variants!.isNotEmpty &&
+              product.variants![0].price != null) {
+            price = product.variants![0].price!;
+          } else {
+            price = product.minPrice ?? 0.0;
+          }
+
+          // Check for required product ID to prevent errors
+          if (product.id == null) {
+            debugPrint('Warning: Product has null ID: ${product.name}');
+          }
+
+          return PromoProductItem(
+            key: ValueKey('${_cacheKey}_product_${product.id ?? "unknown"}'),
+            productId: product.id ?? 0,
+            imageUrl: product.mainImageUrl,
+            title: product.name,
+            describe: product.description,
+            price: price,
+            discount: product.discountPercentage?.toInt(),
+            rating: product.averageRating ?? 0.0,
+          );
+        } catch (e) {
+          debugPrint('Error creating PromoProductItem: $e');
+          // Return a placeholder item instead of crashing
+          return PromoProductItem(
+            key: ValueKey(
+                '${_cacheKey}_error_${DateTime.now().millisecondsSinceEpoch}'),
+            productId: 0,
+            imageUrl: null,
+            title: "Error loading product",
+            describe: "There was an error loading this product.",
+            price: 0.0,
+            discount: null,
+            rating: 0.0,
+          );
+        }
+      }).toList();
+    } catch (e) {
+      debugPrint('Error in _mapProductDTOsToItems: $e');
+      return []; // Return empty list on error
+    }
   }
 
   Map<String, dynamic> _promoItemToMap(PromoProductItem item) {
@@ -754,14 +782,14 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
-                'Bạn đang ngoại tuyến. Không thể tải thêm sản phẩm.'),
-            backgroundColor: Colors.orange.shade700,
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   SnackBar(
+        //     content: const Text(
+        //         'Bạn đang ngoại tuyến. Không thể tải thêm sản phẩm.'),
+        //     backgroundColor: Colors.orange.shade700,
+        //     duration: const Duration(seconds: 2),
+        //   ),
+        // );
         setState(() {
           _isLoadingMore = false;
           _isButtonTriggeredLoading = false;
@@ -866,34 +894,37 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
   Widget build(BuildContext context) {
     super.build(context);
 
+    // Add debug logging
+    debugPrint('PromotionalProductsList build method called');
+    debugPrint('_displayedProducts length: ${_displayedProducts.length}');
+    debugPrint('_isLoading: $_isLoading, _errorMessage: $_errorMessage');
+
     Widget content;
 
     if (_isLoading && _displayedProducts.isEmpty && _errorMessage == null) {
-      content = Positioned.fill(
-        child: Center(
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.black54,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+      content = Center(
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.black54,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Đang tải dữ liệu...',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
                 ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Đang tải dữ liệu...',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       );
@@ -951,7 +982,7 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
         alignment: Alignment.center,
         children: [
           Container(color: Colors.white, child: content),
-          if (_displayedProducts.isNotEmpty) ...[
+          if (_displayedProducts.isNotEmpty)
             Positioned(
               left: 5,
               top: 0,
@@ -980,6 +1011,7 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
                 ),
               ),
             ),
+          if (_displayedProducts.isNotEmpty)
             Positioned(
               right: 5,
               top: 0,
@@ -1008,59 +1040,60 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
                 ),
               ),
             ),
-          ],
           if (_isLoadingMore && _isButtonTriggeredLoading)
-            LayoutBuilder(
-              builder: (context, constraints) {
-                double spinnerSize =
-                    (constraints.maxWidth < constraints.maxHeight
-                            ? constraints.maxWidth
-                            : constraints.maxHeight) *
-                        0.1;
-                if (spinnerSize < 40) spinnerSize = 40;
-                if (spinnerSize > 60) spinnerSize = 60;
+            Positioned.fill(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  double spinnerSize =
+                      (constraints.maxWidth < constraints.maxHeight
+                              ? constraints.maxWidth
+                              : constraints.maxHeight) *
+                          0.1;
+                  if (spinnerSize < 40) spinnerSize = 40;
+                  if (spinnerSize > 60) spinnerSize = 60;
 
-                return Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 28, vertical: 20),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.75),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.25),
-                          blurRadius: 10,
-                          offset: const Offset(0, 1),
-                        )
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: spinnerSize,
-                          height: spinnerSize,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 4.0,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
+                  return Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 28, vertical: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.75),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.25),
+                            blurRadius: 10,
+                            offset: const Offset(0, 1),
+                          )
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: spinnerSize,
+                            height: spinnerSize,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 4.0,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 18),
-                        Text(
-                          'Đang tải sản phẩm...',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
+                          const SizedBox(height: 18),
+                          Text(
+                            'Đang tải sản phẩm...',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
         ],
       ),
