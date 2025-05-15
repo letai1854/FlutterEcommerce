@@ -383,6 +383,12 @@ class _ProductScreenState extends State<ProductScreen> {
     );
   }
 
+  // Add custom currency formatter
+  String formatCurrency(double amount) {
+    final format = amount.toStringAsFixed(0).replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},');
+    return '$format đ';
+  }
 
   // Displays full variant details in a dialog
   void _showVariantsDialog(ProductDTO product) { // Accept ProductDTO
@@ -458,9 +464,9 @@ class _ProductScreenState extends State<ProductScreen> {
                                       // Display variant details from DTO
                                        if (variant.sku != null && variant.sku!.isNotEmpty)
                                           Text('Mã SKU: ${variant.sku}'), // Changed label from 'Mã sự kiện' to 'Mã SKU'
-                                       // Display price, handling potential null/non-numeric
+                                       // Display price with consistent formatting
                                       Text(
-                                          'Giá: ${variant.price != null ? (variant.price!).toStringAsFixed(0) : 'N/A'} VNĐ'), // Use variant.price
+                                          'Giá: ${variant.price != null ? formatCurrency(variant.price!) : 'N/A'}'),
                                         // Display quantity, handling potential null/non-numeric
                                       Text('Tồn kho: ${variant.stockQuantity != null ? (variant.stockQuantity!).toString() : 'N/A'}'), // Use variant.stockQuantity
                                       // Note: createdDate/updatedDate are not present in your ProductVariantDTO
