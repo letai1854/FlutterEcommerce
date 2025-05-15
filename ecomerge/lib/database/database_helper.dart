@@ -9,16 +9,16 @@ import 'package:http/io_client.dart';
 // Chỉ import IOClient và dart:io khi không phải Web, sử dụng 'conditional import'
 // Đây là cách an toàn nhất để đảm bảo code dart:io không bao giờ bị biên dịch/thực thi trên Web
 
-final String baseurl = !isMobile
-    ? 'https://localhost:8443'
-    : 'https://192.168.1.7:8443'; // Example for Web/Android Emulator HTTPS
-// ? 'https://localhost:8443'
-// : 'https://10.0.2.2:8443';
+
+// final String baseurl = !isMobile
+//     ? 'https://localhost:8443'
+//     : 'https://192.168.1.6:8443'; // Example for Web/Android Emulator HTTPS
+
+final String baseurl = 'https://flutter-server-74f44f97b318.herokuapp.com';
 
 // Khai báo biến client ở tầm vực top-level, nhưng không khởi tạo ngay
 // Sử dụng kiểu động 'dynamic' hoặc kiểu chung nhất 'http.Client'
-dynamic
-    _client; // Dùng dynamic vì kiểu cụ thể (IOClient/BrowserClient) phụ thuộc nền tảng
+dynamic _client; // Dùng dynamic vì kiểu cụ thể (IOClient/BrowserClient) phụ thuộc nền tảng
 
 // --- Public Getter for the appropriate HTTP Client ---
 // Đây là hàm sẽ khởi tạo client LƯỜI BIẾNG và TRÊN NỀN TẢNG PHÙ HỢP

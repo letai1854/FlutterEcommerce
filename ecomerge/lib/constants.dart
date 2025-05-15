@@ -2,9 +2,11 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-final String baseUrl = kIsWeb 
-    ? 'https://localhost:8443' // For web
-    : 'https://10.0.2.2:8443'; // For Android emulator
+// final String baseUrl = 'kIsWeb 
+//     ? 'https://localhost:8443' // For web
+//     : 'https://10.0.2.2:8443''; // For Android emulator
+
+final String baseUrl = 'https://flutter-server-74f44f97b318.herokuapp.com';
 
 // IMPORTANT: Replace with your actual Gemini API Key.
 // For production, use environment variables or a secure key management solution.
