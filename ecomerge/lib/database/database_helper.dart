@@ -11,7 +11,7 @@ import 'package:http/io_client.dart';
 
 final String baseurl = !isMobile
     ? 'https://localhost:8443'
-    : 'https://192.168.1.13:8443'; // Example for Web/Android Emulator HTTPS
+    : 'https://192.168.1.7:8443'; // Example for Web/Android Emulator HTTPS
 // ? 'https://localhost:8443'
 // : 'https://10.0.2.2:8443';
 
