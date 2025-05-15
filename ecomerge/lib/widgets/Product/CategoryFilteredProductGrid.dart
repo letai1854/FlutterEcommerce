@@ -18,6 +18,8 @@ class CategoryFilteredProductGrid extends StatefulWidget {
   final double childAspectRatio;
   final double mainSpace;
   final double crossSpace;
+  final ScrollController?
+      parentScrollController; // New parameter to accept parent scroll controller
 
   const CategoryFilteredProductGrid({
     Key? key,
@@ -28,6 +30,7 @@ class CategoryFilteredProductGrid extends StatefulWidget {
     required this.childAspectRatio,
     required this.mainSpace,
     required this.crossSpace,
+    this.parentScrollController, // Add this parameter
   }) : super(key: key);
 
   @override
@@ -50,6 +53,7 @@ class _CategoryFilteredProductGridState
   bool _hasMore = true;
   String? _error;
   ScrollPosition? _scrollPosition;
+  bool _listenerAttached = false; // Track if listener is attached
 
   @override
   void initState() {
@@ -81,30 +85,72 @@ class _CategoryFilteredProductGridState
   }
 
   void _setupScrollListener() {
-    _scrollPosition = Scrollable.of(context)?.position;
-    _scrollPosition?.addListener(_onScroll);
-    if (_scrollPosition?.hasContentDimensions == true) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
+    // Use parent controller if provided, otherwise try to find one in context
+    if (widget.parentScrollController != null) {
+      _scrollPosition = widget.parentScrollController!.position;
+      if (!_listenerAttached) {
+        widget.parentScrollController!.addListener(_onScroll);
+        _listenerAttached = true;
+      }
+    } else {
+      // Fall back to context search
+      _scrollPosition = Scrollable.of(context)?.position;
+      if (_scrollPosition != null && !_listenerAttached) {
+        _scrollPosition!.addListener(_onScroll);
+        _listenerAttached = true;
+      }
     }
+
+    // Initial check for content that might already need loading
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
   }
 
   void _onScroll() {
-    if (_scrollPosition != null && _scrollPosition!.hasPixels) {
-      final currentScroll = _scrollPosition!.pixels;
-      final maxScroll = _scrollPosition!.maxScrollExtent;
-      if (maxScroll > 0 &&
-          currentScroll >= maxScroll - 150 &&
-          !_isLoadingMore &&
-          _hasMore &&
-          _error == null) {
-        _fetchProducts(page: _currentPage + 1, isInitialLoad: false);
+    // Check if we have a valid scroll position
+    if (_scrollPosition == null || !_scrollPosition!.hasPixels) {
+      if (kDebugMode) {
+        print("CategoryFilteredProductGrid: No valid scroll position");
       }
+      return;
+    }
+
+    final currentScroll = _scrollPosition!.pixels;
+    final maxScroll = _scrollPosition!.maxScrollExtent;
+
+    if (kDebugMode && currentScroll >= maxScroll - 300) {
+      print(
+          "CategoryFilteredProductGrid: Near bottom - current: $currentScroll, max: $maxScroll");
+      print(
+          "Loading more: $_isLoadingMore, Has more: $_hasMore, Error: $_error");
+    }
+
+    if (maxScroll > 0 &&
+        currentScroll >=
+            maxScroll - 300 && // Increased threshold for earlier loading
+        !_isLoadingMore &&
+        _hasMore &&
+        _error == null) {
+      if (kDebugMode) {
+        print(
+            "CategoryFilteredProductGrid: Fetching more products, page: ${_currentPage + 1}");
+      }
+      _fetchProducts(page: _currentPage + 1, isInitialLoad: false);
     }
   }
 
   @override
   void didUpdateWidget(CategoryFilteredProductGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    // Update scroll listener if the parent controller changed
+    if (widget.parentScrollController != oldWidget.parentScrollController) {
+      if (_listenerAttached && oldWidget.parentScrollController != null) {
+        oldWidget.parentScrollController!.removeListener(_onScroll);
+        _listenerAttached = false;
+      }
+      _setupScrollListener();
+    }
+
     if (widget.categoryId != oldWidget.categoryId) {
       _cacheKey = 'category_${widget.categoryId}';
       _loadedImages.clear();
@@ -230,11 +276,11 @@ class _CategoryFilteredProductGridState
             sortBy: 'createdDate',
             sortDir: 'desc',
           ),
-          Future.delayed(const Duration(milliseconds: 800))
+          // Future.delayed(const Duration(milliseconds: 800))
         ]);
         response = results[0] as PageResponse<ProductDTO>;
       } else {
-        const minSpinnerDuration = Duration(milliseconds: 300);
+        // const minSpinnerDuration = Duration(milliseconds: 300);
         final results = await Future.wait([
           _productService.fetchProducts(
             categoryId: widget.categoryId,
@@ -243,7 +289,7 @@ class _CategoryFilteredProductGridState
             sortBy: 'createdDate',
             sortDir: 'desc',
           ),
-          Future.delayed(minSpinnerDuration),
+          // Future.delayed(minSpinnerDuration),
         ]);
         response = results[0] as PageResponse<ProductDTO>;
       }
@@ -351,7 +397,7 @@ class _CategoryFilteredProductGridState
     } finally {
       if (mounted) {
         if (!isInitialLoad) {
-          await Future.delayed(Duration(milliseconds: 300));
+          // await Future.delayed(Duration(milliseconds: 300));
         }
 
         setState(() {
@@ -426,7 +472,7 @@ class _CategoryFilteredProductGridState
           },
         ),
         AnimatedContainer(
-          duration: Duration(milliseconds: 300),
+          duration: Duration(milliseconds: 10),
           height: _isLoadingMore ? 80.0 : 0.0,
           curve: Curves.easeInOut,
           child: _isLoadingMore
@@ -478,7 +524,14 @@ class _CategoryFilteredProductGridState
 
   @override
   void dispose() {
-    _scrollPosition?.removeListener(_onScroll);
+    // Clean up listeners properly
+    if (_listenerAttached) {
+      if (widget.parentScrollController != null) {
+        widget.parentScrollController!.removeListener(_onScroll);
+      } else if (_scrollPosition != null) {
+        _scrollPosition!.removeListener(_onScroll);
+      }
+    }
     _productService.dispose();
     super.dispose();
   }
@@ -594,7 +647,7 @@ class _OfflineAwareProductItemState extends State<_OfflineAwareProductItem> {
 
       // Only retry if we haven't exceeded retry attempts
       if (retries > 0 && !_isDisposed) {
-        await Future.delayed(Duration(milliseconds: 800));
+        // await Future.delayed(Duration(milliseconds: 800));
         if (kDebugMode) {
           print(
               'Retrying image load for ${widget.product.name} (attempt ${3 - retries}/2)');
