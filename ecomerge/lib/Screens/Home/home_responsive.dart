@@ -50,9 +50,9 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
   List<CategoryDTO> _appCategories = [];
   final SearchStateService _searchService = SearchStateService();
   List<CategoryDTO> _fallbackCategories = []; // For offline fallback
-  final int countProudctPromo = constants.isMobile ? 4 : 13;
-  final int countProudctNew = constants.isMobile ? 4 : 10;
-  final int countProudctSell = constants.isMobile ? 4 : 13;
+  final int countProudctPromo = constants.isMobile ? 2 : 13;
+  final int countProudctNew = constants.isMobile ? 2 : 10;
+  final int countProudctSell = constants.isMobile ? 6 : 13;
   final ProductService _productService =
       ProductService(); // Instance for image loading
 
@@ -82,8 +82,8 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
     for (var category in categoriesToPrefetch) {
       if (category.imageUrl != null && category.imageUrl!.isNotEmpty) {
         // Store the Future in the map to avoid recreating it
-        _imageLoadingFutures[category.imageUrl] ??=
-            _productService.getImageFromServer(category.imageUrl, forceReload: false);
+        _imageLoadingFutures[category.imageUrl] ??= _productService
+            .getImageFromServer(category.imageUrl, forceReload: false);
       }
     }
   }
@@ -470,7 +470,8 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                         height: isMobile ? 400 : 400,
                         child: PromotionalProductsList(
                           productListKey: _promoProductsKey,
-                          itemsPerPage: isMobile ? countProudctPromo : 7,
+                          itemsPerPage:
+                              constants.isMobile ? countProudctPromo : 7,
                           gridHeight: isMobile ? 400 : 400,
                           gridWidth: screenWidth,
                           childAspectRatio: isMobile ? 1.8 : 1.9,
@@ -578,7 +579,8 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                         height: isMobile ? 400 : 700,
                         child: PromotionalProductsList(
                           productListKey: _bestSellerKey,
-                          itemsPerPage: isMobile ? countProudctSell : 14,
+                          itemsPerPage:
+                              constants.isMobile ? countProudctSell : 14,
                           gridHeight: isMobile ? 400 : 700,
                           gridWidth: screenWidth,
                           childAspectRatio: isMobile ? 1.8 : 1.85,
@@ -620,7 +622,8 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
                                     : screenWidth - 2,
                                 child: CategoryFilteredProductGrid(
                                   categoryId: categoryIdToPass,
-                                  itemsToLoadPerPage: isMobile ? 2 : 6,
+                                  itemsToLoadPerPage:
+                                      constants.isMobile ? 2 : 6,
                                   gridWidth: isDesktop
                                       ? screenWidth - 280
                                       : screenWidth - 2,
@@ -861,71 +864,81 @@ class _ResponsiveHomeState extends State<ResponsiveHome> {
               width: 30,
               height: 30,
               child: imageUrl != null && imageUrl.isNotEmpty
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(15.0),
-                    child: Builder(
-                      builder: (context) {
-                        // First check if image is in memory cache via ProductService
-                        final cachedImage = _productService.getImageFromCache(imageUrl);
-                        
-                        if (cachedImage != null) {
-                          return Image.memory(
-                            cachedImage,
-                            fit: BoxFit.cover,
-                            height: 30,
-                            width: 30,
-                            cacheWidth: 60, // Add cache width for better performance
-                            cacheHeight: 60, // Add cache height for better performance
-                            gaplessPlayback: true, // Prevent flickering during image updates
-                          );
-                        }
-                        
-                        // Create or reuse a cached Future for this image URL
-                        _imageLoadingFutures[imageUrl] ??= 
-                            _productService.getImageFromServer(imageUrl, forceReload: false);
-                            
-                        // Use the cached Future to load the image
-                        return FutureBuilder<Uint8List?>(
-                          future: _imageLoadingFutures[imageUrl],
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
-                              return Center(
-                                child: SizedBox(
-                                  width: 15,
-                                  height: 15,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 1.5,
-                                    color: Colors.grey[400],
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(15.0),
+                      child: Builder(
+                        builder: (context) {
+                          // First check if image is in memory cache via ProductService
+                          final cachedImage =
+                              _productService.getImageFromCache(imageUrl);
+
+                          if (cachedImage != null) {
+                            return Image.memory(
+                              cachedImage,
+                              fit: BoxFit.cover,
+                              height: 30,
+                              width: 30,
+                              cacheWidth:
+                                  60, // Add cache width for better performance
+                              cacheHeight:
+                                  60, // Add cache height for better performance
+                              gaplessPlayback:
+                                  true, // Prevent flickering during image updates
+                            );
+                          }
+
+                          // Create or reuse a cached Future for this image URL
+                          _imageLoadingFutures[imageUrl] ??= _productService
+                              .getImageFromServer(imageUrl, forceReload: false);
+
+                          // Use the cached Future to load the image
+                          return FutureBuilder<Uint8List?>(
+                            future: _imageLoadingFutures[imageUrl],
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return Center(
+                                  child: SizedBox(
+                                    width: 15,
+                                    height: 15,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 1.5,
+                                      color: Colors.grey[400],
+                                    ),
                                   ),
-                                ),
-                              );
-                            } else if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
-                              // If error occurs, invalidate cached future so it can retry next time
-                              SchedulerBinding.instance.addPostFrameCallback((_) {
-                                _imageLoadingFutures.remove(imageUrl);
-                              });
-                              return Icon(Icons.category, size: 20, color: Colors.grey[400]);
-                            } else {
-                              // Display image loaded from server with gaplessPlayback
-                              return Image.memory(
-                                snapshot.data!,
-                                fit: BoxFit.cover,
-                                height: 30,
-                                width: 30,
-                                cacheWidth: 60,
-                                cacheHeight: 60,
-                                gaplessPlayback: true,
-                              );
-                            }
-                          },
-                        );
-                      },
+                                );
+                              } else if (snapshot.hasError ||
+                                  !snapshot.hasData ||
+                                  snapshot.data == null) {
+                                // If error occurs, invalidate cached future so it can retry next time
+                                SchedulerBinding.instance
+                                    .addPostFrameCallback((_) {
+                                  _imageLoadingFutures.remove(imageUrl);
+                                });
+                                return Icon(Icons.category,
+                                    size: 20, color: Colors.grey[400]);
+                              } else {
+                                // Display image loaded from server with gaplessPlayback
+                                return Image.memory(
+                                  snapshot.data!,
+                                  fit: BoxFit.cover,
+                                  height: 30,
+                                  width: 30,
+                                  cacheWidth: 60,
+                                  cacheHeight: 60,
+                                  gaplessPlayback: true,
+                                );
+                              }
+                            },
+                          );
+                        },
+                      ),
+                    )
+                  : Container(
+                      alignment: Alignment.center,
+                      child: Icon(Icons.category,
+                          size: 20, color: Colors.grey[400]),
                     ),
-                  )
-                : Container(
-                    alignment: Alignment.center,
-                    child: Icon(Icons.category, size: 20, color: Colors.grey[400]),
-                  ),
             ),
             SizedBox(width: 8),
             Expanded(
