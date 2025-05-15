@@ -1082,6 +1082,9 @@ Widget BuildReviewSection({
   required int selectedRating,
   required Function(int) onRatingChanged,
 }) {
+  // Cache the UserInfo.isLoggedIn to avoid rebuilding widget unnecessarily
+  final bool isUserLoggedIn = UserInfo().isLoggedIn;
+  
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -1182,7 +1185,9 @@ Widget BuildReviewSection({
             final String name = review['name'] ?? 'Ẩn danh';
             final int rating = review['rating'] is int ? review['rating'] : 0;
             final String comment = review['comment'] ?? '';
+            // Use the same key for review items to maintain stable identity
             return ListTile(
+              key: ValueKey('review_${review['id'] ?? index}'),
               leading: CircleAvatar(
                   backgroundImage: AssetImage(avatarAsset),
                   onBackgroundImageError: (_, __) {},

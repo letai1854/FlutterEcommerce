@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:e_commerce_app/database/models/categories.dart'; // Import CategoryDTO
 import 'package:e_commerce_app/database/services/categories_service.dart'; // Import CategoriesService
 import 'package:flutter/foundation.dart'; // For kDebugMode
+import 'package:flutter/scheduler.dart'; // Add this for SchedulerBinding
 
 class CategoriesSection extends StatefulWidget {
   final int? selectedIndex;
@@ -28,19 +29,47 @@ class _CategoriesSectionState extends State<CategoriesSection> {
   final AppDataService _appDataService =
       AppDataService(); // Instance of AppDataService
 
+  // Add a map to cache Futures for image loading
+  final Map<String?, Future<Uint8List?>> _imageLoadingFutures = {};
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Add this to prefetch category images when widget is built
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _prefetchCategoryImages();
+    });
+  }
+
+  // Add this method to prefetch category images
+  void _prefetchCategoryImages() {
+    final categoriesToPrefetch = widget.categories.take(5).toList();
+
+    for (var category in categoriesToPrefetch) {
+      if (category.imageUrl != null && category.imageUrl!.isNotEmpty) {
+        // Store the Future in the map to avoid recreating it
+        _imageLoadingFutures[category.imageUrl] ??=
+            _categoriesService.getImageFromServer(category.imageUrl);
+      }
+    }
+  }
+
   @override
   void dispose() {
     _categoriesService.dispose(); // Dispose the service
+    _imageLoadingFutures.clear(); // Clear the futures map
     super.dispose();
   }
 
   Widget _buildCategoryItem(CategoryDTO category, int index) {
     bool isSelected = widget.selectedIndex == index;
+    final String? imageUrl = category.imageUrl;
 
     // Attempt to get image from AppDataService cache first
     Uint8List? cachedImage;
-    if (category.imageUrl != null && category.imageUrl!.isNotEmpty) {
-      cachedImage = _appDataService.getCategoryImage(category.imageUrl);
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      cachedImage = _appDataService.getCategoryImage(imageUrl);
     }
 
     return Expanded(
@@ -69,47 +98,71 @@ class _CategoriesSectionState extends State<CategoriesSection> {
                     shape: BoxShape.circle, // Make it circular for consistency
                   ),
                   child: ClipOval(
-                    child: category.imageUrl != null &&
-                            category.imageUrl!.isNotEmpty
+                    child: imageUrl != null && imageUrl.isNotEmpty
                         ? cachedImage != null
                             ? Image.memory(
                                 cachedImage,
                                 fit: BoxFit.cover,
                                 height: 60,
                                 width: 60,
+                                cacheWidth:
+                                    120, // Add cache width for better performance
+                                cacheHeight:
+                                    120, // Add cache height for better performance
+                                gaplessPlayback:
+                                    true, // Prevent flickering during image updates
                               )
-                            : FutureBuilder<Uint8List?>(
-                                future: _categoriesService
-                                    .getImageFromServer(category.imageUrl),
-                                builder: (context, snapshot) {
-                                  if (snapshot.connectionState ==
-                                      ConnectionState.waiting) {
-                                    return Center(
-                                      child: SizedBox(
-                                        width: 30, // Consistent size
-                                        height: 30,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      ),
-                                    );
-                                  } else if (snapshot.hasError ||
-                                      !snapshot.hasData ||
-                                      snapshot.data == null) {
-                                    if (kDebugMode) {
-                                      print(
-                                          'Error loading category image in CategoriesSection (FutureBuilder): ${category.imageUrl}, ${snapshot.error}');
-                                    }
-                                    return Icon(Icons.category,
-                                        size: 30, color: Colors.grey[400]);
-                                  } else {
-                                    return Image.memory(
-                                      snapshot.data!,
-                                      fit: BoxFit.cover,
-                                      height: 60,
-                                      width: 60,
-                                    );
-                                  }
+                            : Builder(
+                                builder: (context) {
+                                  // Create or reuse a cached Future for this image URL
+                                  _imageLoadingFutures[imageUrl] ??=
+                                      _categoriesService
+                                          .getImageFromServer(imageUrl);
+
+                                  // Use the cached Future to load the image
+                                  return FutureBuilder<Uint8List?>(
+                                    future: _imageLoadingFutures[imageUrl],
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState ==
+                                          ConnectionState.waiting) {
+                                        return Center(
+                                          child: SizedBox(
+                                            width: 30, // Consistent size
+                                            height: 30,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.grey[400],
+                                            ),
+                                          ),
+                                        );
+                                      } else if (snapshot.hasError ||
+                                          !snapshot.hasData ||
+                                          snapshot.data == null) {
+                                        // If error occurs, invalidate cached future so it can retry next time
+                                        SchedulerBinding.instance
+                                            .addPostFrameCallback((_) {
+                                          _imageLoadingFutures.remove(imageUrl);
+                                        });
+
+                                        if (kDebugMode) {
+                                          print(
+                                              'Error loading category image in CategoriesSection: $imageUrl, ${snapshot.error}');
+                                        }
+                                        return Icon(Icons.category,
+                                            size: 30, color: Colors.grey[400]);
+                                      } else {
+                                        return Image.memory(
+                                          snapshot.data!,
+                                          fit: BoxFit.cover,
+                                          height: 60,
+                                          width: 60,
+                                          cacheWidth: 120,
+                                          cacheHeight: 120,
+                                          gaplessPlayback: true,
+                                        );
+                                      }
+                                    },
+                                  );
                                 },
                               )
                         : Icon(Icons.category,
@@ -158,9 +211,7 @@ class _CategoriesSectionState extends State<CategoriesSection> {
                 Icons.list,
                 size: 35.0,
               ),
-              SizedBox(
-                  width:
-                      1), // Corrected from width: 1 to SizedBox(width: 8) or similar
+              SizedBox(width: 1),
               Text(
                 'Danh mục',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -182,8 +233,7 @@ class _CategoriesSectionState extends State<CategoriesSection> {
           else
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              crossAxisAlignment: CrossAxisAlignment
-                  .start, // Align items to the start vertically
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: categoriesToDisplay.asMap().entries.map((entry) {
                 int idx = entry.key;
                 CategoryDTO category = entry.value;

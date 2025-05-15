@@ -532,14 +532,8 @@ class _UserScreenState extends State<UserScreen> {
             ),
             const SizedBox(height: 10),
 
-            if (_isLoading)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(20.0),
-                  child: CircularProgressIndicator(),
-                ),
-              )
-            else if (_filteredUsers.isEmpty)
+            // Remove the inline loading indicator and only keep the content
+            if (!_isLoading && _filteredUsers.isEmpty)
               const Center(
                 child: Padding(
                   padding: EdgeInsets.all(20.0),
@@ -549,7 +543,7 @@ class _UserScreenState extends State<UserScreen> {
                   ),
                 ),
               )
-            else
+            else if (!_isLoading) // Only show list if not loading
               // User list
               ListView.builder(
                 shrinkWrap: true,
@@ -700,7 +694,7 @@ class _UserScreenState extends State<UserScreen> {
               ),
 
             // Pagination controls
-            if (_filteredUsers.isNotEmpty)
+            if (_filteredUsers.isNotEmpty && !_isLoading)
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                 margin: const EdgeInsets.only(top: 8),
@@ -758,13 +752,10 @@ class _UserScreenState extends State<UserScreen> {
           ],
         ),
         
-        // Loading overlay
+        // Loading overlay without background color
         if (_isLoading)
-          Container(
-            color: Colors.black.withOpacity(0.3),
-            child: const Center(
-              child: CircularProgressIndicator(),
-            ),
+          const Center(
+            child: CircularProgressIndicator(),
           ),
       ],
     );
