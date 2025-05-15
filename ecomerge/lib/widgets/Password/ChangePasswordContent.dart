@@ -176,9 +176,9 @@ class _ChangePasswordContentState extends State<ChangePasswordContent> {
                               widget.confirmPasswordController.clear();
 
                               // Return to the previous screen if on mobile
-                              if (Navigator.canPop(context)) {
-                                Navigator.pop(context);
-                              }
+                              // if (Navigator.canPop(context)) {
+                              //   Navigator.pop(context);
+                              // }
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
