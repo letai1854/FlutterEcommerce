@@ -632,14 +632,16 @@ class _PagechatState extends State<Pagechat> {
             ),
             body: _isAdmin
                 ? (_selectedConversation == null
-                    ? MessageList(
-                        conversations: _adminConversations,
-                        onChatSelected: _handleAdminChatSelected,
-                        selectedChatId: _selectedConversation?.id,
-                        scrollController: _adminConversationListScrollController,
-                        isLoadingMore: _isLoadingMoreAdminConversations,
-                        chatService: _chatService, // Pass ChatService instance
-                      )
+                    ? (_isLoadingConversations
+                        ? const Center(child: CircularProgressIndicator()) // Add loading indicator here
+                        : MessageList(
+                            conversations: _adminConversations,
+                            onChatSelected: _handleAdminChatSelected,
+                            selectedChatId: _selectedConversation?.id,
+                            scrollController: _adminConversationListScrollController,
+                            isLoadingMore: _isLoadingMoreAdminConversations,
+                            chatService: _chatService,
+                          ))
                     : _buildChatContent())
                 : _buildChatContent(),
           );
@@ -658,14 +660,16 @@ class _PagechatState extends State<Pagechat> {
                       decoration: BoxDecoration(
                         border: Border(right: BorderSide(width: 1, color: Colors.grey.shade300)),
                       ),
-                      child: MessageList(
-                        conversations: _adminConversations,
-                        onChatSelected: _handleAdminChatSelected,
-                        selectedChatId: _selectedConversation?.id,
-                        scrollController: _adminConversationListScrollController,
-                        isLoadingMore: _isLoadingMoreAdminConversations,
-                        chatService: _chatService, // Pass ChatService instance
-                      ),
+                      child: _isLoadingConversations
+                          ? const Center(child: CircularProgressIndicator()) // Add loading indicator here
+                          : MessageList(
+                              conversations: _adminConversations,
+                              onChatSelected: _handleAdminChatSelected,
+                              selectedChatId: _selectedConversation?.id,
+                              scrollController: _adminConversationListScrollController,
+                              isLoadingMore: _isLoadingMoreAdminConversations,
+                              chatService: _chatService, // Pass ChatService instance
+                            ),
                     ),
                   ),
                 Expanded(
