@@ -1,3 +1,4 @@
+import 'package:e_commerce_app/constants.dart';
 import 'package:e_commerce_app/database/PageResponse.dart';
 import 'package:flutter/material.dart';
 import 'package:e_commerce_app/database/models/paginated_response.dart';
@@ -697,6 +698,9 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
   }
 
   Future<void> _loadMoreProducts() async {
+    // Use a local variable instead of trying to modify the widget property
+    final effectiveItemsPerPage = widget.itemsPerPage;
+
     if (!_hasMorePages || _isLoadingMore || _nextPageToRequest == -1) return;
 
     if (mounted) {
@@ -717,19 +721,19 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
         if (_cacheKey == 'newProducts') {
           response = await _productService.fetchProducts(
             page: _nextPageToRequest,
-            size: widget.itemsPerPage,
+            size: effectiveItemsPerPage, // Use the local variable here
             sortBy: 'createdDate',
             sortDir: 'desc',
           );
         } else if (_cacheKey == 'bestSeller') {
           response = await _productService.getTopSellingProducts(
             page: _nextPageToRequest,
-            size: widget.itemsPerPage,
+            size: effectiveItemsPerPage, // Use the local variable here
           );
         } else {
           response = await _productService.getTopDiscountedProducts(
             page: _nextPageToRequest,
-            size: widget.itemsPerPage,
+            size: effectiveItemsPerPage, // Use the local variable here
           );
         }
 
@@ -767,7 +771,7 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
             SnackBar(
               content: Text(snackBarMessage),
               backgroundColor: Colors.red.shade700,
-              duration: const Duration(seconds: 2),
+              duration: const Duration(seconds: 1),
             ),
           );
         }
@@ -876,7 +880,7 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
               (currentOffset + scrollAmount).clamp(0.0, newMaxOffset);
           _scrollController.animateTo(
             adjustedTargetOffset,
-            duration: const Duration(milliseconds: 500),
+            duration: const Duration(milliseconds: 0),
             curve: Curves.easeInOut,
           );
         }
@@ -946,7 +950,7 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
     } else if (_displayedProducts.isEmpty && !_isLoading) {
       content = const Center(
         child: Text(
-          'Không có sản phẩm khuyến mãi',
+          'Không có sản phẩm nào để hiển thị.',
           style: TextStyle(
             fontSize: 16,
             color: Colors.grey,
