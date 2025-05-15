@@ -1103,26 +1103,24 @@ Widget BuildReviewSection({
               Text('Viết đánh giá của bạn:',
                   style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
-              
+
               // Properly formatted conditional star picker for logged-in users
-              if (isUserLoggedIn) 
+              if (UserInfo().isLoggedIn)
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: List.generate(
-                    5,
-                    (index) => IconButton(
-                      icon: Icon(
-                        index < selectedRating
-                            ? Icons.star
-                            : Icons.star_border,
-                        color: Colors.amber,
-                      ),
-                      onPressed: () => onRatingChanged(index + 1),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    )
-                  )
-                ),
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: List.generate(
+                        5,
+                        (index) => IconButton(
+                              icon: Icon(
+                                index < selectedRating
+                                    ? Icons.star
+                                    : Icons.star_border,
+                                color: Colors.amber,
+                              ),
+                              onPressed: () => onRatingChanged(index + 1),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ))),
               const SizedBox(height: 12),
               TextField(
                 controller: commentController,
@@ -1203,17 +1201,15 @@ Widget BuildReviewSection({
                   // Only show star rating if rating is greater than 0
                   if (rating > 0)
                     Row(
-                      children: List.generate(
-                        5,
-                        (starIndex) => Icon(
-                          starIndex < rating
-                              ? Icons.star
-                              : Icons.star_border,
-                          color: Colors.amber,
-                          size: 16,
-                        )
-                      )
-                    ),
+                        children: List.generate(
+                            5,
+                            (starIndex) => Icon(
+                                  starIndex < rating
+                                      ? Icons.star
+                                      : Icons.star_border,
+                                  color: Colors.amber,
+                                  size: 16,
+                                ))),
                   // Always show the SizedBox if there's a rating to display
                   if (rating > 0) const SizedBox(height: 4),
                   // Always show the comment text
