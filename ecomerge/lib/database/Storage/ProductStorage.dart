@@ -839,8 +839,8 @@ class ProductStorageSingleton extends ChangeNotifier {
     
     notifyListeners();
     
-    // Add a small delay to ensure UI updates with cleared state
-    await Future.delayed(const Duration(milliseconds: 800));
+    // // Add a small delay to ensure UI updates with cleared state
+    // await Future.delayed(const Duration(milliseconds: 800));
     
     try {
       if (kDebugMode) {
@@ -859,12 +859,19 @@ class ProductStorageSingleton extends ChangeNotifier {
       // Get brand ID from name if provided
       int? brandId;
       if (brandName != null && brandName.isNotEmpty) {
-        final brands = AppDataService().brands;
-        final brand = brands.firstWhere(
-          (b) => b.name == brandName, 
-          orElse: () => BrandDTO()
-        );
-        brandId = brand.id;
+        for(int i = 0;i<AppDataService().brands.length;i++){
+          print(AppDataService().brands[i].name);
+          if(AppDataService().brands[i].name == brandName){
+            brandId = AppDataService().brands[i].id;
+          }
+        }
+        print(brandId);
+        // final brands = AppDataService().brands;
+        // final brand = brands.firstWhere(
+        //   (b) => b.name == brandName, 
+        //   orElse: () => BrandDTO()
+        // );
+        // brandId = brand.id;
         
         if (kDebugMode) {
           print('Resolved brand name "$brandName" to ID: $brandId');
@@ -882,7 +889,7 @@ class ProductStorageSingleton extends ChangeNotifier {
       }
       
       // Make sure to use the determined shouldApplyPriceFilter for API call
-      final response = await _productService.fetchProducts(
+      final   response = await _productService.fetchProducts(
         search: query,
         categoryId: categoryId,
         brandId: brandId,

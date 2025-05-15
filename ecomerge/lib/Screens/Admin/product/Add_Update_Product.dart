@@ -234,6 +234,143 @@ class VariantInput extends StatelessWidget {
   }
 }
 
+class ProductImageDisplay extends StatefulWidget {
+  final dynamic source; // Can be PickedImage, String (relative path), or null
+  final double size;
+  final double iconSize;
+  final BoxFit fit;
+  final ProductService productService;
+
+  const ProductImageDisplay({
+    Key? key,
+    required this.source,
+    required this.size,
+    required this.iconSize,
+    required this.fit,
+    required this.productService,
+  }) : super(key: key);
+
+  @override
+  State<ProductImageDisplay> createState() => _ProductImageDisplayState();
+}
+
+class _ProductImageDisplayState extends State<ProductImageDisplay> {
+  // Cache for loaded images to prevent unnecessary reloads
+  static final Map<String, Uint8List> _imageCache = {};
+
+  // Add a static method to clear the cache
+  static void clearCache() {
+    if (kDebugMode) print('Clearing image cache: ${_imageCache.length} items');
+    _imageCache.clear();
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    if (widget.source == null || (widget.source is String && widget.source.isEmpty)) {
+      return Icon(Icons.camera_alt, size: widget.iconSize, color: Colors.grey); // Placeholder
+    }
+
+    if (widget.source is PickedImage) {
+      final source = widget.source as PickedImage;
+      // Display locally picked image bytes with status indicators
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.memory(
+            source.bytes,
+            fit: widget.fit,
+            errorBuilder: (context, error, stackTrace) {
+              if (kDebugMode) print('Image.memory failed for ${source.fileName}: $error');
+              return Container(color: Colors.orangeAccent.withOpacity(0.5), 
+                child: Icon(Icons.warning_amber, size: widget.iconSize * 0.8, color: Colors.deepOrange));
+            },
+          ),
+          // Show upload status indicators
+          if (source.isUploading)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black54, // Semi-transparent overlay
+                child: Center(
+                  child: SizedBox(
+                    width: widget.size * 0.6,
+                    height: widget.size * 0.6,
+                    child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  ),
+                ),
+              ),
+            ),
+          if (source.uploadSuccess && !source.isUploading)
+            Positioned.fill(
+              child: Container(
+                color: Colors.green.withOpacity(0.3),
+                child: Center(
+                  child: Icon(Icons.check_circle, color: Colors.green, size: widget.size * 0.5),
+                ),
+              ),
+            ),
+          if (source.uploadError && !source.isUploading)
+            Positioned.fill(
+              child: Container(
+                color: Colors.red.withOpacity(0.3),
+                child: Center(
+                  child: Icon(Icons.error, color: Colors.red, size: widget.size * 0.5),
+                ),
+              ),
+            ),
+        ],
+      );
+    } else if (widget.source is String) { // It's a server relative path
+      final source = widget.source as String;
+      // Check if we already have this image in cache
+      if (_imageCache.containsKey(source)) {
+        return Image.memory(
+          _imageCache[source]!,
+          fit: widget.fit,
+          errorBuilder: (context, error, stackTrace) {
+            if (kDebugMode) print('Cached Image.memory failed for $source: $error');
+            return Icon(Icons.broken_image, size: widget.iconSize, color: Colors.red);
+          },
+        );
+      }
+      
+      // If not in cache, fetch it and cache the result
+      return FutureBuilder<Uint8List?>(
+        future: widget.productService.getImageFromServer(source),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: SizedBox(
+                width: widget.size * 0.5,
+                height: widget.size * 0.5,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            );
+          } else if (snapshot.hasError || snapshot.data == null) {
+            if (kDebugMode) {
+              print('Failed to fetch image data for $source: ${snapshot.error}');
+            }
+            return Icon(Icons.broken_image, size: widget.iconSize, color: Colors.red);
+          } else {
+            // Cache the image data
+            _imageCache[source] = snapshot.data!;
+            return Image.memory(
+              snapshot.data!,
+              fit: widget.fit,
+              errorBuilder: (context, error, stackTrace) {
+                if (kDebugMode) print('Image.memory failed for fetched $source: $error');
+                return Icon(Icons.broken_image, size: widget.iconSize, color: Colors.red);
+              },
+            );
+          }
+        },
+      );
+    } else {
+      // Fallback for unexpected types
+      if (kDebugMode) print('Unexpected source type: ${widget.source?.runtimeType}');
+      return const Icon(Icons.error, size: 40, color: Colors.purple);
+    }
+  }
+}
 
 class AddUpdateProductScreen extends StatefulWidget {
   // If product is not null, we are in update mode (data format is Map<String, dynamic>)
@@ -330,6 +467,10 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
     for (var variant in _variants) {
       variant.disposeControllers();
     }
+    
+    // Clear the image cache when leaving the screen
+    _ProductImageDisplayState.clearCache();
+    
     // Dispose ProductService httpClient
     _productService.dispose();
     super.dispose();
@@ -493,18 +634,19 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
           // Create PickedImage object and mark it as uploading
           picked = PickedImage(bytes: imageBytes, fileName: fileName, isUploading: true);
 
-          // Use addPostFrameCallback to update the UI AFTER the current build frame finishes
-          // This prevents calling setState while the build method is still running.
+          // More targeted setState only updating the specific image
           SchedulerBinding.instance.addPostFrameCallback((_) {
-            if (mounted) { // Check if the widget is still in the widget tree
-               setState(() {
-                   if (isDefault) {
-                       _defaultPickedImage = picked; // Show the local image preview and indicator
-                       _defaultImageUrl = null; // Temporarily clear the previous server URL
-                   } else {
-                       _additionalImages.add(picked); // Add the local image preview and indicator to the list
-                   }
-               });
+            if (mounted) {
+              if (isDefault) {
+                setState(() {
+                  _defaultPickedImage = picked;
+                  _defaultImageUrl = null;
+                });
+              } else {
+                setState(() {
+                  _additionalImages.add(picked);
+                });
+              }
             }
           });
 
@@ -514,87 +656,88 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
           final String? imageRelativePath = await _productService.uploadImage(picked.bytes, picked.fileName);
           if (kDebugMode) print('Image RELATIVE path returned from upload: $imageRelativePath');
 
-          // Use another addPostFrameCallback to update the UI state based on the upload result
+          // Handle upload completion with targeted updates
           SchedulerBinding.instance.addPostFrameCallback((_) {
-             if (mounted) {
-                 setState(() {
-                     // Find the *current* PickedImage object in the state that corresponds to the 'picked' one
-                     // (State might have changed since the first setState)
-                     PickedImage? currentPickedState;
-                     if (isDefault) {
-                        currentPickedState = _defaultPickedImage;
-                     } else {
-                        // Find the specific PickedImage instance in the additional images list
-                        // Use .firstWhereOrNull from collection package
-                        currentPickedState = _additionalImages.firstWhereOrNull((item) => item == picked && item is PickedImage) as PickedImage?;
-                     }
-
-                     // Ensure we are updating the state for the image that was just picked/uploaded
-                     if (currentPickedState != null) {
-                          currentPickedState.isUploading = false; // Mark this specific image as no longer uploading
-
-                         if (imageRelativePath != null && imageRelativePath.isNotEmpty) {
-                            // UPLOAD SUCCESS:
-                            currentPickedState.uploadSuccess = true;
-                            // Wait briefly to show success indicator before replacing with server path
-                            Future.delayed(const Duration(milliseconds: 800), () {
-                              if (mounted) {
-                                setState(() {
-                                  // Replace the local PickedImage object in the state with the server path string
-                                  if (isDefault) {
-                                      _defaultImageUrl = imageRelativePath; // <-- Store the returned RELATIVE path here
-                                      _defaultPickedImage = null; // Clear the local data
-                                  } else {
-                                      // Find the index of the specific PickedImage object
-                                      final index = _additionalImages.indexOf(currentPickedState); // Find by reference
-                                      if (index != -1) {
-                                         _additionalImages[index] = imageRelativePath; // <-- Replace it with the RELATIVE path String
-                                      } else {
-                                          // Fallback - should not happen with correct state management
-                                          if (kDebugMode) print('Error: Could not find PickedImage object to replace with URL after upload.');
-                                          _additionalImages.add(imageRelativePath); // Just add the path if not found
-                                      }
-                                  }
-                                });
-                              }
-                            });
-                            
-                            if (kDebugMode) print('Upload successful. State updated with RELATIVE path.');
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Tải ảnh lên thành công'), backgroundColor: Colors.green),
-                            );
-                         } else {
-                             // UPLOAD FAILURE (Server didn't return a path or returned empty):
-                             if (kDebugMode) print('Upload failed: Server returned empty path for .');
-                             currentPickedState.uploadError = true;
-                             currentPickedState.errorMessage = "Server không trả về đường dẫn ảnh";
-                             
-                             // Show upload failure for a moment before removing
-                             Future.delayed(const Duration(seconds: 2), () {
-                               if (mounted) {
-                                 setState(() {
-                                   // Just clear the local PickedImage object (it's already marked isUploading=false)
-                                   if (isDefault) { 
-                                     if (_defaultPickedImage == currentPickedState) _defaultPickedImage = null; 
-                                   } else {
-                                     _additionalImages.remove(currentPickedState); // Remove local image
-                                   }
-                                 });
-                               }
-                             });
-                             
-                             ScaffoldMessenger.of(context).showSnackBar(
-                               const SnackBar(content: Text('Tải ảnh lên thất bại: Server không trả về đường dẫn ảnh.'), backgroundColor: Colors.red),
-                             );
-                         }
-                     } else {
-                         // This case happens if the PickedImage object was removed from state *while* the upload was in progress
-                         // (e.g., user pressed remove button very fast).
-                         if (kDebugMode) print('Upload finished but PickedImage object ${picked?.fileName} was already removed from state.');
-                         // No state update needed here as the state was already handled by the remove action.
-                     }
-                 });
-             }
+            if (mounted) {
+              // Only update the relevant part of the state
+              if (isDefault) {
+                if (_defaultPickedImage == picked) {
+                  setState(() {
+                    _defaultPickedImage!.isUploading = false;
+                    if (imageRelativePath != null && imageRelativePath.isNotEmpty) {
+                      _defaultPickedImage!.uploadSuccess = true;
+                      
+                      // Replace with server path after showing success briefly
+                      Future.delayed(const Duration(milliseconds: 800), () {
+                        if (mounted) {
+                          setState(() {
+                            _defaultImageUrl = imageRelativePath;
+                            _defaultPickedImage = null;
+                          });
+                        }
+                      });
+                    } else {
+                      _defaultPickedImage!.uploadError = true;
+                      _defaultPickedImage!.errorMessage = "Server không trả về đường dẫn ảnh";
+                      
+                      // Show error briefly then remove
+                      Future.delayed(const Duration(seconds: 2), () {
+                        if (mounted && _defaultPickedImage == picked) {
+                          setState(() {
+                            _defaultPickedImage = null;
+                          });
+                        }
+                      });
+                    }
+                  });
+                }
+              } else {
+                // Find the specific picked image in additional images
+                final index = _additionalImages.indexOf(picked);
+                if (index != -1) {
+                  setState(() {
+                    final pickedImage = _additionalImages[index] as PickedImage;
+                    pickedImage.isUploading = false;
+                    
+                    if (imageRelativePath != null && imageRelativePath.isNotEmpty) {
+                      pickedImage.uploadSuccess = true;
+                      
+                      // Replace with server path after showing success briefly
+                      Future.delayed(const Duration(milliseconds: 800), () {
+                        if (mounted) {
+                          setState(() {
+                            _additionalImages[index] = imageRelativePath;
+                          });
+                        }
+                      });
+                    } else {
+                      pickedImage.uploadError = true;
+                      pickedImage.errorMessage = "Server không trả về đường dẫn ảnh";
+                      
+                      // Show error briefly then remove
+                      Future.delayed(const Duration(seconds: 2), () {
+                        if (mounted) {
+                          setState(() {
+                            _additionalImages.remove(pickedImage);
+                          });
+                        }
+                      });
+                    }
+                  });
+                }
+              }
+              
+              // Show snackbar message
+              if (imageRelativePath != null && imageRelativePath.isNotEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Tải ảnh lên thành công'), backgroundColor: Colors.green),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Tải ảnh lên thất bại: Server không trả về đường dẫn ảnh.'), backgroundColor: Colors.red),
+                );
+              }
+            }
           });
 
 
@@ -683,12 +826,17 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
 
            picked = PickedImage(bytes: imageBytes, fileName: fileName, isUploading: true);
 
+           // Targeted setState only updating the specific variant
            SchedulerBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
-                  setState(() {
-                      variant.pickedImage = picked; // Show local preview and indicator for this variant
-                      variant.defaultImageUrl = null; // Clear previous server URL for this variant
-                  });
+                  // Find the exact variant in the list to ensure we're updating the right one
+                  final index = _variants.indexOf(variant);
+                  if (index != -1) {
+                    setState(() {
+                      _variants[index].pickedImage = picked;
+                      _variants[index].defaultImageUrl = null;
+                    });
+                  }
               }
            });
 
@@ -696,60 +844,58 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
            final String? imageRelativePath = await _productService.uploadImage(picked.bytes, picked.fileName);
            if (kDebugMode) print('Variant Image RELATIVE path returned from upload: $imageRelativePath');
 
+           // Handle upload completion with targeted updates
            SchedulerBinding.instance.addPostFrameCallback((_) {
              if (mounted) {
-                 // Find the variant again in case the list changed. Check if the picked image is still associated with it.
-                 final currentVariantState = _variants.firstWhereOrNull((v) => v == variant); // Find by reference
-                 if (currentVariantState != null && currentVariantState.pickedImage == picked) {
-                      currentVariantState.pickedImage!.isUploading = false; // Mark as not uploading
-
-                      if (imageRelativePath != null && imageRelativePath.isNotEmpty) {
-                         // SUCCESS: Show success indicator briefly
-                         currentVariantState.pickedImage!.uploadSuccess = true;
-                         
-                         // Wait briefly to show success indicator before replacing with server path
-                         Future.delayed(const Duration(milliseconds: 800), () {
-                           if (mounted) {
+                 // Find the variant again to ensure we're updating the right one
+                 final index = _variants.indexOf(variant);
+                 if (index != -1 && _variants[index].pickedImage == picked) {
+                   setState(() {
+                     _variants[index].pickedImage!.isUploading = false;
+                     
+                     if (imageRelativePath != null && imageRelativePath.isNotEmpty) {
+                       _variants[index].pickedImage!.uploadSuccess = true;
+                       
+                       // Replace with server path after showing success briefly
+                       Future.delayed(const Duration(milliseconds: 800), () {
+                         if (mounted) {
+                           // Another targeted setState just for this variant
+                           final currentIndex = _variants.indexOf(variant);
+                           if (currentIndex != -1) {
                              setState(() {
-                               // Replace PickedImage with the server path string for this variant
-                               currentVariantState.defaultImageUrl = imageRelativePath; // <-- Store the RELATIVE path here
-                               currentVariantState.pickedImage = null; // Clear local data
+                               _variants[currentIndex].defaultImageUrl = imageRelativePath;
+                               _variants[currentIndex].pickedImage = null;
                              });
                            }
-                         });
-                         
-                          if (kDebugMode) print('Variant upload successful. State updated with RELATIVE path.');
-                           ScaffoldMessenger.of(context).showSnackBar(
-                             const SnackBar(content: Text('Tải ảnh biến thể lên thành công'), backgroundColor: Colors.green),
-                         );
+                         }
+                       });
+                       
+                       // Show success message
+                       ScaffoldMessenger.of(context).showSnackBar(
+                         const SnackBar(content: Text('Tải ảnh biến thể lên thành công'), backgroundColor: Colors.green),
+                       );
                      } else {
-                          // FAILURE: Server returned empty path
-                           if (kDebugMode) print('Variant upload failed: Server returned empty path for.');
-                          // Show error indicator
-                          currentVariantState.pickedImage!.uploadError = true;
-                          currentVariantState.pickedImage!.errorMessage = "Server không trả về đường dẫn ảnh";
-                          
-                          // Show error state briefly before clearing
-                          Future.delayed(const Duration(seconds: 2), () {
-                            if (mounted) {
-                              setState(() {
-                                // Clear the local PickedImage object for this variant
-                                currentVariantState.pickedImage = null;
-                              });
-                            }
-                          });
-                          
-                           ScaffoldMessenger.of(context).showSnackBar(
-                             const SnackBar(content: Text('Tải ảnh biến thể lên thất bại: Server không trả về đường dẫn ảnh.'), backgroundColor: Colors.red),
-                           );
+                       _variants[index].pickedImage!.uploadError = true;
+                       _variants[index].pickedImage!.errorMessage = "Server không trả về đường dẫn ảnh";
+                       
+                       // Show error briefly then remove
+                       Future.delayed(const Duration(seconds: 2), () {
+                         if (mounted) {
+                           final currentIndex = _variants.indexOf(variant);
+                           if (currentIndex != -1) {
+                             setState(() {
+                               _variants[currentIndex].pickedImage = null;
+                             });
+                           }
+                         }
+                       });
+                       
+                       // Show error message
+                       ScaffoldMessenger.of(context).showSnackBar(
+                         const SnackBar(content: Text('Tải ảnh biến thể lên thất bại: Server không trả về đường dẫn ảnh.'), backgroundColor: Colors.red),
+                       );
                      }
-                      // Trigger rebuild after state change for this variant
-                     setState(() {});
-                 } else { // Variant state changed (e.g., variant removed), handle PickedImage cleanup if needed
-                     if (picked != null && !picked.isUploading) { // If the specific picked image object is still around and not marked uploading
-                          // Log that an upload completed but the state changed, nothing to do with UI
-                         if (kDebugMode) print('Variant upload finished for ${picked.fileName} but variant state changed or variant was removed.');
-                     }
+                   });
                  }
              }
            });
@@ -1080,9 +1226,13 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
               backgroundColor: Colors.green,
             ),
           );
+          
+          // Clear image cache before navigating away
+          _ProductImageDisplayState.clearCache();
+          
+          // Navigate back, indicating success to the previous screen (ProductScreen)
+          Navigator.pop(context, true);
       }
-       // Navigate back, indicating success to the previous screen (ProductScreen)
-       if(mounted) Navigator.pop(context, true);
 
 
     } catch (e) {
@@ -1121,111 +1271,15 @@ class _AddUpdateProductScreenState extends State<AddUpdateProductScreen> {
   // This function is passed down to VariantInput as imageDisplayBuilder
   // This function is defined once in the _AddUpdateProductScreenState class.
   Widget _buildImageDisplayWidget(dynamic source, {double size = 40, double iconSize = 40, BoxFit fit = BoxFit.cover}) {
-    // Check if ProductService instance is available before calling getImageUrl
-    // This check is mainly defensive, _productService should be initialized in initState
-    if (_productService == null) {
-        if (kDebugMode) print('[_buildImageDisplayWidget] Error: ProductService is null.');
-        return const Icon(Icons.error, size: 40, color: Colors.purple); // Added const
-    }
-
-    if (kDebugMode) {
-       // print('[_buildImageDisplayWidget] Received source: $source (Type: ${source?.runtimeType})');
-    }
-
-    if (source == null || (source is String && source.isEmpty)) {
-      return Icon(Icons.camera_alt, size: iconSize, color: Colors.grey); // Placeholder
-    }
-
-    if (source is PickedImage) {
-      // Display locally picked image bytes with status indicators
-      return Stack(
-         fit: StackFit.expand,
-         children: [
-            Image.memory(
-               source.bytes,
-               fit: fit,
-               // Add errorBuilder to log issues with Image.memory
-               errorBuilder: (context, error, stackTrace) {
-                  if (kDebugMode) print('[_buildImageDisplayWidget] Image.memory failed for ${source.fileName}: $error');
-                  return Container(color: Colors.orangeAccent.withOpacity(0.5), child: Icon(Icons.warning_amber, size: iconSize * 0.8, color: Colors.deepOrange));
-               },
-            ),
-            // Show upload status indicators
-            if (source.isUploading)
-               Positioned.fill(
-                   child: Container(
-                      color: Colors.black54, // Semi-transparent overlay
-                      child: Center(
-                         child: SizedBox(
-                            width: size * 0.6,
-                            height: size * 0.6,
-                            child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                         ),
-                      ),
-                   ),
-               ),
-            if (source.uploadSuccess && !source.isUploading)
-               Positioned.fill(
-                   child: Container(
-                      color: Colors.green.withOpacity(0.3),
-                      child: Center(
-                         child: Icon(Icons.check_circle, color: Colors.green, size: size * 0.5),
-                      ),
-                   ),
-               ),
-            if (source.uploadError && !source.isUploading)
-               Positioned.fill(
-                   child: Container(
-                      color: Colors.red.withOpacity(0.3),
-                      child: Center(
-                         child: Icon(Icons.error, color: Colors.red, size: size * 0.5),
-                      ),
-                   ),
-               ),
-         ],
-      );
-    } else if (source is String) { // It's a server relative path (e.g., "/uploads/...")
-       // Instead of using getImageUrl + Image.network, use getImageFromServer + Image.memory
-       return FutureBuilder<Uint8List?>(
-         future: _productService.getImageFromServer(source),
-         builder: (context, snapshot) {
-           if (snapshot.connectionState == ConnectionState.waiting) {
-             // Show loading indicator while fetching
-             return Center(
-               child: SizedBox(
-                 width: size * 0.5,
-                 height: size * 0.5,
-                 child: CircularProgressIndicator(
-                   strokeWidth: 2,
-                 ),
-               ),
-             );
-           } else if (snapshot.hasError || snapshot.data == null) {
-             // Show error if failed to fetch
-             if (kDebugMode) {
-               print('[_buildImageDisplayWidget] Failed to fetch image data for $source: ${snapshot.error}');
-             }
-             return Icon(Icons.broken_image, size: iconSize, color: Colors.red);
-           } else {
-             // Show the image from fetched bytes
-             return Image.memory(
-               snapshot.data!,
-               fit: fit,
-               errorBuilder: (context, error, stackTrace) {
-                 if (kDebugMode) {
-                   print('[_buildImageDisplayWidget] Image.memory failed for fetched $source: $error');
-                 }
-                 return Icon(Icons.broken_image, size: iconSize, color: Colors.red);
-               },
-             );
-           }
-         },
-       );
-    } else {
-        // Fallback for unexpected types
-        if (kDebugMode) print('[_buildImageDisplayWidget] Unexpected source type: ${source?.runtimeType}');
-         return const Icon(Icons.error, size: 40, color: Colors.purple); // Added const
-    }
+    // Use the new ProductImageDisplay widget instead of the complex inline logic
+    return ProductImageDisplay(
+      key: source is PickedImage ? ValueKey(source) : (source is String ? ValueKey(source) : null),
+      source: source,
+      size: size,
+      iconSize: iconSize,
+      fit: fit,
+      productService: _productService,
+    );
   }
 
 

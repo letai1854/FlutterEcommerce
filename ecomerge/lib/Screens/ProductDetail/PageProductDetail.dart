@@ -36,6 +36,7 @@ class _ProductImageCache {
         if (kDebugMode) {
           print('Error fetching image $url: $error');
         }
+        _cache.remove(url); // Remove failed entries from cache
         return null;
       });
     }
@@ -47,6 +48,14 @@ class _ProductImageCache {
       _cache.remove(url);
       return null;
     });
+  }
+  
+  // New method to clear the entire cache
+  static void clearCache() {
+    if (kDebugMode) {
+      print('Clearing image cache, ${_cache.length} items removed');
+    }
+    _cache.clear();
   }
 }
 
@@ -235,6 +244,10 @@ class _PageproductdetailState extends State<Pageproductdetail> {
     _productService.dispose();
     _reviewSubscription?.call();
     _stompClient?.deactivate();
+    
+    // Clear the image cache when leaving the screen
+    _ProductImageCache.clearCache();
+    
     super.dispose();
   }
 
@@ -347,7 +360,11 @@ class _PageproductdetailState extends State<Pageproductdetail> {
 
     Widget backButton = IconButton(
       icon: const Icon(Icons.arrow_back),
-      onPressed: () => Navigator.of(context).pop(),
+      onPressed: () {
+        // Clear the image cache when back button is pressed
+        _ProductImageCache.clearCache();
+        Navigator.of(context).pop();
+      },
       tooltip: 'Trở về',
     );
 
