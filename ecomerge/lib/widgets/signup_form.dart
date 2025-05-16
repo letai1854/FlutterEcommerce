@@ -6,7 +6,8 @@ import 'location_selection.dart'; // Đảm bảo import đúng đường dẫn
 
 // Định nghĩa các kiểu hàm (typedef) để code rõ ràng hơn
 // Callback cho locationSelected vẫn nhận TÊN tỉnh, huyện, xã
-typedef LocationSelectedCallback = void Function(String provinceName, String districtName, String wardName);
+typedef LocationSelectedCallback = void Function(
+    String provinceName, String districtName, String wardName);
 // Không cần callback cho signup nữa, vì nút signup sẽ gọi trực tiếp hàm được truyền vào
 
 class SignForm extends StatefulWidget {
@@ -32,10 +33,10 @@ class SignForm extends StatefulWidget {
     required this.isRePasswordVisible, // Đảm bảo tham số này tồn tại
     required this.initialProvinceName, // Đổi tên tham số
     required this.initialDistrictName, // Đổi tên tham số
-    required this.initialWardName,     // Đổi tên tham số
+    required this.initialWardName, // Đổi tên tham số
     // Callbacks/Functions
     required this.onLocationSelected, // Hàm xử lý chọn địa điểm (mong đợi nhận TÊN)
-    required this.onSignup,           // Hàm xử lý đăng ký khi nhấn nút
+    required this.onSignup, // Hàm xử lý đăng ký khi nhấn nút
     required this.togglePasswordVisibility, // Hàm toggle ẩn/hiện mk
     required this.toggleRePasswordVisibility, // Hàm toggle ẩn/hiện nhập lại mk
     required this.onTextChanged, // Hàm xử lý khi text thay đổi (để clear lỗi)
@@ -58,7 +59,6 @@ class SignForm extends StatefulWidget {
   final String? errorMessage; // Đảm bảo biến final này tồn tại
   final bool isPasswordVisible; // Đảm bảo biến final này tồn tại
   final bool isRePasswordVisible; // Đảm bảo biến final này tồn tại
-
 
   // Biến lưu trữ initial values cho LocationSelection (DÙNG TÊN MỚI)
   final String initialProvinceName;
@@ -91,11 +91,14 @@ class _SignFormState extends State<SignForm> {
         borderRadius: BorderRadius.circular(5),
       ),
       // *** Bọc nội dung bằng SingleChildScrollView ***
-      child: SingleChildScrollView( // Thêm SingleChildScrollView ở đây
+      child: SingleChildScrollView(
+        // Thêm SingleChildScrollView ở đây
         child: Column(
-          mainAxisSize: MainAxisSize.min, // Giúp column chỉ chiếm không gian cần thiết
+          mainAxisSize:
+              MainAxisSize.min, // Giúp column chỉ chiếm không gian cần thiết
           children: [
-            const Text( // Sử dụng const
+            const Text(
+              // Sử dụng const
               'Đăng ký',
               style: TextStyle(
                 fontSize: 20,
@@ -129,14 +132,16 @@ class _SignFormState extends State<SignForm> {
             const SizedBox(height: 10), // Sử dụng const
             TextFormField(
               controller: widget.nameController,
-              focusNode: widget.nameFocusNode, // Sử dụng FocusNode được truyền vào
+              focusNode:
+                  widget.nameFocusNode, // Sử dụng FocusNode được truyền vào
               keyboardType: TextInputType.text,
               textInputAction: TextInputAction.next,
               onChanged: (value) {
                 widget.onTextChanged();
               },
               onFieldSubmitted: (_) {
-                 FocusScope.of(context).requestFocus(widget.addressFocusNode); // Yêu cầu focus node tiếp theo
+                FocusScope.of(context).requestFocus(
+                    widget.addressFocusNode); // Yêu cầu focus node tiếp theo
               },
               decoration: InputDecoration(
                 hintText: 'Nhập tên người dùng',
@@ -150,7 +155,8 @@ class _SignFormState extends State<SignForm> {
             const SizedBox(height: 10), // Sử dụng const
             // Truyền hàm onLocationSelected và initial values được nhận qua constructor
             LocationSelection(
-              onLocationSelected: widget.onLocationSelected, // Truyền callback nhận TÊN
+              onLocationSelected:
+                  widget.onLocationSelected, // Truyền callback nhận TÊN
               // TRUYỀN INITIAL NAMES VỚI TÊN THAM SỐ ĐÃ SỬA TRONG LOCATIONSELECTION
               initialProvinceName: widget.initialProvinceName,
               initialDistrictName: widget.initialDistrictName,
@@ -159,14 +165,20 @@ class _SignFormState extends State<SignForm> {
             const SizedBox(height: 10), // Sử dụng const
             TextFormField(
               controller: widget.addressController,
-              focusNode: widget.addressFocusNode, // Sử dụng FocusNode được truyền vào
+              focusNode:
+                  widget.addressFocusNode, // Sử dụng FocusNode được truyền vào
               keyboardType: TextInputType.text,
               textInputAction: TextInputAction.next,
-               onChanged: (value) {
-                 widget.onTextChanged();
+              onChanged: (value) {
+                widget.onTextChanged();
+                // Force refresh to show error if comma is typed
+                if (value.contains(',')) {
+                  setState(() {});
+                }
               },
               onFieldSubmitted: (_) {
-                 FocusScope.of(context).requestFocus(widget.passwordFocusNode); // Yêu cầu focus node tiếp theo
+                FocusScope.of(context).requestFocus(
+                    widget.passwordFocusNode); // Yêu cầu focus node tiếp theo
               },
               decoration: InputDecoration(
                 hintText: 'Nhập địa chỉ chi tiết khác',
@@ -175,18 +187,23 @@ class _SignFormState extends State<SignForm> {
                   color: Colors.grey[600],
                 ),
                 border: const OutlineInputBorder(), // Sử dụng const
+                // Add error message if input contains comma
+                errorText: widget.addressController.text.contains(',')
+                    ? 'Địa chỉ chi tiết không được chứa dấu phẩy (,)'
+                    : null,
               ),
             ),
             const SizedBox(height: 10), // Sử dụng const
             TextFormField(
               controller: widget.passwordController,
-              focusNode: widget.passwordFocusNode, // Sử dụng FocusNode được truyền vào
+              focusNode:
+                  widget.passwordFocusNode, // Sử dụng FocusNode được truyền vào
               keyboardType: TextInputType.text,
               textInputAction: TextInputAction.next,
               // Sử dụng state visibility được truyền vào
               obscureText: !widget.isPasswordVisible,
-               onChanged: (value) {
-                 widget.onTextChanged();
+              onChanged: (value) {
+                widget.onTextChanged();
               },
               decoration: InputDecoration(
                 hintText: 'Mật khẩu',
@@ -197,9 +214,10 @@ class _SignFormState extends State<SignForm> {
                 // Thêm helper text để chỉ dẫn yêu cầu về mật khẩu
                 helperText: 'Mật khẩu phải có ít nhất 8 ký tự',
                 helperStyle: TextStyle(
-                  color: widget.passwordController.text.isNotEmpty && 
-                         widget.passwordController.text.length < 8 ? 
-                         Colors.red : Colors.grey[600],
+                  color: widget.passwordController.text.isNotEmpty &&
+                          widget.passwordController.text.length < 8
+                      ? Colors.red
+                      : Colors.grey[600],
                 ),
                 // Gọi hàm toggle visibility được truyền vào
                 suffixIcon: IconButton(
@@ -217,17 +235,19 @@ class _SignFormState extends State<SignForm> {
             const SizedBox(height: 10), // Sử dụng const
             TextFormField(
               controller: widget.rePasswordController,
-              focusNode: widget.rePasswordFocusNode, // Sử dụng FocusNode được truyền vào
+              focusNode: widget
+                  .rePasswordFocusNode, // Sử dụng FocusNode được truyền vào
               keyboardType: TextInputType.text,
               textInputAction: TextInputAction.done, // Hành động cuối cùng
               // Sử dụng state visibility được truyền vào
               obscureText: !widget.isRePasswordVisible,
-               onChanged: (value) {
-                 widget.onTextChanged();
+              onChanged: (value) {
+                widget.onTextChanged();
               },
               // Khi hoàn thành field cuối cùng, có thể gọi hàm đăng ký
-               onFieldSubmitted: (_) {
-                if (!widget.isLoading) { // Kiểm tra isLoading được truyền vào
+              onFieldSubmitted: (_) {
+                if (!widget.isLoading) {
+                  // Kiểm tra isLoading được truyền vào
                   widget.onSignup(); // Gọi hàm đăng ký được truyền vào
                 }
               },
@@ -237,7 +257,7 @@ class _SignFormState extends State<SignForm> {
                   Icons.lock_outline,
                   color: Colors.grey[600],
                 ),
-                 // Gọi hàm toggle visibility được truyền vào
+                // Gọi hàm toggle visibility được truyền vào
                 suffixIcon: IconButton(
                   onPressed: widget.toggleRePasswordVisibility,
                   icon: Icon(
@@ -264,30 +284,36 @@ class _SignFormState extends State<SignForm> {
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 18), // Sử dụng const
-                  backgroundColor: const Color.fromARGB(255, 234, 29, 7), // Sử dụng const
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 18), // Sử dụng const
+                  backgroundColor:
+                      const Color.fromARGB(255, 234, 29, 7), // Sử dụng const
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
                 // Nút bị disable nếu isLoading là true (state được truyền vào)
                 onPressed: widget.isLoading ? null : widget.onSignup,
-                child: widget.isLoading // Sử dụng state isLoading được truyền vào
-                    ? const SizedBox( // Sử dụng const
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Text( // Sử dụng const
-                        'Đăng ký',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
+                child:
+                    widget.isLoading // Sử dụng state isLoading được truyền vào
+                        ? const SizedBox(
+                            // Sử dụng const
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text(
+                            // Sử dụng const
+                            'Đăng ký',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
               ),
             ),
             // Thêm phần "đã có tài khoản"
@@ -297,7 +323,8 @@ class _SignFormState extends State<SignForm> {
                 // Điều hướng vẫn dùng context từ widget
                 Navigator.pushReplacementNamed(context, '/login');
               },
-              child: const Text( // Sử dụng const
+              child: const Text(
+                // Sử dụng const
                 'Bạn đã có tài khoản? Đăng nhập ngay!',
                 style: TextStyle(
                   color: Colors.blueAccent,

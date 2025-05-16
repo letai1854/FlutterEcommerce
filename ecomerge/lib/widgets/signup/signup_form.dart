@@ -60,6 +60,10 @@ class PersistentSignupForm extends StatelessWidget {
                     color: Colors.grey[600],
                   ),
                   border: const OutlineInputBorder(),
+                  // Add error text if input contains comma
+                  errorText: state.addressController.text.contains(',')
+                      ? 'Địa chỉ chi tiết không được chứa dấu phẩy (,)'
+                      : null,
                 ),
               ),
               const SizedBox(height: 16),
