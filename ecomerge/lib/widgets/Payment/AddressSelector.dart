@@ -580,6 +580,9 @@ class _AddressSelectorState extends State<AddressSelector> {
                   if (value.trim().length < 5) {
                     return 'Địa chỉ quá ngắn';
                   }
+                  if (value.contains(',')) {
+                    return 'Địa chỉ chi tiết không được chứa dấu phẩy (,)';
+                  }
                   return null;
                 },
               ),
