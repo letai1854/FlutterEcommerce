@@ -206,7 +206,13 @@ class _PageSignupState extends State<PageSignup> {
           .requestFocus(); // Focus re-password field on mismatch
       return;
     }
-
+    if (_addressController.text.contains(',')) {
+      setState(() {
+        // _errorMessage = 'Địa chỉ chi tiết không được chứa dấu phẩy (,)';
+      });
+      _addressFocusNode.requestFocus();
+      return;
+    }
     // Optional: Validate password complexity (add your logic here if needed)
 
     // Set loading state

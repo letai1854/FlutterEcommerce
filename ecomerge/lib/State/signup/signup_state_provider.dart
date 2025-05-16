@@ -85,6 +85,11 @@ class SignupStateProvider extends BaseStateProvider {
       setError('Vui lòng nhập địa chỉ chi tiết');
       return false;
     }
+    // Add comma validation
+    if (addressController.text.contains(',')) {
+      setError('Địa chỉ chi tiết không được chứa dấu phẩy (,)');
+      return false;
+    }
 
     if (passwordController.text.isEmpty) {
       setError('Vui lòng nhập mật khẩu');
