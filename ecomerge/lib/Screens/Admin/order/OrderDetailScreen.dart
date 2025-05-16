@@ -26,6 +26,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   List<OrderStatusHistoryDTO> _statusHistory = [];
   bool _loadingHistory = false;
 
+  // Add custom currency formatter
+  String formatCurrency(double amount) {
+    final format = amount.toStringAsFixed(0).replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},');
+    return '$format đ';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -451,12 +458,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const Divider(),
-              _buildDetailRow('Tổng tiền hàng', NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0).format(order.subtotal ?? 0)),
-              _buildDetailRow('Tiền giảm giá Coupon', NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0).format(order.couponDiscount ?? 0)),
-              _buildDetailRow('Tiền sử dụng điểm', NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0).format(order.pointsDiscount ?? 0)),
-              _buildDetailRow('Phí vận chuyển', NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0).format(order.shippingFee ?? 0)),
-              _buildDetailRow('Thuế', NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0).format(order.tax ?? 0)),
-              _buildDetailRow('Tổng thanh toán', NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0).format(order.totalAmount ?? 0)),
+              _buildDetailRow('Tổng tiền hàng', formatCurrency(order.subtotal ?? 0)),
+              _buildDetailRow('Tiền giảm giá Coupon', formatCurrency(order.couponDiscount ?? 0)),
+              _buildDetailRow('Tiền sử dụng điểm', formatCurrency(order.pointsDiscount ?? 0)),
+              _buildDetailRow('Phí vận chuyển', formatCurrency(order.shippingFee ?? 0)),
+              _buildDetailRow('Thuế', formatCurrency(order.tax ?? 0)),
+              _buildDetailRow('Tổng thanh toán', formatCurrency(order.totalAmount ?? 0)),
               _buildDetailRow('Điểm tích lũy', '${order.pointsEarned ?? 0} điểm'),
               
               const SizedBox(height: 20),
@@ -515,10 +522,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text('Số lượng: ${item.quantity}', style: TextStyle(fontSize: 13)),
-                                    Text('Giá lúc mua: ${NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0).format(item.priceAtPurchase)}', style: TextStyle(fontSize: 13)),
+                                    Text('Giá lúc mua: ${formatCurrency(item.priceAtPurchase)}', style: TextStyle(fontSize: 13)),
                                     if (item.productDiscountPercentage != null && item.productDiscountPercentage! > 0)
                                       Text('Giảm giá SP: ${item.productDiscountPercentage!.toStringAsFixed(0)}%', style: TextStyle(fontSize: 13)),
-                                    Text('Thành tiền: ${NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0).format(item.lineTotal)}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                                    Text('Thành tiền: ${formatCurrency(item.lineTotal)}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
                                   ],
                                 ),
                               ),

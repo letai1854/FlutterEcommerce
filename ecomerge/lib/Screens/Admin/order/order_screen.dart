@@ -84,6 +84,13 @@ class _OrderScreenState extends State<OrderScreen> {
     return _paymentStatusDisplay[status.toLowerCase()] ?? status;
   }
 
+  // Add custom currency formatter
+  String formatCurrency(double amount) {
+    final format = amount.toStringAsFixed(0).replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},');
+    return '$format đ';
+  }
+
   // Updated method to load orders from API
   Future<void> _loadOrders() async {
     // Save current scroll position if available
@@ -452,7 +459,7 @@ class _OrderScreenState extends State<OrderScreen> {
                                         return Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Text('Tổng tiền: ${NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0).format(order.totalAmount ?? 0)}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                                            Text('Tổng tiền: ${formatCurrency(order.totalAmount ?? 0)}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
                                             Text('TT TT: ${_getPaymentStatusDisplay(order.paymentStatus)}', style: TextStyle(fontSize: 13)),
                                           ],
                                         );
@@ -461,7 +468,7 @@ class _OrderScreenState extends State<OrderScreen> {
                                           children: [
                                             Expanded(
                                               flex: 1,
-                                              child: Text('Tổng tiền: ${NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0).format(order.totalAmount ?? 0)}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)
+                                              child: Text('Tổng tiền: ${formatCurrency(order.totalAmount ?? 0)}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)
                                             ),
                                             Expanded(
                                               flex: 1,
