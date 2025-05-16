@@ -66,9 +66,8 @@ class _CarouseldesktopState extends State<Carouseldesktop> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(3), // Bo tròn góc
                       image: DecorationImage(
-                        image: AssetImage(kIsWeb
-                            ? 'assets/poster7.png'
-                            : 'assets/poster7.png'), // Conditional path
+                        image: AssetImage(
+                            'assets/poster7.png'), // Conditional path
                         fit: BoxFit.cover,
                         alignment: Alignment.center,
                       ),
@@ -83,9 +82,8 @@ class _CarouseldesktopState extends State<Carouseldesktop> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(3), // Bo tròn góc
                       image: DecorationImage(
-                        image: AssetImage(kIsWeb
-                            ? 'assets/poster10.png'
-                            : 'assets/poster10.png'), // Conditional path
+                        image: AssetImage(
+                            'assets/poster10.png'), // Conditional path
                         fit: BoxFit.cover,
                         alignment: Alignment.center,
                       ),
