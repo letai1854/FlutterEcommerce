@@ -406,4 +406,13 @@ public class OrderServiceImpl implements OrderService {
 
         return orderPage.map(order -> orderMapper.toOrderDTO(order));
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrderDTO getOrderByIdForAdmin(Integer orderId) {
+        logger.info("Admin fetching order by ID: {}", orderId);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("Order not found with ID: " + orderId));
+        return orderMapper.toOrderDTO(order);
+    }
 }

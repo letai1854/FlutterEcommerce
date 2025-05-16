@@ -101,10 +101,24 @@ public class OrderController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated.");
         }
         try {
-            OrderDTO order = orderService.getOrderByIdForCurrentUser(userDetails.getUsername(), orderId);
+            // Check if user has ADMIN role
+            boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+            
+            OrderDTO order;
+            if (isAdmin) {
+                // If admin, get order regardless of ownership
+                order = orderService.getOrderByIdForAdmin(orderId);
+                logger.info("Admin {} accessed order ID {}", userDetails.getUsername(), orderId);
+            } else {
+                // If not admin, only get the order if it belongs to the user
+                order = orderService.getOrderByIdForCurrentUser(userDetails.getUsername(), orderId);
+                logger.info("User {} accessed their order ID {}", userDetails.getUsername(), orderId);
+            }
+            
             adjustDatesToGmtPlus7(order); // Adjust dates
             return ResponseEntity.ok(order);
-        } catch (IllegalArgumentException e) { // Or a custom NotFoundException
+        } catch (IllegalArgumentException | jakarta.persistence.EntityNotFoundException e) {
             logger.warn("Order with ID {} not found for user {}: {}", orderId, userDetails.getUsername(), e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         } catch (Exception e) {
@@ -206,6 +220,22 @@ public class OrderController {
         } catch (Exception e) {
             logger.error("Error during admin order search: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred while searching orders.");
+        }
+    }
+
+    @GetMapping("/admin/{orderId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> getOrderDetailsForAdmin(@PathVariable Integer orderId) {
+        try {
+            OrderDTO order = orderService.getOrderByIdForAdmin(orderId);
+            adjustDatesToGmtPlus7(order); // Adjust dates
+            return ResponseEntity.ok(order);
+        } catch (IllegalArgumentException | jakarta.persistence.EntityNotFoundException e) {
+            logger.warn("Order with ID {} not found for admin access: {}", orderId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error fetching order ID {} for admin: {}", orderId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred while fetching the order.");
         }
     }
 }
