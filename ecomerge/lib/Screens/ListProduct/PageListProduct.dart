@@ -41,6 +41,9 @@ class _PageListProductState extends State<PageListProduct> {
   bool _isCurrentlyLoadingNextPage = false;
   // --------------------
 
+  // Thêm Map cache cho widget sản phẩm ở cấp độ PageList
+  final Map<String, Widget> _productWidgetCache = {};
+
   // Listener for AppDataService changes (for categories)
   void _onAppDataServiceChange() {
     print("AppDataService categories updated, rebuilding PageListProduct");
@@ -113,7 +116,11 @@ class _PageListProductState extends State<PageListProduct> {
     _scrollController.dispose();
     AppDataService().removeListener(_onAppDataServiceChange);
     _productStorage.removeListener(_onProductStorageChange);
+    
+    // Xóa cache khi thoát khỏi trang
+    _productWidgetCache.clear();
     _productService.dispose();
+    
     super.dispose();
   }
 
@@ -161,6 +168,9 @@ class _PageListProductState extends State<PageListProduct> {
   void updateSelectedCategory(int categoryId) {
     if (selectedCategoryId == categoryId) return;
 
+    // Xóa cache khi chuyển sang category mới
+    _clearCacheForCategory(categoryId);
+
     // Check if we already have cached data for this category
     final bool hasCachedData = _productStorage.hasDataInCache(
       categoryId: categoryId,
@@ -200,6 +210,24 @@ class _PageListProductState extends State<PageListProduct> {
     });
   }
 
+  // Xóa cache cho category được chọn
+  void _clearCacheForCategory(int categoryId) {
+    final String categoryPrefix = 'category_${categoryId}_';
+    
+    // Tìm và xóa tất cả cache liên quan đến category này
+    final keysToRemove = _productWidgetCache.keys
+        .where((key) => key.startsWith(categoryPrefix))
+        .toList();
+        
+    if (kDebugMode && keysToRemove.isNotEmpty) {
+      print('Clearing ${keysToRemove.length} cached items for category $categoryId');
+    }
+    
+    for (final key in keysToRemove) {
+      _productWidgetCache.remove(key);
+    }
+  }
+
   // Modify isInitialLoading to respect cache status
   bool get _isInitialLoading {
     // Don't show loading if we have cached data and are showing it immediately
@@ -215,17 +243,36 @@ class _PageListProductState extends State<PageListProduct> {
 
   // Update sort method
   void updateSortMethod(String method) {
+    String newSortDir;
     if (currentSortMethod == method) {
       // Toggle sort direction if same method
-      setState(() {
-        currentSortDir = currentSortDir == 'asc' ? 'desc' : 'asc';
-      });
+      newSortDir = currentSortDir == 'asc' ? 'desc' : 'asc';
     } else {
-      setState(() {
-        currentSortMethod = method;
-        currentSortDir = 'desc'; // Default to descending for new sort method
-      });
+      newSortDir = 'desc'; // Default to descending for new sort method
     }
+
+    // Xóa cache cho category hiện tại khi thay đổi sort
+    final String categoryPrefix = 'category_${selectedCategoryId}_${currentSortMethod}_${currentSortDir}';
+    final String newPrefix = 'category_${selectedCategoryId}_${method}_${newSortDir}';
+    
+    if (kDebugMode) {
+      print('Sort changing from $categoryPrefix to $newPrefix, clearing related cache');
+    }
+    
+    // Tìm và xóa tất cả cache liên quan đến category với sort method cũ
+    final keysToRemove = _productWidgetCache.keys
+        .where((key) => key.startsWith(categoryPrefix))
+        .toList();
+    
+    for (final key in keysToRemove) {
+      _productWidgetCache.remove(key);
+    }
+    
+    setState(() {
+      currentSortMethod = method;
+      currentSortDir = newSortDir;
+    });
+    
     // Reload products with new sort
     _loadInitialProducts();
   }
@@ -380,6 +427,7 @@ class _PageListProductState extends State<PageListProduct> {
           canLoadMoreProducts: _canLoadMore,
           isShowingCachedContent: _isShowingCachedContent,
           isOnline: _productStorage.isOnline, // Pass online status
+          productWidgetCache: _productWidgetCache, // Truyền cache xuống CatalogProduct
         );
 
         if (screenWidth < 768) {

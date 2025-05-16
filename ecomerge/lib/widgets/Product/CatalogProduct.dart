@@ -42,6 +42,9 @@ class CatalogProduct extends StatefulWidget {
   // Add property to receive online status from parent
   final bool isOnline;
 
+  // Thêm tham số nhận cache từ PageListProduct
+  final Map<String, Widget> productWidgetCache;
+
 
   const CatalogProduct({
     super.key,
@@ -60,6 +63,7 @@ class CatalogProduct extends StatefulWidget {
      required this.canLoadMoreProducts, // <-- Thêm vào constructor
      required this.isShowingCachedContent, // Add this parameter
      required this.isOnline, // Add this parameter
+     required this.productWidgetCache, // Thêm tham số này
   });
 
   @override
@@ -241,6 +245,14 @@ class _CatalogProductState extends State<CatalogProduct> {
       if (widget.isOnline && !oldWidget.isOnline) {
         _appDataService.refreshImagesAfterNetworkRestoration();
       }
+    }
+
+    // Nếu category, sort method hoặc direction thay đổi
+    if (widget.selectedCategoryId != oldWidget.selectedCategoryId ||
+        widget.currentSortMethod != oldWidget.currentSortMethod ||
+        widget.currentSortDir != oldWidget.currentSortDir) {
+        
+      // Không cần xóa cache ở đây vì đã xử lý ở PageListProduct
     }
   }
 
@@ -493,7 +505,11 @@ class _CatalogProductState extends State<CatalogProduct> {
                                     crossSpace: spacing,
                                     isProductsLoading: widget.isProductsLoading,
                                     canLoadMoreProducts: widget.canLoadMoreProducts,
-                                    isShowingCachedContent: false, // Always set to false since we don't use cached data
+                                    isShowingCachedContent: widget.isShowingCachedContent,
+                                    categoryId: widget.selectedCategoryId, // Truyền ID category
+                                    sortMethod: widget.currentSortMethod, // Truyền phương thức sort
+                                    sortDir: widget.currentSortDir, // Truyền hướng sort
+                                    productWidgetCache: widget.productWidgetCache, // Truyền cache
                                   ),
                                 ),
                               );
