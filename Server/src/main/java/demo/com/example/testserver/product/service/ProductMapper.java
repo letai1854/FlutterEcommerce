@@ -120,6 +120,27 @@ public class ProductMapper {
                     .map(variantDto -> mapToProductVariantEntity(variantDto, product))
                     .collect(Collectors.toList());
             product.setVariants(variants);
+
+            // Adjust zero-priced variants to match the price of the first variant
+            if (!product.getVariants().isEmpty()) {
+                BigDecimal firstVariantPrice = product.getVariants().get(0).getPrice();
+                
+                // Ensure firstVariantPrice is not null.
+                // CreateProductVariantDTO.price has @NotNull and @Positive constraints,
+                // so it should not be null or zero if validation is enforced.
+                if (firstVariantPrice != null) {
+                    for (ProductVariant variant : product.getVariants()) {
+                        // Check if variant's price is zero.
+                        // Note: CreateProductVariantDTO currently has @Positive constraint on price,
+                        // meaning price should be > 0. This logic applies if a zero price
+                        // variant reaches this stage (e.g., if DTO validation changes or is bypassed).
+                        if (variant.getPrice() != null && variant.getPrice().compareTo(BigDecimal.ZERO) == 0) {
+                            variant.setPrice(firstVariantPrice);
+                        }
+                    }
+                }
+            }
+
         } else {
             product.setVariants(new ArrayList<>());
         }

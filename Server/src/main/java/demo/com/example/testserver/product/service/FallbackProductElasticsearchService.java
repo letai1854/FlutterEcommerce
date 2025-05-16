@@ -10,6 +10,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.Collections;
 import java.util.List;
@@ -23,6 +24,9 @@ import java.util.List;
 public class FallbackProductElasticsearchService {
 
     private static final Logger logger = LoggerFactory.getLogger(FallbackProductElasticsearchService.class);
+    
+    @Value("${app.search.fulltext.enabled:true}")
+    private boolean fullTextSearchEnabled;
 
     public FallbackProductElasticsearchService() {
         logger.info("FallbackProductElasticsearchService is active (Elasticsearch not configured, disabled, or unavailable).");
@@ -54,13 +58,27 @@ public class FallbackProductElasticsearchService {
         logger.debug("Elasticsearch fallback - Not updating product enabled status for ID: {}", productId);
     }
 
+    /**
+     * Search for product IDs using database full-text search instead of Elasticsearch.
+     * Returns null to signal the calling service to use database search with MATCH AGAINST.
+     * 
+     * @param search The search term
+     * @return null to indicate fallback to database search
+     */
     public List<Long> searchProductIds(String search) {
-        logger.debug("Elasticsearch fallback - Not searching product IDs for: {}", search);
-        // If a search term is provided when ES is disabled/unavailable,
-        // return null to allow ProductServiceImpl to fallback to database search.
         if (search != null && !search.trim().isEmpty()) {
+            logger.info("Elasticsearch fallback - Using MySQL Full-Text Search for term: {}", search);
+            // Return null to signal ProductServiceImpl to use database search with Full-Text Search
             return null;
         }
         return Collections.emptyList();
+    }
+    
+    /**
+     * Check if full-text search is enabled in the application properties.
+     * @return true if full-text search is enabled, false otherwise
+     */
+    public boolean isFullTextSearchEnabled() {
+        return fullTextSearchEnabled;
     }
 }

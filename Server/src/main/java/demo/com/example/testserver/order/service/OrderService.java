@@ -78,4 +78,12 @@ public interface OrderService {
      * @return Page of orders for admin
      */
     Page<OrderDTO> getOrdersForAdmin(Integer searchOrderId, Order.OrderStatus status, Date startDate, Date endDate, Pageable pageable);
+    
+    /**
+     * Gets a specific order by ID for admin users
+     * 
+     * @param orderId ID of the order to retrieve
+     * @return The requested order details
+     */
+    OrderDTO getOrderByIdForAdmin(Integer orderId);
 }
