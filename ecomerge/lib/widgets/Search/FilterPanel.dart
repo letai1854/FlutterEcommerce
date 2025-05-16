@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class FilterPanel extends StatefulWidget {
@@ -72,9 +73,24 @@ class _FilterPanelState extends State<FilterPanel> {
     if (widget.selectedBrandName != oldWidget.selectedBrandName) {
       _brandName = widget.selectedBrandName;
     }
+    
+    // Reset state if isPriceFilterApplied changed from true to false
+    // This handles the case when filters are reset after a new search
+    if (oldWidget.isPriceFilterApplied && !widget.isPriceFilterApplied) {
+      _categoryId = null;
+      _brandName = null;
+    }
   }
 
   void applyFilters() {
+    // Add debugging to see what filters are actually being applied
+    if (kDebugMode) {
+      print('Applying filters:');
+      print('- Category ID: $_categoryId');
+      print('- Brand name: $_brandName');
+      print('- Price range: ${widget.minPrice} to ${widget.maxPrice}');
+    }
+    
     // Send single selected category and brand
     widget.onFiltersApplied(
       categoryId: _categoryId,

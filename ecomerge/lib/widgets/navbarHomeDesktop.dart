@@ -355,7 +355,7 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                               // Only execute search and navigate if text isn't empty
                               if (value.trim().isNotEmpty) {
                                 // Use the centralized executeSearch method
-                                searchService.executeSearch().then((_) {
+                                searchService.executeSearch(isNewSearch: true).then((_) {
                                   Navigator.pushNamed(context, '/search');
                                 });
                               }
@@ -380,7 +380,7 @@ class _NavbarhomedesktopState extends State<Navbarhomedesktop> {
                               }
                               
                               // Call the centralized search method that clears ALL caches
-                              searchService.executeSearch().then((_) {
+                              searchService.executeSearch(isNewSearch: true).then((_) {
                                 Navigator.pushNamed(context, '/search');
                               });
                             }
