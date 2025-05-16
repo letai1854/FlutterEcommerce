@@ -55,6 +55,9 @@ class SearchProduct extends StatefulWidget {
   final bool isAppDataLoading;
   final bool isAppDataInitialized;
 
+  // Add search widget cache
+  final Map<String, Widget> searchWidgetCache;
+
   const SearchProduct({
     super.key,
     required this.current,
@@ -85,6 +88,7 @@ class SearchProduct extends StatefulWidget {
     required this.updateSortMethod,
     this.isAppDataLoading = false,
     this.isAppDataInitialized = false,
+    required this.searchWidgetCache,
   });
   
   @override
@@ -403,8 +407,12 @@ class _SearchProductState extends State<SearchProduct> {
                                 crossSpace: itemSpacing,
                                 isProductsLoading: widget.isSearching,
                                 canLoadMoreProducts: widget.canLoadMore,
-                                isShowingCachedContent: false, // Never show cached content in search
+                                isShowingCachedContent: false, // Search doesn't use cached content flag
                                 isSearchMode: true, // Essential flag to indicate search mode
+                                categoryId: -1, // Use -1 for search mode as it doesn't have a specific category
+                                sortMethod: widget.currentSortMethod,
+                                sortDir: widget.currentSortDir,
+                                productWidgetCache: widget.searchWidgetCache, // Pass the cache from widget property
                               );
                             },
                           ),

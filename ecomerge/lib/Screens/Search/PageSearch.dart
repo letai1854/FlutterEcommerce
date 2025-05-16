@@ -64,6 +64,9 @@ class _PageSearchState extends State<PageSearch> {
   bool get _isAppDataLoading => AppDataService().isLoading;
   bool get _isAppDataInitialized => AppDataService().isInitialized;
 
+  // Thêm Map cache cho widget sản phẩm ở cấp độ PageSearch
+  final Map<String, Widget> _searchWidgetCache = {};
+
   @override
   void initState() {
     super.initState();
@@ -88,6 +91,22 @@ class _PageSearchState extends State<PageSearch> {
     _executeInitialSearch();
   }
 
+  @override
+  void dispose() {
+    // Clean up resources
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    minPriceController.dispose();
+    maxPriceController.dispose();
+    _productStorage.removeListener(_onProductStorageChange);
+    _searchService.removeListener(_onSearchServiceChange);
+    
+    // Xóa cache khi thoát khỏi trang
+    _searchWidgetCache.clear();
+    
+    super.dispose();
+  }
+
   // Sync local state with SearchStateService
   void _syncWithSearchService() {
     // Get current values from search service
@@ -106,18 +125,6 @@ class _PageSearchState extends State<PageSearch> {
     maxPriceController.text = formatPrice(maxPrice);
   }
 
-  @override
-  void dispose() {
-    // Clean up resources
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
-    minPriceController.dispose();
-    maxPriceController.dispose();
-    _productStorage.removeListener(_onProductStorageChange);
-    _searchService.removeListener(_onSearchServiceChange);
-    super.dispose();
-  }
-
   // Execute search with current query if there is one
   void _executeInitialSearch() {
     final query = _searchService.currentSearchQuery;
@@ -126,6 +133,9 @@ class _PageSearchState extends State<PageSearch> {
         print('Initial search execution for: "$query"');
         print('isInitialSearch flag: ${_searchService.isInitialSearch}');
       }
+
+      // Đảm bảo xóa cache khi thực hiện tìm kiếm mới
+      _clearAllSearchCache();
 
       // Always treat initial page load as a new search to reset filters
       _searchService.executeSearch(isNewSearch: true);
@@ -255,6 +265,13 @@ class _PageSearchState extends State<PageSearch> {
       isPriceFilterApplied = true; // Mark that price filter has been explicitly applied
     });
 
+    // Đảm bảo xóa cache khi áp dụng bộ lọc mới
+    _clearAllSearchCache();
+
+    // Clear cache when applying filters
+    if (kDebugMode) print('Applying filters, clearing search results cache');
+    _searchWidgetCache.clear();
+
     // Close drawer on mobile
     if (MediaQuery.of(context).size.width < 1100) {
       Navigator.of(context).pop(); // Close drawer on mobile
@@ -274,21 +291,46 @@ class _PageSearchState extends State<PageSearch> {
 
   // Update sort method and execute search
   void updateSortMethod(String method) {
+    String newSortDir;
+    if (currentSortMethod == method) {
+      // Toggle direction if same method
+      newSortDir = currentSortDir == 'asc' ? 'desc' : 'asc';
+    } else {
+      newSortDir = 'desc'; // Default for new sort
+    }
+
+    // Đảm bảo xóa cache khi thay đổi sort
+    _clearAllSearchCache();
+    
+    if (kDebugMode) {
+      print('Search sort changed to $method/$newSortDir, clearing all search cache');
+    }
+
     setState(() {
-      if (currentSortMethod == method) {
-        // Toggle direction if same method
-        currentSortDir = currentSortDir == 'asc' ? 'desc' : 'asc';
-      } else {
-        currentSortMethod = method;
-        currentSortDir = 'desc'; // Default for new sort
-      }
+      currentSortMethod = method;
+      currentSortDir = newSortDir;
     });
+
+    // Clear cache when changing sort order
+    if (kDebugMode) print('Changing sort order, clearing search results cache');
+    _searchWidgetCache.clear();
 
     // Update search service state
     _searchService.setSort(currentSortMethod, currentSortDir);
 
     // Execute search with current parameters (sort is now included)
     _searchService.executeSearch(forceRefresh: true);
+  }
+  
+  // Helper method to ensure ALL search-related cache is cleared
+  void _clearAllSearchCache() {
+    if (kDebugMode) print('Clearing ALL search result widget cache');
+    
+    // Xóa cache trong SearchWidgetCache
+    _searchWidgetCache.clear();
+    
+    // Xóa cache trong PaginatedProductGrid
+    PaginatedProductGrid.clearSearchCache();
   }
 
   @override
@@ -352,6 +394,8 @@ class _PageSearchState extends State<PageSearch> {
           // Additional flags
           isAppDataLoading: isAppDataLoading,
           isAppDataInitialized: isAppDataInitialized,
+          // Add search widget cache to pass to SearchProduct
+          searchWidgetCache: _searchWidgetCache,
         );
 
         if (screenWidth < 768) {
