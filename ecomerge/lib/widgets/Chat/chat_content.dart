@@ -34,39 +34,84 @@ class ChatContent extends StatefulWidget {
 }
 
 class _ChatContentState extends State<ChatContent> {
+  // Track previous scroll position to detect if we're near the bottom
+  bool _wasAtBottom = true;
+  int _previousMessageCount = 0;
+
   @override
   void initState() {
     super.initState();
+    _previousMessageCount = widget.messages.length;
+    // Initial scroll to bottom after first layout
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.scrollController.hasClients) {
-        widget.scrollController.jumpTo(widget.scrollController.position.maxScrollExtent);
-      }
+      _scrollToBottom(animate: false);
     });
+  }
+
+  // Helper method to check if scroll is at or near bottom
+  bool _isScrollAtBottom() {
+    if (!widget.scrollController.hasClients) return true;
+
+    final ScrollPosition position = widget.scrollController.position;
+    // Consider "at bottom" if within 20 pixels of the end
+    return position.pixels >= position.maxScrollExtent - 20;
+  }
+
+  // Helper method to scroll to bottom
+  void _scrollToBottom({bool animate = true}) {
+    if (!widget.scrollController.hasClients) return;
+
+    final double maxScroll = widget.scrollController.position.maxScrollExtent;
+    if (animate) {
+      widget.scrollController.animateTo(
+        maxScroll,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    } else {
+      widget.scrollController.jumpTo(maxScroll);
+    }
   }
 
   @override
   void didUpdateWidget(covariant ChatContent oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.messages.length != oldWidget.messages.length && !widget.isLoadingMoreMessages) {
-      bool isNewMessageAddedAtEnd = widget.messages.length > oldWidget.messages.length;
-      if (isNewMessageAddedAtEnd) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (widget.scrollController.hasClients) {
-            widget.scrollController.animateTo(
-              widget.scrollController.position.maxScrollExtent,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOut,
-            );
-          }
-        });
-      }
+
+    // Check if we were near the bottom before update
+    _wasAtBottom = _isScrollAtBottom();
+
+    // Handle new messages being added
+    if (widget.messages.length != _previousMessageCount) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // If we're loading messages at the top (older messages), don't scroll
+        if (widget.isLoadingMoreMessages &&
+            widget.messages.length > _previousMessageCount) {
+          // Don't scroll when loading older messages
+          return;
+        }
+
+        // Auto-scroll if:
+        // 1. New messages were added AND
+        // 2. Either we were already at the bottom OR a message was sent by the current user
+        if (widget.messages.length > _previousMessageCount &&
+            (_wasAtBottom ||
+                (widget.messages.isNotEmpty &&
+                    widget.messages.last.senderId ==
+                        widget.currentUserId.toString()))) {
+          _scrollToBottom();
+        }
+
+        // Update count for next comparison
+        _previousMessageCount = widget.messages.length;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final String partnerName = widget.chatPartnerData['name'] ?? 'User';
-    final Future<String?> partnerAvatarUrlFuture = widget.chatPartnerData['avatar'] as Future<String?>;
+    final Future<String?> partnerAvatarUrlFuture =
+        widget.chatPartnerData['avatar'] as Future<String?>;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -77,9 +122,11 @@ class _ChatContentState extends State<ChatContent> {
         titleSpacing: 0,
         title: Row(
           children: [
-            if (MediaQuery.of(context).size.width < 768 && widget.onAppBarBackButtonPressed != null)
+            if (MediaQuery.of(context).size.width < 768 &&
+                widget.onAppBarBackButtonPressed != null)
               IconButton(
-                icon: Icon(Icons.arrow_back_ios_new, color: Colors.grey[700], size: 20),
+                icon: Icon(Icons.arrow_back_ios_new,
+                    color: Colors.grey[700], size: 20),
                 onPressed: widget.onAppBarBackButtonPressed,
               )
             else
@@ -92,12 +139,17 @@ class _ChatContentState extends State<ChatContent> {
                 String? resolvedAvatarUrl;
 
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  partnerAvatarImage = const AssetImage('assets/default_avatar.png');
-                } else if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
-                  partnerAvatarImage = const AssetImage('assets/default_avatar.png');
+                  partnerAvatarImage =
+                      const AssetImage('assets/default_avatar.png');
+                } else if (snapshot.hasError ||
+                    !snapshot.hasData ||
+                    snapshot.data == null) {
+                  partnerAvatarImage =
+                      const AssetImage('assets/default_avatar.png');
                 } else {
                   resolvedAvatarUrl = snapshot.data!;
-                  if (resolvedAvatarUrl.startsWith('http://') || resolvedAvatarUrl.startsWith('https://')) {
+                  if (resolvedAvatarUrl.startsWith('http://') ||
+                      resolvedAvatarUrl.startsWith('https://')) {
                     partnerAvatarImage = NetworkImage(resolvedAvatarUrl);
                     isPartnerAvatarNetwork = true;
                   } else {
@@ -108,10 +160,10 @@ class _ChatContentState extends State<ChatContent> {
                 return CircleAvatar(
                   backgroundImage: partnerAvatarImage,
                   onBackgroundImageError: isPartnerAvatarNetwork
-                    ? (exception, stackTrace) {
-                        // print('Error loading partner network avatar: $exception');
-                      }
-                    : null,
+                      ? (exception, stackTrace) {
+                          // print('Error loading partner network avatar: $exception');
+                        }
+                      : null,
                   radius: 18,
                   backgroundColor: Colors.grey[300],
                 );
@@ -125,7 +177,10 @@ class _ChatContentState extends State<ChatContent> {
                 children: [
                   Text(
                     partnerName,
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.black87),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -150,7 +205,8 @@ class _ChatContentState extends State<ChatContent> {
                 : ListView.builder(
                     controller: widget.scrollController,
                     padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    itemCount: widget.messages.length + (widget.isLoadingMoreMessages ? 1 : 0),
+                    itemCount: widget.messages.length +
+                        (widget.isLoadingMoreMessages ? 1 : 0),
                     itemBuilder: (context, index) {
                       if (widget.isLoadingMoreMessages && index == 0) {
                         return const Center(
@@ -160,9 +216,32 @@ class _ChatContentState extends State<ChatContent> {
                           ),
                         );
                       }
-                      final messageIndex = widget.isLoadingMoreMessages ? index - 1 : index;
+                      final messageIndex =
+                          widget.isLoadingMoreMessages ? index - 1 : index;
                       final message = widget.messages[messageIndex];
-                      final bool isMe = message.senderId == widget.currentUserId.toString();
+                      final bool isMe =
+                          message.senderId == widget.currentUserId.toString();
+
+                      // For image messages, add a listener to scroll when loaded
+                      if (message.imageUrl != null &&
+                          message.imageUrl!.isNotEmpty &&
+                          messageIndex == widget.messages.length - 1) {
+                        return ChatBubble(
+                          message: message,
+                          isMe: isMe,
+                          chatService: widget.chatService,
+                          onImageLoaded: _wasAtBottom
+                              ? () {
+                                  // Scroll to bottom after image loads
+                                  WidgetsBinding.instance
+                                      .addPostFrameCallback((_) {
+                                    _scrollToBottom();
+                                  });
+                                }
+                              : null,
+                        );
+                      }
+
                       return ChatBubble(
                         message: message,
                         isMe: isMe,
@@ -182,13 +261,21 @@ class _ChatContentState extends State<ChatContent> {
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
       decoration: BoxDecoration(
         color: Colors.grey[100],
-        border: Border(top: BorderSide(color: Colors.grey.shade300, width: 0.5)),
+        border:
+            Border(top: BorderSide(color: Colors.grey.shade300, width: 0.5)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           IconButton(
-            onPressed: widget.onImagePickerRequested,
+            onPressed: () {
+              widget.onImagePickerRequested().then((_) {
+                // Ensure we scroll after image is sent
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _scrollToBottom();
+                });
+              });
+            },
             icon: Icon(Icons.image_outlined, color: Colors.deepOrange),
             tooltip: 'Gửi ảnh',
           ),
@@ -202,14 +289,17 @@ class _ChatContentState extends State<ChatContent> {
                   hintStyle: TextStyle(color: Colors.grey[500], fontSize: 15),
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 10.0),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20.0),
-                    borderSide: BorderSide(color: Colors.grey.shade300, width: 0.5),
+                    borderSide:
+                        BorderSide(color: Colors.grey.shade300, width: 0.5),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20.0),
-                    borderSide: BorderSide(color: Colors.grey.shade300, width: 0.5),
+                    borderSide:
+                        BorderSide(color: Colors.grey.shade300, width: 0.5),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20.0),
@@ -220,17 +310,33 @@ class _ChatContentState extends State<ChatContent> {
                 style: TextStyle(fontSize: 15),
                 maxLines: null,
                 textInputAction: TextInputAction.send,
-                onSubmitted: widget.onMessageSubmitted,
+                onSubmitted: (text) {
+                  if (text.trim().isNotEmpty) {
+                    widget.onMessageSubmitted(text);
+                    // Ensure we scroll after sending
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _scrollToBottom();
+                    });
+                  }
+                },
               ),
             ),
           ),
           IconButton(
-            onPressed: () => widget.textController.text.trim().isNotEmpty
-                ? widget.onMessageSubmitted(widget.textController.text)
-                : null,
+            onPressed: () {
+              if (widget.textController.text.trim().isNotEmpty) {
+                widget.onMessageSubmitted(widget.textController.text);
+                // Ensure we scroll after sending
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _scrollToBottom();
+                });
+              }
+            },
             icon: Icon(
               Icons.send,
-              color: widget.textController.text.trim().isNotEmpty ? Colors.deepOrange : Colors.grey[400],
+              color: widget.textController.text.trim().isNotEmpty
+                  ? Colors.deepOrange
+                  : Colors.grey[400],
             ),
             tooltip: 'Gửi',
           ),

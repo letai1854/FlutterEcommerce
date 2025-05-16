@@ -1,19 +1,21 @@
-import 'package:e_commerce_app/models/chat/chat_message_ui.dart'; // Changed import
-import 'package:e_commerce_app/services/chat_service.dart'; 
+import 'package:e_commerce_app/models/chat/chat_message_ui.dart';
+import 'package:e_commerce_app/services/chat_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For formatting time
 
 class ChatBubble extends StatelessWidget {
   const ChatBubble({
     Key? key,
-    required this.message, // Will be ChatMessageUI
+    required this.message,
     required this.isMe,
-    required this.chatService, 
+    required this.chatService,
+    this.onImageLoaded, // New callback for when images finish loading
   }) : super(key: key);
 
-  final ChatMessageUI message; // Changed from MessageDTO to ChatMessageUI
+  final ChatMessageUI message;
   final bool isMe;
-  final ChatService chatService; // Still needed if ChatMessageUI.imageUrl is relative, or for future uses
+  final ChatService chatService;
+  final VoidCallback? onImageLoaded; // Callback when image is loaded
 
   @override
   Widget build(BuildContext context) {
@@ -40,31 +42,50 @@ class ChatBubble extends StatelessWidget {
     if (message.imageUrl != null && message.imageUrl!.isNotEmpty) {
       messageContent = Container(
         constraints: BoxConstraints(
-          maxHeight: 200, 
-          maxWidth: MediaQuery.of(context).size.width * 0.6, 
+          maxHeight: 200,
+          maxWidth: MediaQuery.of(context).size.width * 0.6,
         ),
         child: ClipRRect(
-          borderRadius: borderRadius, 
+          borderRadius: borderRadius,
           child: Image.network(
-            message.imageUrl!, // Directly use imageUrl from ChatMessageUI
+            message.imageUrl!,
             fit: BoxFit.cover,
-            loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
-              if (loadingProgress == null) return child;
+            loadingBuilder: (BuildContext context, Widget child,
+                ImageChunkEvent? loadingProgress) {
+              if (loadingProgress == null) {
+                // Image is fully loaded, call the callback if provided
+                if (onImageLoaded != null) {
+                  // Use a post-frame callback to ensure layout is complete
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    onImageLoaded!();
+                  });
+                }
+                return child;
+              }
               return Center(
                 child: CircularProgressIndicator(
                   value: loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
                       : null,
                 ),
               );
             },
-            errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 50),
+            errorBuilder: (context, error, stackTrace) {
+              // Call onImageLoaded even on error to ensure proper scrolling
+              if (onImageLoaded != null) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  onImageLoaded!();
+                });
+              }
+              return const Icon(Icons.broken_image, size: 50);
+            },
           ),
         ),
       );
     } else {
       messageContent = Text(
-        message.text ?? '', // Use message.text from ChatMessageUI
+        message.text ?? '',
         style: TextStyle(fontSize: 15, color: textColor),
       );
     }
@@ -77,31 +98,33 @@ class ChatBubble extends StatelessWidget {
           maxWidth: MediaQuery.of(context).size.width * 0.7,
         ),
         decoration: BoxDecoration(
-          // Use message.imageUrl from ChatMessageUI
-          color: message.imageUrl != null && message.imageUrl!.isNotEmpty ? Colors.transparent : bubbleColor, 
+          color: message.imageUrl != null && message.imageUrl!.isNotEmpty
+              ? Colors.transparent
+              : bubbleColor,
           borderRadius: borderRadius,
         ),
-        // Use message.imageUrl and message.text from ChatMessageUI
-        padding: message.imageUrl != null && message.imageUrl!.isNotEmpty && message.text == null
-            ? EdgeInsets.zero 
+        padding: message.imageUrl != null &&
+                message.imageUrl!.isNotEmpty &&
+                message.text == null
+            ? EdgeInsets.zero
             : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Column(
           crossAxisAlignment: alignment,
           mainAxisSize: MainAxisSize.min,
           children: [
             messageContent,
-            // Use message.text and message.imageUrl from ChatMessageUI
-            if (message.text != null && message.imageUrl != null) 
+            if (message.text != null && message.imageUrl != null)
               const SizedBox(height: 4),
-            // Use message.text and message.imageUrl from ChatMessageUI
-            if (message.text != null || (message.imageUrl != null && message.text == null)) 
+            if (message.text != null ||
+                (message.imageUrl != null && message.text == null))
               Padding(
-                // Use message.imageUrl and message.text from ChatMessageUI
-                padding: message.imageUrl != null && message.imageUrl!.isNotEmpty && message.text == null
-                  ? const EdgeInsets.only(top: 4.0) 
-                  : EdgeInsets.zero,
+                padding: message.imageUrl != null &&
+                        message.imageUrl!.isNotEmpty &&
+                        message.text == null
+                    ? const EdgeInsets.only(top: 4.0)
+                    : EdgeInsets.zero,
                 child: Text(
-                  getFormattedSendTime(message.sendTime), // Format sendTime from ChatMessageUI
+                  getFormattedSendTime(message.sendTime),
                   style: TextStyle(fontSize: 10, color: timeColor),
                 ),
               ),
