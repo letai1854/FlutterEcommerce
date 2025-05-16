@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'package:e_commerce_app/services/shared_preferences_service.dart';
 import 'dart:io'; // Import SocketException
 import 'package:connectivity_plus/connectivity_plus.dart'; // Added for connectivity check
+import 'package:e_commerce_app/constants.dart' as constants;
 
 // In-memory cache for image data
 class ImageCache {
@@ -499,6 +500,27 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
   }
 
   @override
+  void didUpdateWidget(PromotionalProductsList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Reset loading states when screen size changes
+    if (oldWidget.gridWidth != widget.gridWidth ||
+        oldWidget.gridHeight != widget.gridHeight ||
+        oldWidget.crossAxisCount != widget.crossAxisCount) {
+      // Reset scrolling and loading states on resize
+      if (_isLoadingMore || _isButtonTriggeredLoading) {
+        if (mounted) {
+          setState(() {
+            _isLoadingMore = false;
+            _isButtonTriggeredLoading = false;
+            _isScrollingToEnd = false;
+          });
+        }
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
@@ -699,16 +721,13 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
 
   Future<void> _loadMoreProducts() async {
     // Use a local variable instead of trying to modify the widget property
-    final effectiveItemsPerPage = widget.itemsPerPage;
+    final effectiveItemsPerPage = constants.isMobile ? widget.itemsPerPage : 5;
 
     if (!_hasMorePages || _isLoadingMore || _nextPageToRequest == -1) return;
 
     if (mounted) {
       setState(() {
         _isLoadingMore = true;
-        if (_scrollController.position.pixels > 0) {
-          _isScrollingToEnd = true;
-        }
       });
     }
 
@@ -860,37 +879,57 @@ class _PromotionalProductsListState extends State<PromotionalProductsList>
     final double currentOffset = _scrollController.offset;
     final double maxOffset = _scrollController.position.maxScrollExtent;
 
-    final double targetOffset =
-        (currentOffset + scrollAmount).clamp(0.0, maxOffset);
-
-    final bool approachingEnd =
-        maxOffset > 0 && targetOffset >= maxOffset - (widget.gridWidth * 0.3);
+    // Improved end detection - calculate if we're approaching the end of content
+    // Use more flexible threshold based on grid width
+    final double endThreshold =
+        widget.mainSpace * 1.5; // Slightly larger threshold
+    final bool approachingEnd = maxOffset > 0 &&
+        (currentOffset + scrollAmount + endThreshold >= maxOffset);
 
     if (approachingEnd && _hasMorePages && !_isLoadingMore) {
+      // Reset button state first to ensure clean state
       if (mounted) {
         setState(() {
           _isButtonTriggeredLoading = true;
+          _isLoadingMore = true;
+          _isScrollingToEnd = false; // Reset this state as well
         });
       }
 
       _loadMoreProducts().then((_) {
+        // After loading completes
         if (mounted) {
-          final newMaxOffset = _scrollController.position.maxScrollExtent;
-          final adjustedTargetOffset =
-              (currentOffset + scrollAmount).clamp(0.0, newMaxOffset);
-          _scrollController.animateTo(
-            adjustedTargetOffset,
-            duration: const Duration(milliseconds: 0),
-            curve: Curves.easeInOut,
-          );
+          setState(() {
+            _isButtonTriggeredLoading = false;
+            _isLoadingMore = false;
+          });
+
+          // Now scroll to the new position with small delay
+          Future.delayed(const Duration(milliseconds: 150), () {
+            if (mounted && _scrollController.hasClients) {
+              // Get the updated maximum offset after loading
+              final newMaxOffset = _scrollController.position.maxScrollExtent;
+              final adjustedTargetOffset =
+                  (currentOffset + scrollAmount).clamp(0.0, newMaxOffset);
+
+              _scrollController.animateTo(
+                adjustedTargetOffset,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+              );
+            }
+          });
         }
       });
     } else {
-      _scrollController.animateTo(
-        targetOffset,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-      );
+      // Just regular scrolling within existing content
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          (currentOffset + scrollAmount).clamp(0.0, maxOffset),
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      }
     }
   }
 
