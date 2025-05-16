@@ -95,7 +95,7 @@ class _DiscountScreenState extends State<DiscountScreen> {
 
   void _showCouponDetailsDialog(CouponResponseDTO coupon) {
     final remainingUses = coupon.maxUsageCount - coupon.usageCount;
-    
+
     // Kiểm tra nếu đang chạy trên web
     if (kIsWeb) {
       // Sử dụng Dialog tùy chỉnh cho web
@@ -125,7 +125,8 @@ class _DiscountScreenState extends State<DiscountScreen> {
                         Expanded(
                           child: Text(
                             'Chi tiết mã: ${coupon.code}',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 18),
                           ),
                         ),
                         IconButton(
@@ -135,22 +136,22 @@ class _DiscountScreenState extends State<DiscountScreen> {
                       ],
                     ),
                     Divider(),
-                    
+
                     // Nội dung
                     Expanded(
                       child: SingleChildScrollView(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildDetailRowDialog(
-                                'Giá trị giảm:', _formatCurrency(coupon.discountValue)),
+                            _buildDetailRowDialog('Giá trị giảm:',
+                                _formatCurrency(coupon.discountValue)),
                             if (coupon.createdDate != null)
                               _buildDetailRowDialog(
                                   'Ngày tạo:',
                                   DateFormat('dd/MM/yyyy HH:mm')
                                       .format(coupon.createdDate!)),
-                            _buildDetailRowDialog(
-                                'Số lần sử dụng tối đa:', '${coupon.maxUsageCount}'),
+                            _buildDetailRowDialog('Số lần sử dụng tối đa:',
+                                '${coupon.maxUsageCount}'),
                             _buildDetailRowDialog(
                                 'Số lần đã sử dụng:', '${coupon.usageCount}'),
                             _buildDetailRowDialog(
@@ -159,15 +160,17 @@ class _DiscountScreenState extends State<DiscountScreen> {
                             const SizedBox(height: 12),
                             const Text(
                               'Đơn hàng đã áp dụng:',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 15),
                             ),
                             const Divider(),
-                            
+
                             // Danh sách đơn hàng - sử dụng Column thay vì ListView.builder
                             if (coupon.orders == null || coupon.orders!.isEmpty)
                               const Padding(
                                 padding: EdgeInsets.only(top: 8.0),
-                                child: Text('Chưa có đơn hàng nào áp dụng mã này.'),
+                                child: Text(
+                                    'Chưa có đơn hàng nào áp dụng mã này.'),
                               )
                             else
                               Column(
@@ -178,7 +181,8 @@ class _DiscountScreenState extends State<DiscountScreen> {
                                     contentPadding: EdgeInsets.zero,
                                     leading: Icon(Icons.receipt_long,
                                         color: Colors.teal, size: 20),
-                                    title: Text('Mã đơn hàng: ${order.orderId}'),
+                                    title:
+                                        Text('Mã đơn hàng: ${order.orderId}'),
                                     subtitle: Text(
                                         'Giá trị đơn: ${_formatCurrency(order.orderValue)}'),
                                   );
@@ -188,7 +192,7 @@ class _DiscountScreenState extends State<DiscountScreen> {
                         ),
                       ),
                     ),
-                    
+
                     // Nút đóng
                     Align(
                       alignment: Alignment.centerRight,
@@ -386,7 +390,8 @@ class _DiscountScreenState extends State<DiscountScreen> {
                             const SizedBox(height: 10),
                             Text(
                               'Không có kết nối internet',
-                              style: const TextStyle(color: Color.fromARGB(255, 0, 0, 0)),
+                              style: const TextStyle(
+                                  color: Color.fromARGB(255, 0, 0, 0)),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 10),
@@ -411,37 +416,38 @@ class _DiscountScreenState extends State<DiscountScreen> {
                             ],
                           ),
                         )
-                      : ListView.builder(
+                      : SingleChildScrollView(
                           padding: const EdgeInsets.all(8.0),
-                          itemCount: _coupons.length,
-                          itemBuilder: (context, index) {
-                            final coupon = _coupons[index];
-                            return Card(
-                              margin: const EdgeInsets.symmetric(vertical: 6.0),
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  child: Icon(Icons.local_offer,
-                                      color: Theme.of(context).primaryColor),
-                                  backgroundColor: Theme.of(context)
-                                      .primaryColor
-                                      .withOpacity(0.1),
+                          child: Column(
+                            children: _coupons.map((coupon) {
+                              return Card(
+                                margin:
+                                    const EdgeInsets.symmetric(vertical: 6.0),
+                                child: ListTile(
+                                  leading: CircleAvatar(
+                                    child: Icon(Icons.local_offer,
+                                        color: Theme.of(context).primaryColor),
+                                    backgroundColor: Theme.of(context)
+                                        .primaryColor
+                                        .withOpacity(0.1),
+                                  ),
+                                  title: Text(
+                                    coupon.code,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16),
+                                  ),
+                                  subtitle: Text(
+                                      'Giá trị: ${_formatCurrency(coupon.discountValue)}. SL còn lại: ${coupon.maxUsageCount - coupon.usageCount}'),
+                                  trailing: const Icon(Icons.info_outline,
+                                      color: Colors.blueGrey),
+                                  onTap: () {
+                                    _showCouponDetailsDialog(coupon);
+                                  },
                                 ),
-                                title: Text(
-                                  coupon.code,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16),
-                                ),
-                                subtitle: Text(
-                                    'Giá trị: ${_formatCurrency(coupon.discountValue)}. SL còn lại: ${coupon.maxUsageCount - coupon.usageCount}'),
-                                trailing: const Icon(Icons.info_outline,
-                                    color: Colors.blueGrey),
-                                onTap: () {
-                                  _showCouponDetailsDialog(coupon);
-                                },
-                              ),
-                            );
-                          },
+                              );
+                            }).toList(),
+                          ),
                         ),
     );
   }
