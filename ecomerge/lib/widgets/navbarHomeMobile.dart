@@ -49,7 +49,7 @@ class _NavbarHomeMobileState extends State<NavbarHomeMobile> {
                         onSubmitted: (value) {
                           if (value.trim().isNotEmpty) {
                             // Use the centralized executeSearch method
-                            _searchService.executeSearch().then((_) {
+                            _searchService.executeSearch(isNewSearch: true).then((_) {
                               Navigator.pushNamed(context, '/search');
                             });
                           }
@@ -69,7 +69,7 @@ class _NavbarHomeMobileState extends State<NavbarHomeMobile> {
                       onTap: () {
                         if (_searchService.searchController.text.trim().isNotEmpty) {
                           // Use the centralized executeSearch method
-                          _searchService.executeSearch().then((_) {
+                          _searchService.executeSearch(isNewSearch: true).then((_) {
                             Navigator.pushNamed(context, '/search');
                           });
                         }

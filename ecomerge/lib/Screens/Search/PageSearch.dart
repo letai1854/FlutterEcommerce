@@ -127,15 +127,8 @@ class _PageSearchState extends State<PageSearch> {
         print('isInitialSearch flag: ${_searchService.isInitialSearch}');
       }
 
-      // If this is a brand new search (like coming directly from search bar),
-      // we need to execute it as an initial search without filters
-      if (_searchService.isInitialSearch) {
-        _searchService.executeSearch();
-      } else {
-        // Otherwise, if we're returning to the page and filters are already set,
-        // preserve those filters in the search
-        _searchService.executeSearch();
-      }
+      // Always treat initial page load as a new search to reset filters
+      _searchService.executeSearch(isNewSearch: true);
     }
   }
 
@@ -226,6 +219,33 @@ class _PageSearchState extends State<PageSearch> {
     required int minPrice,
     required int maxPrice,
   }) {
+    // Add detailed debugging
+    if (kDebugMode) {
+      print('----------------');
+      print('Filter application details:');
+      print('Search query: "${_searchService.currentSearchQuery}"');
+      print('Selected category ID: $categoryId');
+      print('Selected brand name: $brandName');
+      print('Price range: $minPrice to $maxPrice');
+      print('Current sort: $currentSortMethod $currentSortDir');
+      
+      // Check catalog data
+      final matchingCategories = AppDataService().categories
+          .where((cat) => cat.id == categoryId)
+          .map((cat) => cat.name)
+          .toList();
+      
+      print('Matching category names: $matchingCategories');
+      
+      // Check if Dell appears in brands list exactly as expected
+      final brandVariations = AppDataService().brands
+          .where((b) => b.name != null && b.name!.toLowerCase() == 'dell')
+          .toList();
+      
+      print('Dell brand variations: $brandVariations');
+      print('----------------');
+    }
+    
     // Update local state first
     setState(() {
       selectedCategoryId = categoryId;
