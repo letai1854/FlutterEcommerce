@@ -4,6 +4,7 @@ import 'package:e_commerce_app/database/services/coupon_service.dart';
 import 'package:e_commerce_app/database/Storage/UserInfo.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/foundation.dart'; // Import kIsWeb
 
 class DiscountScreen extends StatefulWidget {
   const DiscountScreen({Key? key}) : super(key: key);
@@ -94,72 +95,186 @@ class _DiscountScreenState extends State<DiscountScreen> {
 
   void _showCouponDetailsDialog(CouponResponseDTO coupon) {
     final remainingUses = coupon.maxUsageCount - coupon.usageCount;
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Chi tiết mã: ${coupon.code}',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                _buildDetailRowDialog(
-                    'Giá trị giảm:', _formatCurrency(coupon.discountValue)),
-                if (coupon.createdDate != null)
-                  _buildDetailRowDialog(
-                      'Ngày tạo:',
-                      DateFormat('dd/MM/yyyy HH:mm')
-                          .format(coupon.createdDate!)),
-                _buildDetailRowDialog(
-                    'Số lần sử dụng tối đa:', '${coupon.maxUsageCount}'),
-                _buildDetailRowDialog(
-                    'Số lần đã sử dụng:', '${coupon.usageCount}'),
-                _buildDetailRowDialog(
-                    'Số lần sử dụng còn lại:', '$remainingUses',
-                    isHighlighted: true),
-                const SizedBox(height: 12),
-                const Text(
-                  'Đơn hàng đã áp dụng:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+    
+    // Kiểm tra nếu đang chạy trên web
+    if (kIsWeb) {
+      // Sử dụng Dialog tùy chỉnh cho web
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            // Giới hạn kích thước dialog
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: 500,
+                maxHeight: MediaQuery.of(context).size.height * 0.8,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Tiêu đề
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Chi tiết mã: ${coupon.code}',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      ],
+                    ),
+                    Divider(),
+                    
+                    // Nội dung
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildDetailRowDialog(
+                                'Giá trị giảm:', _formatCurrency(coupon.discountValue)),
+                            if (coupon.createdDate != null)
+                              _buildDetailRowDialog(
+                                  'Ngày tạo:',
+                                  DateFormat('dd/MM/yyyy HH:mm')
+                                      .format(coupon.createdDate!)),
+                            _buildDetailRowDialog(
+                                'Số lần sử dụng tối đa:', '${coupon.maxUsageCount}'),
+                            _buildDetailRowDialog(
+                                'Số lần đã sử dụng:', '${coupon.usageCount}'),
+                            _buildDetailRowDialog(
+                                'Số lần sử dụng còn lại:', '$remainingUses',
+                                isHighlighted: true),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Đơn hàng đã áp dụng:',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            ),
+                            const Divider(),
+                            
+                            // Danh sách đơn hàng - sử dụng Column thay vì ListView.builder
+                            if (coupon.orders == null || coupon.orders!.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.only(top: 8.0),
+                                child: Text('Chưa có đơn hàng nào áp dụng mã này.'),
+                              )
+                            else
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: coupon.orders!.map((order) {
+                                  return ListTile(
+                                    dense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    leading: Icon(Icons.receipt_long,
+                                        color: Colors.teal, size: 20),
+                                    title: Text('Mã đơn hàng: ${order.orderId}'),
+                                    subtitle: Text(
+                                        'Giá trị đơn: ${_formatCurrency(order.orderValue)}'),
+                                  );
+                                }).toList(),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    
+                    // Nút đóng
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        child: const Text('Đóng'),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-                const Divider(),
-                if (coupon.orders == null || coupon.orders!.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8.0),
-                    child: Text('Chưa có đơn hàng nào áp dụng mã này.'),
-                  )
-                else
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: coupon.orders!.length,
-                    itemBuilder: (context, orderIndex) {
-                      final order = coupon.orders![orderIndex];
-                      return ListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(Icons.receipt_long,
-                            color: Colors.teal, size: 20),
-                        title: Text('Mã đơn hàng: ${order.orderId}'),
-                        subtitle: Text(
-                            'Giá trị đơn: ${_formatCurrency(order.orderValue)}'),
-                      );
-                    },
+              ),
+            ),
+          );
+        },
+      );
+    } else {
+      // Sử dụng AlertDialog gốc cho mobile và desktop
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Chi tiết mã: ${coupon.code}',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            content: SingleChildScrollView(
+              child: ListBody(
+                children: <Widget>[
+                  _buildDetailRowDialog(
+                      'Giá trị giảm:', _formatCurrency(coupon.discountValue)),
+                  if (coupon.createdDate != null)
+                    _buildDetailRowDialog(
+                        'Ngày tạo:',
+                        DateFormat('dd/MM/yyyy HH:mm')
+                            .format(coupon.createdDate!)),
+                  _buildDetailRowDialog(
+                      'Số lần sử dụng tối đa:', '${coupon.maxUsageCount}'),
+                  _buildDetailRowDialog(
+                      'Số lần đã sử dụng:', '${coupon.usageCount}'),
+                  _buildDetailRowDialog(
+                      'Số lần sử dụng còn lại:', '$remainingUses',
+                      isHighlighted: true),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Đơn hàng đã áp dụng:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                   ),
-              ],
+                  const Divider(),
+                  if (coupon.orders == null || coupon.orders!.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8.0),
+                      child: Text('Chưa có đơn hàng nào áp dụng mã này.'),
+                    )
+                  else
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: coupon.orders!.length,
+                      itemBuilder: (context, orderIndex) {
+                        final order = coupon.orders![orderIndex];
+                        return ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(Icons.receipt_long,
+                              color: Colors.teal, size: 20),
+                          title: Text('Mã đơn hàng: ${order.orderId}'),
+                          subtitle: Text(
+                              'Giá trị đơn: ${_formatCurrency(order.orderValue)}'),
+                        );
+                      },
+                    ),
+                ],
+              ),
             ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Đóng'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
+            actions: <Widget>[
+              TextButton(
+                child: const Text('Đóng'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
   }
 
   Widget _buildDetailRowDialog(String label, String value,
