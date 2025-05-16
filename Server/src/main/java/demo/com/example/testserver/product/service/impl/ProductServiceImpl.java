@@ -78,6 +78,45 @@ public class ProductServiceImpl implements ProductService {
     @Autowired
     private SimpMessagingTemplate messagingTemplate; // Added for WebSocket broadcasting
 
+    // Helper method to convert Sort object with entity properties to SQL column names
+    private Sort convertToNativeSort(Sort entitySort) {
+        if (entitySort == null || entitySort.isUnsorted()) {
+            // Default sort for native query if none is provided or if it's unsorted
+            return Sort.by(Sort.Direction.DESC, "ngay_tao");
+        }
+        List<Sort.Order> nativeOrders = entitySort.stream()
+            .map(order -> {
+                String property = order.getProperty();
+                String sqlColumn;
+                switch (property.toLowerCase()) {
+                    case "createddate":
+                    case "newest": // Alias for createdDate
+                        sqlColumn = "ngay_tao";
+                        break;
+                    case "name":
+                        sqlColumn = "ten_san_pham";
+                        break;
+                    case "averagerating":
+                    case "rating": // Alias for averageRating
+                        sqlColumn = "average_rating";
+                        break;
+                    case "variantzeroprice": // Used by ProductSortBuilder for "price"
+                    case "price":
+                        sqlColumn = "variant_zero_price";
+                        break;
+                    // Add other mappings if ProductSortBuilder supports more fields for Product
+                    default:
+                        // Fallback to a default known column if property is not explicitly mapped
+                        // This prevents errors if an unmapped property is somehow passed.
+                        // Alternatively, could throw an exception for unmapped properties.
+                        sqlColumn = "ngay_tao"; // Default fallback column
+                }
+                return order.isAscending() ? Sort.Order.asc(sqlColumn) : Sort.Order.desc(sqlColumn);
+            })
+            .collect(Collectors.toList());
+        return Sort.by(nativeOrders);
+    }
+
     @Override
     public Page<ProductDTO> findProducts(
             Pageable pageable,
@@ -97,33 +136,61 @@ public class ProductServiceImpl implements ProductService {
         Pageable pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
 
         List<Long> productIdsFromSearch = null;
+        boolean useFullTextSearch = false;
 
         if (search != null && !search.trim().isEmpty()) {
             logger.debug("Performing Elasticsearch search for keyword: {}", search);
             if (productElasticsearchService != null) {
                 productIdsFromSearch = productElasticsearchService.searchProductIds(search);
                 if (productIdsFromSearch != null && productIdsFromSearch.isEmpty()) {
-                    logger.info("Elasticsearch returned no results for '{}'. Attempting fallback to database LIKE search.", search);
-                    productIdsFromSearch = null; // Signal to use DB LIKE search
+                    logger.info("Elasticsearch returned no results for '{}'. Attempting fallback to database search.", search);
+                    productIdsFromSearch = null; // Signal to use DB search
+                    useFullTextSearch = fallbackProductElasticsearchService.isFullTextSearchEnabled(); // Check if Full-Text Search is enabled
                 } else if (productIdsFromSearch == null) {
                     // This case might indicate an issue with the ES service itself, even if available
-                    logger.warn("Elasticsearch search returned null (possibly an error or timeout) for search term '{}'. Falling back to database LIKE search.", search);
+                    logger.warn("Elasticsearch search returned null (possibly an error or timeout) for search term '{}'. Falling back to database search.", search);
+                    useFullTextSearch = fallbackProductElasticsearchService.isFullTextSearchEnabled(); // Check if Full-Text Search is enabled
                 }
             } else {
                 logger.info("Elasticsearch service is not available. Using fallback for search term: {}", search);
-                productIdsFromSearch = fallbackProductElasticsearchService.searchProductIds(search); // Fallback returns null to trigger DB LIKE
+                productIdsFromSearch = fallbackProductElasticsearchService.searchProductIds(search); // Fallback returns null to trigger DB search
+                useFullTextSearch = fallbackProductElasticsearchService.isFullTextSearchEnabled(); // Check if Full-Text Search is enabled
             }
         }
 
-        Specification<Product> spec = productSpecificationBuilder.build(
-            search, categoryId, brandId, minPrice, maxPrice, minRating, productIdsFromSearch, null, null, false
-        );
-
-        logger.debug("Executing database query with filters and pagination.");
-        Page<Product> productPage = productRepository.findAll(spec, pageRequest);
+        // Handle full-text search with native query if needed
+        Page<Product> productPage;
+        if (search != null && !search.trim().isEmpty() && productIdsFromSearch == null && useFullTextSearch) {
+            logger.info("Using native MySQL full-text search for term: {}", search);
+            String searchTermWithWildcard = search + "*"; // Add wildcard for partial matches
+            try {
+                // Convert sort properties to native SQL column names for the native query
+                Sort nativeQuerySort = convertToNativeSort(sort);
+                Pageable nativePageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), nativeQuerySort);
+                productPage = productRepository.findByFullTextSearch(searchTermWithWildcard, nativePageRequest);
+                logger.debug("Full-text search returned {} results", productPage.getTotalElements());
+            } catch (Exception e) {
+                logger.error("Error executing full-text search: {}", e.getMessage(), e);
+                // Fallback to regular specification if full-text search fails
+                logger.info("Falling back to regular specification search after full-text search error");
+                Specification<Product> spec = productSpecificationBuilder.build(
+                    search, categoryId, brandId, minPrice, maxPrice, minRating, productIdsFromSearch, 
+                    null, null, false, false // Set useFullTextSearch to false to use LIKE instead
+                );
+                productPage = productRepository.findAll(spec, pageRequest);
+            }
+        } else {
+            // Use standard specification 
+            Specification<Product> spec = productSpecificationBuilder.build(
+                search, categoryId, brandId, minPrice, maxPrice, minRating, productIdsFromSearch, 
+                null, null, false, useFullTextSearch
+            );
+            logger.debug("Executing database query with filters and pagination.");
+            productPage = productRepository.findAll(spec, pageRequest);
+        }
 
         List<ProductDTO> dtos = productPage.getContent().stream()
-                .map(productMapper::mapToProductDTO) // This will now exclude reviews
+                .map(productMapper::mapToProductDTO)
                 .collect(Collectors.toList());
 
         logger.info("Found {} products matching criteria.", productPage.getTotalElements());
@@ -137,38 +204,66 @@ public class ProductServiceImpl implements ProductService {
                 search, startDate, endDate, pageable);
 
         Sort sort = pageable.getSort().isSorted() ? pageable.getSort() : Sort.by(Sort.Direction.DESC, "createdDate");
+        // Initialize pageRequest here
         Pageable pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
 
         List<Long> productIdsFromSearch = null;
+        boolean useFullTextSearch = false;
+        
         if (search != null && !search.trim().isEmpty()) {
             logger.debug("Admin: Performing Elasticsearch search for keyword: {}", search);
             if (productElasticsearchService != null) {
                 productIdsFromSearch = productElasticsearchService.searchProductIds(search);
                 if (productIdsFromSearch != null && productIdsFromSearch.isEmpty()) {
-                    logger.info("Admin: Elasticsearch returned no results for '{}'. Attempting fallback to database LIKE search.", search);
-                    productIdsFromSearch = null; // Signal to use DB LIKE search
+                    logger.info("Admin: Elasticsearch returned no results for '{}'. Attempting fallback to database search.", search);
+                    productIdsFromSearch = null; // Signal to use DB search
+                    useFullTextSearch = fallbackProductElasticsearchService.isFullTextSearchEnabled(); // Check if Full-Text Search is enabled
                 } else if (productIdsFromSearch == null) {
-                    logger.warn("Admin: Elasticsearch search returned null for search term '{}'. Falling back to database LIKE search.", search);
+                    logger.warn("Admin: Elasticsearch search returned null for search term '{}'. Falling back to database search.", search);
+                    useFullTextSearch = fallbackProductElasticsearchService.isFullTextSearchEnabled(); // Check if Full-Text Search is enabled
                 }
             } else {
                 logger.info("Admin: Elasticsearch service is not available. Using fallback for search term: {}", search);
-                productIdsFromSearch = fallbackProductElasticsearchService.searchProductIds(search); // Fallback returns null to trigger DB LIKE
+                productIdsFromSearch = fallbackProductElasticsearchService.searchProductIds(search); // Fallback returns null to trigger DB search
+                useFullTextSearch = fallbackProductElasticsearchService.isFullTextSearchEnabled(); // Check if Full-Text Search is enabled
             }
         }
 
-        Specification<Product> spec = productSpecificationBuilder.build(
-            search, null, null, null, null, null, productIdsFromSearch, startDate, endDate, false
-        );
-
-        logger.debug("Executing admin database query with filters and pagination.");
-        Page<Product> productPage = productRepository.findAll(spec, pageRequest);
+        // Handle full-text search with native query if needed
+        Page<Product> productPage;
+        if (search != null && !search.trim().isEmpty() && productIdsFromSearch == null && useFullTextSearch) {
+            logger.info("Admin: Using native MySQL full-text search for term: {}", search);
+            String searchTermWithWildcard = search + "*"; // Add wildcard for partial matches
+            try {
+                // Convert sort properties to native SQL column names for the native query
+                Sort nativeQuerySort = convertToNativeSort(sort); // Use the same conversion
+                Pageable nativePageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), nativeQuerySort);
+                productPage = productRepository.findByFullTextSearch(searchTermWithWildcard, nativePageRequest);
+                logger.debug("Admin: Full-text search returned {} results", productPage.getTotalElements());
+            } catch (Exception e) {
+                logger.error("Admin: Error executing full-text search: {}", e.getMessage(), e);
+                // Fallback to regular specification if full-text search fails
+                logger.info("Admin: Falling back to regular specification search after full-text search error");
+                Specification<Product> spec = productSpecificationBuilder.build(
+                    search, null, null, null, null, null, productIdsFromSearch, startDate, endDate, false, false // Set useFullTextSearch to false to use LIKE instead
+                );
+                productPage = productRepository.findAll(spec, pageRequest); // Now pageRequest is defined
+            }
+        } else {
+            // Use standard specification 
+            Specification<Product> spec = productSpecificationBuilder.build(
+                search, null, null, null, null, null, productIdsFromSearch, startDate, endDate, false, useFullTextSearch
+            );
+            logger.debug("Executing admin database query with filters and pagination.");
+            productPage = productRepository.findAll(spec, pageRequest); // Now pageRequest is defined
+        }
 
         List<ProductDTO> dtos = productPage.getContent().stream()
-                .map(productMapper::mapToProductDTO) // This will now exclude reviews
+                .map(productMapper::mapToProductDTO)
                 .collect(Collectors.toList());
 
         logger.info("Admin search found {} products matching criteria.", productPage.getTotalElements());
-        return new PageImpl<>(dtos, pageRequest, productPage.getTotalElements());
+        return new PageImpl<>(dtos, pageRequest, productPage.getTotalElements()); // Now pageRequest is defined
     }
 
     @Override
@@ -296,7 +391,7 @@ public class ProductServiceImpl implements ProductService {
         Pageable pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
 
         Specification<Product> spec = productSpecificationBuilder.build(
-            null, null, null, null, null, null, null, null, null, false
+            null, null, null, null, null, null, null, null, null, false, false
         );
 
         Page<Product> productPage = productRepository.findAll(spec, pageRequest);
@@ -315,7 +410,7 @@ public class ProductServiceImpl implements ProductService {
         Pageable pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
 
         Specification<Product> spec = productSpecificationBuilder.build(
-            null, null, null, null, null, null, null, null, null, true
+            null, null, null, null, null, null, null, null, null, true, false
         );
 
         Page<Product> productPage = productRepository.findAll(spec, pageRequest);

@@ -17,7 +17,7 @@ public class ProductSpecificationBuilder {
 
     private static final Logger logger = LoggerFactory.getLogger(ProductSpecificationBuilder.class);
 
-    // Modified build method to include date parameters and discount filter
+    // Modified build method to include date parameters and discount filter and support full-text search
     public Specification<Product> build(
             String search,
             Integer categoryId,
@@ -28,13 +28,13 @@ public class ProductSpecificationBuilder {
             List<Long> productIdsFromSearch, // Changed to List<Long>
             Date startDate,
             Date endDate,
-            Boolean onlyWithDiscount // New parameter for discount filter
+            Boolean onlyWithDiscount, // New parameter for discount filter
+            Boolean useFullTextSearch // New parameter to indicate whether to use MySQL full-text search
     ) {
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
-            logger.debug("Building specification with Search: '{}', CategoryId: {}, BrandId: {}, Price: {}-{}, Rating >= {}, StartDate: {}, EndDate: {}, OnlyWithDiscount: {}",
-                    search, categoryId, brandId, minPrice, maxPrice, minRating, startDate, endDate, onlyWithDiscount);
-
+            logger.debug("Building specification with Search: '{}', CategoryId: {}, BrandId: {}, Price: {}-{}, Rating >= {}, StartDate: {}, EndDate: {}, OnlyWithDiscount: {}, UseFullTextSearch: {}",
+                    search, categoryId, brandId, minPrice, maxPrice, minRating, startDate, endDate, onlyWithDiscount, useFullTextSearch);
 
             // Handle Elasticsearch search results
             if (productIdsFromSearch != null && !productIdsFromSearch.isEmpty()) {
@@ -42,11 +42,17 @@ public class ProductSpecificationBuilder {
                 // Assuming product ID in database is Long. If it's Integer, adjust `Product_.ID` or cast.
                 predicates.add(root.get("id").in(productIdsFromSearch));
             } else if (search != null && !search.trim().isEmpty() && productIdsFromSearch == null) {
-                // Fallback to database search if ES failed or not used, and search term is present
-                logger.debug("Adding database LIKE filter for search term: {}", search);
-                Predicate nameLike = criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), "%" + search.toLowerCase() + "%");
-                Predicate descriptionLike = criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), "%" + search.toLowerCase() + "%");
-                predicates.add(criteriaBuilder.or(nameLike, descriptionLike)); // Thêm điều kiện OR vào câu truy vấn
+                // For full-text search, we'll use native queries instead (see ProductRepository)
+                // Here we'll only handle simple LIKE searches as a fallback
+                if (!Boolean.TRUE.equals(useFullTextSearch)) {
+                    // Fallback to LIKE search if full-text search is not enabled or will be handled by native query
+                    logger.debug("Adding database LIKE filter for search term: {}", search);
+                    Predicate nameLike = criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), "%" + search.toLowerCase() + "%");
+                    Predicate descriptionLike = criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), "%" + search.toLowerCase() + "%");
+                    predicates.add(criteriaBuilder.or(nameLike, descriptionLike));
+                }
+                // Note: When useFullTextSearch is true, we'll use the native query instead,
+                // so we don't add any predicate here
             }
 
             // Filter by Category
